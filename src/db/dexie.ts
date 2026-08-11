@@ -79,23 +79,41 @@ export const db = new TripJournalDB()
 // 事后没法往里加表，这是唯一干净的办法）。代价是极端情况下主写操作后 outbox 记录失败
 // 不会一起回滚，但这个app是单个家庭离线优先场景，此前"后写覆盖"的简化风险都已经跟用户
 // 说明过，这里的不一致概率和后果都很小，不必为此引入更复杂的方案
+// 从云端拉数据写回本地时要临时关掉这些 hook——否则拉下来的每一行都会被当成
+// "本地新写入"又重新记一条 outbox，推回云端造成两台设备之间来回震荡的无效流量。
+// 用一个简单的模块级标记而不是给每次调用传参，因为 bulkPut 内部对每一行都会
+// 触发一次 hook，没法在 bulkPut 的调用点之外单独给每一行传标记。
+let suppressOutboxTracking = false
+
+export async function withoutOutboxTracking<T>(fn: () => Promise<T>): Promise<T> {
+  suppressOutboxTracking = true
+  try {
+    return await fn()
+  } finally {
+    suppressOutboxTracking = false
+  }
+}
+
 function registerOutboxHooks(db: TripJournalDB) {
   for (const tableName of SYNCED_TABLES) {
     const table = db.table(tableName)
 
     table.hook('creating', (primKey, obj) => {
+      if (suppressOutboxTracking) return
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, String(primKey ?? (obj as { id: string }).id), 'upsert', obj)
       })
     })
 
     table.hook('updating', (modifications, primKey, obj) => {
+      if (suppressOutboxTracking) return
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, String(primKey), 'upsert', { ...obj, ...modifications })
       })
     })
 
     table.hook('deleting', (primKey) => {
+      if (suppressOutboxTracking) return
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, String(primKey), 'delete', null)
       })

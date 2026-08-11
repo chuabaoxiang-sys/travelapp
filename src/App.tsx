@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ensureSeedData } from './db/dexie'
+import { startAutoSync } from './db/sync'
 import { MemberGate } from './features/members/MemberGate'
 import { useCurrentMemberId } from './features/members/useCurrentMemberId'
 import { TripPicker } from './features/trips/TripPicker'
@@ -15,6 +16,7 @@ function App() {
 
   useEffect(() => {
     ensureSeedData().then(() => setReady(true))
+    startAutoSync()
   }, [])
 
   if (!ready) return null
