@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #1f1b16;
+  --color-paper: #f7f3ec;
+  --color-card: #fffdf9;
+  --color-line: #e8e0d4;
+  --color-plan: #4c1d95;
+  --color-spend: #e8703a;
+  --color-positive: #0f766e;
+  --color-negative: #b91c1c;
+  --color-muted: #8a8177;
+
+  --color-cat-transport: #0f766e;
+  --color-cat-stay: #7c3aed;
+  --color-cat-food: #c2410c;
+  --color-cat-ticket: #b45309;
+  --color-cat-shop: #be123c;
+  --color-cat-misc: #57534e;
+
+  --font-serif-sc: "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  --font-sans-sc: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+    "Noto Sans SC", "Helvetica Neue", sans-serif;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--color-ink);
+  font-family: var(--font-sans-sc);
+  color: var(--color-ink);
+}
+
+.paper-texture {
+  background-image:
+    repeating-linear-gradient(0deg, rgba(140, 120, 90, 0.045) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(140, 120, 90, 0.035) 0 1px, transparent 1px 4px);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+/* 横向可滑动区域：隐藏原生滚动条，用右侧渐隐提示还能往右滑 */
+.scroll-fade {
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+}
+.scroll-fade::-webkit-scrollbar {
+  display: none;
+  height: 0;
+}
