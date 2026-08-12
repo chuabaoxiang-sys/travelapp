@@ -1,7 +1,12 @@
 import { useState, type ReactNode } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { UserPlus } from 'lucide-react'
+import { db } from '../../db/dexie'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
+import { createMember } from '../../domain/members'
 import { shareOrDownloadFile } from '../../lib/share'
+import { Avatar } from '../../components/Avatar'
 import type { Trip } from '../../types'
 
 type ExportKind = 'excel' | 'json' | 'csv'
@@ -43,15 +48,29 @@ const EXPORT_OPTIONS: { kind: ExportKind; title: string; desc: string; icon: Rea
 
 export function TripMoreSheet({
   trip,
+  currentMemberId,
   onClose,
   onOpenFeedback,
+  onSwitchMember,
 }: {
   trip: Trip
+  currentMemberId: string
   onClose: () => void
   onOpenFeedback: () => void
+  onSwitchMember: () => void
 }) {
+  const currentMember = useLiveQuery(() => db.members.get(currentMemberId), [currentMemberId])
   const [busy, setBusy] = useState<ExportKind | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [addingMember, setAddingMember] = useState(false)
+  const [newMemberName, setNewMemberName] = useState('')
+
+  async function handleAddMember() {
+    if (!newMemberName.trim()) return
+    await createMember(newMemberName)
+    setNewMemberName('')
+    setAddingMember(false)
+  }
 
   async function handleExport(kind: ExportKind) {
     setError(null)
@@ -73,6 +92,40 @@ export function TripMoreSheet({
       <div className="flex-1 bg-ink/35" onClick={onClose} />
       <div className="bg-paper rounded-t-[26px] px-5 pt-3.5 pb-7 shadow-[0_-10px_40px_rgba(31,27,22,0.2)]">
         <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-3.5" />
+
+        <div className="flex items-center justify-between py-1.5 border-b border-line mb-1.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <Avatar member={currentMember} size={26} />
+            <div className="text-[13px] min-w-0 truncate">
+              当前身份：<span className="font-medium">{currentMember?.displayName ?? '…'}</span>
+            </div>
+          </div>
+          <button onClick={onSwitchMember} className="text-[11.5px] text-plan flex-shrink-0 pl-2">切换身份</button>
+        </div>
+
+        {addingMember ? (
+          <div className="flex gap-2 py-1.5 border-b border-line mb-1.5">
+            <input
+              value={newMemberName}
+              onChange={(e) => setNewMemberName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddMember()}
+              placeholder="家庭成员姓名"
+              autoFocus
+              className="flex-1 min-w-0 rounded-lg border border-line bg-card px-2.5 py-1.5 text-[13px] outline-none focus:border-plan"
+            />
+            <button onClick={handleAddMember} className="rounded-lg bg-plan text-card px-3 text-[12.5px] font-medium flex-shrink-0">添加</button>
+            <button onClick={() => { setAddingMember(false); setNewMemberName('') }} className="text-[12.5px] text-muted flex-shrink-0">取消</button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setAddingMember(true)}
+            className="w-full flex items-center gap-2 py-1.5 border-b border-line mb-1.5 text-[12.5px] text-plan"
+          >
+            <UserPlus className="w-[15px] h-[15px]" strokeWidth={1.8} />
+            添加家庭成员
+          </button>
+        )}
+
         <div className="flex justify-between items-center mb-1">
           <span className="text-sm font-semibold">导出与分享</span>
           <button onClick={onClose} className="text-[12.5px] text-muted">关闭</button>

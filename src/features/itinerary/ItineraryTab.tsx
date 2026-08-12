@@ -8,7 +8,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { LocationPicker, type LocationValue } from '../../components/LocationPicker'
 import { CalendarView } from './CalendarView'
 import { MapView } from './MapView'
-import { dateRange } from '../../lib/dates'
+import { dateRange, formatTimeHM } from '../../lib/dates'
 
 const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 type ViewMode = 'timeline' | 'calendar' | 'map'
@@ -189,7 +189,7 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
                     className="text-left bg-card border border-line rounded-2xl p-3 hover:border-plan/50 transition-colors cursor-pointer"
                   >
                     <div className="flex justify-between gap-2.5 items-baseline">
-                      <div className="text-sm font-medium min-w-0 flex-1 truncate">{it.time ? `${it.time} ` : ''}{it.title}</div>
+                      <div className="text-sm font-medium min-w-0 flex-1 truncate">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {itemTotal > 0 && <span className="text-xs tabular text-plan">{formatMoney(itemTotal)}</span>}
                         <button

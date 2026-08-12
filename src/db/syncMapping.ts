@@ -139,7 +139,8 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       dayId: r.day_id,
       tripId: '', // 由 sync.ts 用 day_id -> trip_id 的映射表补上，这里先占位
       orderIndex: r.sort_order,
-      time: r.start_time,
+      // Postgres time 列经 PostgREST 返回时带秒（HH:MM:SS），本地只用 HH:MM，截断存
+      time: r.start_time ? String(r.start_time).slice(0, 5) : null,
       title: r.title,
       locationName: r.location_name,
       lat: r.lat === null ? null : num(r.lat),

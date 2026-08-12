@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Calendar } from 'lucide-react'
 
 const DOW = ['一', '二', '三', '四', '五', '六', '日']
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -72,7 +73,7 @@ export function DatePicker({
         className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-left outline-none focus:border-plan flex items-center justify-between"
       >
         <span className={value ? 'text-ink tabular' : 'text-muted'}>{value ? formatDisplay(value) : placeholder}</span>
-        <span className="text-muted text-xs">📅</span>
+        <Calendar className="w-3.5 h-3.5 text-muted flex-shrink-0" strokeWidth={1.8} />
       </button>
 
       {open && (

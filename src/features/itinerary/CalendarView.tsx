@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ItineraryDay, ItineraryItem, Expense } from '../../types'
 import { formatMoney } from '../../lib/money'
+import { formatTimeHM } from '../../lib/dates'
 
 const DOW = ['一', '二', '三', '四', '五', '六', '日']
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -113,7 +114,7 @@ export function CalendarView({
           </div>
           {selectedItems.map((it) => (
             <div key={it.id} className="bg-card border border-line rounded-2xl p-3">
-              <div className="text-sm font-medium">{it.time ? `${it.time} ` : ''}{it.title}</div>
+              <div className="text-sm font-medium">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
               {it.locationName && <div className="text-[11.5px] text-muted mt-1">{it.locationName}</div>}
             </div>
           ))}

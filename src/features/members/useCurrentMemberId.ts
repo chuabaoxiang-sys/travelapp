@@ -8,5 +8,9 @@ export function useCurrentMemberId() {
     localStorage.setItem(CURRENT_MEMBER_KEY, memberId)
     setId(memberId)
   }
-  return [id, set] as const
+  const clear = () => {
+    localStorage.removeItem(CURRENT_MEMBER_KEY)
+    setId(null)
+  }
+  return [id, set, clear] as const
 }

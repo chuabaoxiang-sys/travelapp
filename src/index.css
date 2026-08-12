@@ -28,6 +28,9 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  /* 关掉手机浏览器的原生下拉刷新手势——那会触发整页重新加载，
+     把当前tab状态清空回默认值，跟APP本身离线优先+自动同步的设计冲突 */
+  overscroll-behavior-y: none;
 }
 
 body {
