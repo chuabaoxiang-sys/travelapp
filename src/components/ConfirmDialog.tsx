@@ -1,3 +1,5 @@
+import { X } from 'lucide-react'
+
 export function ConfirmDialog({
   title,
   message,
@@ -23,8 +25,8 @@ export function ConfirmDialog({
         <div className="font-serif-sc text-[15px] text-ink">{title}</div>
         {message && <div className="text-[12.5px] text-muted mt-2 leading-relaxed">{message}</div>}
         <div className="flex gap-2 mt-4">
-          <button onClick={onCancel} className="flex-1 rounded-xl border border-line py-2 text-sm text-muted">
-            取消
+          <button onClick={onCancel} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+            <X className="w-4 h-4" strokeWidth={1.8} />
           </button>
           <button
             onClick={onConfirm}

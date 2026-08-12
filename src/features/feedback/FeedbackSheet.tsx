@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { X, Check, Pencil, Trash2 } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { getAllFeedback, createFeedback, updateFeedback, deleteFeedback } from '../../domain/feedback'
 import { Avatar } from '../../components/Avatar'
@@ -69,7 +70,9 @@ export function FeedbackSheet({
         <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-3.5" />
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm font-semibold">反馈</span>
-          <button onClick={onClose} className="text-[12.5px] text-muted">关闭</button>
+          <button onClick={onClose} className="text-muted" title="关闭">
+            <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
+          </button>
         </div>
 
         <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">这属于</div>
@@ -141,8 +144,12 @@ export function FeedbackSheet({
                           className="w-full rounded-lg border border-line bg-paper px-2.5 py-2 text-[13px] outline-none focus:border-plan resize-none"
                         />
                         <div className="flex gap-2">
-                          <button onClick={() => setEditingId(null)} className="flex-1 rounded-lg border border-line py-2 text-[12.5px] text-muted">取消</button>
-                          <button onClick={saveEdit} disabled={!editContent.trim()} className="flex-1 rounded-lg bg-plan text-card py-2 text-[12.5px] font-medium disabled:opacity-40">保存</button>
+                          <button onClick={() => setEditingId(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title="取消">
+                            <X className="w-4 h-4" strokeWidth={1.8} />
+                          </button>
+                          <button onClick={saveEdit} disabled={!editContent.trim()} className="flex-1 rounded-lg bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center" title="保存">
+                            <Check className="w-4 h-4" strokeWidth={2} />
+                          </button>
                         </div>
                       </div>
                     ) : (
@@ -161,8 +168,12 @@ export function FeedbackSheet({
                           <div className="text-[13px] mt-1 whitespace-pre-wrap break-words">{f.content}</div>
                           <div className="text-[10.5px] text-muted mt-1">{new Date(f.createdAt).toLocaleDateString('zh-CN')}</div>
                         </div>
-                        <button onClick={() => startEdit(f)} className="w-6 h-6 rounded-lg border border-line bg-card flex items-center justify-center text-[11px] text-muted flex-shrink-0">✎</button>
-                        <button onClick={() => setConfirmDeleteId(f.id)} className="w-6 h-6 rounded-lg border border-line bg-card flex items-center justify-center text-[11px] text-muted flex-shrink-0">🗑</button>
+                        <button onClick={() => startEdit(f)} className="w-6 h-6 rounded-lg border border-line bg-card flex items-center justify-center text-muted flex-shrink-0" title="编辑">
+                          <Pencil className="w-3 h-3" strokeWidth={1.8} />
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(f.id)} className="w-6 h-6 rounded-lg border border-line bg-card flex items-center justify-center text-muted flex-shrink-0" title="删除">
+                          <Trash2 className="w-3 h-3" strokeWidth={1.8} />
+                        </button>
                       </div>
                     )}
                   </div>

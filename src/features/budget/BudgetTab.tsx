@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Trash2, Check, X, Plus } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { getOverallBudget, getCategoryBudgets, upsertBudget, deleteBudget, sumSpend } from '../../domain/budgets'
 import { formatMoney } from '../../lib/money'
@@ -79,7 +80,9 @@ export function BudgetTab({ trip }: { trip: Trip }) {
             <span>{formatMoney(totalSpend)} / {formatMoney(overallBudget.amount)}</span>
             <span className="flex items-center gap-2.5">
               <button onClick={() => { setEditingOverall(true); setOverallInput(String(overallBudget.amount)) }} className="text-plan">改总预算</button>
-              <button onClick={() => setConfirmRemoveOverall(true)} className="text-muted">删除</button>
+              <button onClick={() => setConfirmRemoveOverall(true)} className="text-muted" title="删除">
+                <Trash2 className="w-3.5 h-3.5" strokeWidth={1.8} />
+              </button>
             </span>
           </div>
         </div>
@@ -96,7 +99,9 @@ export function BudgetTab({ trip }: { trip: Trip }) {
               placeholder={`总预算（${trip.homeCurrency}）`}
               className="flex-1 rounded-xl border border-line bg-paper px-3 py-2 text-sm tabular outline-none focus:border-plan"
             />
-            <button onClick={saveOverall} className="rounded-xl bg-plan text-card px-4 text-sm font-medium">保存</button>
+            <button onClick={saveOverall} className="rounded-xl bg-plan text-card px-4 flex items-center justify-center" title="保存">
+              <Check className="w-4 h-4" strokeWidth={2} />
+            </button>
           </div>
         </div>
       )}
@@ -117,7 +122,10 @@ export function BudgetTab({ trip }: { trip: Trip }) {
       <div className="flex items-center justify-between mb-2">
         <span className="font-serif-sc text-[13.5px] font-semibold">分类明细</span>
         {categoriesWithoutBudget.length > 0 && (
-          <button onClick={() => setAddingCategoryBudget(true)} className="text-[11.5px] text-plan">＋ 加分类预算</button>
+          <button onClick={() => setAddingCategoryBudget(true)} className="text-[11.5px] text-plan flex items-center gap-1">
+            <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+            加分类预算
+          </button>
         )}
       </div>
 
@@ -160,8 +168,12 @@ export function BudgetTab({ trip }: { trip: Trip }) {
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setAddingCategoryBudget(false)} className="flex-1 rounded-xl border border-line py-2 text-sm text-muted">取消</button>
-            <button onClick={addCategoryBudget} disabled={!newCategoryId || !newCategoryAmount} className="flex-1 rounded-xl bg-plan text-card py-2 text-sm font-medium disabled:opacity-40">保存</button>
+            <button onClick={() => setAddingCategoryBudget(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+              <X className="w-4 h-4" strokeWidth={1.8} />
+            </button>
+            <button onClick={addCategoryBudget} disabled={!newCategoryId || !newCategoryAmount} className="flex-1 rounded-xl bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center" title="保存">
+              <Check className="w-4 h-4" strokeWidth={2} />
+            </button>
           </div>
         </div>
       )}
@@ -176,7 +188,9 @@ export function BudgetTab({ trip }: { trip: Trip }) {
               </span>
               <span className="flex items-center gap-2">
                 <span className="tabular text-[12px]">{formatMoney(r.spend)} / {formatMoney(r.budget.amount)}</span>
-                <button onClick={() => setConfirmRemoveId(r.budget.id)} className="text-[11px] text-muted">×</button>
+                <button onClick={() => setConfirmRemoveId(r.budget.id)} className="text-muted" title="删除">
+                  <Trash2 className="w-3 h-3" strokeWidth={1.8} />
+                </button>
               </span>
             </div>
             <div className="mt-1.5 h-1.5 rounded-full bg-line overflow-hidden">

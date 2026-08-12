@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { ChevronDown } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { BottomNav, Fab, type TabKey } from '../../components/BottomNav'
 import { ItineraryTab } from '../itinerary/ItineraryTab'
@@ -50,7 +51,10 @@ export function TripShell({
                 {trip.startDate ?? '日期未定'} {trip.endDate ? `– ${trip.endDate}` : ''} · {trip.homeCurrency}
               </div>
             </div>
-            <span className="text-muted text-xs flex-shrink-0 whitespace-nowrap pl-2">▾ 切换</span>
+            <span className="text-muted text-xs flex-shrink-0 whitespace-nowrap pl-2 flex items-center gap-0.5">
+              切换
+              <ChevronDown className="w-3 h-3" strokeWidth={1.8} />
+            </span>
           </button>
           <button
             onClick={() => setMoreOpen(true)}

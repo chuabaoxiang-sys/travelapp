@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Calendar } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 const DOW = ['一', '二', '三', '四', '五', '六', '日']
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -79,9 +79,13 @@ export function DatePicker({
       {open && (
         <div className="absolute z-40 mt-1.5 w-[280px] rounded-2xl border border-line bg-card shadow-lg p-3">
           <div className="flex items-center justify-between mb-2">
-            <button type="button" onClick={() => shiftMonth(-1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted">‹</button>
+            <button type="button" onClick={() => shiftMonth(-1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">
+              <ChevronLeft className="w-4 h-4" strokeWidth={1.8} />
+            </button>
             <span className="font-serif-sc text-sm font-semibold">{viewY}年 {MONTH_NAMES[viewM - 1]}</span>
-            <button type="button" onClick={() => shiftMonth(1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted">›</button>
+            <button type="button" onClick={() => shiftMonth(1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">
+              <ChevronRight className="w-4 h-4" strokeWidth={1.8} />
+            </button>
           </div>
           <div className="grid grid-cols-7 gap-1 mb-1">
             {DOW.map((d) => (
@@ -111,9 +115,10 @@ export function DatePicker({
             <button
               type="button"
               onClick={() => { onChange(''); setOpen(false) }}
-              className="text-[11.5px] text-muted"
+              className="text-muted"
+              title="清除"
             >
-              清除
+              <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
             </button>
             <button
               type="button"

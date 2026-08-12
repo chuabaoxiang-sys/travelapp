@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { searchCountries, countryByCode } from '../lib/countries'
 
 export function CountryPicker({
@@ -39,7 +40,9 @@ export function CountryPicker({
           return (
             <span key={code} className="inline-flex items-center gap-1 rounded-full bg-plan/10 text-plan text-[11.5px] px-2.5 py-1">
               {c?.nameZh ?? code}
-              <button type="button" onClick={() => remove(code)} className="text-plan/60 hover:text-plan">×</button>
+              <button type="button" onClick={() => remove(code)} className="text-plan/60 hover:text-plan" title="移除">
+                <X className="w-2.5 h-2.5" strokeWidth={2} />
+              </button>
             </span>
           )
         })}

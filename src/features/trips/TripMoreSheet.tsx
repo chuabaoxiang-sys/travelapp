@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { X } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
@@ -100,7 +101,9 @@ export function TripMoreSheet({
 
         <div className="flex justify-between items-center mb-1">
           <span className="text-sm font-semibold">导出与分享</span>
-          <button onClick={onClose} className="text-[12.5px] text-muted">关闭</button>
+          <button onClick={onClose} className="text-muted" title="关闭">
+            <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
+          </button>
         </div>
 
         <div className="flex flex-col">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X, Download } from 'lucide-react'
 
 const ANDROID_DISMISS_KEY = 'trip-journal:install-prompt-dismissed'
 const IOS_DISMISS_KEY = 'trip-journal:ios-install-hint-dismissed'
@@ -59,9 +60,10 @@ export function InstallPrompt() {
           </div>
           <button
             onClick={() => { localStorage.setItem(ANDROID_DISMISS_KEY, '1'); setDeferredEvent(null) }}
-            className="text-[11px] text-paper/50 flex-shrink-0"
+            className="text-paper/50 flex-shrink-0"
+            title="暂不"
           >
-            暂不
+            <X className="w-4 h-4" strokeWidth={1.8} />
           </button>
           <button
             onClick={async () => {
@@ -69,9 +71,10 @@ export function InstallPrompt() {
               await deferredEvent.userChoice
               setDeferredEvent(null)
             }}
-            className="rounded-xl bg-plan text-card px-3 py-2 text-[12.5px] font-medium flex-shrink-0"
+            className="rounded-xl bg-plan text-card px-3 py-2 flex-shrink-0"
+            title="安装"
           >
-            安装
+            <Download className="w-4 h-4" strokeWidth={1.8} />
           </button>
         </div>
       </div>
@@ -87,9 +90,10 @@ export function InstallPrompt() {
           </div>
           <button
             onClick={() => { localStorage.setItem(IOS_DISMISS_KEY, '1'); setShowIOSHint(false) }}
-            className="text-[13px] text-paper/50 flex-shrink-0"
+            className="text-paper/50 flex-shrink-0"
+            title="关闭"
           >
-            ✕
+            <X className="w-4 h-4" strokeWidth={1.8} />
           </button>
         </div>
       </div>

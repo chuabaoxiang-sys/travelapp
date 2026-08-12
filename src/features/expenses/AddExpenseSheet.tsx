@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { X, CheckCheck, Trash2, Check } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -193,7 +194,9 @@ export function AddExpenseSheet({
         <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-3.5" />
         <div className="flex justify-between items-center mb-1.5">
           <span className="text-sm font-semibold">{initial ? '编辑这笔' : '记一笔'}</span>
-          <button onClick={onClose} className="text-[12.5px] text-muted">取消</button>
+          <button onClick={onClose} className="text-muted" title="取消">
+            <X className="w-4 h-4" strokeWidth={1.8} />
+          </button>
         </div>
 
         <div className="flex gap-1 bg-[#EDE6DA] rounded-xl p-1 my-2.5 w-fit">
@@ -400,9 +403,10 @@ export function AddExpenseSheet({
                 <button
                   type="button"
                   onClick={() => setSplitMemberIds(members.map((m) => m.id))}
-                  className="text-[11px] text-plan"
+                  className="text-plan"
+                  title="全选"
                 >
-                  全选
+                  <CheckCheck className="w-[15px] h-[15px]" strokeWidth={1.8} />
                 </button>
               )}
             </div>
@@ -441,17 +445,19 @@ export function AddExpenseSheet({
           {initial && (
             <button
               onClick={() => setConfirmingDelete(true)}
-              className="rounded-2xl border border-negative/30 text-negative px-4 py-3.5 text-[14.5px]"
+              className="rounded-2xl border border-negative/30 text-negative px-4 py-3.5"
+              title="删除"
             >
-              删除
+              <Trash2 className="w-[18px] h-[18px]" strokeWidth={1.8} />
             </button>
           )}
           <button
             onClick={save}
             disabled={!numAmount || !categoryId || !rateReady}
-            className="flex-1 rounded-2xl bg-plan text-card py-3.5 text-[14.5px] font-medium disabled:opacity-40"
+            className="flex-1 rounded-2xl bg-plan text-card py-3.5 disabled:opacity-40 flex items-center justify-center"
+            title={initial ? '保存修改' : '保存这笔'}
           >
-            {initial ? '保存修改' : '保存这笔'}
+            <Check className="w-5 h-5" strokeWidth={2} />
           </button>
         </div>
       </div>

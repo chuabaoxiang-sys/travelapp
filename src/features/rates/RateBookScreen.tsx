@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Check, X, Pencil, Archive, ArchiveRestore } from 'lucide-react'
 import { getAllRateBookEntries, updateRateBookEntry, archiveRateBookEntry, unarchiveRateBookEntry, createRateBookEntry } from '../../domain/rates'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { Trip, RateBookEntry } from '../../types'
@@ -72,7 +73,9 @@ export function RateBookScreen({
     <div className="absolute inset-0 z-30 bg-paper flex flex-col">
       <div className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0 border-b border-line">
         <span className="font-serif-sc text-[15px] font-semibold">汇率簿</span>
-        <button onClick={onClose} className="text-[12.5px] text-plan">完成</button>
+        <button onClick={onClose} className="text-plan" title="完成">
+          <Check className="w-[17px] h-[17px]" strokeWidth={2} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-3">
@@ -117,14 +120,22 @@ export function RateBookScreen({
                     <div className="flex gap-2 mt-2.5">
                       {editingId === e.id ? (
                         <>
-                          <button onClick={() => setEditingId(null)} className="text-[11px] text-muted px-2 py-1">取消</button>
+                          <button onClick={() => setEditingId(null)} className="text-muted px-2 py-1" title="取消">
+                            <X className="w-3.5 h-3.5" strokeWidth={1.8} />
+                          </button>
                           <button onClick={() => startSaveAsNew(e)} className="text-[11px] text-plan px-2 py-1">另存为新标签</button>
-                          <button onClick={() => saveEdit(e)} className="text-[11px] bg-plan text-card rounded-md px-2.5 py-1 ml-auto">保存</button>
+                          <button onClick={() => saveEdit(e)} className="bg-plan text-card rounded-md px-2.5 py-1 ml-auto" title="保存">
+                            <Check className="w-3.5 h-3.5" strokeWidth={2} />
+                          </button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => startEdit(e)} className="text-[11px] text-plan px-2 py-1 border border-dashed border-plan/50 rounded-md">编辑</button>
-                          <button onClick={() => setConfirmArchiveId(e.id)} className="text-[11px] text-muted px-2 py-1 border border-dashed border-line rounded-md">归档</button>
+                          <button onClick={() => startEdit(e)} className="text-plan px-2 py-1 border border-dashed border-plan/50 rounded-md" title="编辑">
+                            <Pencil className="w-3.5 h-3.5" strokeWidth={1.8} />
+                          </button>
+                          <button onClick={() => setConfirmArchiveId(e.id)} className="text-muted px-2 py-1 border border-dashed border-line rounded-md" title="归档">
+                            <Archive className="w-3.5 h-3.5" strokeWidth={1.8} />
+                          </button>
                         </>
                       )}
                     </div>
@@ -147,7 +158,9 @@ export function RateBookScreen({
                       <div className="text-[13px] font-medium">{e.label} · {e.foreignCurrency}</div>
                       <div className="text-[11px] text-muted">{e.rate}</div>
                     </div>
-                    <button onClick={() => unarchiveRateBookEntry(e.id)} className="text-[11px] text-plan">恢复</button>
+                    <button onClick={() => unarchiveRateBookEntry(e.id)} className="text-plan" title="恢复">
+                      <ArchiveRestore className="w-[15px] h-[15px]" strokeWidth={1.8} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -184,8 +197,12 @@ export function RateBookScreen({
               className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-plan"
             />
             <div className="flex gap-2 mt-4">
-              <button onClick={() => setSaveAsNewFor(null)} className="flex-1 rounded-xl border border-line py-2 text-sm text-muted">取消</button>
-              <button onClick={confirmSaveAsNew} className="flex-1 rounded-xl bg-plan text-card py-2 text-sm font-medium">保存</button>
+              <button onClick={() => setSaveAsNewFor(null)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+                <X className="w-4 h-4" strokeWidth={1.8} />
+              </button>
+              <button onClick={confirmSaveAsNew} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title="保存">
+                <Check className="w-4 h-4" strokeWidth={2} />
+              </button>
             </div>
           </div>
         </div>
