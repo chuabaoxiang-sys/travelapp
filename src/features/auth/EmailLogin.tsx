@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Mail } from 'lucide-react'
-import { sendLoginLink } from '../../domain/household'
+import { sendLoginLink, NotInvitedError } from '../../domain/household'
 
 export function EmailLogin() {
   const [email, setEmail] = useState('')
@@ -15,8 +15,8 @@ export function EmailLogin() {
     try {
       await sendLoginLink(email)
       setSent(true)
-    } catch {
-      setError('发送失败，请检查邮箱地址后重试')
+    } catch (err) {
+      setError(err instanceof NotInvitedError ? '这个邮箱还没被邀请，联系邀请你的人确认一下' : '发送失败，请检查邮箱地址后重试')
     } finally {
       setBusy(false)
     }

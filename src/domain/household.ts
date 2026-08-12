@@ -4,9 +4,24 @@ import { supabase } from '../api/supabaseClient'
 // 查过之后缓存在内存里，创建新记录时直接读这个值打进 householdId 字段
 let cachedHouseholdId: string | null = null
 
+// 未被邀请的邮箱专用错误——EmailLogin.tsx 靠这个类型区分"没被邀请"和其他发送失败，
+// 分别展示不同的提示文案
+export class NotInvitedError extends Error {}
+
 export async function sendLoginLink(email: string): Promise<void> {
   if (!supabase) throw new Error('云端服务未配置')
-  const { error } = await supabase.auth.signInWithOtp({ email: email.trim() })
+  const trimmed = email.trim()
+
+  // 真正调用发送登录邮件之前，先问一句"这个邮箱在邀请名单里吗"——不在的话直接
+  // 拦掉，不触发真实发信，防止有人拿着网站密码墙的密码乱试邮箱耗尽发信额度。
+  // 这个检查本身失败（比如网络问题）不应该挡住正常登录，交给下面 signInWithOtp
+  // 自己的报错处理，所以只在明确查到 false 时才拦截
+  const { data: invited, error: checkError } = await supabase.rpc('is_invited_email', { check_email: trimmed })
+  if (!checkError && invited === false) {
+    throw new NotInvitedError('这个邮箱还没被邀请')
+  }
+
+  const { error } = await supabase.auth.signInWithOtp({ email: trimmed })
   if (error) throw error
 }
 
