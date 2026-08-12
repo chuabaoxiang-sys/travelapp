@@ -11,7 +11,7 @@ const CURRENT_TRIP_KEY = 'trip-journal:current-trip-id'
 
 function App() {
   const [ready, setReady] = useState(false)
-  const [memberId, setMemberId, clearMemberId] = useCurrentMemberId()
+  const [memberId, setMemberId] = useCurrentMemberId()
   const [tripId, setTripId] = useState<string | null>(() => localStorage.getItem(CURRENT_TRIP_KEY))
 
   useEffect(() => {
@@ -53,7 +53,7 @@ function App() {
           localStorage.removeItem(CURRENT_TRIP_KEY)
           setTripId(null)
         }}
-        onSwitchMember={clearMemberId}
+        onSelectMember={setMemberId}
       />
       <InstallPrompt />
     </>

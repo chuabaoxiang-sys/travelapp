@@ -10,17 +10,18 @@ import { AddExpenseSheet } from '../expenses/AddExpenseSheet'
 import { SyncStatusBadge } from '../../components/SyncStatusBadge'
 import { TripMoreSheet } from './TripMoreSheet'
 import { FeedbackSheet } from '../feedback/FeedbackSheet'
+import { IdentitySwitcher } from '../members/IdentitySwitcher'
 
 export function TripShell({
   tripId,
   currentMemberId,
   onSwitchTrip,
-  onSwitchMember,
+  onSelectMember,
 }: {
   tripId: string
   currentMemberId: string
   onSwitchTrip: () => void
-  onSwitchMember: () => void
+  onSelectMember: (id: string) => void
 }) {
   const trip = useLiveQuery(() => db.trips.get(tripId), [tripId])
   const [tab, setTab] = useState<TabKey>('itinerary')
@@ -33,7 +34,8 @@ export function TripShell({
   return (
     <div className="min-h-screen bg-ink flex items-center justify-center p-4">
       <div className="w-full max-w-[420px] h-[860px] max-h-[92vh] bg-paper paper-texture rounded-[34px] overflow-hidden relative flex flex-col shadow-2xl">
-        <div className="flex items-center justify-end px-5 pt-3.5 text-[11px] text-muted flex-shrink-0">
+        <div className="flex items-center justify-between px-5 pt-3.5 text-[11px] text-muted flex-shrink-0">
+          <IdentitySwitcher currentMemberId={currentMemberId} onSelectMember={onSelectMember} />
           <SyncStatusBadge />
         </div>
 
@@ -80,10 +82,8 @@ export function TripShell({
         {moreOpen && (
           <TripMoreSheet
             trip={trip}
-            currentMemberId={currentMemberId}
             onClose={() => setMoreOpen(false)}
             onOpenFeedback={() => { setMoreOpen(false); setFeedbackOpen(true) }}
-            onSwitchMember={() => { setMoreOpen(false); onSwitchMember() }}
           />
         )}
 
