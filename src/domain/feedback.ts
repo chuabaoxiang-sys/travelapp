@@ -1,4 +1,5 @@
 import { db } from '../db/dexie'
+import { getCurrentHouseholdId } from './household'
 import type { Feedback, FeedbackCategory } from '../types'
 
 export async function getAllFeedback(): Promise<Feedback[]> {
@@ -12,9 +13,11 @@ export async function createFeedback(params: {
   category: FeedbackCategory
   content: string
 }) {
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) throw new Error('未找到所属团队')
   const id = crypto.randomUUID()
   const now = Date.now()
-  const entry: Feedback = { id, ...params, createdAt: now, updatedAt: now }
+  const entry: Feedback = { id, householdId, ...params, createdAt: now, updatedAt: now }
   await db.feedback.add(entry)
   return id
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { X, CheckCheck, Trash2, Check } from 'lucide-react'
+import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -158,10 +159,13 @@ export function AddExpenseSheet({
         updatedAt: Date.now(),
       })
     } else {
+      const householdId = await getCurrentHouseholdId()
+      if (!householdId) return
       const id = expenseId
       const now = Date.now()
       await db.expenses.add({
         id,
+        householdId,
         tripId: trip.id,
         categoryId,
         phase,

@@ -1,4 +1,5 @@
 import { db } from '../db/dexie'
+import { getCurrentHouseholdId } from './household'
 import type { RateBookEntry } from '../types'
 
 // 汇率簿推荐排序：最近用过的排前面，用得越勤的在同等新近度下也更靠前。
@@ -30,10 +31,13 @@ export async function createRateBookEntry(params: {
   source: RateBookEntry['source']
   createdBy: string | null
 }): Promise<RateBookEntry> {
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) throw new Error('未找到所属团队')
   const id = crypto.randomUUID()
   const now = Date.now()
   const entry: RateBookEntry = {
     id,
+    householdId,
     tripId: params.tripId,
     foreignCurrency: params.foreignCurrency,
     label: params.label,

@@ -75,25 +75,25 @@ describe('computeBalances（真实走一遍Dexie，用fake-indexeddb）', () => 
     const now = Date.now()
     await db.expenses.bulkAdd([
       {
-        id: 'exp-test-1', tripId, categoryId: 'cat-food', phase: 'during_trip', description: null,
+        id: 'exp-test-1', householdId: 'h1', tripId, categoryId: 'cat-food', phase: 'during_trip', description: null,
         expenseCurrency: 'MYR', expenseAmount: 300, rateBookEntryId: null, rateUsed: 1, homeAmount: 300,
         paidBy: 'papa', recordedBy: 'papa', expenseDate: '2026-09-02', itineraryDayId: null, itineraryItemId: null,
         splitType: 'equal', createdAt: now, updatedAt: now,
       },
       {
-        id: 'exp-test-2', tripId, categoryId: 'cat-shop', phase: 'during_trip', description: null,
+        id: 'exp-test-2', householdId: 'h1', tripId, categoryId: 'cat-shop', phase: 'during_trip', description: null,
         expenseCurrency: 'MYR', expenseAmount: 90, rateBookEntryId: null, rateUsed: 1, homeAmount: 90,
         paidBy: 'mama', recordedBy: 'mama', expenseDate: '2026-09-02', itineraryDayId: null, itineraryItemId: null,
         splitType: 'equal', createdAt: now, updatedAt: now,
       },
     ])
     await db.expenseSplits.bulkAdd([
-      { id: 'split-1', expenseId: 'exp-test-1', memberId: 'papa', shareAmount: 100 },
-      { id: 'split-2', expenseId: 'exp-test-1', memberId: 'mama', shareAmount: 100 },
-      { id: 'split-3', expenseId: 'exp-test-1', memberId: 'aming', shareAmount: 100 },
-      { id: 'split-4', expenseId: 'exp-test-2', memberId: 'papa', shareAmount: 30 },
-      { id: 'split-5', expenseId: 'exp-test-2', memberId: 'mama', shareAmount: 30 },
-      { id: 'split-6', expenseId: 'exp-test-2', memberId: 'aming', shareAmount: 30 },
+      { id: 'split-1', householdId: 'h1', expenseId: 'exp-test-1', memberId: 'papa', shareAmount: 100 },
+      { id: 'split-2', householdId: 'h1', expenseId: 'exp-test-1', memberId: 'mama', shareAmount: 100 },
+      { id: 'split-3', householdId: 'h1', expenseId: 'exp-test-1', memberId: 'aming', shareAmount: 100 },
+      { id: 'split-4', householdId: 'h1', expenseId: 'exp-test-2', memberId: 'papa', shareAmount: 30 },
+      { id: 'split-5', householdId: 'h1', expenseId: 'exp-test-2', memberId: 'mama', shareAmount: 30 },
+      { id: 'split-6', householdId: 'h1', expenseId: 'exp-test-2', memberId: 'aming', shareAmount: 30 },
     ])
 
     let balances = await computeBalances(tripId)
@@ -105,7 +105,7 @@ describe('computeBalances（真实走一遍Dexie，用fake-indexeddb）', () => 
 
     // 阿明先还50给爸爸
     await db.settlements.add({
-      id: 'settle-1', tripId, fromMemberId: 'aming', toMemberId: 'papa', amount: 50,
+      id: 'settle-1', householdId: 'h1', tripId, fromMemberId: 'aming', toMemberId: 'papa', amount: 50,
       settledDate: '2026-09-04', note: '转账', createdAt: now, updatedAt: now,
     })
 

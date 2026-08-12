@@ -1,12 +1,15 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { sumSpend, upsertBudget, getOverallBudget, getCategoryBudgets, deleteBudget } from './budgets'
 import type { Expense } from '../types'
 import { db } from '../db/dexie'
+
+vi.mock('./household', () => ({ getCurrentHouseholdId: async () => 'h1' }))
 
 function makeExpense(overrides: Partial<Expense>): Expense {
   const now = Date.now()
   return {
     id: crypto.randomUUID(),
+    householdId: 'h1',
     tripId: 't1',
     categoryId: 'cat-food',
     phase: 'during_trip',

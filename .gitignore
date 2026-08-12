@@ -13,6 +13,9 @@ dist-ssr
 dev-dist
 *.local
 
+# 数据库备份导出（含真实家庭财务数据，绝不能进版本库）
+旅记备份-*/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

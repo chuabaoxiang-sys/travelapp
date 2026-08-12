@@ -35,6 +35,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     hasUpdatedAt: true,
     toRemote: (t) => ({
       id: t.id,
+      household_id: t.householdId,
       name: t.name,
       home_currency: t.homeCurrency,
       start_date: t.startDate,
@@ -48,6 +49,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       name: r.name,
       homeCurrency: r.home_currency,
       startDate: r.start_date,
@@ -67,6 +69,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     hasUpdatedAt: false,
     toRemote: (m) => ({
       id: m.id,
+      household_id: m.householdId,
       display_name: m.displayName,
       color_tag: m.colorTag,
       is_active: m.isActive,
@@ -74,6 +77,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       displayName: r.display_name,
       colorTag: r.color_tag,
       isActive: r.is_active,
@@ -97,6 +101,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     hasUpdatedAt: true,
     toRemote: (d) => ({
       id: d.id,
+      household_id: d.householdId,
       trip_id: d.tripId,
       day_date: d.date,
       title: d.title,
@@ -106,6 +111,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       tripId: r.trip_id,
       date: r.day_date,
       title: r.title,
@@ -123,6 +129,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     hasUpdatedAt: true,
     toRemote: (it) => ({
       id: it.id,
+      household_id: it.householdId,
       day_id: it.dayId,
       sort_order: it.orderIndex,
       start_time: it.time,
@@ -136,6 +143,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       dayId: r.day_id,
       tripId: '', // 由 sync.ts 用 day_id -> trip_id 的映射表补上，这里先占位
       orderIndex: r.sort_order,
@@ -157,6 +165,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     hasUpdatedAt: false, // 本地类型没有 updatedAt 字段
     toRemote: (e) => ({
       id: e.id,
+      household_id: e.householdId,
       trip_id: e.tripId,
       currency_code: e.foreignCurrency,
       label: e.label,
@@ -172,6 +181,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       tripId: r.trip_id,
       foreignCurrency: r.currency_code,
       label: r.label,
@@ -191,6 +201,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     hasUpdatedAt: true,
     toRemote: (e) => ({
       id: e.id,
+      household_id: e.householdId,
       trip_id: e.tripId,
       category_id: e.categoryId,
       expense_date: e.expenseDate,
@@ -212,6 +223,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       tripId: r.trip_id,
       categoryId: r.category_id,
       expenseDate: r.expense_date,
@@ -236,9 +248,16 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     remoteTable: 'expense_split',
     conflictColumns: 'id',
     hasUpdatedAt: false,
-    toRemote: (s) => ({ id: s.id, expense_id: s.expenseId, member_id: s.memberId, share_amount: s.shareAmount }),
+    toRemote: (s) => ({
+      id: s.id,
+      household_id: s.householdId,
+      expense_id: s.expenseId,
+      member_id: s.memberId,
+      share_amount: s.shareAmount,
+    }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       expenseId: r.expense_id,
       memberId: r.member_id,
       shareAmount: num(r.share_amount),
@@ -251,6 +270,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     hasUpdatedAt: false, // 本地类型没有 updatedAt 字段
     toRemote: (b) => ({
       id: b.id,
+      household_id: b.householdId,
       trip_id: b.tripId,
       category_id: b.categoryId,
       amount: b.amount,
@@ -258,6 +278,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       tripId: r.trip_id,
       categoryId: r.category_id,
       // 远端 budget 表目前没有 phase 列（应用里也没有真正用到按阶段分预算的功能）
@@ -273,6 +294,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     hasUpdatedAt: true,
     toRemote: (s) => ({
       id: s.id,
+      household_id: s.householdId,
       trip_id: s.tripId,
       from_member_id: s.fromMemberId,
       to_member_id: s.toMemberId,
@@ -284,6 +306,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       tripId: r.trip_id,
       fromMemberId: r.from_member_id,
       toMemberId: r.to_member_id,
@@ -301,6 +324,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     hasUpdatedAt: true,
     toRemote: (f) => ({
       id: f.id,
+      household_id: f.householdId,
       trip_id: f.tripId,
       submitted_by: f.submittedBy,
       category: f.category,
@@ -310,6 +334,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
     fromRemote: (r) => ({
       id: r.id,
+      householdId: r.household_id,
       tripId: r.trip_id,
       submittedBy: r.submitted_by,
       category: r.category,

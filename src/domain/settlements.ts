@@ -1,4 +1,5 @@
 import { db } from '../db/dexie'
+import { getCurrentHouseholdId } from './household'
 import type { Settlement } from '../types'
 
 export async function getSettlements(tripId: string): Promise<Settlement[]> {
@@ -14,9 +15,11 @@ export async function createSettlement(params: {
   settledDate: string
   note: string | null
 }) {
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) throw new Error('未找到所属团队')
   const id = crypto.randomUUID()
   const now = Date.now()
-  const settlement: Settlement = { id, ...params, createdAt: now, updatedAt: now }
+  const settlement: Settlement = { id, householdId, ...params, createdAt: now, updatedAt: now }
   await db.settlements.add(settlement)
   return id
 }

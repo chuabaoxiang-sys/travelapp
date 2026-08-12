@@ -1,4 +1,5 @@
 import { db } from '../db/dexie'
+import { getCurrentHouseholdId } from './household'
 
 const SWATCHES = ['#4C1D95', '#0F766E', '#B45309', '#BE123C', '#57534E']
 
@@ -7,10 +8,13 @@ const SWATCHES = ['#4C1D95', '#0F766E', '#B45309', '#BE123C', '#57534E']
 export async function createMember(displayName: string): Promise<string> {
   const name = displayName.trim()
   if (!name) throw new Error('姓名不能为空')
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) throw new Error('未找到所属团队')
   const activeCount = (await db.members.toArray()).filter((m) => m.isActive).length
   const id = crypto.randomUUID()
   await db.members.add({
     id,
+    householdId,
     displayName: name,
     colorTag: SWATCHES[activeCount % SWATCHES.length],
     isActive: true,

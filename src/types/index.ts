@@ -1,10 +1,19 @@
 export type TripStatus = 'planning' | 'active' | 'completed' | 'archived'
+
+// "团队"——数据隔离的边界，一个家庭或一个朋友旅行群。只存在于远端 Supabase，
+// 本地 Dexie 不需要单独一张表，只需要知道"当前登录邮箱属于哪个 householdId"
+// （见 domain/household.ts），再把这个ID打在每条本地记录上供同步使用
+export interface Household {
+  id: string
+  name: string
+}
 export type ExpensePhase = 'pre_trip' | 'during_trip'
 export type CategoryPhase = 'pre_trip' | 'during_trip' | 'either'
 export type SplitType = 'none' | 'equal'
 
 export interface Trip {
   id: string
+  householdId: string
   name: string
   homeCurrency: string
   startDate: string | null
@@ -21,6 +30,7 @@ export interface Trip {
 
 export interface Member {
   id: string
+  householdId: string
   displayName: string
   colorTag: string | null
   isActive: boolean
@@ -45,6 +55,7 @@ export interface ExpenseCategory {
 
 export interface ItineraryDay {
   id: string
+  householdId: string
   tripId: string
   date: string
   title: string | null
@@ -55,6 +66,7 @@ export interface ItineraryDay {
 
 export interface ItineraryItem {
   id: string
+  householdId: string
   dayId: string
   tripId: string
   orderIndex: number
@@ -70,6 +82,7 @@ export interface ItineraryItem {
 
 export interface RateBookEntry {
   id: string
+  householdId: string
   tripId: string
   foreignCurrency: string
   label: string
@@ -84,6 +97,7 @@ export interface RateBookEntry {
 
 export interface Expense {
   id: string
+  householdId: string
   tripId: string
   categoryId: string
   phase: ExpensePhase
@@ -105,6 +119,7 @@ export interface Expense {
 
 export interface ExpenseSplit {
   id: string
+  householdId: string
   expenseId: string
   memberId: string
   shareAmount: number
@@ -112,6 +127,7 @@ export interface ExpenseSplit {
 
 export interface Budget {
   id: string
+  householdId: string
   tripId: string
   categoryId: string | null
   phase: ExpensePhase | null
@@ -121,6 +137,7 @@ export interface Budget {
 
 export interface Settlement {
   id: string
+  householdId: string
   tripId: string
   fromMemberId: string
   toMemberId: string
@@ -152,6 +169,7 @@ export type FeedbackCategory = 'bug' | 'suggestion' | 'other'
 // Supabase 之后自然就会同步到云端——不需要额外发邮件/分享的逻辑
 export interface Feedback {
   id: string
+  householdId: string
   tripId: string | null
   submittedBy: string
   category: FeedbackCategory

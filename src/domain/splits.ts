@@ -1,4 +1,5 @@
 import { db } from '../db/dexie'
+import { getCurrentHouseholdId } from './household'
 import type { SplitType } from '../types'
 
 function round2(n: number) {
@@ -35,10 +36,12 @@ export async function saveExpenseSplits(
   memberIds: string[],
   payerId: string,
 ) {
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) throw new Error('未找到所属团队')
   await db.expenseSplits.where('expenseId').equals(expenseId).delete()
   const shares = resolveSplitShares(homeAmount, splitType, memberIds, payerId)
   await db.expenseSplits.bulkAdd(
-    shares.map((s) => ({ id: crypto.randomUUID(), expenseId, memberId: s.memberId, shareAmount: s.shareAmount })),
+    shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount })),
   )
 }
 

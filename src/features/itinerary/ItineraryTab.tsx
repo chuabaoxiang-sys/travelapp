@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2, X, Check, Plus } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
+import { getCurrentHouseholdId } from '../../domain/household'
 import type { Trip, ItineraryItem } from '../../types'
 import { formatMoney } from '../../lib/money'
 import { TimePicker } from '../../components/TimePicker'
@@ -223,10 +224,13 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
                 onCancel={() => setFormState(null)}
                 onSave={async (title, time, location) => {
                   const day = await ensureDay(selected)
+                  const householdId = await getCurrentHouseholdId()
+                  if (!householdId) return
                   const id = crypto.randomUUID()
                   const now = Date.now()
                   await db.itineraryItems.add({
                     id,
+                    householdId,
                     dayId: day.id,
                     tripId: trip.id,
                     orderIndex: items.length,

@@ -7,7 +7,7 @@ import type { Trip } from '../types'
 function makeTrip(overrides: Partial<Trip> = {}): Trip {
   const now = Date.now()
   return {
-    id: 't1', name: '京都·大阪 家庭行', homeCurrency: 'MYR', startDate: '2026-09-02', endDate: '2026-09-06',
+    id: 't1', householdId: 'h1', name: '京都·大阪 家庭行', homeCurrency: 'MYR', startDate: '2026-09-02', endDate: '2026-09-06',
     status: 'active', publicShareEnabled: false, publicShareToken: null, createdAt: now, updatedAt: now,
     ...overrides,
   }

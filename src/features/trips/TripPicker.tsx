@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Pencil, Trash2, X, Check, Plus } from 'lucide-react'
 import { db, deleteTripCascade } from '../../db/dexie'
+import { getCurrentHouseholdId } from '../../domain/household'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CountryPicker } from '../../components/CountryPicker'
@@ -157,10 +158,13 @@ function TripForm({
       })
       onDone(initial.id)
     } else {
+      const householdId = await getCurrentHouseholdId()
+      if (!householdId) return
       const id = crypto.randomUUID()
       const now = Date.now()
       const trip: Trip = {
         id,
+        householdId,
         name: name.trim(),
         homeCurrency: 'MYR',
         startDate: startDate || null,

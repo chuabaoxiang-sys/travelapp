@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import { getCurrentHouseholdId } from '../domain/household'
 import type {
   Trip,
   Member,
@@ -163,9 +164,11 @@ export async function ensureSeedData() {
 export async function ensureItineraryDay(tripId: string, date: string) {
   const existing = await db.itineraryDays.where({ tripId, date }).first()
   if (existing) return existing
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) throw new Error('未找到所属团队')
   const id = crypto.randomUUID()
   const now = Date.now()
-  const day: ItineraryDay = { id, tripId, date, title: null, notes: null, createdAt: now, updatedAt: now }
+  const day: ItineraryDay = { id, householdId, tripId, date, title: null, notes: null, createdAt: now, updatedAt: now }
   await db.itineraryDays.add(day)
   return day
 }

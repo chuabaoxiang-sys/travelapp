@@ -1,6 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { getAllFeedback, createFeedback, updateFeedback, deleteFeedback } from './feedback'
 import { db } from '../db/dexie'
+
+vi.mock('./household', () => ({ getCurrentHouseholdId: async () => 'h1' }))
 
 describe('反馈的增删查（真实走Dexie）', () => {
   beforeEach(async () => {

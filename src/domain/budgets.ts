@@ -1,4 +1,5 @@
 import { db } from '../db/dexie'
+import { getCurrentHouseholdId } from './household'
 import type { Budget, Expense, ExpensePhase } from '../types'
 
 function round2(n: number) {
@@ -30,9 +31,12 @@ export async function upsertBudget(params: {
     await db.budgets.update(existing.id, { amount: params.amount, alertThresholdPct: params.alertThresholdPct ?? existing.alertThresholdPct })
     return existing.id
   }
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) throw new Error('未找到所属团队')
   const id = crypto.randomUUID()
   const budget: Budget = {
     id,
+    householdId,
     tripId: params.tripId,
     categoryId: params.categoryId,
     phase: params.phase ?? null,
