@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
-import { shareOrDownloadFile } from '../../lib/share'
+import { shareReadyFile, downloadFile } from '../../lib/share'
 import type { Trip } from '../../types'
 
 type ExportKind = 'excel' | 'json' | 'csv'
@@ -53,24 +53,43 @@ export function TripMoreSheet({
   const [busy, setBusy] = useState<ExportKind | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  // 文件生成好了、等着被分享的那一份——分成"生成"和"分享"两次独立点击，是因为
+  // 安卓部分Chrome版本要求 navigator.share() 必须紧跟在用户点击后面调用，中间
+  // 隔一段生成文件的 await 就会被判定"用户手势已过期"，报 NotAllowedError
+  const [readyFile, setReadyFile] = useState<{ kind: ExportKind; file: File } | null>(null)
 
-  async function handleExport(kind: ExportKind) {
+  async function handlePrepare(kind: ExportKind) {
     setError(null)
     setNote(null)
+    setReadyFile(null)
     setBusy(kind)
     try {
       const bundle = await assembleExportBundle(trip.id)
       const file =
         kind === 'excel' ? buildExcelFile(bundle) : kind === 'json' ? buildJsonFile(bundle) : buildCsvFile(bundle)
-      const result = await shareOrDownloadFile(file, `${trip.name} · 旅记导出`)
-      if (result.outcome === 'downloaded' && result.failureReason) {
-        setNote(`已改为直接下载文件（系统分享没有打开，原因：${result.failureReason}）`)
+      if (!navigator.share) {
+        downloadFile(file)
+        return
       }
+      setReadyFile({ kind, file })
     } catch {
       setError('导出失败，请重试')
     } finally {
       setBusy(null)
     }
+  }
+
+  // 必须是这个按钮自己点击事件里的第一步、不经过任何 await 就直接调用
+  // navigator.share()，才能保住"用户手势"，所以这里不能是 async 函数体第一行
+  function handleShare() {
+    if (!readyFile) return
+    const { file } = readyFile
+    setReadyFile(null)
+    shareReadyFile(file, `${trip.name} · 旅记导出`).then((result) => {
+      if (result.outcome === 'downloaded' && result.failureReason) {
+        setNote(`已改为直接下载文件（系统分享没有打开，原因：${result.failureReason}）`)
+      }
+    })
   }
 
   return (
@@ -85,25 +104,28 @@ export function TripMoreSheet({
         </div>
 
         <div className="flex flex-col">
-          {EXPORT_OPTIONS.map((opt) => (
-            <button
-              key={opt.kind}
-              onClick={() => handleExport(opt.kind)}
-              disabled={busy !== null}
-              className="flex items-center gap-3 py-2.5 border-t border-line first:border-t-0 first:mt-1.5 text-left disabled:opacity-50"
-            >
-              <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0 [&_svg]:w-[17px] [&_svg]:h-[17px]">
-                {opt.icon}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium">{opt.title}</div>
-                <div className="text-[10.5px] text-muted mt-0.5">{opt.desc}</div>
-              </div>
-              <span className="text-[11.5px] text-plan flex-shrink-0">
-                {busy === opt.kind ? '生成中…' : '分享 ›'}
-              </span>
-            </button>
-          ))}
+          {EXPORT_OPTIONS.map((opt) => {
+            const isReady = readyFile?.kind === opt.kind
+            return (
+              <button
+                key={opt.kind}
+                onClick={isReady ? handleShare : () => handlePrepare(opt.kind)}
+                disabled={busy !== null}
+                className={`flex items-center gap-3 py-2.5 border-t border-line first:border-t-0 first:mt-1.5 text-left disabled:opacity-50 ${isReady ? 'bg-plan/5 -mx-5 px-5' : ''}`}
+              >
+                <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0 [&_svg]:w-[17px] [&_svg]:h-[17px]">
+                  {opt.icon}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium">{opt.title}</div>
+                  <div className="text-[10.5px] text-muted mt-0.5">{opt.desc}</div>
+                </div>
+                <span className="text-[11.5px] text-plan flex-shrink-0 font-medium">
+                  {busy === opt.kind ? '生成中…' : isReady ? '文件已就绪，点击分享 ›' : '分享 ›'}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
         {error && <div className="text-[11.5px] text-negative mt-2">{error}</div>}

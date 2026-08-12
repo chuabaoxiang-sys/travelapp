@@ -7,30 +7,7 @@ export interface ShareResult {
   failureReason?: string
 }
 
-// 优先用系统分享面板（微信/WhatsApp/邮件/AirDrop 等），当前浏览器不支持文件分享
-// 时（比如桌面 Firefox）就退回普通下载，不能让用户卡在这里拿不到文件
-//
-// 故意不用 navigator.canShare({ files: [file] }) 提前判断——不少 Android 版本的
-// Chrome/WebView 对某些文件类型（如 xlsx/csv）会误判返回 false，导致明明系统分享
-// 面板能处理这个文件，却直接被挡在外面走了下载兜底。改成直接尝试 nav.share()，
-// 真正调用失败了再退回下载，比"先猜再试"更可靠。
-export async function shareOrDownloadFile(file: File, shareText?: string): Promise<ShareResult> {
-  const nav = navigator
-  let failureReason: string | undefined
-
-  if (nav.share) {
-    try {
-      await nav.share({ files: [file], title: file.name, text: shareText })
-      return { outcome: 'shared' }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return { outcome: 'cancelled' }
-      // 分享失败（非用户主动取消）就继续往下走普通下载兜底，但记下原因
-      failureReason = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    }
-  } else {
-    failureReason = '此浏览器不支持系统分享（navigator.share 不存在）'
-  }
-
+export function downloadFile(file: File) {
   const url = URL.createObjectURL(file)
   const a = document.createElement('a')
   a.href = url
@@ -39,5 +16,26 @@ export async function shareOrDownloadFile(file: File, shareText?: string): Promi
   a.click()
   a.remove()
   URL.revokeObjectURL(url)
-  return { outcome: 'downloaded', failureReason }
+}
+
+// 真机测试实测报错 NotAllowedError: Permission denied——安卓部分版本的Chrome
+// 要求 navigator.share() 必须是"用户手势"的直接延续，中间隔了生成文件这段
+// await（哪怕很快）就会被判定手势已经过期。所以不能在"点击→生成文件→分享"
+// 这一条await链路里调用share()，必须让分享按钮自己的点击事件里，不经过任何
+// await 就直接调用 navigator.share()——也就是调用方要把"生成文件"和"调用分享"
+// 拆成两次独立的用户点击，这个函数只负责后一半：文件已经在手上时，直接分享。
+export async function shareReadyFile(file: File, shareText?: string): Promise<ShareResult> {
+  if (!navigator.share) {
+    downloadFile(file)
+    return { outcome: 'downloaded', failureReason: '此浏览器不支持系统分享（navigator.share 不存在）' }
+  }
+  try {
+    await navigator.share({ files: [file], title: file.name, text: shareText })
+    return { outcome: 'shared' }
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') return { outcome: 'cancelled' }
+    const failureReason = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+    downloadFile(file)
+    return { outcome: 'downloaded', failureReason }
+  }
 }
