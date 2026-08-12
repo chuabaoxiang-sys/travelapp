@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { X, CircleCheck, Pencil, Trash2, Check } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { computeBalances, simplifyDebts, type Transfer } from '../../domain/splits'
 import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../../domain/settlements'
@@ -160,13 +161,17 @@ export function SplitTab({ trip }: { trip: Trip }) {
                         />
                       </label>
                       <div className="flex gap-2">
-                        <button onClick={() => setOpenKey(null)} className="flex-1 rounded-lg border border-line py-2 text-[12.5px] text-muted">取消</button>
+                        <button onClick={() => setOpenKey(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title="取消">
+                          <X className="w-4 h-4" strokeWidth={1.8} />
+                        </button>
                         <button
                           onClick={() => confirmSettle(t)}
                           disabled={!settleAmount || !parseFloat(settleAmount)}
-                          className="flex-1 rounded-lg bg-plan text-card py-2 text-[12.5px] font-medium disabled:opacity-40"
+                          className="flex-1 rounded-lg bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center gap-1.5"
+                          title="确认已结清"
                         >
-                          确认已结清
+                          <CircleCheck className="w-4 h-4" strokeWidth={1.8} />
+                          <span className="text-[12.5px] font-medium">确认已结清</span>
                         </button>
                       </div>
                     </div>
@@ -195,8 +200,12 @@ export function SplitTab({ trip }: { trip: Trip }) {
                   <div className="font-serif-sc text-[14px] tabular">{formatMoney(s.amount)}</div>
                   <div className="text-[10.5px] text-muted">{s.settledDate.slice(5).replace('-', '/')}{s.note ? ` · ${s.note}` : ''}</div>
                 </div>
-                <button onClick={() => startEdit(s)} className="w-6 h-6 rounded-lg border border-line bg-paper flex items-center justify-center text-[11px] text-muted flex-shrink-0">✎</button>
-                <button onClick={() => setConfirmDeleteId(s.id)} className="w-6 h-6 rounded-lg border border-line bg-paper flex items-center justify-center text-[11px] text-muted flex-shrink-0">🗑</button>
+                <button onClick={() => startEdit(s)} className="w-6 h-6 rounded-lg border border-line bg-paper flex items-center justify-center text-muted flex-shrink-0" title="编辑">
+                  <Pencil className="w-3 h-3" strokeWidth={1.8} />
+                </button>
+                <button onClick={() => setConfirmDeleteId(s.id)} className="w-6 h-6 rounded-lg border border-line bg-paper flex items-center justify-center text-muted flex-shrink-0" title="删除">
+                  <Trash2 className="w-3 h-3" strokeWidth={1.8} />
+                </button>
               </div>
 
               {editingId === s.id && (
@@ -219,8 +228,12 @@ export function SplitTab({ trip }: { trip: Trip }) {
                     className="rounded-lg border border-line bg-card px-2.5 py-1.5 text-[13px] outline-none focus:border-plan"
                   />
                   <div className="flex gap-2">
-                    <button onClick={() => setEditingId(null)} className="flex-1 rounded-lg border border-line py-2 text-[12.5px] text-muted">取消</button>
-                    <button onClick={saveEdit} disabled={!editAmount || !parseFloat(editAmount)} className="flex-1 rounded-lg bg-plan text-card py-2 text-[12.5px] font-medium disabled:opacity-40">保存</button>
+                    <button onClick={() => setEditingId(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title="取消">
+                      <X className="w-4 h-4" strokeWidth={1.8} />
+                    </button>
+                    <button onClick={saveEdit} disabled={!editAmount || !parseFloat(editAmount)} className="flex-1 rounded-lg bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center" title="保存">
+                      <Check className="w-4 h-4" strokeWidth={2} />
+                    </button>
                   </div>
                 </div>
               )}

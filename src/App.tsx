@@ -53,6 +53,7 @@ function App() {
           localStorage.removeItem(CURRENT_TRIP_KEY)
           setTripId(null)
         }}
+        onSelectMember={setMemberId}
       />
       <InstallPrompt />
     </>

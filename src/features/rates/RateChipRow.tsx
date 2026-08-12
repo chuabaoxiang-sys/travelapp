@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Plus } from 'lucide-react'
 import { getRateBookEntries, suggestLabels } from '../../domain/rates'
 import { fetchReferenceRate } from '../../api/fx'
 
@@ -84,11 +85,12 @@ export function RateChipRow({
         <button
           type="button"
           onClick={openNewForm}
-          className={`rounded-full px-2.5 py-1.5 text-[11.5px] border ${
+          title="新汇率"
+          className={`rounded-full px-2.5 py-1.5 border flex items-center ${
             showNewForm ? 'bg-plan/10 border-plan text-plan font-semibold' : 'border-plan text-plan'
           }`}
         >
-          ＋ 新汇率
+          <Plus className="w-3.5 h-3.5" strokeWidth={2} />
         </button>
       </div>
 

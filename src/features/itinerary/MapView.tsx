@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import type { ItineraryDay, ItineraryItem } from '../../types'
+import { formatTimeHM } from '../../lib/dates'
 
 // react-leaflet 在 Vite 下用默认 marker 图标会因为资源路径解析不到而报 404，
 // 干脆不用默认图标，改成跟设计语言一致的自绘紫色圆形数字徽章
@@ -57,7 +58,7 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
               <Marker key={it.id} position={[it.lat as number, it.lng as number]} icon={pinIcon(String(dayNum))}>
                 <Popup>
                   <div style={{ fontSize: 13 }}>
-                    <b>Day{dayNum} · {it.time ?? ''}</b>
+                    <b>Day{dayNum} · {formatTimeHM(it.time)}</b>
                     <div>{it.title}</div>
                     {it.locationName && <div style={{ color: '#8A8177', fontSize: 11 }}>{it.locationName}</div>}
                   </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Trash2, X, Check, Plus } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import type { Trip, ItineraryItem } from '../../types'
 import { formatMoney } from '../../lib/money'
@@ -8,7 +9,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { LocationPicker, type LocationValue } from '../../components/LocationPicker'
 import { CalendarView } from './CalendarView'
 import { MapView } from './MapView'
-import { dateRange } from '../../lib/dates'
+import { dateRange, formatTimeHM } from '../../lib/dates'
 
 const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 type ViewMode = 'timeline' | 'calendar' | 'map'
@@ -189,16 +190,16 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
                     className="text-left bg-card border border-line rounded-2xl p-3 hover:border-plan/50 transition-colors cursor-pointer"
                   >
                     <div className="flex justify-between gap-2.5 items-baseline">
-                      <div className="text-sm font-medium min-w-0 flex-1 truncate">{it.time ? `${it.time} ` : ''}{it.title}</div>
+                      <div className="text-sm font-medium min-w-0 flex-1 truncate">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {itemTotal > 0 && <span className="text-xs tabular text-plan">{formatMoney(itemTotal)}</span>}
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setPendingDeleteId(it.id) }}
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-muted hover:bg-negative/10 hover:text-negative text-xs"
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-muted hover:bg-negative/10 hover:text-negative"
                           title="删除"
                         >
-                          ×
+                          <Trash2 className="w-3 h-3" strokeWidth={1.8} />
                         </button>
                       </div>
                     </div>
@@ -245,9 +246,10 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
               !formState && (
                 <button
                   onClick={() => setFormState('new')}
-                  className="mt-2 w-full rounded-xl border border-dashed border-line text-[#57534E] text-sm py-2.5"
+                  className="mt-2 w-full rounded-xl border border-dashed border-line text-[#57534E] text-sm py-2.5 flex items-center justify-center gap-1.5"
                 >
-                  ＋ 添加行程项
+                  <Plus className="w-4 h-4" strokeWidth={2} />
+                  添加行程项
                 </button>
               )
             )}
@@ -303,18 +305,19 @@ function ItemForm({
       <LocationPicker value={location} onChange={setLocation} countryCodes={countryCodes} />
       <div className="flex gap-2 mt-1">
         {onDelete && (
-          <button onClick={onDelete} className="rounded-lg border border-negative/30 text-negative px-3 py-1.5 text-sm">
-            删除
+          <button onClick={onDelete} className="rounded-lg border border-negative/30 text-negative px-3 py-1.5" title="删除">
+            <Trash2 className="w-4 h-4" strokeWidth={1.8} />
           </button>
         )}
-        <button onClick={onCancel} className="flex-1 rounded-lg border border-line py-1.5 text-sm text-muted">
-          取消
+        <button onClick={onCancel} className="flex-1 rounded-lg border border-line py-1.5 text-muted flex items-center justify-center" title="取消">
+          <X className="w-4 h-4" strokeWidth={1.8} />
         </button>
         <button
           onClick={() => title.trim() && onSave(title.trim(), time, location)}
-          className="flex-1 rounded-lg bg-plan text-card py-1.5 text-sm font-medium"
+          className="flex-1 rounded-lg bg-plan text-card py-1.5 flex items-center justify-center"
+          title="保存"
         >
-          保存
+          <Check className="w-4 h-4" strokeWidth={2} />
         </button>
       </div>
     </div>

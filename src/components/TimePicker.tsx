@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Clock } from 'lucide-react'
 
 const SLOTS: string[] = []
 for (let h = 0; h < 24; h++) {
@@ -46,7 +47,7 @@ export function TimePicker({
         className="w-[110px] rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan flex items-center justify-between tabular"
       >
         <span className={value ? 'text-ink' : 'text-muted'}>{value || placeholder}</span>
-        <span className="text-muted text-[10px]">⏱</span>
+        <Clock className="w-3 h-3 text-muted flex-shrink-0" strokeWidth={1.8} />
       </button>
 
       {open && (

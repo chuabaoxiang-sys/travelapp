@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ItineraryDay, ItineraryItem, Expense } from '../../types'
 import { formatMoney } from '../../lib/money'
+import { formatTimeHM } from '../../lib/dates'
 
 const DOW = ['一', '二', '三', '四', '五', '六', '日']
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -63,9 +65,13 @@ export function CalendarView({
     <div className="px-5 pt-3 pb-24 overflow-y-auto no-scrollbar h-full">
       <div className="bg-card border border-line rounded-2xl p-3.5 mb-3.5">
         <div className="flex items-center justify-between mb-2.5">
-          <button type="button" onClick={() => shiftMonth(-1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted">‹</button>
+          <button type="button" onClick={() => shiftMonth(-1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">
+            <ChevronLeft className="w-4 h-4" strokeWidth={1.8} />
+          </button>
           <span className="font-serif-sc text-sm font-semibold">{viewY}年 {MONTH_NAMES[viewM - 1]}</span>
-          <button type="button" onClick={() => shiftMonth(1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted">›</button>
+          <button type="button" onClick={() => shiftMonth(1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">
+            <ChevronRight className="w-4 h-4" strokeWidth={1.8} />
+          </button>
         </div>
         <div className="grid grid-cols-7 gap-1 mb-1">
           {DOW.map((d) => <div key={d} className="text-center text-[10px] text-muted">{d}</div>)}
@@ -113,7 +119,7 @@ export function CalendarView({
           </div>
           {selectedItems.map((it) => (
             <div key={it.id} className="bg-card border border-line rounded-2xl p-3">
-              <div className="text-sm font-medium">{it.time ? `${it.time} ` : ''}{it.title}</div>
+              <div className="text-sm font-medium">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
               {it.locationName && <div className="text-[11.5px] text-muted mt-1">{it.locationName}</div>}
             </div>
           ))}

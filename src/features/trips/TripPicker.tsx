@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Pencil, Trash2, X, Check, Plus } from 'lucide-react'
 import { db, deleteTripCascade } from '../../db/dexie'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -77,15 +78,17 @@ export function TripPicker({ onSelect }: { onSelect: (id: string) => void }) {
                 <div className="flex gap-3 mt-2.5 pt-2.5 border-t border-line">
                   <button
                     onClick={() => setFormState(t.id)}
-                    className="text-[11.5px] text-muted hover:text-plan"
+                    className="text-muted hover:text-plan"
+                    title="编辑"
                   >
-                    ✎ 编辑
+                    <Pencil className="w-[15px] h-[15px]" strokeWidth={1.8} />
                   </button>
                   <button
                     onClick={() => setPendingDelete(t)}
-                    className="text-[11.5px] text-muted hover:text-negative"
+                    className="text-muted hover:text-negative"
+                    title="删除"
                   >
-                    🗑 删除
+                    <Trash2 className="w-[15px] h-[15px]" strokeWidth={1.8} />
                   </button>
                 </div>
               </div>
@@ -105,9 +108,10 @@ export function TripPicker({ onSelect }: { onSelect: (id: string) => void }) {
           !formState && (
             <button
               onClick={() => setFormState('new')}
-              className="mt-3 w-full rounded-2xl border border-dashed border-plan/60 text-card bg-plan py-3 text-sm font-medium"
+              className="mt-3 w-full rounded-2xl border border-dashed border-plan/60 text-card bg-plan py-3 text-sm font-medium flex items-center justify-center gap-1.5"
             >
-              ＋ 新建行程
+              <Plus className="w-4 h-4" strokeWidth={2} />
+              新建行程
             </button>
           )
         )}
@@ -189,15 +193,15 @@ function TripForm({
       <CountryPicker value={destinationCountries} onChange={setDestinationCountries} />
       <div className="flex gap-2 mt-1">
         {onDelete && (
-          <button onClick={onDelete} className="rounded-xl border border-negative/30 text-negative px-3 py-2 text-sm">
-            删除
+          <button onClick={onDelete} className="rounded-xl border border-negative/30 text-negative px-3 py-2" title="删除">
+            <Trash2 className="w-4 h-4" strokeWidth={1.8} />
           </button>
         )}
-        <button onClick={onCancel} className="flex-1 rounded-xl border border-line py-2 text-sm text-muted">
-          取消
+        <button onClick={onCancel} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+          <X className="w-4 h-4" strokeWidth={1.8} />
         </button>
-        <button onClick={save} className="flex-1 rounded-xl bg-plan text-card py-2 text-sm font-medium">
-          {initial ? '保存修改' : '创建'}
+        <button onClick={save} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title={initial ? '保存修改' : '创建'}>
+          <Check className="w-4 h-4" strokeWidth={2} />
         </button>
       </div>
     </div>

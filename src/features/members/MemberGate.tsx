@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/dexie'
 import { Avatar } from '../../components/Avatar'
-
-const SWATCHES = ['#4C1D95', '#0F766E', '#B45309', '#BE123C', '#57534E']
+import { createMember } from '../../domain/members'
 
 export function MemberGate({ onPicked }: { onPicked: (id: string) => void }) {
   const allMembers = useLiveQuery(() => db.members.toArray()) ?? []
@@ -11,16 +10,8 @@ export function MemberGate({ onPicked }: { onPicked: (id: string) => void }) {
   const [newName, setNewName] = useState('')
 
   async function addMember() {
-    const name = newName.trim()
-    if (!name) return
-    const id = crypto.randomUUID()
-    await db.members.add({
-      id,
-      displayName: name,
-      colorTag: SWATCHES[list.length % SWATCHES.length],
-      isActive: true,
-      createdAt: Date.now(),
-    })
+    if (!newName.trim()) return
+    const id = await createMember(newName)
     setNewName('')
     onPicked(id)
   }

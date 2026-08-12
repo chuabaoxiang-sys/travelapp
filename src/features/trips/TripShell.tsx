@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { ChevronDown } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { BottomNav, Fab, type TabKey } from '../../components/BottomNav'
 import { ItineraryTab } from '../itinerary/ItineraryTab'
@@ -10,15 +11,18 @@ import { AddExpenseSheet } from '../expenses/AddExpenseSheet'
 import { SyncStatusBadge } from '../../components/SyncStatusBadge'
 import { TripMoreSheet } from './TripMoreSheet'
 import { FeedbackSheet } from '../feedback/FeedbackSheet'
+import { IdentitySwitcher } from '../members/IdentitySwitcher'
 
 export function TripShell({
   tripId,
   currentMemberId,
   onSwitchTrip,
+  onSelectMember,
 }: {
   tripId: string
   currentMemberId: string
   onSwitchTrip: () => void
+  onSelectMember: (id: string) => void
 }) {
   const trip = useLiveQuery(() => db.trips.get(tripId), [tripId])
   const [tab, setTab] = useState<TabKey>('itinerary')
@@ -32,7 +36,7 @@ export function TripShell({
     <div className="min-h-screen bg-ink flex items-center justify-center p-4">
       <div className="w-full max-w-[420px] h-[860px] max-h-[92vh] bg-paper paper-texture rounded-[34px] overflow-hidden relative flex flex-col shadow-2xl">
         <div className="flex items-center justify-between px-5 pt-3.5 text-[11px] text-muted flex-shrink-0">
-          <span className="font-serif-sc">9:41</span>
+          <IdentitySwitcher currentMemberId={currentMemberId} onSelectMember={onSelectMember} />
           <SyncStatusBadge />
         </div>
 
@@ -47,7 +51,10 @@ export function TripShell({
                 {trip.startDate ?? '日期未定'} {trip.endDate ? `– ${trip.endDate}` : ''} · {trip.homeCurrency}
               </div>
             </div>
-            <span className="text-muted text-xs flex-shrink-0 whitespace-nowrap pl-2">▾ 切换</span>
+            <span className="text-muted text-xs flex-shrink-0 whitespace-nowrap pl-2 flex items-center gap-0.5">
+              切换
+              <ChevronDown className="w-3 h-3" strokeWidth={1.8} />
+            </span>
           </button>
           <button
             onClick={() => setMoreOpen(true)}
