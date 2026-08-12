@@ -25,7 +25,7 @@ export function AddExpenseSheet({
   onClose: () => void
 }) {
   const categories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
-  const members = useLiveQuery(() => db.members.toArray()) ?? []
+  const allMembers = useLiveQuery(() => db.members.toArray()) ?? []
   const itineraryDays = useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const itineraryItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const tripDates = trip.startDate && trip.endDate ? dateRange(trip.startDate, trip.endDate) : []
@@ -72,6 +72,14 @@ export function AddExpenseSheet({
     () => (initial ? db.expenseSplits.where('expenseId').equals(initial.id).toArray() : Promise.resolve<ExpenseSplit[]>([])),
     [initial?.id],
   ) ?? []
+
+  // 停用的成员不该再被选成新的付款人/分摊对象，但如果这笔账原本就是他付的、
+  // 或者原本分摊名单里就有他，编辑时还是要让他继续出现，不然历史记录会看不全
+  const relevantInactiveIds = new Set(
+    [initial?.paidBy, ...existingSplits.map((s) => s.memberId)].filter((id): id is string => !!id),
+  )
+  const members = allMembers.filter((m) => m.isActive || relevantInactiveIds.has(m.id))
+
   useEffect(() => {
     if (splitInitialized.current) return
     if (initial) {
