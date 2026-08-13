@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { X, Link2 } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
+import { effectiveShareScope } from '../../domain/share'
 import type { Trip } from '../../types'
 
 type ExportKind = 'excel' | 'json' | 'csv'
@@ -47,10 +48,12 @@ export function TripMoreSheet({
   trip,
   onClose,
   onOpenFeedback,
+  onOpenShareSettings,
 }: {
   trip: Trip
   onClose: () => void
   onOpenFeedback: () => void
+  onOpenShareSettings: () => void
 }) {
   const [busy, setBusy] = useState<ExportKind | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -136,6 +139,22 @@ export function TripMoreSheet({
 
         {error && <div className="text-[11.5px] text-negative mt-2">{error}</div>}
         {note && <div className="text-[11.5px] text-muted mt-2">{note}</div>}
+
+        <button
+          onClick={onOpenShareSettings}
+          className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left"
+        >
+          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
+            <Link2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium">分享设置</div>
+            <div className="text-[10.5px] text-muted mt-0.5">
+              {effectiveShareScope(trip) === 'none' ? '还没开启只读分享链接' : '只读分享链接已开启'}
+            </div>
+          </div>
+          <span className="text-[11.5px] text-plan flex-shrink-0">设置 ›</span>
+        </button>
 
         <button
           onClick={onOpenFeedback}

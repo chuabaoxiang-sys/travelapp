@@ -1,9 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
 import 'leaflet/dist/leaflet.css'
 import './index.css'
 import App from './App.tsx'
+import { SharePage } from './features/share/SharePage.tsx'
 
 // 新版本部署后，后台的 service worker 会自动更新完成（registerType: 'autoUpdate'），
 // 但已经打开的这个标签页不会自动感知——不刷新一次的话，页面还在用旧的、服务器上
@@ -42,6 +44,13 @@ registerSW({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {/* /share/:token 是这个APP第一个真正的URL路由——独立于登录/household的公开
+        只读页面。其他所有路径都走原来的App，行为不变（内部仍然是状态切换，不是路由） */}
+    <BrowserRouter>
+      <Routes>
+        <Route path="/share/:token" element={<SharePage />} />
+        <Route path="*" element={<App />} />
+      </Routes>
+    </BrowserRouter>
   </StrictMode>,
 )

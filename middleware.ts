@@ -8,11 +8,23 @@
 //
 // matcher 覆盖所有路径（包括静态资源），账号密码来自 Vercel 项目的环境变量
 // BASIC_AUTH_USER / BASIC_AUTH_PASSWORD（只存在 Vercel 后台，不写入代码仓库）。
+//
+// 【/share/ 和 /assets/ 例外】只读分享链接就是设计给陌生人打开的，必须跳过密码墙，
+// 否则分享出去的链接对方根本进不去。/assets/ 也要一起放行——不然浏览器打开
+// /share/xxx 这个HTML之后，紧接着去拿渲染页面需要的JS/CSS包又被密码墙拦一次，
+// 页面会直接空白。这不会重新引入"anon key外泄"的旧风险：0004迁移已经把
+// household 隔离的 RLS 锁死，anon key现在唯一能碰到的对外接口是
+// get_shared_trip()，这个函数本身就是设计成可以被陌生人安全调用的。
 export const config = {
   matcher: '/:path*',
 }
 
 export default async function middleware(request: Request) {
+  const { pathname } = new URL(request.url)
+  if (pathname.startsWith('/share/') || pathname.startsWith('/assets/')) {
+    return
+  }
+
   const expectedUser = process.env.BASIC_AUTH_USER
   const expectedPassword = process.env.BASIC_AUTH_PASSWORD
 

@@ -11,6 +11,12 @@ export type ExpensePhase = 'pre_trip' | 'during_trip'
 export type CategoryPhase = 'pre_trip' | 'during_trip' | 'either'
 export type SplitType = 'none' | 'equal'
 
+// 只读分享链接要分享什么：'none' = 没开启分享；其余三种决定 get_shared_trip
+// 这个数据库函数（见 supabase/migrations/0006_public_share.sql）返回哪些内容——
+// 'itinerary'/'expenses' 分别只给行程/花费汇总，'both' 两者都给。花费永远只给
+// 汇总数字（总额+按分类小计），数据库函数本身就不会去查每一笔明细。
+export type PublicShareScope = 'none' | 'itinerary' | 'expenses' | 'both'
+
 export interface Trip {
   id: string
   householdId: string
@@ -19,13 +25,47 @@ export interface Trip {
   startDate: string | null
   endDate: string | null
   status: TripStatus
-  publicShareEnabled: boolean
+  publicShareScope: PublicShareScope
   publicShareToken: string | null
+  // 选了哪套分享页模板（对应 src/features/share/templates 下的组件）——
+  // 还没选过时是 null，UI 上要求先选一个才能真正生成/复制链接
+  publicShareTemplate: string | null
   // 目的地国家（ISO 3166-1 alpha-2 小写代码），可选、可多选——用来把这趟行程的地点搜索
   // 限制在对应国家范围内，避免搜出同名但相隔千里的地方。老行程没有这个字段时按空数组处理
   destinationCountries?: string[]
   createdAt: number
   updatedAt: number
+}
+
+// get_shared_trip RPC 的返回结构——分享页（SharePage）拿到这个就够渲染任意模板，
+// 不需要再单独查其他表。字段全部是"安全公开"的最终展示值，没有任何家庭内部信息
+// （没有备注、没有花费明细、没有成员姓名）
+export interface SharedTripData {
+  name: string
+  startDate: string | null
+  endDate: string | null
+  scope: PublicShareScope
+  template: string | null
+  days: SharedTripDay[] | null
+  expenseTotal: number | null
+  expenseCategories: SharedExpenseCategory[] | null
+}
+
+export interface SharedTripDay {
+  dayDate: string
+  dayTitle: string | null
+  items: SharedTripItem[]
+}
+
+export interface SharedTripItem {
+  time: string | null
+  title: string
+  locationName: string | null
+}
+
+export interface SharedExpenseCategory {
+  name: string
+  amount: number
 }
 
 export interface Member {

@@ -10,6 +10,7 @@ import { SplitTab } from '../split/SplitTab'
 import { AddExpenseSheet } from '../expenses/AddExpenseSheet'
 import { SyncStatusBadge } from '../../components/SyncStatusBadge'
 import { TripMoreSheet } from './TripMoreSheet'
+import { ShareSettingsSheet } from './ShareSettingsSheet'
 import { FeedbackSheet } from '../feedback/FeedbackSheet'
 import { IdentitySwitcher } from '../members/IdentitySwitcher'
 
@@ -29,6 +30,7 @@ export function TripShell({
   const [sheetOpen, setSheetOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [shareSettingsOpen, setShareSettingsOpen] = useState(false)
 
   if (!trip) return null
 
@@ -88,11 +90,16 @@ export function TripShell({
             trip={trip}
             onClose={() => setMoreOpen(false)}
             onOpenFeedback={() => { setMoreOpen(false); setFeedbackOpen(true) }}
+            onOpenShareSettings={() => { setMoreOpen(false); setShareSettingsOpen(true) }}
           />
         )}
 
         {feedbackOpen && (
           <FeedbackSheet tripId={trip.id} currentMemberId={currentMemberId} onClose={() => setFeedbackOpen(false)} />
+        )}
+
+        {shareSettingsOpen && (
+          <ShareSettingsSheet trip={trip} onClose={() => setShareSettingsOpen(false)} />
         )}
       </div>
     </div>
