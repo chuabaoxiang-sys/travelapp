@@ -14,6 +14,7 @@ import type {
   Settlement,
   OutboxEntry,
   Feedback,
+  RouteLegCacheEntry,
 } from '../types'
 
 // 会被同步到云端的表——本地写操作会自动记一条 outbox。expenseCategories 不算在内，
@@ -50,6 +51,7 @@ export class TripJournalDB extends Dexie {
   settlements!: EntityTable<Settlement, 'id'>
   outbox!: EntityTable<OutboxEntry, 'id'>
   feedback!: EntityTable<Feedback, 'id'>
+  routeLegCache!: EntityTable<RouteLegCacheEntry, 'dayId'>
 
   constructor() {
     super('trip-journal')
@@ -67,6 +69,11 @@ export class TripJournalDB extends Dexie {
       settlements: 'id, tripId, fromMemberId, toMemberId',
       outbox: 'id, tableName, status, createdAt',
       feedback: 'id, submittedBy, category, createdAt',
+    })
+    // routeLegCache 是纯本地派生缓存（不进 SYNCED_TABLES，不需要同步），
+    // 单独加一个版本只是因为它是全新的表，不影响已有表的数据
+    this.version(2).stores({
+      routeLegCache: 'dayId',
     })
     registerOutboxHooks(this)
   }

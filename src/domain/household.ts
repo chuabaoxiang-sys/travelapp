@@ -4,6 +4,12 @@ import { supabase } from '../api/supabaseClient'
 // 查过之后缓存在内存里，创建新记录时直接读这个值打进 householdId 字段
 let cachedHouseholdId: string | null = null
 
+// 没配置Supabase（本地没建 .env.local，比如临时测试环境）时用的固定假团队ID——
+// App.tsx 在这种情况下会跳过登录直接放行，但创建成员/行程等操作都要求有
+// householdId，如果这里还返回null会导致这些操作静默抛错（界面上看起来像没反应）。
+// 纯本地场景不会真的同步到任何云端，用哪个字符串都无所谓，固定一个方便辨认。
+const LOCAL_TEST_HOUSEHOLD_ID = 'local-test-household'
+
 // 未被邀请的邮箱专用错误——EmailLogin.tsx 靠这个类型区分"没被邀请"和其他发送失败，
 // 分别展示不同的提示文案
 export class NotInvitedError extends Error {}
@@ -41,7 +47,7 @@ export async function signOut() {
 // 如果查不到（邮箱还没被邀请进任何团队），返回 null，调用方要提示"此邮箱还没被邀请"
 export async function getCurrentHouseholdId(): Promise<string | null> {
   if (cachedHouseholdId) return cachedHouseholdId
-  if (!supabase) return null
+  if (!supabase) return LOCAL_TEST_HOUSEHOLD_ID
   const { data, error } = await supabase.from('household_member').select('household_id').limit(1).maybeSingle()
   if (error || !data) return null
   cachedHouseholdId = data.household_id

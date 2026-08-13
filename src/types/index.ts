@@ -163,6 +163,29 @@ export interface OutboxEntry {
   createdAt: number
 }
 
+// 相邻行程项之间的真实步行路线段——由 OpenRouteService 计算，按天缓存在本地（见 lib/routeLegs.ts）。
+// 'missing-coords'：这一段里有一个地点没有经纬度，不去调用路线API，也没法生成地图链接；
+// 'unavailable'：两边都有坐标，但调用过API失败/超额——仍然带着坐标，让这一行降级成一个
+// "在地图中查看路线"的纯跳转链接，而不是什么都不显示
+export type RouteLeg =
+  | { kind: 'ok'; distanceMeters: number; durationSeconds: number; from: LatLng; to: LatLng }
+  | { kind: 'missing-coords' }
+  | { kind: 'unavailable'; from: LatLng; to: LatLng }
+
+export interface LatLng {
+  lat: number
+  lng: number
+}
+
+// 纯本地缓存表，不走 outbox 同步——这是可以随时从行程数据重新算出来的派生结果，不是用户数据。
+// signature 是当天行程项顺序+坐标拼出来的字符串，行程一旦编辑就会变，缓存自动失效重新请求
+export interface RouteLegCacheEntry {
+  dayId: string
+  signature: string
+  legs: RouteLeg[]
+  fetchedAt: number
+}
+
 export type FeedbackCategory = 'bug' | 'suggestion' | 'other'
 
 // 用户反馈：跟其他"可同步表"走同一套 outbox 机制，本地先记着，等接入

@@ -23,6 +23,8 @@ npm install
 npm run dev        # 启动开发服务器，默认 http://localhost:5173
 ```
 
+**⚠️ 如果要在本地测试 `api/route-directions.ts`（相邻地点通勤提示用的接口）**：`npm run dev` 是纯 Vite，不会跑 `/api` 目录下的 Vercel serverless/edge 函数。本地需要改用 `vercel dev`（先 `npm i -g vercel`，项目根目录下跑一次 `vercel link` 关联到Vercel项目，然后 `vercel dev`），并在项目根目录建一个 `.env.local`（或用 `vercel env pull`）写入 `ORS_API_KEY=你的key`。正式部署到 Vercel 后不受影响，`api/` 目录会被自动识别为 serverless 函数。
+
 ## 测试
 
 ```bash
@@ -59,8 +61,9 @@ npm run preview     # 本地起一个静态服务器预览生产构建（用于�
 | `VITE_SUPABASE_ANON_KEY` | Supabase匿名key（会出现在客户端JS包里，这是正常的，正因为如此才需要下面两个变量做的密码墙） | 同上 |
 | `BASIC_AUTH_USER` | 密码墙的账号 | 自己定，全家共用一个即可 |
 | `BASIC_AUTH_PASSWORD` | 密码墙的密码 | 自己定，通过安全渠道（不是明文写在公开地方）告知家人 |
+| `ORS_API_KEY` | 行程页"相邻地点通勤提示"用的真实步行路线API key（**不带`VITE_`前缀**——特意存成服务端专属变量，配合`api/route-directions.ts`这个Edge Function代理调用，key不会出现在前端JS包里） | 去 [openrouteservice.org](https://openrouteservice.org/dev/#/signup) 免费注册，Dashboard里生成一个key，免费额度每天2000次步行路线请求 |
 
-**务必先配好这4个变量再触发部署**——如果先部署、后补环境变量，中间会有一段"任何人都能直接打开网址、直接读写Supabase数据"的窗口期。
+**务必先配好这5个变量再触发部署**——如果先部署、后补环境变量，中间会有一段"任何人都能直接打开网址、直接读写Supabase数据"的窗口期。少配`ORS_API_KEY`不会有安全风险（只是通勤提示功能会静默不显示），但建议一起配上。
 
 `BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD` 由项目根目录的 `middleware.ts`（Vercel Edge Middleware）读取，在请求到达APP的任何一个文件（包括JS/CSS等静态资源）之前先要求HTTP Basic Auth验证——这是因为 `VITE_SUPABASE_ANON_KEY` 无论如何都会出现在打包后的JS代码里（这是Supabase的正常设计，前端应用本来就要能直接连数据库），单纯在APP内部加一个登录弹窗挡不住"绕过界面直接调Supabase API"，必须挡在"整站能不能被打开"这一层才有效。
 

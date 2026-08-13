@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ItineraryDay, ItineraryItem, Expense } from '../../types'
 import { formatMoney } from '../../lib/money'
 import { formatTimeHM } from '../../lib/dates'
+import { sortItineraryItems } from '../../domain/itinerary'
+import { useDayRouteLegs } from '../../lib/routeLegs'
+import { RouteLegHint } from '../../components/RouteLegHint'
 
 const DOW = ['一', '二', '三', '四', '五', '六', '日']
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -59,7 +62,8 @@ export function CalendarView({
   const cells: (number | null)[] = [...Array(offset).fill(null), ...Array.from({ length: total }, (_, i) => i + 1)]
 
   const selectedDay = selected ? itineraryDays.find((d) => d.date === selected) : undefined
-  const selectedItems = selectedDay ? items.filter((it) => it.dayId === selectedDay.id) : []
+  const selectedItems = selectedDay ? sortItineraryItems(items.filter((it) => it.dayId === selectedDay.id)) : []
+  const routeLegs = useDayRouteLegs(selectedDay?.id, selectedItems)
 
   return (
     <div className="px-5 pt-3 pb-24 overflow-y-auto no-scrollbar h-full">
@@ -117,11 +121,14 @@ export function CalendarView({
               在时间线中编辑 ›
             </button>
           </div>
-          {selectedItems.map((it) => (
-            <div key={it.id} className="bg-card border border-line rounded-2xl p-3">
-              <div className="text-sm font-medium">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
-              {it.locationName && <div className="text-[11.5px] text-muted mt-1">{it.locationName}</div>}
-            </div>
+          {selectedItems.map((it, i) => (
+            <Fragment key={it.id}>
+              <div className="bg-card border border-line rounded-2xl p-3">
+                <div className="text-sm font-medium">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
+                {it.locationName && <div className="text-[11.5px] text-muted mt-1">{it.locationName}</div>}
+              </div>
+              {i < selectedItems.length - 1 && <RouteLegHint leg={routeLegs[i]} />}
+            </Fragment>
           ))}
           {!selectedItems.length && (
             <div className="text-[13px] text-muted py-3 text-center">这天还没有安排的行程项</div>

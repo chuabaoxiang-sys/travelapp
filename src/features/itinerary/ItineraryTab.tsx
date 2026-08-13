@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2, X, Check, Plus } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
+import { sortItineraryItems } from '../../domain/itinerary'
 import type { Trip, ItineraryItem } from '../../types'
 import { formatMoney } from '../../lib/money'
 import { TimePicker } from '../../components/TimePicker'
@@ -11,6 +12,8 @@ import { LocationPicker, type LocationValue } from '../../components/LocationPic
 import { CalendarView } from './CalendarView'
 import { MapView } from './MapView'
 import { dateRange, formatTimeHM } from '../../lib/dates'
+import { useDayRouteLegs } from '../../lib/routeLegs'
+import { RouteLegHint } from '../../components/RouteLegHint'
 
 const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 type ViewMode = 'timeline' | 'calendar' | 'map'
@@ -27,15 +30,12 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
   const items = useLiveQuery(async () => {
     if (!currentDay) return []
     const raw = await db.itineraryItems.where('dayId').equals(currentDay.id).toArray()
-    return raw.sort((a, b) => {
-      if (!a.time && !b.time) return a.orderIndex - b.orderIndex
-      if (!a.time) return 1
-      if (!b.time) return -1
-      return a.time.localeCompare(b.time)
-    })
+    return sortItineraryItems(raw)
   }, [currentDay?.id]) ?? []
 
   const allItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+
+  const routeLegs = useDayRouteLegs(currentDay?.id, items)
 
   const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const dayTotal = useMemo(() => {
@@ -155,62 +155,68 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
             </div>
 
             <div className="flex flex-col gap-2">
-              {items.map((it) => {
+              {items.map((it, i) => {
+                const legRow = i < items.length - 1 ? <RouteLegHint leg={routeLegs[i]} /> : null
+
                 if (formState === it.id) {
                   return (
-                    <ItemForm
-                      key={it.id}
-                      initial={it}
-                      countryCodes={trip.destinationCountries}
-                      onCancel={() => setFormState(null)}
-                      onDelete={() => setPendingDeleteId(it.id)}
-                      onSave={async (title, time, location) => {
-                        await db.itineraryItems.update(it.id, {
-                          title,
-                          time: time || null,
-                          locationName: location.name || null,
-                          lat: location.lat,
-                          lng: location.lng,
-                          updatedAt: Date.now(),
-                        })
-                        setFormState(null)
-                      }}
-                    />
+                    <Fragment key={it.id}>
+                      <ItemForm
+                        initial={it}
+                        countryCodes={trip.destinationCountries}
+                        onCancel={() => setFormState(null)}
+                        onDelete={() => setPendingDeleteId(it.id)}
+                        onSave={async (title, time, location) => {
+                          await db.itineraryItems.update(it.id, {
+                            title,
+                            time: time || null,
+                            locationName: location.name || null,
+                            lat: location.lat,
+                            lng: location.lng,
+                            updatedAt: Date.now(),
+                          })
+                          setFormState(null)
+                        }}
+                      />
+                      {legRow}
+                    </Fragment>
                   )
                 }
                 const itemTotal = expenses.filter((e) => e.itineraryItemId === it.id).reduce((a, e) => a + e.homeAmount, 0)
                 return (
-                  // 注意：外层不能用 <button>，因为里面还嵌了一个可点的删除按钮——
-                  // <button> 套 <button> 是非法的 HTML 嵌套，在触屏上点击行为会不可靠
-                  <div
-                    key={it.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setFormState(it.id)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') setFormState(it.id) }}
-                    className="text-left bg-card border border-line rounded-2xl p-3 hover:border-plan/50 transition-colors cursor-pointer"
-                  >
-                    <div className="flex justify-between gap-2.5 items-baseline">
-                      <div className="text-sm font-medium min-w-0 flex-1 truncate">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {itemTotal > 0 && <span className="text-xs tabular text-plan">{formatMoney(itemTotal)}</span>}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setPendingDeleteId(it.id) }}
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-muted hover:bg-negative/10 hover:text-negative"
-                          title="删除"
-                        >
-                          <Trash2 className="w-3 h-3" strokeWidth={1.8} />
-                        </button>
+                  <Fragment key={it.id}>
+                    {/* 注意：外层不能用 <button>，因为里面还嵌了一个可点的删除按钮——
+                    <button> 套 <button> 是非法的 HTML 嵌套，在触屏上点击行为会不可靠 */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setFormState(it.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') setFormState(it.id) }}
+                      className="text-left bg-card border border-line rounded-2xl p-3 hover:border-plan/50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex justify-between gap-2.5 items-baseline">
+                        <div className="text-sm font-medium min-w-0 flex-1 truncate">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {itemTotal > 0 && <span className="text-xs tabular text-plan">{formatMoney(itemTotal)}</span>}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setPendingDeleteId(it.id) }}
+                            className="w-5 h-5 rounded-full flex items-center justify-center text-muted hover:bg-negative/10 hover:text-negative"
+                            title="删除"
+                          >
+                            <Trash2 className="w-3 h-3" strokeWidth={1.8} />
+                          </button>
+                        </div>
                       </div>
+                      {it.locationName && (
+                        <div className="text-[11.5px] text-muted mt-1 truncate">
+                          {it.lat != null && <span className="text-positive mr-1">📍</span>}
+                          {it.locationName}
+                        </div>
+                      )}
                     </div>
-                    {it.locationName && (
-                      <div className="text-[11.5px] text-muted mt-1 truncate">
-                        {it.lat != null && <span className="text-positive mr-1">📍</span>}
-                        {it.locationName}
-                      </div>
-                    )}
-                  </div>
+                    {legRow}
+                  </Fragment>
                 )
               })}
               {!items.length && formState !== 'new' && (
