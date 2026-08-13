@@ -10,6 +10,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // 手动注册（src/main.tsx 里 registerSW），而不是用插件自动注入的注册脚本——
+      // 手动注册才能拿到 registration 对象，设置"定期主动检查更新"的逻辑（见 main.tsx）。
+      // 自动注入脚本没有暴露这个钩子，只会被动依赖浏览器自己的更新检查时机（通常只在
+      // 真正冷启动时才检查，PWA从后台切回前台不会主动检查，导致必须完全关闭重开才能
+      // 拉到新版本）
+      injectRegister: false,
       // 开发环境也启用 Service Worker，方便测试离线打开/更新提示，不用每次都跑 build
       devOptions: { enabled: true },
       manifest: {

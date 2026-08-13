@@ -42,7 +42,12 @@ function App() {
       if (householdId) startAutoSync()
     }
 
-    supabase.auth.getSession().then(({ data }) => checkSession(data.session))
+    // 只依赖 onAuthStateChange——它保证第一次回调一定是 INITIAL_SESSION 事件，带着
+    // 客户端读完本地存储、校验完毕之后"确定性"的会话状态。之前这里还额外单独调了
+    // 一次 getSession()，是多余的，且有竞态风险：APP真正冷启动时（不是切到后台再切
+    // 回来），如果这个单独调用抢在客户端读完本地存储之前就跑完，会拿到"没有会话"的
+    // 错误结果，导致明明本地存着有效登录状态却被误判成"未登录"，弹出登录页要求重新
+    // 输入邮箱——这正是真机测试时发现的那个bug
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       checkSession(session)
     })
