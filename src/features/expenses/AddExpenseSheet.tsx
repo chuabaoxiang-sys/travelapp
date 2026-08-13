@@ -12,6 +12,7 @@ import { saveExpenseSplits } from '../../domain/splits'
 import { categoryColor } from '../../lib/categoryColors'
 import { CategoryIcon } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { Trip, ExpensePhase, Expense, SplitType, ExpenseSplit } from '../../types'
 
 export function AddExpenseSheet({
@@ -103,9 +104,21 @@ export function AddExpenseSheet({
   const homeAmount = numAmount * numRate
   const rateReady = !isForeign || numRate > 0
 
-  async function save() {
-    if (!numAmount || !categoryId || !rateReady) return
+  // 防止快速连续点两下"保存"/"删除"触发两次并发的写操作——之前这两个函数
+  // 没有任何防抖手段，纯靠"手气好没人真的点这么快"撑着
+  const [saving, setSaving] = useState(false)
 
+  async function save() {
+    if (saving || !numAmount || !categoryId || !rateReady) return
+    setSaving(true)
+    try {
+      await doSave()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function doSave() {
     // 只有用户真的选了某一天才落地 itineraryDay（哪怕时间线里还没手动建过这一天）；
     // 没打开"关联到行程"这个环节，或者打开了但没选具体日期，就是不关联
     let itineraryDayId: string | null = null
@@ -193,11 +206,19 @@ export function AddExpenseSheet({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   async function remove() {
-    if (!initial) return
-    await db.expenseSplits.where('expenseId').equals(initial.id).delete()
-    await db.expenses.delete(initial.id)
-    onClose()
+    if (saving || !initial) return
+    setSaving(true)
+    try {
+      await db.expenseSplits.where('expenseId').equals(initial.id).delete()
+      await db.expenses.delete(initial.id)
+      onClose()
+    } finally {
+      setSaving(false)
+    }
   }
+
+  // 嵌套的 ConfirmDialog（confirmingDelete）打开时暂停这里自己的Escape监听
+  useEscapeKey(!confirmingDelete, onClose)
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end">
@@ -457,7 +478,8 @@ export function AddExpenseSheet({
           {initial && (
             <button
               onClick={() => setConfirmingDelete(true)}
-              className="rounded-2xl border border-negative/30 text-negative px-4 py-3.5"
+              disabled={saving}
+              className="rounded-2xl border border-negative/30 text-negative px-4 py-3.5 disabled:opacity-40"
               title="删除"
             >
               <Trash2 className="w-[18px] h-[18px]" strokeWidth={1.8} />
@@ -465,7 +487,7 @@ export function AddExpenseSheet({
           )}
           <button
             onClick={save}
-            disabled={!numAmount || !categoryId || !rateReady}
+            disabled={saving || !numAmount || !categoryId || !rateReady}
             className="flex-1 rounded-2xl bg-plan text-card py-3.5 disabled:opacity-40 flex items-center justify-center"
             title={initial ? '保存修改' : '保存这笔'}
           >

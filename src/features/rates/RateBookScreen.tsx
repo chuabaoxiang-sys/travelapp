@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Check, X, Pencil, Archive, ArchiveRestore } from 'lucide-react'
 import { getAllRateBookEntries, updateRateBookEntry, archiveRateBookEntry, unarchiveRateBookEntry, createRateBookEntry } from '../../domain/rates'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { CenteredModal } from '../../components/CenteredModal'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { Trip, RateBookEntry } from '../../types'
 
 const SOURCE_LABEL: Record<RateBookEntry['source'], string> = {
@@ -36,6 +38,10 @@ export function RateBookScreen({
   const [newLabelValue, setNewLabelValue] = useState('')
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
+
+  // 两个嵌套弹层（confirmArchiveId 的 ConfirmDialog、saveAsNewFor 的 CenteredModal）
+  // 打开时暂停这里自己的Escape监听，避免一键关掉两层
+  useEscapeKey(!confirmArchiveId && !saveAsNewFor, onClose)
 
   function startEdit(e: RateBookEntry) {
     setEditingId(e.id)
@@ -185,27 +191,24 @@ export function RateBookScreen({
       )}
 
       {saveAsNewFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={() => setSaveAsNewFor(null)}>
-          <div className="absolute inset-0 bg-ink/45" />
-          <div onClick={(e) => e.stopPropagation()} className="relative bg-card rounded-2xl p-5 w-full max-w-[300px] shadow-2xl">
-            <div className="font-serif-sc text-[15px] text-ink mb-3">另存为新标签</div>
-            <input
-              autoFocus
-              value={newLabelValue}
-              onChange={(e) => setNewLabelValue(e.target.value)}
-              placeholder="新标签名称"
-              className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-plan"
-            />
-            <div className="flex gap-2 mt-4">
-              <button onClick={() => setSaveAsNewFor(null)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
-                <X className="w-4 h-4" strokeWidth={1.8} />
-              </button>
-              <button onClick={confirmSaveAsNew} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title="保存">
-                <Check className="w-4 h-4" strokeWidth={2} />
-              </button>
-            </div>
+        <CenteredModal onClose={() => setSaveAsNewFor(null)}>
+          <div className="font-serif-sc text-[15px] text-ink mb-3">另存为新标签</div>
+          <input
+            autoFocus
+            value={newLabelValue}
+            onChange={(e) => setNewLabelValue(e.target.value)}
+            placeholder="新标签名称"
+            className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-plan"
+          />
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => setSaveAsNewFor(null)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+              <X className="w-4 h-4" strokeWidth={1.8} />
+            </button>
+            <button onClick={confirmSaveAsNew} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title="保存">
+              <Check className="w-4 h-4" strokeWidth={2} />
+            </button>
           </div>
-        </div>
+        </CenteredModal>
       )}
     </div>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Clock } from 'lucide-react'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 const SLOTS: string[] = []
 for (let h = 0; h < 24; h++) {
@@ -28,6 +29,8 @@ export function TimePicker({
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
+
+  useEscapeKey(open, () => setOpen(false))
 
   useEffect(() => {
     if (open && listRef.current) {

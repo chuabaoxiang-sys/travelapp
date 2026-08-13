@@ -28,9 +28,14 @@ const UPDATE_CHECK_INTERVAL_MS = 60_000
 registerSW({
   onRegisteredSW(_swUrl, registration) {
     if (!registration) return
-    setInterval(() => void registration.update(), UPDATE_CHECK_INTERVAL_MS)
+    // registration.update() 偶尔会失败（比如短暂离线、开发环境下的 dev SW 行为跟生产
+    // 环境不完全一样）——不接住的话每次失败都是一条未捕获的 promise rejection，
+    // 刷屏控制台。反正只是"顺便问一句有没有更新"，失败就等下一轮定时/下一次切前台
+    // 再试，不需要额外处理
+    const checkForUpdate = () => registration.update().catch(() => {})
+    setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL_MS)
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') void registration.update()
+      if (document.visibilityState === 'visible') checkForUpdate()
     })
   },
 })

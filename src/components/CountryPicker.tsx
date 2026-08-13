@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { searchCountries, countryByCode } from '../lib/countries'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 export function CountryPicker({
   value,
@@ -20,6 +21,8 @@ export function CountryPicker({
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
+
+  useEscapeKey(open, () => setOpen(false))
 
   const results = searchCountries(query).filter((c) => !value.includes(c.code))
 

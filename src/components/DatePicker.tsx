@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 const DOW = ['一', '二', '三', '四', '五', '六', '日']
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -51,6 +52,8 @@ export function DatePicker({
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
+
+  useEscapeKey(open, () => setOpen(false))
 
   function shiftMonth(delta: number) {
     let m = viewM + delta

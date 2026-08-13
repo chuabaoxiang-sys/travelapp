@@ -5,6 +5,7 @@ import { db } from '../../db/dexie'
 import { getAllFeedback, createFeedback, updateFeedback, deleteFeedback } from '../../domain/feedback'
 import { Avatar } from '../../components/Avatar'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { FeedbackCategory, Feedback } from '../../types'
 
 const CATEGORIES: { value: FeedbackCategory; label: string; color: string }[] = [
@@ -36,6 +37,9 @@ export function FeedbackSheet({
   const [editCategory, setEditCategory] = useState<FeedbackCategory>('suggestion')
   const [editContent, setEditContent] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  // 嵌套的 ConfirmDialog 打开时暂停这里自己的Escape监听，避免一键关掉两层弹层
+  useEscapeKey(!confirmDeleteId, onClose)
 
   function memberName(id: string) {
     return members.find((m) => m.id === id)?.displayName ?? '未知'

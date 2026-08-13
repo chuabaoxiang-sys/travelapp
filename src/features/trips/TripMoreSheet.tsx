@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { Trip } from '../../types'
 
 type ExportKind = 'excel' | 'json' | 'csv'
@@ -58,6 +59,8 @@ export function TripMoreSheet({
   // 安卓部分Chrome版本要求 navigator.share() 必须紧跟在用户点击后面调用，中间
   // 隔一段生成文件的 await 就会被判定"用户手势已过期"，报 NotAllowedError
   const [readyFile, setReadyFile] = useState<{ kind: ExportKind; file: File } | null>(null)
+
+  useEscapeKey(true, onClose)
 
   async function handlePrepare(kind: ExportKind) {
     setError(null)

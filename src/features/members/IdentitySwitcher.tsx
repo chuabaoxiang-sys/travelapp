@@ -5,6 +5,7 @@ import { db } from '../../db/dexie'
 import { Avatar } from '../../components/Avatar'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { createMember, renameMember, memberHasHistory, deleteMemberHard, deactivateMember, reactivateMember } from '../../domain/members'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { Member } from '../../types'
 
 // 顶部标题栏常驻的身份指示器——点开直接弹出成员列表可以切换、编辑、停用/删除，或添加新成员，
@@ -30,13 +31,26 @@ export function IdentitySwitcher({
   const inactive = members.filter((m) => !m.isActive)
   const current = active.find((m) => m.id === currentMemberId)
 
+  // 唯一的"关闭下拉"入口——一并清掉编辑中/新增中的子状态。之前背景点击和
+  // "点选其他成员"这两条关闭路径各写各的，后者忘了清 editingId/adding，
+  // 导致下次重新打开下拉时，上次编辑到一半的那一行会莫名其妙又变回编辑状态
+  function closeDropdown() {
+    setOpen(false)
+    setAdding(false)
+    setEditingId(null)
+  }
+
+  // 有嵌套的 ConfirmDialog（blockedMessage/pendingRemove）弹出时，这里的Escape监听
+  // 要暂停——不然按一次Escape会同时触发这里的 closeDropdown 和 ConfirmDialog 自己
+  // 的Escape监听，变成一键关掉两层弹层，应该只关最上面那一层
+  useEscapeKey(open && !blockedMessage && !pendingRemove, closeDropdown)
+
   async function handleAdd() {
     if (!newName.trim()) return
     const id = await createMember(newName)
     setNewName('')
-    setAdding(false)
     onSelectMember(id)
-    setOpen(false)
+    closeDropdown()
   }
 
   function startEdit(m: Member) {
@@ -81,7 +95,7 @@ export function IdentitySwitcher({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setAdding(false); setEditingId(null) }} />
+          <div className="fixed inset-0 z-40" onClick={closeDropdown} />
           <div className="absolute left-0 top-full mt-1.5 w-[210px] rounded-xl border border-line bg-card shadow-lg z-50 overflow-hidden">
             {active.map((m) =>
               editingId === m.id ? (
@@ -103,7 +117,7 @@ export function IdentitySwitcher({
               ) : (
                 <div key={m.id} className={`w-full flex items-center gap-0.5 pl-3 pr-1.5 ${m.id === currentMemberId ? 'bg-paper' : ''}`}>
                   <button
-                    onClick={() => { onSelectMember(m.id); setOpen(false) }}
+                    onClick={() => { onSelectMember(m.id); closeDropdown() }}
                     className="flex-1 min-w-0 flex items-center gap-2 text-left text-[13px] py-2"
                   >
                     <Avatar member={m} size={22} />
