@@ -60,15 +60,26 @@ export default async function handler(request: Request): Promise<Response> {
       // ORS 要求坐标顺序是 [经度, 纬度]，跟旅记内部 {lat, lng} 的顺序相反
       body: JSON.stringify({ coordinates: coords.map((c) => [c.lng, c.lat]) }),
     })
-  } catch {
-    return new Response(JSON.stringify({ error: 'ORS请求网络失败' }), {
+  } catch (err) {
+    // 之前排查这一步的失败花了不少时间，因为原来只返回一句笼统的"网络失败"——
+    // 实际上这一类 catch 也会接住 fetch() 本身抛出的同步错误（比如 Vercel 环境变量
+    // 值本身带了不可见字符导致构造 Headers 失败，这个项目就真的踩过一次），
+    // 跟真正的网络问题完全是两回事。把 err.message 打进日志 + 返回体，下次
+    // 再出问题不用像这次一样靠猜，直接在 Vercel Runtime Logs 里能看到具体原因
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[route-directions] fetch to ORS threw before getting a response:', message)
+    return new Response(JSON.stringify({ error: 'ORS请求失败（发送阶段）', detail: message }), {
       status: 502,
       headers: { 'content-type': 'application/json' },
     })
   }
 
   if (!orsRes.ok) {
-    return new Response(JSON.stringify({ error: 'ORS请求失败', status: orsRes.status }), {
+    // ORS 出错时通常会在响应体里给出具体原因（比如坐标非法、key无效、额度用完），
+    // 之前这里直接丢弃了响应体，只留了个 status 数字，等于把最有用的信息扔了
+    const detail = await orsRes.text().catch(() => '')
+    console.error('[route-directions] ORS responded with an error:', orsRes.status, detail)
+    return new Response(JSON.stringify({ error: 'ORS请求失败', status: orsRes.status, detail }), {
       status: 502,
       headers: { 'content-type': 'application/json' },
     })
