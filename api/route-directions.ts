@@ -15,6 +15,12 @@ interface Coord {
   lng: number
 }
 
+// ORS 默认只在每个坐标周围350米内找可通行的路网点，找不到就报错（真机测试时
+// 东京羽田机场附近的一个点就撞上了这个默认值）——放宽到2公里，换取更宽容的
+// 匹配范围，代价是如果坐标本身就离谱地放到了不可达的地方（比如放到海中间），
+// 也会被"勉强"配对到2公里外某个路网点上，距离/时长会失真，但比直接报错更实用
+const ROUTABLE_POINT_SEARCH_RADIUS_METERS = 2000
+
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -57,8 +63,12 @@ export default async function handler(request: Request): Promise<Response> {
         Authorization: apiKey,
         'Content-Type': 'application/json',
       },
-      // ORS 要求坐标顺序是 [经度, 纬度]，跟旅记内部 {lat, lng} 的顺序相反
-      body: JSON.stringify({ coordinates: coords.map((c) => [c.lng, c.lat]) }),
+      // ORS 要求坐标顺序是 [经度, 纬度]，跟旅记内部 {lat, lng} 的顺序相反；
+      // radiuses 要求跟 coordinates 一一对应，每个坐标各给一个搜索半径
+      body: JSON.stringify({
+        coordinates: coords.map((c) => [c.lng, c.lat]),
+        radiuses: coords.map(() => ROUTABLE_POINT_SEARCH_RADIUS_METERS),
+      }),
     })
   } catch (err) {
     // 之前排查这一步的失败花了不少时间，因为原来只返回一句笼统的"网络失败"——
