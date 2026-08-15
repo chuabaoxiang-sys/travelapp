@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown } from 'lucide-react'
 import { db } from '../../db/dexie'
@@ -14,6 +14,8 @@ import { ShareSettingsSheet } from './ShareSettingsSheet'
 import { FeedbackSheet } from '../feedback/FeedbackSheet'
 import { IdentitySwitcher } from '../members/IdentitySwitcher'
 
+const NOT_FOUND = Symbol('trip-not-found')
+
 export function TripShell({
   tripId,
   currentMemberId,
@@ -25,14 +27,23 @@ export function TripShell({
   onSwitchTrip: () => void
   onSelectMember: (id: string) => void
 }) {
-  const trip = useLiveQuery(() => db.trips.get(tripId), [tripId])
+  // useLiveQuery 在"还没查完"和"查完了但真的没这条记录"两种情况下都会给 undefined，
+  // 用 NOT_FOUND 这个哨兵值把两者区分开——不然本地存的当前行程ID一旦指向一个已经
+  // 不存在的行程（换设备、行程被删、本地数据被重置……），APP会永远卡在空白页，
+  // 没有任何提示，也不会自动跳回选行程界面
+  const tripResult = useLiveQuery(async () => (await db.trips.get(tripId)) ?? NOT_FOUND, [tripId])
   const [tab, setTab] = useState<TabKey>('itinerary')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shareSettingsOpen, setShareSettingsOpen] = useState(false)
 
-  if (!trip) return null
+  useEffect(() => {
+    if (tripResult === NOT_FOUND) onSwitchTrip()
+  }, [tripResult, onSwitchTrip])
+
+  if (tripResult === undefined || tripResult === NOT_FOUND) return null
+  const trip = tripResult
 
   return (
     <div className="min-h-screen bg-ink flex items-center justify-center p-4">

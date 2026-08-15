@@ -3,6 +3,7 @@ import { ensureSeedData } from './db/dexie'
 import { startAutoSync } from './db/sync'
 import { supabase } from './api/supabaseClient'
 import { getCurrentHouseholdId, signOut } from './domain/household'
+import { ensureLocalTestSeed } from './dev/localTestSeed'
 import { EmailLogin } from './features/auth/EmailLogin'
 import { MemberGate } from './features/members/MemberGate'
 import { useCurrentMemberId } from './features/members/useCurrentMemberId'
@@ -21,7 +22,11 @@ function App() {
   const [tripId, setTripId] = useState<string | null>(() => localStorage.getItem(CURRENT_TRIP_KEY))
 
   useEffect(() => {
-    ensureSeedData().then(() => setReady(true))
+    // ensureLocalTestSeed 内部自己判断"是不是本地无Supabase测试环境"，
+    // 真机/生产环境这里相当于no-op——见 dev/localTestSeed.ts 的说明
+    ensureSeedData()
+      .then(() => ensureLocalTestSeed())
+      .then(() => setReady(true))
   }, [])
 
   // 没配置Supabase（比如本地没建.env.local）时不要卡在登录屏，直接放行——
