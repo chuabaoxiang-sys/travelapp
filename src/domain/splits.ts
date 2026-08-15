@@ -16,6 +16,13 @@ export function resolveSplitShares(
   memberIds: string[],
   payerId: string,
 ): { memberId: string; shareAmount: number }[] {
+  // 分摊名单里恰好剩1人时，这笔钱要记成"那个人"欠的——哪怕那个人不是付款人本人
+  // （比如"BX垫付，只勾KN" = BX帮KN全额垫付，欠款人是KN）。不能跟"没人勾选"
+  // （真正的个人开销，memberIds为空）混为一谈一律记回付款人名下，那样会把
+  // 该收的钱凭空记没，此前这里就是这个bug。
+  if (memberIds.length === 1) {
+    return [{ memberId: memberIds[0], shareAmount: round2(homeAmount) }]
+  }
   if (splitType === 'none' || memberIds.length === 0) {
     return [{ memberId: payerId, shareAmount: round2(homeAmount) }]
   }

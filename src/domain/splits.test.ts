@@ -13,6 +13,16 @@ describe('resolveSplitShares', () => {
     expect(shares).toEqual([{ memberId: 'a', shareAmount: 300 }])
   })
 
+  it('只勾了1个非付款人时，全额记成那个人欠的，不能被静默改记回付款人名下（真实bug回归用例：BX垫付、只勾KN）', () => {
+    const shares = resolveSplitShares(100, 'none', ['kn'], 'bx')
+    expect(shares).toEqual([{ memberId: 'kn', shareAmount: 100 }])
+  })
+
+  it('只勾了1个人、且那个人就是付款人本人时，等价于算他自己的', () => {
+    const shares = resolveSplitShares(100, 'none', ['bx'], 'bx')
+    expect(shares).toEqual([{ memberId: 'bx', shareAmount: 100 }])
+  })
+
   it('能整除时均分，加总等于原金额', () => {
     const shares = resolveSplitShares(300, 'equal', ['a', 'b', 'c'], 'a')
     expect(shares).toEqual([

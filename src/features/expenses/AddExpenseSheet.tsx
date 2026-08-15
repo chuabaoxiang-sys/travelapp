@@ -150,8 +150,11 @@ export function AddExpenseSheet({
       rateBookEntryId = null
     }
 
-    // 只勾了付款人自己（或者干脆没勾人）就算不分摊；勾了2个人以上才是均摊
-    const splitType: SplitType = splitMemberIds.length >= 2 ? 'equal' : 'none'
+    // 分摊名单里有人（哪怕只有1个，且哪怕那个人不是付款人）就算有分摊记录；
+    // 干脆没勾任何人（"个人开销"模式）才是真正的不分摊。之前用">= 2"判断会把
+    // "只勾1个非付款人"也归到"不分摊"，导致这笔钱被错记成付款人自己的开销，
+    // 分摊对象欠的钱凭空消失——也让编辑时这笔账会被误判回"个人开销"页签
+    const splitType: SplitType = splitMemberIds.length > 0 ? 'equal' : 'none'
     const expenseId = initial?.id ?? crypto.randomUUID()
 
     if (initial) {

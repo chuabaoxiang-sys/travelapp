@@ -50,9 +50,15 @@ export function InstallPrompt() {
     }
   }, [])
 
+  // 底部固定条要在 pb-4 之外再叠加安全区高度：iOS Safari 的悬浮地址栏/主屏幕
+  // 指示条正好占据屏幕最底部这块区域，index.html 里 viewport-fit=cover 又让
+  // 页面内容延伸到那块区域下面——不叠加 env(safe-area-inset-bottom) 的话，
+  // 这条提示会被 Safari 自己的底栏整个盖住，用户看起来就像"完全没弹提示"
+  const safeAreaStyle = { paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }
+
   if (deferredEvent) {
     return (
-      <div className="fixed left-0 right-0 bottom-0 z-[100] flex justify-center px-4 pb-4">
+      <div className="fixed left-0 right-0 bottom-0 z-[100] flex justify-center px-4" style={safeAreaStyle}>
         <div className="w-full max-w-[380px] bg-ink text-paper rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <div className="text-[13px] font-medium">把旅记安装到主屏幕</div>
@@ -83,7 +89,7 @@ export function InstallPrompt() {
 
   if (showIOSHint) {
     return (
-      <div className="fixed left-0 right-0 bottom-0 z-[100] flex justify-center px-4 pb-4">
+      <div className="fixed left-0 right-0 bottom-0 z-[100] flex justify-center px-4" style={safeAreaStyle}>
         <div className="w-full max-w-[380px] bg-ink text-paper rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3">
           <div className="flex-1 min-w-0 text-[12px] leading-relaxed">
             在 Safari 点击底部<span className="font-medium">分享</span>图标 →「添加到主屏幕」，就能像App一样打开旅记，支持离线使用
