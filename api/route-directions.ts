@@ -1,10 +1,9 @@
 // Vercel Edge Function：代理调用 OpenRouteService 的步行路线API。
 //
 // 为什么需要这一层代理而不是前端直接调 ORS：ORS的免费API key如果直接放进前端
-// （VITE_ 前缀环境变量），会被打进公开的JS包里——虽然旅记整站有 middleware.ts 的
-// 密码墙挡着，但用户明确要求这个key完全不进前端bundle，所以走一个单独的服务端
-// 函数，key只存在 Vercel 后台的 ORS_API_KEY 环境变量（不带 VITE_ 前缀，不会被
-// Vite 打进客户端代码）。
+// （VITE_ 前缀环境变量），会被打进公开的JS包里——用户明确要求这个key完全不进
+// 前端bundle，所以走一个单独的服务端函数，key只存在 Vercel 后台的 ORS_API_KEY
+// 环境变量（不带 VITE_ 前缀，不会被 Vite 打进客户端代码）。
 //
 // 输入：一天里"连续且都有经纬度"的一段地点坐标（由前端 src/lib/routeLegs.ts 负责切分）。
 // 输出：这段路线里每一段相邻地点之间的真实步行距离(米)和时长(秒)。

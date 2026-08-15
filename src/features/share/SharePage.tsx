@@ -7,8 +7,7 @@ import type { SharedTripData } from '../../types'
 type LoadState = { status: 'loading' } | { status: 'notfound' } | { status: 'ready'; data: SharedTripData }
 
 // 完全独立于登录/household逻辑的公开只读页面——不用任何App.tsx里的状态，
-// 直接拿URL里的token去调用get_shared_trip。middleware.ts已经给 /share/ 开了
-// 密码墙例外，这个组件本身也不该假设访客已经登录过
+// 直接拿URL里的token去调用get_shared_trip，这个组件本身也不该假设访客已经登录过
 export function SharePage() {
   const { token } = useParams<{ token: string }>()
   const [state, setState] = useState<LoadState>({ status: 'loading' })

@@ -19,7 +19,8 @@ export async function sendLoginLink(email: string): Promise<void> {
   const trimmed = email.trim()
 
   // 真正调用发送登录邮件之前，先问一句"这个邮箱在邀请名单里吗"——不在的话直接
-  // 拦掉，不触发真实发信，防止有人拿着网站密码墙的密码乱试邮箱耗尽发信额度。
+  // 拦掉，不触发真实发信，防止陌生人在登录框里乱试邮箱耗尽发信额度（网站已经
+  // 没有密码墙拦着，任何人都能打开登录页，这个检查是唯一的防线）。
   // 这个检查本身失败（比如网络问题）不应该挡住正常登录，交给下面 signInWithOtp
   // 自己的报错处理，所以只在明确查到 false 时才拦截
   const { data: invited, error: checkError } = await supabase.rpc('is_invited_email', { check_email: trimmed })
