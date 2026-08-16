@@ -117,16 +117,22 @@ export function LocationPicker({
 
   return (
     <div className="relative" ref={wrapRef}>
-      <input
-        value={query}
-        onChange={(e) => handleType(e.target.value)}
-        onFocus={() => results.length > 0 && setOpen(true)}
-        placeholder="地点"
-        className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
-      />
-      {value.lat != null && (
-        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-positive">📍已定位</span>
-      )}
+      {/* 输入框和"已定位"标签单独包一层relative——之前跟下面的提示文字共用
+      同一个relative容器，标签的top-1/2是相对"输入框+提示文字"的总高度居中，
+      导致标签往下偏，看起来吊在输入框下边缘、跟提示文字重叠（真机反馈过的
+      "定位标签错位"问题） */}
+      <div className="relative">
+        <input
+          value={query}
+          onChange={(e) => handleType(e.target.value)}
+          onFocus={() => results.length > 0 && setOpen(true)}
+          placeholder="地点"
+          className={`w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan ${value.lat != null ? 'pr-16' : ''}`}
+        />
+        {value.lat != null && (
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-positive whitespace-nowrap">📍已定位</span>
+        )}
+      </div>
       <div className="text-[10px] text-muted mt-1">
         可搜索选点，搜不到也可以直接贴Google Maps链接定位
         {!!countryCodes?.length && (
