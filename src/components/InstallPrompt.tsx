@@ -20,11 +20,21 @@ function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent)
 }
 
+// iOS上所有浏览器底层都被苹果强制用WebKit（连UA里都带着"Safari"字样），但只有
+// Safari本身能把网站真正装成独立全屏APP——Chrome/Edge/Firefox等第三方壳应用，
+// 就算分享菜单里也有个"添加到主屏幕"，点了也只是加一个普通网页书签，不会有
+// standalone显示模式/离线能力，苹果的平台限制不允许第三方浏览器做到这点。
+// 这几个第三方浏览器在UA里都有自己独有的标识，可以跟真正的Safari区分开
+function isIOSNonSafariBrowser() {
+  return /CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent)
+}
+
 // Chrome/Edge/Android 用系统的 beforeinstallprompt 弹自定义安装条；iOS Safari 完全不支持
 // 这个事件（没有编程方式触发安装），只能提示用户自己走"分享→添加到主屏幕"的手动步骤
 export function InstallPrompt() {
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [showIOSHint, setShowIOSHint] = useState(false)
+  const [iosNonSafari, setIOSNonSafari] = useState(false)
 
   useEffect(() => {
     if (isStandalone()) return
@@ -42,6 +52,7 @@ export function InstallPrompt() {
 
     if (isIOS() && !localStorage.getItem(IOS_DISMISS_KEY)) {
       setShowIOSHint(true)
+      setIOSNonSafari(isIOSNonSafariBrowser())
     }
 
     return () => {
@@ -92,7 +103,11 @@ export function InstallPrompt() {
       <div className="fixed left-0 right-0 bottom-0 z-[100] flex justify-center px-4" style={safeAreaStyle}>
         <div className="w-full max-w-[380px] bg-ink text-paper rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3">
           <div className="flex-1 min-w-0 text-[12px] leading-relaxed">
-            在 Safari 点击底部<span className="font-medium">分享</span>图标 →「添加到主屏幕」，就能像App一样打开旅记，支持离线使用
+            {iosNonSafari ? (
+              <>iOS上只有 <span className="font-medium">Safari</span> 才能把旅记装成独立APP——当前这个浏览器不支持，请用 Safari 重新打开这个网址</>
+            ) : (
+              <>在 Safari 点击底部<span className="font-medium">分享</span>图标 →「添加到主屏幕」，就能像App一样打开旅记，支持离线使用</>
+            )}
           </div>
           <button
             onClick={() => { localStorage.setItem(IOS_DISMISS_KEY, '1'); setShowIOSHint(false) }}
