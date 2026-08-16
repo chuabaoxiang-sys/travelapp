@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { searchPlaces, type GeocodeResult } from '../api/geocoding'
+import { MapPin } from 'lucide-react'
+import { searchPlaces, looksLikeGoogleMapsUrl, resolveMapsLink, type GeocodeResult, type ResolvedMapsLink } from '../api/geocoding'
 import { countryByCode } from '../lib/countries'
 import { useEscapeKey } from '../hooks/useEscapeKey'
 
@@ -22,6 +23,9 @@ export function LocationPicker({
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  // 免费地理编码搜不到/搜错小型商家时的兜底——粘贴一个Google Maps链接，直接解析
+  // 出精确坐标，不用重新搜索。跟普通搜索结果是两条独立的展示路径，不共用 results
+  const [mapsLink, setMapsLink] = useState<{ status: 'loading' } | { status: 'ok'; result: ResolvedMapsLink } | { status: 'error'; message: string } | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   // 每次发起新搜索、或者用户主动关闭下拉时都递增，防抖请求真正返回结果时
@@ -55,6 +59,23 @@ export function LocationPicker({
     setQuery(text)
     onChange({ name: text, lat: null, lng: null }) // 手动打字视为纯文字地点，坐标先清空
     if (debounceRef.current) clearTimeout(debounceRef.current)
+    setMapsLink(null)
+
+    // 贴的是Google Maps链接——免费搜索搜不到/搜错的小型商家兜底方案，
+    // 走单独一条路径解析坐标，不跟下面的普通搜索防抖混在一起
+    if (looksLikeGoogleMapsUrl(text)) {
+      requestIdRef.current++
+      setResults([])
+      setOpen(false)
+      const requestId = ++requestIdRef.current
+      setMapsLink({ status: 'loading' })
+      resolveMapsLink(text.trim()).then((r) => {
+        if (requestIdRef.current !== requestId) return
+        setMapsLink(r ? { status: 'ok', result: r } : { status: 'error', message: '解析失败，确认链接有效或稍后重试' })
+      })
+      return
+    }
+
     if (text.trim().length < 2) {
       requestIdRef.current++
       setResults([])
@@ -86,13 +107,21 @@ export function LocationPicker({
     setResults([])
   }
 
+  function pickMapsLink(r: ResolvedMapsLink) {
+    requestIdRef.current++
+    const name = r.name ?? query
+    setQuery(name)
+    onChange({ name, lat: r.lat, lng: r.lng })
+    setMapsLink(null)
+  }
+
   return (
     <div className="relative" ref={wrapRef}>
       <input
         value={query}
         onChange={(e) => handleType(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
-        placeholder="地点（可搜索选点，也可以直接打字）"
+        placeholder="地点（可搜索选点，搜不到也可以直接贴Google Maps链接）"
         className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
       />
       {value.lat != null && (
@@ -103,6 +132,27 @@ export function LocationPicker({
           搜索范围已限定：{countryCodes.map((c) => countryByCode(c)?.nameZh ?? c).join('、')}
         </div>
       )}
+
+      {mapsLink && (
+        <div className="mt-1.5 rounded-xl border border-line bg-card overflow-hidden">
+          {mapsLink.status === 'loading' && <div className="px-3 py-2 text-xs text-muted">解析链接中…</div>}
+          {mapsLink.status === 'error' && <div className="px-3 py-2 text-xs text-negative">{mapsLink.message}</div>}
+          {mapsLink.status === 'ok' && (
+            <button
+              type="button"
+              onClick={() => pickMapsLink(mapsLink.result)}
+              className="w-full flex items-center gap-2 text-left px-3 py-2.5 hover:bg-paper"
+            >
+              <MapPin className="w-4 h-4 text-positive flex-shrink-0" strokeWidth={1.8} />
+              <div className="min-w-0">
+                <div className="text-[12.5px] font-medium truncate">{mapsLink.result.name ?? '识别到的地点'}</div>
+                <div className="text-[10.5px] text-muted">来自Google Maps链接，点击使用这个精确位置</div>
+              </div>
+            </button>
+          )}
+        </div>
+      )}
+
       {open && (loading || results.length > 0) && (
         <div className="absolute z-40 mt-1 w-full rounded-xl border border-line bg-card shadow-lg overflow-hidden max-h-[180px] overflow-y-auto no-scrollbar">
           {loading && <div className="px-3 py-2 text-xs text-muted">搜索中…</div>}

@@ -4,6 +4,35 @@ export interface GeocodeResult {
   lng: number
 }
 
+// 粘贴的文字是不是一个Google Maps链接——覆盖短链接(maps.app.goo.gl/goo.gl)和
+// 完整网址(google.com/maps/...)两种常见形态
+export function looksLikeGoogleMapsUrl(text: string): boolean {
+  return /^https?:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.)?google\.[a-z.]+\/maps)\//i.test(text.trim())
+}
+
+export interface ResolvedMapsLink {
+  lat: number
+  lng: number
+  name: string | null
+}
+
+// 交给服务端解析Google Maps链接（见 api/resolve-maps-link.ts）——免费地理编码
+// 搜不到/搜错的小型商家，用户往往已经在Google Maps上找到了、手上有分享链接，
+// 直接解析链接里的坐标比重新搜索可靠
+export async function resolveMapsLink(url: string): Promise<ResolvedMapsLink | null> {
+  try {
+    const res = await fetch('/api/resolve-maps-link', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
 // Nominatim 使用政策要求：带上有辨识度的 User-Agent，且不要高频调用——
 // 调用方（LocationPicker）已经做了输入防抖，这里只额外做一层内存缓存，
 // 避免同一个关键词短时间内被重复请求
