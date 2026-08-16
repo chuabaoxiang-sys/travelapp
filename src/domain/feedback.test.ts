@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { getAllFeedback, createFeedback, updateFeedback, deleteFeedback } from './feedback'
 import { db } from '../db/dexie'
+import { APP_COMMIT } from '../lib/appVersion'
 
 vi.mock('./household', () => ({ getCurrentHouseholdId: async () => 'h1' }))
 
@@ -33,5 +34,11 @@ describe('反馈的增删查（真实走Dexie）', () => {
     const id = await createFeedback({ tripId: null, submittedBy: 'papa', category: 'other', content: '待删除' })
     await deleteFeedback(id)
     expect(await getAllFeedback()).toHaveLength(0)
+  })
+
+  it('提交反馈自动带上当前版本号，方便排查是哪个版本报的问题', async () => {
+    await createFeedback({ tripId: 't1', submittedBy: 'papa', category: 'bug', content: '测试版本号' })
+    const [feedback] = await getAllFeedback()
+    expect(feedback.appVersion).toBe(APP_COMMIT)
   })
 })

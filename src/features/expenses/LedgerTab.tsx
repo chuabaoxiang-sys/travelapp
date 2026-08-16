@@ -7,6 +7,7 @@ import { AddExpenseSheet } from './AddExpenseSheet'
 import { RateBookScreen } from '../rates/RateBookScreen'
 import { getOverallBudget } from '../../domain/budgets'
 import { computeBalances } from '../../domain/splits'
+import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 
@@ -35,12 +36,7 @@ export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMember
   const [view, setView] = useState<'team' | 'mine'>('team')
 
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
-  // "跟我相关"=我是付款人，或者这笔账的分摊名单里有我（个人开销也算，因为
-  // resolveSplitShares 对个人开销同样会给付款人自己记一条全额的split）
-  const myExpenseIds = new Set([
-    ...expenses.filter((e) => e.paidBy === currentMemberId).map((e) => e.id),
-    ...splits.filter((s) => s.memberId === currentMemberId).map((s) => s.expenseId),
-  ])
+  const myExpenseIds = myRelatedExpenseIds(expenses, splits, currentMemberId)
   const visibleExpenses = view === 'mine' ? expenses.filter((e) => myExpenseIds.has(e.id)) : expenses
   const editingExpense = expenses.find((e) => e.id === editingId)
 
@@ -110,7 +106,7 @@ export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMember
           const cat = categoryOf(e.categoryId)
           const payer = memberOf(e.paidBy)
           const isPersonal = e.splitType === 'none'
-          const myShare = splits.find((s) => s.expenseId === e.id && s.memberId === currentMemberId)?.shareAmount
+          const myShare = myShareOf(e.id, splits, currentMemberId)
           return (
             <button
               key={e.id}

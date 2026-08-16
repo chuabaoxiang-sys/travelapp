@@ -15,7 +15,7 @@
 // Google Maps相关域名，其他域名一律拒绝。
 export const config = { runtime: 'edge' }
 
-function isAllowedMapsUrl(raw: string): boolean {
+export function isAllowedMapsUrl(raw: string): boolean {
   let u: URL
   try {
     u = new URL(raw)
@@ -25,6 +25,21 @@ function isAllowedMapsUrl(raw: string): boolean {
   if (u.protocol !== 'https:') return false
   const host = u.hostname.toLowerCase()
   return host === 'maps.app.goo.gl' || host === 'goo.gl' || host === 'google.com' || host.endsWith('.google.com')
+}
+
+// 优先找 !3d<lat>!4d<lng>——这是地图上具体那个标记点的精确坐标；
+// 找不到才退而求其次用 @lat,lng（当前地图视野的中心点，可能因为缩放层级
+// 差出去好几公里，不如标记点准，只在没有标记点信息时才用）
+export function extractPlaceFromUrl(finalUrl: string): { lat: number; lng: number; name: string | null } | null {
+  const pinMatch = finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+  const centerMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+  const match = pinMatch ?? centerMatch
+  if (!match) return null
+
+  const nameMatch = finalUrl.match(/\/place\/([^/@]+)/)
+  const name = nameMatch ? decodeURIComponent(nameMatch[1]).replace(/\+/g, ' ') : null
+
+  return { lat: parseFloat(match[1]), lng: parseFloat(match[2]), name }
 }
 
 export default async function handler(request: Request): Promise<Response> {
@@ -65,24 +80,13 @@ export default async function handler(request: Request): Promise<Response> {
     })
   }
 
-  // 优先找 !3d<lat>!4d<lng>——这是地图上具体那个标记点的精确坐标；
-  // 找不到才退而求其次用 @lat,lng（当前地图视野的中心点，可能因为缩放层级
-  // 差出去好几公里，不如标记点准，只在没有标记点信息时才用）
-  const pinMatch = finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
-  const centerMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-  const match = pinMatch ?? centerMatch
-  if (!match) {
+  const place = extractPlaceFromUrl(finalUrl)
+  if (!place) {
     return new Response(JSON.stringify({ error: '这个链接里没有找到坐标信息' }), {
       status: 422,
       headers: { 'content-type': 'application/json' },
     })
   }
 
-  const nameMatch = finalUrl.match(/\/place\/([^/@]+)/)
-  const name = nameMatch ? decodeURIComponent(nameMatch[1]).replace(/\+/g, ' ') : null
-
-  return new Response(
-    JSON.stringify({ lat: parseFloat(match[1]), lng: parseFloat(match[2]), name }),
-    { status: 200, headers: { 'content-type': 'application/json' } },
-  )
+  return new Response(JSON.stringify(place), { status: 200, headers: { 'content-type': 'application/json' } })
 }
