@@ -1,4 +1,4 @@
-import { db } from '../db/dexie'
+import { db, enqueueOutbox } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
 import type { SplitType } from '../types'
 
@@ -57,9 +57,13 @@ export async function saveExpenseSplits(
   if (!householdId) throw new Error('未找到所属团队')
   await db.expenseSplits.where('expenseId').equals(expenseId).delete()
   const shares = resolveSplitShares(homeAmount, splitType, memberIds, payerId, customAmounts)
-  await db.expenseSplits.bulkAdd(
-    shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount })),
-  )
+  const rows = shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount }))
+  await db.expenseSplits.bulkAdd(rows)
+
+  // expenseSplits 不走通用的逐行同步 hook（见 db/dexie.ts 里 SYNCED_TABLES 的注释）——
+  // 这里手动打包成"这笔费用的完整分摊名单"一条 entry，pushOutbox 会整批原子推送，
+  // 不会再被数据库那道"总额必须等于费用总额"的延迟约束卡在中间状态
+  await enqueueOutbox('expenseSplits', expenseId, 'upsert', { expenseId, rows })
 }
 
 export interface PersonBalance {

@@ -23,6 +23,11 @@ import type {
 // 声明放在 class 前面：constructor 里会立刻调用 registerOutboxHooks(this)，而
 // `export const db = new TripJournalDB()` 在模块顶层就会同步执行——如果 SYNCED_TABLES
 // 声明在 db 实例化之后，会在还没初始化完成时就被引用，触发暂时性死区报错
+// expenseSplits 故意不在这个列表里——它需要"一笔费用的所有分摊行打包在一次
+// 事务里推送"（见 0009_atomic_expense_split_push.sql 和 domain/splits.ts 的
+// saveExpenseSplits），逐行走这套通用的按行推送 hook 会撞上数据库那道延迟约束
+// 触发器，分摊记录永远同步不上去。saveExpenseSplits 自己手动调用 enqueueOutbox
+// 打包成一条 entry，pushOutbox 再特判这张表名单独处理
 const SYNCED_TABLES = [
   'trips',
   'members',
@@ -31,7 +36,6 @@ const SYNCED_TABLES = [
   'itineraryItems',
   'rateBookEntries',
   'expenses',
-  'expenseSplits',
   'budgets',
   'settlements',
   'feedback',
@@ -129,7 +133,9 @@ function registerOutboxHooks(db: TripJournalDB) {
   }
 }
 
-async function enqueueOutbox(tableName: string, recordId: string, operation: 'upsert' | 'delete', payload: unknown) {
+// 导出给 domain/splits.ts 用——expenseSplits 不走上面这套逐行 hook，需要
+// saveExpenseSplits 自己手动打包成一条 entry
+export async function enqueueOutbox(tableName: string, recordId: string, operation: 'upsert' | 'delete', payload: unknown) {
   const entry: OutboxEntry = {
     id: crypto.randomUUID(),
     tableName,

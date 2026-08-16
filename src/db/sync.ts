@@ -37,7 +37,35 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
   let pushed = 0
   let failed = 0
 
-  for (const entry of pending) {
+  // expenseSplits 不逐行推送（原因见 db/dexie.ts SYNCED_TABLES 的注释和
+  // 0009_atomic_expense_split_push.sql）——按 expense_id 分组，每组只用当下
+  // db.expenseSplits 里真实的本地行数据整批调用 replace_expense_splits() 原子推送，
+  // 完全不看 entry.payload 里存的是什么形状。这样天然也兼容升级前遗留在本地、
+  // 还是旧版单行 payload 形状的 pending entry——反正只用它的 expenseId 分组，
+  // 具体分摊金额一律以本地当前数据为准
+  const splitEntries = pending.filter((e) => e.tableName === 'expenseSplits')
+  const otherEntries = pending.filter((e) => e.tableName !== 'expenseSplits')
+
+  const expenseIds = [...new Set(splitEntries.map((e) => (e.payload as { expenseId?: string } | null)?.expenseId).filter((id): id is string => !!id))]
+  for (const expenseId of expenseIds) {
+    const group = splitEntries.filter((e) => (e.payload as { expenseId?: string } | null)?.expenseId === expenseId)
+    try {
+      const rows = await db.expenseSplits.where('expenseId').equals(expenseId).toArray()
+      const { error } = await supabase.rpc('replace_expense_splits', {
+        p_expense_id: expenseId,
+        p_rows: rows.map((r) => ({ id: r.id, member_id: r.memberId, share_amount: r.shareAmount })),
+      })
+      if (error) throw error
+      await Promise.all(group.map((e) => db.outbox.update(e.id, { status: 'synced' })))
+      pushed += group.length
+    } catch (err) {
+      failed += group.length
+      const lastError = describeError(err)
+      await Promise.all(group.map((e) => db.outbox.update(e.id, { attempts: e.attempts + 1, lastError })))
+    }
+  }
+
+  for (const entry of otherEntries) {
     const config = SYNC_CONFIG[entry.tableName]
     if (!config) {
       // 理论上不会出现未知表名；出现了也不能让它卡住队列，直接跳过
