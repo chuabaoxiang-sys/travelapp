@@ -64,6 +64,12 @@ export function AddExpenseSheet({
   // 否则在"大家分摊"模式里手动取消勾选到只剩1人时，界面会突然塌成"个人开销"的样子，
   // 用户还在调整名单就被打断。splitType 是同步字段，不用等异步查询就能确定初始值
   const [mode, setMode] = useState<'share' | 'personal'>(initial?.splitType === 'none' ? 'personal' : 'share')
+  // "平均分摊/自定义金额"——现实中很多账目不是刚好平分的（比如有人点的菜更贵），
+  // 加一种"自己填每个人多少"的分摊方式。customAmounts 用字符串存（输入框原始值），
+  // 不用数字，避免用户输入"12."这种还没打完的中间状态被强行转成"12"
+  const [splitMode, setSplitMode] = useState<'equal' | 'exact'>(initial?.splitType === 'exact' ? 'exact' : 'equal')
+  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({})
+  const customInitialized = useRef(false)
 
   // 分摊对象：新记账默认勾选全部成员（家庭场景下最常见的就是大家平摊）；
   // 编辑已有账目则要回填它原本的分摊名单。两边都依赖异步查询（members / expenseSplits），
@@ -95,6 +101,19 @@ export function AddExpenseSheet({
     }
   }, [initial, existingSplits, members])
 
+  // 编辑一笔本来就是"自定义金额"分摊的账目时，回填每个人原本填的具体数字，
+  // 不能让编辑时又被打回平均分摊的样子
+  useEffect(() => {
+    if (customInitialized.current) return
+    if (initial?.splitType === 'exact') {
+      if (!existingSplits.length) return
+      const next: Record<string, string> = {}
+      existingSplits.forEach((s) => { next[s.memberId] = String(s.shareAmount) })
+      setCustomAmounts(next)
+    }
+    customInitialized.current = true
+  }, [initial, existingSplits])
+
   const visibleCategories = categories.filter((c) => c.phase === phase || c.phase === 'either')
   const isForeign = currency !== trip.homeCurrency
   const numAmount = parseFloat(amount) || 0
@@ -104,12 +123,29 @@ export function AddExpenseSheet({
   const homeAmount = numAmount * numRate
   const rateReady = !isForeign || numRate > 0
 
+  // 切到"自定义金额"模式时，先按平均分摊帮忙填一份起点，用户在这个基础上改，
+  // 不用每次都从0开始手算
+  function seedEqualCustomAmounts(ids: string[]) {
+    if (!ids.length || !homeAmount) return
+    const n = ids.length
+    const base = Math.floor((homeAmount / n) * 100) / 100
+    const remainder = Math.round((homeAmount - base * n) * 100) / 100
+    const next: Record<string, string> = {}
+    ids.forEach((id, i) => { next[id] = (i === 0 ? base + remainder : base).toFixed(2) })
+    setCustomAmounts(next)
+  }
+
+  const customTotal = splitMemberIds.reduce((sum, id) => sum + (parseFloat(customAmounts[id] ?? '0') || 0), 0)
+  const customDiff = Math.round((homeAmount - customTotal) * 100) / 100
+  const usingExactSplit = mode === 'share' && splitMode === 'exact' && splitMemberIds.length >= 2
+  const customValid = !usingExactSplit || Math.abs(customDiff) < 0.01
+
   // 防止快速连续点两下"保存"/"删除"触发两次并发的写操作——之前这两个函数
   // 没有任何防抖手段，纯靠"手气好没人真的点这么快"撑着
   const [saving, setSaving] = useState(false)
 
   async function save() {
-    if (saving || !numAmount || !categoryId || !rateReady) return
+    if (saving || !numAmount || !categoryId || !rateReady || !customValid) return
     setSaving(true)
     try {
       await doSave()
@@ -154,7 +190,10 @@ export function AddExpenseSheet({
     // 干脆没勾任何人（"个人开销"模式）才是真正的不分摊。之前用">= 2"判断会把
     // "只勾1个非付款人"也归到"不分摊"，导致这笔钱被错记成付款人自己的开销，
     // 分摊对象欠的钱凭空消失——也让编辑时这笔账会被误判回"个人开销"页签
-    const splitType: SplitType = splitMemberIds.length > 0 ? 'equal' : 'none'
+    const splitType: SplitType = splitMemberIds.length === 0 ? 'none' : usingExactSplit ? 'exact' : 'equal'
+    const customAmountsForSave = usingExactSplit
+      ? Object.fromEntries(splitMemberIds.map((id) => [id, parseFloat(customAmounts[id] ?? '0') || 0]))
+      : undefined
     const expenseId = initial?.id ?? crypto.randomUUID()
 
     if (initial) {
@@ -202,7 +241,7 @@ export function AddExpenseSheet({
       })
     }
 
-    await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIds, payer)
+    await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIds, payer, customAmountsForSave)
     onClose()
   }
 
@@ -433,7 +472,7 @@ export function AddExpenseSheet({
           <>
             <div className="flex items-center justify-between mt-3 mb-1">
               <span className="text-[10.5px] tracking-widest uppercase text-muted">
-                分摊给{splitMemberIds.length >= 2 ? `（各 ${homeAmount ? (homeAmount / splitMemberIds.length).toFixed(2) : '0.00'}）` : ''}
+                分摊给{splitMemberIds.length >= 2 && splitMode === 'equal' ? `（各 ${homeAmount ? (homeAmount / splitMemberIds.length).toFixed(2) : '0.00'}）` : ''}
               </span>
               {splitMemberIds.length !== members.length && (
                 <button
@@ -469,6 +508,56 @@ export function AddExpenseSheet({
             {splitMemberIds.length === 1 && (
               <div className="text-[11px] text-muted mt-1">只勾了一个人 = 算这个人自己的，不分摊</div>
             )}
+
+            {splitMemberIds.length >= 2 && (
+              <>
+                <div className="flex border border-line rounded-xl overflow-hidden mt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode('equal')}
+                    className={`flex-1 py-1.5 text-[12px] ${splitMode === 'equal' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+                  >
+                    平均分摊
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSplitMode('exact'); seedEqualCustomAmounts(splitMemberIds) }}
+                    className={`flex-1 py-1.5 text-[12px] ${splitMode === 'exact' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+                  >
+                    自定义金额
+                  </button>
+                </div>
+
+                {splitMode === 'exact' && (
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {splitMemberIds.map((id) => {
+                      const m = members.find((mm) => mm.id === id)
+                      if (!m) return null
+                      return (
+                        <div key={id} className="flex items-center gap-2 bg-card border border-line rounded-xl px-3 py-2">
+                          <Avatar member={m} size={20} />
+                          <span className="text-[12.5px] flex-1">{m.displayName}</span>
+                          <input
+                            value={customAmounts[id] ?? ''}
+                            onChange={(e) => setCustomAmounts((prev) => ({ ...prev, [id]: e.target.value }))}
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            className="w-[80px] text-right rounded-lg border border-line bg-paper px-2 py-1 text-[12.5px] tabular outline-none focus:border-plan"
+                          />
+                        </div>
+                      )
+                    })}
+                    <div className={`text-[11px] mt-0.5 ${customValid ? 'text-positive' : 'text-negative'}`}>
+                      {Math.abs(customDiff) < 0.01
+                        ? '刚好分完 ✓'
+                        : customDiff > 0
+                          ? `还剩 ${customDiff.toFixed(2)} 没分完`
+                          : `超出了 ${Math.abs(customDiff).toFixed(2)}`}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </>
         ) : (
           <div className="flex items-center gap-2 mt-3 text-[12px] text-muted bg-card border border-dashed border-line rounded-xl px-3 py-2.5">
@@ -490,7 +579,7 @@ export function AddExpenseSheet({
           )}
           <button
             onClick={save}
-            disabled={saving || !numAmount || !categoryId || !rateReady}
+            disabled={saving || !numAmount || !categoryId || !rateReady || !customValid}
             className="flex-1 rounded-2xl bg-plan text-card py-3.5 disabled:opacity-40 flex items-center justify-center"
             title={initial ? '保存修改' : '保存这笔'}
           >

@@ -10,21 +10,30 @@ function round2(n: number) {
 // 'none'（不分摊）就是整笔算付款人自己的——这样每笔费用的分摊份额永远加总等于
 // homeAmount，"谁付了多少"和"该分摊多少"才能对得上，按人结算的算法不用特判。
 // 均摊时用"取整+余数给第一个人"处理分不尽的情况，避免几分钱的误差凭空消失。
+// 'exact'：每个人分摊多少钱由 customAmounts 直接指定（调用方必须保证这些数字
+// 加总等于homeAmount——数据库自己也有一道 deferred constraint trigger 兜底校验，
+// 见 0001_init.sql 的 fn_check_expense_split_sum，这里的校验是给用户及时反馈，
+// 不是唯一防线）
 export function resolveSplitShares(
   homeAmount: number,
   splitType: SplitType,
   memberIds: string[],
   payerId: string,
+  customAmounts?: Record<string, number>,
 ): { memberId: string; shareAmount: number }[] {
   // 分摊名单里恰好剩1人时，这笔钱要记成"那个人"欠的——哪怕那个人不是付款人本人
   // （比如"BX垫付，只勾KN" = BX帮KN全额垫付，欠款人是KN）。不能跟"没人勾选"
   // （真正的个人开销，memberIds为空）混为一谈一律记回付款人名下，那样会把
-  // 该收的钱凭空记没，此前这里就是这个bug。
+  // 该收的钱凭空记没，此前这里就是这个bug。同时这个特例也意味着"只勾1人"时
+  // 不需要、也不应该走自定义金额那条路径——全额就是这一个人的
   if (memberIds.length === 1) {
     return [{ memberId: memberIds[0], shareAmount: round2(homeAmount) }]
   }
   if (splitType === 'none' || memberIds.length === 0) {
     return [{ memberId: payerId, shareAmount: round2(homeAmount) }]
+  }
+  if (splitType === 'exact' && customAmounts) {
+    return memberIds.map((id) => ({ memberId: id, shareAmount: round2(customAmounts[id] ?? 0) }))
   }
   const n = memberIds.length
   const base = Math.floor((homeAmount / n) * 100) / 100
@@ -42,11 +51,12 @@ export async function saveExpenseSplits(
   splitType: SplitType,
   memberIds: string[],
   payerId: string,
+  customAmounts?: Record<string, number>,
 ) {
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('未找到所属团队')
   await db.expenseSplits.where('expenseId').equals(expenseId).delete()
-  const shares = resolveSplitShares(homeAmount, splitType, memberIds, payerId)
+  const shares = resolveSplitShares(homeAmount, splitType, memberIds, payerId, customAmounts)
   await db.expenseSplits.bulkAdd(
     shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount })),
   )

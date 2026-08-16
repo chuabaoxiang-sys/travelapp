@@ -9,7 +9,9 @@ export interface Household {
 }
 export type ExpensePhase = 'pre_trip' | 'during_trip'
 export type CategoryPhase = 'pre_trip' | 'during_trip' | 'either'
-export type SplitType = 'none' | 'equal'
+// 'exact'：每个人分摊多少钱由用户自己填，不强制平分——数据库的 split_type
+// 枚举从一开始就留了这个值（还有一个'percentage'，暂时没有对应功能，不实现）
+export type SplitType = 'none' | 'equal' | 'exact'
 
 // 只读分享链接要分享什么：'none' = 没开启分享；其余三种决定 get_shared_trip
 // 这个数据库函数（见 supabase/migrations/0006_public_share.sql）返回哪些内容——

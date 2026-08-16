@@ -46,6 +46,20 @@ describe('resolveSplitShares', () => {
     const total = shares.reduce((sum, s) => sum + s.shareAmount, 0)
     expect(Math.round(total * 100) / 100).toBe(10.01)
   })
+
+  it('exact自定义金额：按customAmounts原样落地，不强制平分', () => {
+    const shares = resolveSplitShares(100, 'exact', ['a', 'b', 'c'], 'a', { a: 50, b: 30, c: 20 })
+    expect(shares).toEqual([
+      { memberId: 'a', shareAmount: 50 },
+      { memberId: 'b', shareAmount: 30 },
+      { memberId: 'c', shareAmount: 20 },
+    ])
+  })
+
+  it('exact但只勾了1个人时，跟其他splitType一样全额算那个人的，不看customAmounts', () => {
+    const shares = resolveSplitShares(100, 'exact', ['kn'], 'bx', { kn: 999 })
+    expect(shares).toEqual([{ memberId: 'kn', shareAmount: 100 }])
+  })
 })
 
 describe('simplifyDebts', () => {
