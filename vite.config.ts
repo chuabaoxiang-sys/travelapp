@@ -1,10 +1,26 @@
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// 构建时把当前git commit（短SHA）和构建时间打进产物里，给"检查更新"那个功能
+// 和反馈记录用——不依赖Vercel专属的环境变量（比如VERCEL_GIT_COMMIT_SHA），
+// 本地 npm run build 也能拿到一样的东西，不多绑定一个部署平台
+function getCommitSha(): string {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim()
+  } catch {
+    return 'dev'
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __APP_COMMIT__: JSON.stringify(getCommitSha()),
+    __APP_BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     tailwindcss(),

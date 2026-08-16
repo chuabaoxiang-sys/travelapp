@@ -170,7 +170,10 @@ export function FeedbackSheet({
                             </span>
                           </div>
                           <div className="text-[13px] mt-1 whitespace-pre-wrap break-words">{f.content}</div>
-                          <div className="text-[10.5px] text-muted mt-1">{new Date(f.createdAt).toLocaleDateString('zh-CN')}</div>
+                          <div className="text-[10.5px] text-muted mt-1 tabular">
+                            {new Date(f.createdAt).toLocaleDateString('zh-CN')}
+                            {f.appVersion && ` · 版本 ${f.appVersion}`}
+                          </div>
                         </div>
                         <button onClick={() => startEdit(f)} className="w-6 h-6 rounded-lg border border-line bg-card flex items-center justify-center text-muted flex-shrink-0" title="编辑">
                           <Pencil className="w-3 h-3" strokeWidth={1.8} />

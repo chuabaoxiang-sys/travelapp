@@ -1,5 +1,6 @@
 import { db } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
+import { APP_COMMIT } from '../lib/appVersion'
 import type { Feedback, FeedbackCategory } from '../types'
 
 export async function getAllFeedback(): Promise<Feedback[]> {
@@ -17,7 +18,8 @@ export async function createFeedback(params: {
   if (!householdId) throw new Error('未找到所属团队')
   const id = crypto.randomUUID()
   const now = Date.now()
-  const entry: Feedback = { id, householdId, ...params, createdAt: now, updatedAt: now }
+  // 提交这一刻的版本自动带上，不用用户自己说清楚是哪个版本
+  const entry: Feedback = { id, householdId, ...params, appVersion: APP_COMMIT, createdAt: now, updatedAt: now }
   await db.feedback.add(entry)
   return id
 }

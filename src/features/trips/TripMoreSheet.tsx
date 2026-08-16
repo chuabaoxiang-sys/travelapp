@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { X, Link2 } from 'lucide-react'
+import { X, Link2, RefreshCw } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import { effectiveShareScope } from '../../domain/share'
+import { formatAppVersion } from '../../lib/appVersion'
 import type { Trip } from '../../types'
 
 type ExportKind = 'excel' | 'json' | 'csv'
@@ -62,8 +63,25 @@ export function TripMoreSheet({
   // 安卓部分Chrome版本要求 navigator.share() 必须紧跟在用户点击后面调用，中间
   // 隔一段生成文件的 await 就会被判定"用户手势已过期"，报 NotAllowedError
   const [readyFile, setReadyFile] = useState<{ kind: ExportKind; file: File } | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEscapeKey(true, onClose)
+
+  // 手机上装成PWA之后没有浏览器的刷新按钮，下拉刷新手势也被关掉了（会误触发跳回
+  // "行程"页），用户没有任何办法主动"刷新一下试试"、也无从确认刚才那下到底有没有
+  // 生效。这里主动问一次有没有新版本，不管查到没查到都强制重新加载页面——真有新
+  // 版本的话会先经过main.tsx里controllerchange的自动跳转，版本号变了就是刷新生效的证据
+  async function handleManualRefresh() {
+    if (refreshing) return
+    setRefreshing(true)
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration()
+      await reg?.update()
+    } catch {
+      // 查更新失败不影响下面还是要刷新一次
+    }
+    window.location.reload()
+  }
 
   async function handlePrepare(kind: ExportKind) {
     setError(null)
@@ -170,6 +188,21 @@ export function TripMoreSheet({
             <div className="text-[10.5px] text-muted mt-0.5">用得不顺手的地方、想加的功能，都可以说</div>
           </div>
           <span className="text-[11.5px] text-plan flex-shrink-0">去反馈 ›</span>
+        </button>
+
+        <button
+          onClick={handleManualRefresh}
+          disabled={refreshing}
+          className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left disabled:opacity-50"
+        >
+          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
+            <RefreshCw className={`w-[17px] h-[17px] ${refreshing ? 'animate-spin' : ''}`} strokeWidth={1.8} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium">检查更新</div>
+            <div className="text-[10.5px] text-muted mt-0.5 tabular">当前版本 {formatAppVersion()}</div>
+          </div>
+          <span className="text-[11.5px] text-plan flex-shrink-0">{refreshing ? '刷新中…' : '点击刷新'}</span>
         </button>
       </div>
     </div>

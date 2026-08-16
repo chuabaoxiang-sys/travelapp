@@ -239,6 +239,9 @@ export interface Feedback {
   submittedBy: string
   category: FeedbackCategory
   content: string
+  // 提交时的APP版本（git短SHA），提交时自动写入，不需要用户自己说"我现在是哪个版本"。
+  // 老反馈记录没有这个字段，读的时候按 null 处理，不是bug
+  appVersion: string | null
   createdAt: number
   updatedAt: number
 }
