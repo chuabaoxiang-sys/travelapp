@@ -121,17 +121,18 @@ export function LocationPicker({
         value={query}
         onChange={(e) => handleType(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
-        placeholder="地点（可搜索选点，搜不到也可以直接贴Google Maps链接）"
+        placeholder="地点"
         className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
       />
       {value.lat != null && (
         <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-positive">📍已定位</span>
       )}
-      {!!countryCodes?.length && (
-        <div className="text-[10px] text-muted mt-1">
-          搜索范围已限定：{countryCodes.map((c) => countryByCode(c)?.nameZh ?? c).join('、')}
-        </div>
-      )}
+      <div className="text-[10px] text-muted mt-1">
+        可搜索选点，搜不到也可以直接贴Google Maps链接定位
+        {!!countryCodes?.length && (
+          <> · 搜索范围已限定：{countryCodes.map((c) => countryByCode(c)?.nameZh ?? c).join('、')}</>
+        )}
+      </div>
 
       {mapsLink && (
         <div className="mt-1.5 rounded-xl border border-line bg-card overflow-hidden">

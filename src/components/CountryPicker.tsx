@@ -54,9 +54,10 @@ export function CountryPicker({
         value={query}
         onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
-        placeholder="搜索目的地国家（可选，可多选）"
+        placeholder="搜索目的地国家"
         className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-plan"
       />
+      <div className="text-[10.5px] text-muted mt-1">可选，可多选</div>
       {open && results.length > 0 && (
         <div className="absolute z-40 mt-1 w-full rounded-xl border border-line bg-card shadow-lg overflow-hidden max-h-[180px] overflow-y-auto no-scrollbar">
           {results.map((c) => (

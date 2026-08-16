@@ -190,13 +190,16 @@ function TripForm({
 
   return (
     <div className="mt-3 bg-card border border-plan/40 rounded-2xl p-4 flex flex-col gap-2.5">
-      <input
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="行程名称，例如「2026日本关西家族游」"
-        className="rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-plan"
-      />
+      <div>
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="行程名称"
+          className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-plan"
+        />
+        <div className="text-[10.5px] text-muted mt-1">例如「2026日本关西家族游」</div>
+      </div>
       <div className="flex gap-2">
         <div className="flex-1"><DatePicker value={startDate ?? ''} onChange={setStartDate} placeholder="出发日期" /></div>
         <div className="flex-1"><DatePicker value={endDate ?? ''} onChange={setEndDate} placeholder="返程日期" /></div>
