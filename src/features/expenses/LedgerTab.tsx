@@ -6,6 +6,7 @@ import { formatMoney } from '../../lib/money'
 import { AddExpenseSheet } from './AddExpenseSheet'
 import { RateBookScreen } from '../rates/RateBookScreen'
 import { getOverallBudget } from '../../domain/budgets'
+import { computeBalances } from '../../domain/splits'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 
@@ -22,10 +23,25 @@ export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMember
   const categories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
   const members = useLiveQuery(() => db.members.toArray()) ?? []
   const overallBudget = useLiveQuery(() => getOverallBudget(trip.id), [trip.id])
+  // computeBalances 里的"应分摊(owed)"本来就是"这个人对这趟行程要负责多少钱"——
+  // 不管是分摊来的还是自己的个人开销，一笔账只要有他的 expense_split 行就会算进去，
+  // 正好就是"我的花费"这个数字，不用另外算一遍
+  const balances = useLiveQuery(() => computeBalances(trip.id), [trip.id]) ?? []
+  const myOwed = balances.find((b) => b.memberId === currentMemberId)?.owed ?? 0
   const [editingId, setEditingId] = useState<string | null>(null)
   const [rateBookOpen, setRateBookOpen] = useState(false)
+  // "团队/我的"切换同时控制顶部数字和下面的账目列表——两个各自独立控制会出现
+  // "团队总额+只看我的列表"这种自相矛盾的组合，不如合成一个视角切换更直观
+  const [view, setView] = useState<'team' | 'mine'>('team')
 
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
+  // "跟我相关"=我是付款人，或者这笔账的分摊名单里有我（个人开销也算，因为
+  // resolveSplitShares 对个人开销同样会给付款人自己记一条全额的split）
+  const myExpenseIds = new Set([
+    ...expenses.filter((e) => e.paidBy === currentMemberId).map((e) => e.id),
+    ...splits.filter((s) => s.memberId === currentMemberId).map((s) => s.expenseId),
+  ])
+  const visibleExpenses = view === 'mine' ? expenses.filter((e) => myExpenseIds.has(e.id)) : expenses
   const editingExpense = expenses.find((e) => e.id === editingId)
 
   function categoryOf(id: string) {
@@ -41,7 +57,7 @@ export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMember
   return (
     <div className="px-5 pt-3 pb-24 overflow-y-auto no-scrollbar h-full relative">
       <div className="flex items-center justify-between mb-1">
-        <span className="font-serif-sc text-sm font-semibold">记账 · 共 {expenses.length} 笔</span>
+        <span className="font-serif-sc text-sm font-semibold">记账 · 共 {visibleExpenses.length} 笔</span>
         <button
           onClick={() => setRateBookOpen(true)}
           className="w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-[14px] text-plan"
@@ -51,25 +67,50 @@ export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMember
         </button>
       </div>
 
-      <div className="bg-ink rounded-[20px] px-[18px] pt-[18px] pb-4 text-paper my-1.5 mb-4">
-        <div className="text-[11px] tracking-wider text-paper/55">已花费</div>
+      <div className="flex border border-line rounded-xl overflow-hidden my-1.5">
+        <button
+          type="button"
+          onClick={() => setView('team')}
+          className={`flex-1 py-1.5 text-[12px] ${view === 'team' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+        >
+          团队视角
+        </button>
+        <button
+          type="button"
+          onClick={() => setView('mine')}
+          className={`flex-1 py-1.5 text-[12px] ${view === 'mine' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+        >
+          我的花费
+        </button>
+      </div>
+
+      <div className="bg-ink rounded-[20px] px-[18px] pt-[18px] pb-4 text-paper mb-4">
+        <div className="text-[11px] tracking-wider text-paper/55">{view === 'team' ? '团队已花费' : '我的花费（含分摊）'}</div>
         <div className="flex items-baseline gap-2 mt-1.5">
-          <div className="font-serif-sc text-[30px] leading-none">{formatMoney(total, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}</div>
+          <div className="font-serif-sc text-[30px] leading-none">
+            {formatMoney(view === 'team' ? total : myOwed, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}
+          </div>
         </div>
-        {overallBudget && (
+        {view === 'team' && overallBudget && (
           <div className="mt-2 text-[11px] text-paper/50">
             {total > overallBudget.amount
               ? `已超出总预算 ${formatMoney(total - overallBudget.amount)}`
               : `距总预算还剩 ${formatMoney(overallBudget.amount - total)}`}
           </div>
         )}
+        {view === 'mine' && (
+          <div className="mt-2 text-[11px] text-paper/50">
+            不管是自己付的、还是分摊别人垫付的，这里都是你实际要承担的总额
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
-        {expenses.map((e) => {
+        {visibleExpenses.map((e) => {
           const cat = categoryOf(e.categoryId)
           const payer = memberOf(e.paidBy)
           const isPersonal = e.splitType === 'none'
+          const myShare = splits.find((s) => s.expenseId === e.id && s.memberId === currentMemberId)?.shareAmount
           return (
             <button
               key={e.id}
@@ -87,6 +128,11 @@ export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMember
                   </span>
                   {isPersonal && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-line text-muted flex-shrink-0">个人开销</span>}
                 </div>
+                {view === 'mine' && !isPersonal && (
+                  <div className="text-[11px] text-plan mt-0.5">
+                    你的份额 {myShare != null ? formatMoney(myShare, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency) : '—（你垫付，不分摊给自己）'}
+                  </div>
+                )}
               </div>
               <div className="text-right flex-shrink-0">
                 <div className="text-[15px] tabular">{formatMoney(e.homeAmount, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}</div>
@@ -97,7 +143,11 @@ export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMember
             </button>
           )
         })}
-        {!expenses.length && <div className="text-[13px] text-muted py-6 text-center">还没有记账，点右下角＋记一笔</div>}
+        {!visibleExpenses.length && (
+          <div className="text-[13px] text-muted py-6 text-center">
+            {view === 'mine' ? '还没有跟你相关的账目' : '还没有记账，点右下角＋记一笔'}
+          </div>
+        )}
       </div>
 
       {editingExpense && (
