@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Pencil, Trash2, X, Check, Plus } from 'lucide-react'
 import { db, deleteTripCascade } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
+import { computeTripStatus } from '../../domain/trips'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CountryPicker } from '../../components/CountryPicker'
@@ -71,9 +72,14 @@ export function TripPicker({ onSelect }: { onSelect: (id: string) => void }) {
                         )}
                       </div>
                     </div>
-                    <span className={`text-[10.5px] px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_CLASS[t.status]}`}>
-                      {STATUS_LABEL[t.status]}
-                    </span>
+                    {(() => {
+                      const status = computeTripStatus(t)
+                      return (
+                        <span className={`text-[10.5px] px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_CLASS[status]}`}>
+                          {STATUS_LABEL[status]}
+                        </span>
+                      )
+                    })()}
                   </div>
                 </button>
                 <div className="flex gap-3 mt-2.5 pt-2.5 border-t border-line">
