@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ensureSeedData } from './db/dexie'
 import { startAutoSync } from './db/sync'
 import { supabase } from './api/supabaseClient'
 import { getCurrentHouseholdId, signOut } from './domain/household'
 import { ensureLocalTestSeed } from './dev/localTestSeed'
+import { isLocalTestModeEnabled } from './dev/localTestMode'
+import { LocalTestModeBanner } from './dev/LocalTestModeBanner'
 import { EmailLogin } from './features/auth/EmailLogin'
 import { MemberGate } from './features/members/MemberGate'
 import { useCurrentMemberId } from './features/members/useCurrentMemberId'
@@ -32,7 +34,7 @@ function App() {
   // 没配置Supabase（比如本地没建.env.local）时不要卡在登录屏，直接放行——
   // 跟原来"同步功能整体不工作但APP能用"的降级逻辑保持一致
   useEffect(() => {
-    if (!supabase) {
+    if (!supabase || isLocalTestModeEnabled()) {
       setAuthState('ready')
       return
     }
@@ -61,12 +63,12 @@ function App() {
 
   if (!ready || authState === 'checking') return null
 
-  if (authState === 'signed-out') {
-    return <EmailLogin />
-  }
+  let content: ReactNode
 
-  if (authState === 'no-household') {
-    return (
+  if (authState === 'signed-out') {
+    content = <EmailLogin />
+  } else if (authState === 'no-household') {
+    content = (
       <div className="min-h-screen bg-ink flex items-center justify-center p-6">
         <div className="w-full max-w-sm bg-card rounded-3xl p-6 border border-line text-center">
           <div className="text-[11px] tracking-widest text-muted uppercase">旅记 · TripJournal</div>
@@ -83,19 +85,15 @@ function App() {
         </div>
       </div>
     )
-  }
-
-  if (!memberId) {
-    return (
+  } else if (!memberId) {
+    content = (
       <>
         <MemberGate onPicked={setMemberId} />
         <InstallPrompt />
       </>
     )
-  }
-
-  if (!tripId) {
-    return (
+  } else if (!tripId) {
+    content = (
       <>
         <TripPicker
           onSelect={(id) => {
@@ -106,20 +104,27 @@ function App() {
         <InstallPrompt />
       </>
     )
+  } else {
+    content = (
+      <>
+        <TripShell
+          tripId={tripId}
+          currentMemberId={memberId}
+          onSwitchTrip={() => {
+            localStorage.removeItem(CURRENT_TRIP_KEY)
+            setTripId(null)
+          }}
+          onSelectMember={setMemberId}
+        />
+        <InstallPrompt />
+      </>
+    )
   }
 
   return (
     <>
-      <TripShell
-        tripId={tripId}
-        currentMemberId={memberId}
-        onSwitchTrip={() => {
-          localStorage.removeItem(CURRENT_TRIP_KEY)
-          setTripId(null)
-        }}
-        onSelectMember={setMemberId}
-      />
-      <InstallPrompt />
+      {import.meta.env.DEV && isLocalTestModeEnabled() && <LocalTestModeBanner />}
+      {content}
     </>
   )
 }

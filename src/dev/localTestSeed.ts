@@ -1,11 +1,12 @@
 import { db, withoutOutboxTracking } from '../db/dexie'
 import { supabase } from '../api/supabaseClient'
 import { resolveSplitShares } from '../domain/splits'
+import { isLocalTestModeEnabled } from './localTestMode'
 import type { Trip, Member, TripMember, ItineraryDay, ItineraryItem, Expense, ExpenseSplit, RateBookEntry, Budget } from '../types'
 
-// 只在本地无Supabase的测试模式下才会跑（真实部署永远配置了Supabase，这个判断
-// 天然就是"这是不是我自己的本地测试环境"）；额外加 import.meta.env.DEV 双重保险，
-// 万一将来生产环境意外没配好Supabase，也绝不会把假数据塞进真实用户的浏览器
+// 只在本地无Supabase的测试模式下、或者手动开了本地测试模式（登录页那个按钮）
+// 时才会跑；额外加 import.meta.env.DEV 双重保险，万一将来生产环境意外没配好
+// Supabase，也绝不会把假数据塞进真实用户的浏览器
 const LOCAL_TEST_MARKER_ID = 'seed-member-dad'
 
 // 为什么要有这份数据：之前好几个真实bug都是"干净的新数据测不出来、真实数据形状
@@ -14,8 +15,8 @@ const LOCAL_TEST_MARKER_ID = 'seed-member-dad'
 // 故意包含"老数据"和边界情况的种子数据，以后验证UI默认先用这份，不用现造。
 // 用固定id而不是随机生成，配合下面的"已存在就跳过"检查，保证多次调用/热重载不会重复插入
 export async function ensureLocalTestSeed() {
-  if (supabase) return
   if (!import.meta.env.DEV) return
+  if (supabase && !isLocalTestModeEnabled()) return
   const existing = await db.members.get(LOCAL_TEST_MARKER_ID)
   if (existing) return
 

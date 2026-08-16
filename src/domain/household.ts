@@ -1,13 +1,15 @@
 import { supabase } from '../api/supabaseClient'
+import { isLocalTestModeEnabled } from '../dev/localTestMode'
 
 // 当前登录者所属的团队ID——整个APP运行期间只查一次（登录状态不会频繁变化），
 // 查过之后缓存在内存里，创建新记录时直接读这个值打进 householdId 字段
 let cachedHouseholdId: string | null = null
 
-// 没配置Supabase（本地没建 .env.local，比如临时测试环境）时用的固定假团队ID——
-// App.tsx 在这种情况下会跳过登录直接放行，但创建成员/行程等操作都要求有
-// householdId，如果这里还返回null会导致这些操作静默抛错（界面上看起来像没反应）。
-// 纯本地场景不会真的同步到任何云端，用哪个字符串都无所谓，固定一个方便辨认。
+// 没配置Supabase（本地没建 .env.local），或者在登录页手动开了本地测试模式
+// （localTestMode.ts）时用的固定假团队ID——两种情况App.tsx都会跳过登录直接
+// 放行，但创建成员/行程等操作都要求有householdId，如果这里还返回null会导致
+// 这些操作静默抛错（界面上看起来像没反应）。纯本地场景不会真的同步到任何云端，
+// 用哪个字符串都无所谓，固定一个方便辨认。
 const LOCAL_TEST_HOUSEHOLD_ID = 'local-test-household'
 
 // 未被邀请的邮箱专用错误——EmailLogin.tsx 靠这个类型区分"没被邀请"和其他发送失败，
@@ -48,7 +50,7 @@ export async function signOut() {
 // 如果查不到（邮箱还没被邀请进任何团队），返回 null，调用方要提示"此邮箱还没被邀请"
 export async function getCurrentHouseholdId(): Promise<string | null> {
   if (cachedHouseholdId) return cachedHouseholdId
-  if (!supabase) return LOCAL_TEST_HOUSEHOLD_ID
+  if (!supabase || isLocalTestModeEnabled()) return LOCAL_TEST_HOUSEHOLD_ID
   const { data, error } = await supabase.from('household_member').select('household_id').limit(1).maybeSingle()
   if (error || !data) return null
   cachedHouseholdId = data.household_id

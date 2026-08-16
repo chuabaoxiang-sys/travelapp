@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Mail, KeyRound } from 'lucide-react'
 import { sendLoginLink, joinHouseholdByInviteCode, NotInvitedError } from '../../domain/household'
+import { enableLocalTestMode } from '../../dev/localTestMode'
 
 export function EmailLogin() {
   const [email, setEmail] = useState('')
@@ -107,6 +108,18 @@ export function EmailLogin() {
               )}
             </div>
           </>
+        )}
+
+        {import.meta.env.DEV && (
+          <button
+            onClick={() => {
+              enableLocalTestMode()
+              window.location.reload()
+            }}
+            className="mt-4 pt-3 border-t border-line text-[12px] text-muted text-left w-full"
+          >
+            本地测试模式（跳过登录，看假数据 · 仅dev环境可见）
+          </button>
         )}
       </div>
     </div>
