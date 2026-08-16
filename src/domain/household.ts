@@ -58,3 +58,32 @@ export async function getCurrentHouseholdId(): Promise<string | null> {
 export function clearHouseholdCache() {
   cachedHouseholdId = null
 }
+
+// 拿当前团队的邀请码（第一次调用时数据库会懒生成）——给已登录成员看/复制，
+// 分享给想邀请的家人朋友
+export async function getHouseholdInviteCode(): Promise<string | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase.rpc('get_household_invite_code')
+  if (error) return null
+  return data
+}
+
+// 邀请码泄露了，作废重新生成一个
+export async function regenerateHouseholdInviteCode(): Promise<string | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase.rpc('regenerate_household_invite_code')
+  if (error) return null
+  return data
+}
+
+// 未登录也能调用——用邀请码把邮箱加入对应团队。邀请码本身不区分大小写
+// （数据库存的都是大写），这里统一转大写，方便对方直接复制粘贴或手打
+export async function joinHouseholdByInviteCode(email: string, code: string): Promise<boolean> {
+  if (!supabase) return false
+  const { data, error } = await supabase.rpc('join_household_by_invite_code', {
+    p_email: email.trim(),
+    p_code: code.trim().toUpperCase(),
+  })
+  if (error) return false
+  return data === true
+}

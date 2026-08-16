@@ -13,6 +13,7 @@ import { TripMoreSheet } from './TripMoreSheet'
 import { ShareSettingsSheet } from './ShareSettingsSheet'
 import { FeedbackSheet } from '../feedback/FeedbackSheet'
 import { IdentitySwitcher } from '../members/IdentitySwitcher'
+import { InviteCodeSheet } from '../members/InviteCodeSheet'
 
 const NOT_FOUND = Symbol('trip-not-found')
 
@@ -37,6 +38,7 @@ export function TripShell({
   const [moreOpen, setMoreOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shareSettingsOpen, setShareSettingsOpen] = useState(false)
+  const [inviteCodeOpen, setInviteCodeOpen] = useState(false)
 
   useEffect(() => {
     if (tripResult === NOT_FOUND) onSwitchTrip()
@@ -49,7 +51,11 @@ export function TripShell({
     <div className="min-h-screen bg-ink flex items-center justify-center p-4">
       <div className="w-full max-w-[420px] h-[860px] max-h-[92vh] bg-paper paper-texture rounded-[34px] overflow-hidden relative flex flex-col shadow-2xl">
         <div className="flex items-center justify-between px-5 pt-3.5 text-[11px] text-muted flex-shrink-0">
-          <IdentitySwitcher currentMemberId={currentMemberId} onSelectMember={onSelectMember} />
+          <IdentitySwitcher
+            currentMemberId={currentMemberId}
+            onSelectMember={onSelectMember}
+            onOpenInviteCode={() => setInviteCodeOpen(true)}
+          />
           <SyncStatusBadge />
         </div>
 
@@ -112,6 +118,8 @@ export function TripShell({
         {shareSettingsOpen && (
           <ShareSettingsSheet trip={trip} onClose={() => setShareSettingsOpen(false)} />
         )}
+
+        {inviteCodeOpen && <InviteCodeSheet onClose={() => setInviteCodeOpen(false)} />}
       </div>
     </div>
   )

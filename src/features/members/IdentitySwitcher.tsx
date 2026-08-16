@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { UserPlus, Check, Pencil, Trash2, Archive, ArchiveRestore, X } from 'lucide-react'
+import { UserPlus, Check, Pencil, Trash2, Archive, ArchiveRestore, X, KeyRound } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { Avatar } from '../../components/Avatar'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -13,9 +13,11 @@ import type { Member } from '../../types'
 export function IdentitySwitcher({
   currentMemberId,
   onSelectMember,
+  onOpenInviteCode,
 }: {
   currentMemberId: string
   onSelectMember: (id: string) => void
+  onOpenInviteCode: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -157,6 +159,14 @@ export function IdentitySwitcher({
                 添加家庭成员
               </button>
             )}
+
+            <button
+              onClick={() => { onOpenInviteCode(); closeDropdown() }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] text-muted border-t border-line"
+            >
+              <KeyRound className="w-[14px] h-[14px]" strokeWidth={1.8} />
+              邀请新成员加入团队
+            </button>
 
             {inactive.length > 0 && (
               <>
