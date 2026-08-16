@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Check, Copy, RefreshCw } from 'lucide-react'
+import { X, Check, Copy, RefreshCw, Eye } from 'lucide-react'
 import { setShareScope, setShareTemplate, regenerateShareToken, buildShareUrl, effectiveShareScope } from '../../domain/share'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -108,32 +108,32 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
         {sharing && (
           <>
             <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">选一套分享页模板</div>
-            <div className="flex flex-col gap-1.5 mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-4">
               {TEMPLATE_REGISTRY.map((t) => {
                 const active = trip.publicShareTemplate === t.id
+                const Thumb = t.thumbnail
                 return (
                   <button
                     key={t.id}
                     onClick={() => selectTemplate(t.id)}
-                    className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 border text-left ${
-                      active ? 'bg-plan/10 border-plan' : 'bg-card border-line'
-                    }`}
+                    className={`rounded-xl overflow-hidden border text-left bg-card ${active ? 'border-plan border-2' : 'border-line'}`}
                   >
-                    <div>
-                      <div className="text-[13px] font-medium">{t.label}</div>
-                      <div className="text-[11px] text-muted mt-0.5">{t.desc}</div>
+                    <div className="h-[62px] relative">
+                      <Thumb />
+                      {active && (
+                        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-plan text-card flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                        </span>
+                      )}
                     </div>
-                    {active && <Check className="w-4 h-4 text-plan flex-shrink-0" strokeWidth={2} />}
+                    <div className="text-[11px] font-medium px-2 py-1.5 truncate">{t.label}</div>
                   </button>
                 )
               })}
               {UPCOMING_TEMPLATES.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between rounded-xl px-3.5 py-2.5 border border-dashed border-line opacity-50"
-                >
-                  <div className="text-[13px]">{t.label}</div>
-                  <span className="text-[10.5px] text-muted flex-shrink-0">即将推出</span>
+                <div key={t.id} className="rounded-xl border border-dashed border-line opacity-50 flex flex-col">
+                  <div className="h-[62px] flex items-center justify-center text-[10.5px] text-muted">即将推出</div>
+                  <div className="text-[11px] px-2 py-1.5 truncate">{t.label}</div>
                 </div>
               ))}
             </div>
@@ -149,6 +149,15 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
                     <Copy className="w-3.5 h-3.5" strokeWidth={1.8} />
                     {copied ? '已复制' : '复制链接'}
                   </button>
+                  <a
+                    href={buildShareUrl(trip.publicShareToken!)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg border border-line px-3 py-2 text-muted flex items-center justify-center"
+                    title="预览分享页——发给朋友前，先看看对方会看到什么样子"
+                  >
+                    <Eye className="w-3.5 h-3.5" strokeWidth={1.8} />
+                  </a>
                   <button
                     onClick={() => setConfirmingRegenerate(true)}
                     className="rounded-lg border border-line px-3 py-2 text-muted flex items-center justify-center"

@@ -1,10 +1,10 @@
 import { formatMoney } from '../../../lib/money'
 import { formatDotDate } from '../formatShared'
+import { DAY_COLORS } from './colorBlockPalette'
 import type { ShareTemplateProps } from './types'
 
 const MONO = 'ui-monospace, "IBM Plex Mono", "SF Mono", Consolas, monospace'
 const ROUND = '"Zen Maru Gothic", "Noto Sans SC", -apple-system, system-ui, sans-serif'
-const DAY_COLORS = ['#FF6B4A', '#2BB3A3', '#F2B705', '#5B6EF5', '#E0559A']
 
 // 模板：亲子色块——一天一个颜色循环，圆润、明亮、好认，孩子也能一眼看懂
 // 今天去哪，最适合发在家族群里
