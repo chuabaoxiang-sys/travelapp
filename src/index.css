@@ -68,3 +68,13 @@ body {
   display: none;
   height: 0;
 }
+
+/* 验证码输错时的轻微抖动提示——比单纯变红边框更明显地传达"这次不对，重试" */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.shake {
+  animation: shake 0.3s;
+}

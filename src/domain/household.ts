@@ -16,7 +16,7 @@ const LOCAL_TEST_HOUSEHOLD_ID = 'local-test-household'
 // 分别展示不同的提示文案
 export class NotInvitedError extends Error {}
 
-export async function sendLoginLink(email: string): Promise<void> {
+export async function sendLoginCode(email: string): Promise<void> {
   if (!supabase) throw new Error('云端服务未配置')
   const trimmed = email.trim()
 
@@ -30,7 +30,18 @@ export async function sendLoginLink(email: string): Promise<void> {
     throw new NotInvitedError('这个邮箱还没被邀请')
   }
 
+  // signInWithOtp 这个API名字虽然还留着"Otp"，但发的是链接还是验证码完全由
+  // Supabase后台的邮件模板决定（模板里放{{ .Token }}就是验证码）——调用方式
+  // 不用变，只是邮箱那头收到的形式变了
   const { error } = await supabase.auth.signInWithOtp({ email: trimmed })
+  if (error) throw error
+}
+
+// 校验用户填的6位验证码——成功后Supabase客户端会自动建立session并触发
+// App.tsx 里监听的 onAuthStateChange，不需要这里手动处理后续跳转
+export async function verifyLoginCode(email: string, code: string): Promise<void> {
+  if (!supabase) throw new Error('云端服务未配置')
+  const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' })
   if (error) throw error
 }
 
