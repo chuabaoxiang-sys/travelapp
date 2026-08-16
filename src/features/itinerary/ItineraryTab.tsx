@@ -216,7 +216,7 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
                         </div>
                       )}
                       {it.notes && (
-                        <div className="text-[11px] text-muted mt-1.5 pt-1.5 border-t border-dashed border-line line-clamp-2 whitespace-pre-line leading-relaxed">
+                        <div className="text-[11px] text-muted mt-1.5 pt-1.5 border-t border-dashed border-line whitespace-pre-line leading-relaxed">
                           {it.notes}
                         </div>
                       )}
