@@ -77,6 +77,16 @@ export function TripMoreSheet({
     try {
       const reg = await navigator.serviceWorker?.getRegistration()
       await reg?.update()
+      // reg.update() resolve时只代表"检查请求发出去了"，新worker通常还要再装一下
+      // 才会真正接管页面——如果这时候就立刻刷新，大概率抢在新版本生效之前，刷出来
+      // 的还是旧缓存（之前这里就是这么写的，导致"检查更新"点了总感觉没生效）。
+      // 这里等一下真正的接管事件，最多等4秒，避免真没有新版本时按钮卡住不刷新
+      if (reg?.installing || reg?.waiting) {
+        await new Promise<void>((resolve) => {
+          navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), { once: true })
+          setTimeout(resolve, 4000)
+        })
+      }
     } catch {
       // 查更新失败不影响下面还是要刷新一次
     }
