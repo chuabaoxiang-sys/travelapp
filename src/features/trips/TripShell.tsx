@@ -14,6 +14,7 @@ import { ShareSettingsSheet } from './ShareSettingsSheet'
 import { FeedbackSheet } from '../feedback/FeedbackSheet'
 import { IdentitySwitcher } from '../members/IdentitySwitcher'
 import { InviteCodeSheet } from '../members/InviteCodeSheet'
+import { ShareStatusBadge } from './ShareStatusBadge'
 
 const NOT_FOUND = Symbol('trip-not-found')
 
@@ -56,7 +57,10 @@ export function TripShell({
             onSelectMember={onSelectMember}
             onOpenInviteCode={() => setInviteCodeOpen(true)}
           />
-          <SyncStatusBadge />
+          <div className="flex items-center gap-2">
+            <ShareStatusBadge trip={trip} onOpen={() => setShareSettingsOpen(true)} />
+            <SyncStatusBadge />
+          </div>
         </div>
 
         <div className="flex gap-2 mx-5 mt-2.5 flex-shrink-0">
