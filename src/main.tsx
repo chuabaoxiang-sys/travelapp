@@ -7,10 +7,11 @@ import './index.css'
 import App from './App.tsx'
 import { SharePage } from './features/share/SharePage.tsx'
 
-// 新版本部署后，后台的 service worker 会自动更新完成（registerType: 'autoUpdate'），
-// 但已经打开的这个标签页不会自动感知——不刷新一次的话，页面还在用旧的、服务器上
-// 已经不存在的文件名，会一直报 404。这里监听"新 SW 已接管"事件，自动刷新一次，
-// 用户不用再手动清缓存
+// 新版本部署后，service worker 会自动跳过等待+立刻接管所有已打开的页面
+// （vite.config.ts 里 workbox.skipWaiting + clientsClaim），但"已经打开的这个
+// 标签页"本身不会自动刷新——不刷新一次的话，页面还在用旧的、服务器上已经不存在
+// 的文件名，会一直报 404。这里监听"新 SW 已接管"事件，自动刷新一次，用户不用
+// 再手动清缓存
 if ('serviceWorker' in navigator) {
   let reloaded = false
   navigator.serviceWorker.addEventListener('controllerchange', () => {

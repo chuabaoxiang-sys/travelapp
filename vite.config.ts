@@ -54,6 +54,13 @@ export default defineConfig({
         // 把整个应用外壳（HTML/JS/CSS/图标）预缓存，保证断网也能直接打开；
         // 地图瓦片/地点搜索这些第三方请求不缓存，本来就要求联网才有意义
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // 真实bug教训：默认（false）生成的sw.js会把skipWaiting做成"要等一条
+        // SKIP_WAITING消息才触发"，但一直没有代码在发这条消息——新版本永远卡在
+        // "装完了、没人叫它接管"，不管用户怎么刷新都没用。这里改成无条件自动跳过等待
+        // +立刻接管所有已经打开的页面（clientsClaim），配合main.tsx里监听
+        // controllerchange自动刷新，更新才能真正做到"不用用户操心"
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
