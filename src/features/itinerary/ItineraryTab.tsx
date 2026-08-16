@@ -166,13 +166,14 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
                         countryCodes={trip.destinationCountries}
                         onCancel={() => setFormState(null)}
                         onDelete={() => setPendingDeleteId(it.id)}
-                        onSave={async (title, time, location) => {
+                        onSave={async (title, time, location, notes) => {
                           await db.itineraryItems.update(it.id, {
                             title,
                             time: time || null,
                             locationName: location.name || null,
                             lat: location.lat,
                             lng: location.lng,
+                            notes: notes || null,
                             updatedAt: Date.now(),
                           })
                           setFormState(null)
@@ -214,6 +215,11 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
                           {it.locationName}
                         </div>
                       )}
+                      {it.notes && (
+                        <div className="text-[11px] text-muted mt-1.5 pt-1.5 border-t border-dashed border-line line-clamp-2 whitespace-pre-line leading-relaxed">
+                          {it.notes}
+                        </div>
+                      )}
                     </div>
                     {legRow}
                   </Fragment>
@@ -228,7 +234,7 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
               <ItemForm
                 countryCodes={trip.destinationCountries}
                 onCancel={() => setFormState(null)}
-                onSave={async (title, time, location) => {
+                onSave={async (title, time, location, notes) => {
                   const day = await ensureDay(selected)
                   const householdId = await getCurrentHouseholdId()
                   if (!householdId) return
@@ -245,7 +251,7 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
                     locationName: location.name || null,
                     lat: location.lat,
                     lng: location.lng,
-                    notes: null,
+                    notes: notes || null,
                     createdAt: now,
                     updatedAt: now,
                   })
@@ -287,7 +293,7 @@ function ItemForm({
   countryCodes,
 }: {
   initial?: ItineraryItem
-  onSave: (title: string, time: string, location: LocationValue) => void
+  onSave: (title: string, time: string, location: LocationValue, notes: string) => void
   onCancel: () => void
   onDelete?: () => void
   countryCodes?: string[]
@@ -299,6 +305,7 @@ function ItemForm({
     lat: initial?.lat ?? null,
     lng: initial?.lng ?? null,
   })
+  const [notes, setNotes] = useState(initial?.notes ?? '')
 
   return (
     <div className="mt-2 bg-card border border-plan/40 rounded-2xl p-3 flex flex-col gap-2">
@@ -313,6 +320,16 @@ function ItemForm({
         />
       </div>
       <LocationPicker value={location} onChange={setLocation} countryCodes={countryCodes} />
+      <div>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="备注（可选）"
+          rows={2}
+          className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan leading-relaxed"
+        />
+        <div className="text-[10px] text-muted mt-1">拖右下角可以拉高；换行或加"1. 2. 3."就能分点</div>
+      </div>
       <div className="flex gap-2 mt-1">
         {onDelete && (
           <button onClick={onDelete} className="rounded-lg border border-negative/30 text-negative px-3 py-1.5" title="删除">
@@ -323,7 +340,7 @@ function ItemForm({
           <X className="w-4 h-4" strokeWidth={1.8} />
         </button>
         <button
-          onClick={() => title.trim() && onSave(title.trim(), time, location)}
+          onClick={() => title.trim() && onSave(title.trim(), time, location, notes.trim())}
           className="flex-1 rounded-lg bg-plan text-card py-1.5 flex items-center justify-center"
           title="保存"
         >
