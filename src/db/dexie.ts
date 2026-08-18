@@ -10,6 +10,7 @@ import type {
   RateBookEntry,
   Expense,
   ExpenseSplit,
+  ExpenseDayAllocation,
   Budget,
   Settlement,
   OutboxEntry,
@@ -28,6 +29,10 @@ import type {
 // saveExpenseSplits），逐行走这套通用的按行推送 hook 会撞上数据库那道延迟约束
 // 触发器，分摊记录永远同步不上去。saveExpenseSplits 自己手动调用 enqueueOutbox
 // 打包成一条 entry，pushOutbox 再特判这张表名单独处理
+//
+// expenseDayAllocations 反过来可以走这套逐行 hook：它没有 expenseSplits 那种
+// "总额必须等于费用总额"的延迟约束（见 0011 迁移里的说明），逐行推送不会被
+// 中间状态卡住；删掉的那几行也由 deleting hook 自然带上，不需要特殊处理
 const SYNCED_TABLES = [
   'trips',
   'members',
@@ -36,6 +41,7 @@ const SYNCED_TABLES = [
   'itineraryItems',
   'rateBookEntries',
   'expenses',
+  'expenseDayAllocations',
   'budgets',
   'settlements',
   'feedback',
@@ -51,6 +57,7 @@ export class TripJournalDB extends Dexie {
   rateBookEntries!: EntityTable<RateBookEntry, 'id'>
   expenses!: EntityTable<Expense, 'id'>
   expenseSplits!: EntityTable<ExpenseSplit, 'id'>
+  expenseDayAllocations!: EntityTable<ExpenseDayAllocation, 'id'>
   budgets!: EntityTable<Budget, 'id'>
   settlements!: EntityTable<Settlement, 'id'>
   outbox!: EntityTable<OutboxEntry, 'id'>
@@ -78,6 +85,11 @@ export class TripJournalDB extends Dexie {
     // 单独加一个版本只是因为它是全新的表，不影响已有表的数据
     this.version(2).stores({
       routeLegCache: 'dayId',
+    })
+    // 跨天开销的每日分摊。同样是全新的表，已有数据一行都不用改——老账目
+    // 没有 daySpreadMode，继续按 itineraryDayId 整笔算在一天上
+    this.version(3).stores({
+      expenseDayAllocations: 'id, expenseId, tripId, date',
     })
     registerOutboxHooks(this)
   }
@@ -190,10 +202,11 @@ export async function ensureItineraryDay(tripId: string, date: string) {
 export async function deleteTripCascade(tripId: string) {
   await db.transaction(
     'rw',
-    [db.trips, db.tripMembers, db.itineraryDays, db.itineraryItems, db.expenses, db.expenseSplits, db.budgets, db.settlements],
+    [db.trips, db.tripMembers, db.itineraryDays, db.itineraryItems, db.expenses, db.expenseSplits, db.expenseDayAllocations, db.budgets, db.settlements],
     async () => {
       const expenseIds = await db.expenses.where('tripId').equals(tripId).primaryKeys()
       await db.expenseSplits.where('expenseId').anyOf(expenseIds).delete()
+      await db.expenseDayAllocations.where('tripId').equals(tripId).delete()
       await db.expenses.where('tripId').equals(tripId).delete()
       await db.itineraryItems.where('tripId').equals(tripId).delete()
       await db.itineraryDays.where('tripId').equals(tripId).delete()

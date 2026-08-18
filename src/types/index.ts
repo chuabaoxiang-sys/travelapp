@@ -13,6 +13,11 @@ export type CategoryPhase = 'pre_trip' | 'during_trip' | 'either'
 // 枚举从一开始就留了这个值（还有一个'percentage'，暂时没有对应功能，不实现）
 export type SplitType = 'none' | 'equal' | 'exact'
 
+// 跨天开销怎么摊到每一天：'equal' 平均分（除不尽的零头给第一天），
+// 'exact' 每天的金额由用户自己填。刻意跟 SplitType 用同一套词，
+// 因为界面上就是同一套交互（见 domain/dayAllocations.ts）
+export type DaySpreadMode = 'equal' | 'exact'
+
 // 只读分享链接要分享什么：'none' = 没开启分享；其余三种决定 get_shared_trip
 // 这个数据库函数（见 supabase/migrations/0006_public_share.sql）返回哪些内容——
 // 'itinerary'/'expenses' 分别只给行程/花费汇总，'both' 两者都给。花费永远只给
@@ -155,6 +160,10 @@ export interface Expense {
   itineraryDayId: string | null
   itineraryItemId: string | null
   splitType: SplitType
+  // 住宿、周游券这类横跨好几天的开销，摊到每一天各算多少——null/undefined 表示
+  // 这是一笔普通的单日开销（老数据都是这种），当天花费按 itineraryDayId 整笔算。
+  // 有值时改为按 expenseDayAllocations 里那几行分别计入对应日期
+  daySpreadMode?: DaySpreadMode | null
   createdAt: number
   updatedAt: number
 }
@@ -165,6 +174,17 @@ export interface ExpenseSplit {
   expenseId: string
   memberId: string
   shareAmount: number
+}
+
+// 跨天开销摊到每一天的金额。选中的日子不要求连续（比如周游券只在第1天和第4天用），
+// 所以存的是一行一个具体日期，而不是起止范围
+export interface ExpenseDayAllocation {
+  id: string
+  householdId: string
+  expenseId: string
+  tripId: string
+  date: string // YYYY-MM-DD
+  amount: number
 }
 
 export interface Budget {

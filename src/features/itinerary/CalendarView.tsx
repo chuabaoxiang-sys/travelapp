@@ -1,9 +1,10 @@
 import { Fragment, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { ItineraryDay, ItineraryItem, Expense } from '../../types'
+import type { ItineraryDay, ItineraryItem, Expense, ExpenseDayAllocation } from '../../types'
 import { formatMoney } from '../../lib/money'
 import { formatTimeHM } from '../../lib/dates'
 import { sortItineraryItems } from '../../domain/itinerary'
+import { spendByDate as computeSpendByDate } from '../../domain/dayAllocations'
 import { useDayRouteLegs } from '../../lib/routeLegs'
 import { RouteLegHint } from '../../components/RouteLegHint'
 
@@ -26,12 +27,14 @@ export function CalendarView({
   itineraryDays,
   items,
   expenses,
+  dayAllocations,
   onJumpToTimeline,
 }: {
   tripDates: string[]
   itineraryDays: ItineraryDay[]
   items: ItineraryItem[]
   expenses: Expense[]
+  dayAllocations: ExpenseDayAllocation[]
   onJumpToTimeline: (date: string) => void
 }) {
   const initial = tripDates[0] ? new Date(tripDates[0] + 'T00:00:00') : new Date()
@@ -39,14 +42,12 @@ export function CalendarView({
   const [viewM, setViewM] = useState(initial.getMonth() + 1)
   const [selected, setSelected] = useState<string | null>(null)
 
-  const spendByDate = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const day of itineraryDays) {
-      const total = expenses.filter((e) => e.itineraryDayId === day.id).reduce((a, e) => a + e.homeAmount, 0)
-      if (total > 0) map.set(day.date, total)
-    }
-    return map
-  }, [itineraryDays, expenses])
+  // 住宿/周游券这类跨天开销不能整笔算在某一天头上——computeSpendByDate 会把
+  // 单日开销和"这一天分摊到多少"两条路径合起来算（见 domain/dayAllocations.ts）
+  const spendByDate = useMemo(
+    () => computeSpendByDate(expenses, dayAllocations, itineraryDays),
+    [itineraryDays, expenses, dayAllocations],
+  )
 
   function shiftMonth(delta: number) {
     let m = viewM + delta
@@ -102,7 +103,8 @@ export function CalendarView({
                 }`}
               >
                 <span>{d}</span>
-                {spend != null && <span className="text-[7.5px] tabular leading-none">{formatMoney(spend, '')}</span>}
+                {/* 0 不显示——自定义分摊时某一天可以填0，格子里挂个"0"只是噪音 */}
+                {!!spend && <span className="text-[7.5px] tabular leading-none">{formatMoney(spend, '')}</span>}
               </button>
             )
           })}

@@ -9,11 +9,12 @@ import { dateRange } from '../../lib/dates'
 import { RateChipRow, type RateSelection } from '../rates/RateChipRow'
 import { createRateBookEntry, recordRateUsage } from '../../domain/rates'
 import { saveExpenseSplits } from '../../domain/splits'
+import { saveDayAllocations, deleteDayAllocations } from '../../domain/dayAllocations'
 import { categoryColor } from '../../lib/categoryColors'
 import { CategoryIcon } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
-import type { Trip, ExpensePhase, Expense, SplitType, ExpenseSplit } from '../../types'
+import type { Trip, ExpensePhase, Expense, SplitType, ExpenseSplit, DaySpreadMode, ExpenseDayAllocation } from '../../types'
 
 export function AddExpenseSheet({
   trip,
@@ -59,6 +60,38 @@ export function AddExpenseSheet({
   )
   const [payer, setPayer] = useState(initial?.paidBy ?? currentMemberId)
   const [expenseDate, setExpenseDate] = useState(initial?.expenseDate ?? trip.startDate ?? new Date().toISOString().slice(0, 10))
+
+  // 住宿、周游券这类开销横跨好几天，整笔算在某一天会让那天的"当日花费"虚高、
+  // 其他天虚低。打开"跨多天"之后逐天勾选（不要求连续），再选平均分还是每天自己填——
+  // 交互刻意跟下面"分摊给成员"那套保持一致，同一个概念只学一次
+  const [spreadOpen, setSpreadOpen] = useState(!!initial?.daySpreadMode)
+  const [spreadDates, setSpreadDates] = useState<string[]>([])
+  // 跟 spreadDates 同步的一份镜像。连着快速点几个日期时，每次点击的处理函数拿到的
+  // 都是那一帧渲染时闭包里的旧数组，后一次点击会把前一次的选择覆盖掉（真机上手快
+  // 连点就会漏选）——从 ref 读当前值就不会踩这个坑
+  const spreadDatesRef = useRef<string[]>([])
+  const [dayMode, setDayMode] = useState<DaySpreadMode>(initial?.daySpreadMode === 'exact' ? 'exact' : 'equal')
+  const [dayAmounts, setDayAmounts] = useState<Record<string, string>>({})
+  const spreadInitialized = useRef(false)
+  const existingAllocations = useLiveQuery(
+    () => (initial ? db.expenseDayAllocations.where('expenseId').equals(initial.id).toArray() : Promise.resolve<ExpenseDayAllocation[]>([])),
+    [initial?.id],
+  ) ?? []
+
+  // 编辑一笔本来就跨天的开销时，回填它原本选中的那几天和每天的金额——
+  // 跟上面"关联到行程"那处一样要等异步查询真的到数据了再填，空数组不能当初始值
+  useEffect(() => {
+    if (spreadInitialized.current) return
+    if (!initial?.daySpreadMode) { spreadInitialized.current = true; return }
+    if (!existingAllocations.length) return
+    const sorted = [...existingAllocations].sort((a, b) => a.date.localeCompare(b.date))
+    spreadDatesRef.current = sorted.map((a) => a.date)
+    setSpreadDates(spreadDatesRef.current)
+    const next: Record<string, string> = {}
+    sorted.forEach((a) => { next[a.date] = String(a.amount) })
+    setDayAmounts(next)
+    spreadInitialized.current = true
+  }, [initial, existingAllocations])
 
   // "大家分摊/个人开销"用独立状态记录，而不是从 splitMemberIds.length 推导——
   // 否则在"大家分摊"模式里手动取消勾选到只剩1人时，界面会突然塌成"个人开销"的样子，
@@ -140,12 +173,40 @@ export function AddExpenseSheet({
   const usingExactSplit = mode === 'share' && splitMode === 'exact' && splitMemberIds.length >= 2
   const customValid = !usingExactSplit || Math.abs(customDiff) < 0.01
 
+  // 跨天分摊：切到"每天自定义"、或者改了天数之后，都先按平均填一份当起点。
+  // 天数一变总额就要重新分配，留着上一次手填的数字必然对不上账，不如重来一遍
+  function seedEqualDayAmounts(dates: string[]) {
+    if (!dates.length || !homeAmount) { setDayAmounts({}); return }
+    const n = dates.length
+    const base = Math.floor((homeAmount / n) * 100) / 100
+    const remainder = Math.round((homeAmount - base * n) * 100) / 100
+    const next: Record<string, string> = {}
+    dates.forEach((d, i) => { next[d] = (i === 0 ? base + remainder : base).toFixed(2) })
+    setDayAmounts(next)
+  }
+
+  function toggleSpreadDate(date: string) {
+    const cur = spreadDatesRef.current
+    const next = cur.includes(date)
+      ? cur.filter((d) => d !== date)
+      : [...cur, date].sort((a, b) => a.localeCompare(b))
+    spreadDatesRef.current = next
+    setSpreadDates(next)
+    if (dayMode === 'exact') seedEqualDayAmounts(next)
+  }
+
+  const evenDayShare = spreadDates.length ? homeAmount / spreadDates.length : 0
+  const dayTotal = spreadDates.reduce((sum, d) => sum + (parseFloat(dayAmounts[d] ?? '0') || 0), 0)
+  const dayDiff = Math.round((homeAmount - dayTotal) * 100) / 100
+  const usingExactDays = spreadOpen && dayMode === 'exact' && spreadDates.length > 0
+  const daysValid = !spreadOpen || (spreadDates.length > 0 && (!usingExactDays || Math.abs(dayDiff) < 0.01))
+
   // 防止快速连续点两下"保存"/"删除"触发两次并发的写操作——之前这两个函数
   // 没有任何防抖手段，纯靠"手气好没人真的点这么快"撑着
   const [saving, setSaving] = useState(false)
 
   async function save() {
-    if (saving || !numAmount || !categoryId || !rateReady || !customValid) return
+    if (saving || !numAmount || !categoryId || !rateReady || !customValid || !daysValid) return
     setSaving(true)
     try {
       await doSave()
@@ -195,6 +256,7 @@ export function AddExpenseSheet({
       ? Object.fromEntries(splitMemberIds.map((id) => [id, parseFloat(customAmounts[id] ?? '0') || 0]))
       : undefined
     const expenseId = initial?.id ?? crypto.randomUUID()
+    const daySpreadMode: DaySpreadMode | null = spreadOpen && spreadDates.length ? dayMode : null
 
     if (initial) {
       await db.expenses.update(initial.id, {
@@ -211,6 +273,7 @@ export function AddExpenseSheet({
         itineraryDayId,
         itineraryItemId,
         splitType,
+        daySpreadMode,
         updatedAt: Date.now(),
       })
     } else {
@@ -236,12 +299,24 @@ export function AddExpenseSheet({
         itineraryDayId,
         itineraryItemId,
         splitType,
+        daySpreadMode,
         createdAt: now,
         updatedAt: now,
       })
     }
 
     await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIds, payer, customAmountsForSave)
+
+    // 从"跨多天"改回"单日"时要把旧的每日分摊清掉，否则那几天的当日花费
+    // 会一直算着一笔已经不该分摊过去的钱
+    if (daySpreadMode) {
+      const dayAmountsForSave = dayMode === 'exact'
+        ? Object.fromEntries(spreadDates.map((d) => [d, parseFloat(dayAmounts[d] ?? '0') || 0]))
+        : undefined
+      await saveDayAllocations(expenseId, trip.id, homeAmount, daySpreadMode, spreadDates, dayAmountsForSave)
+    } else {
+      await deleteDayAllocations(expenseId)
+    }
     onClose()
   }
 
@@ -252,6 +327,7 @@ export function AddExpenseSheet({
     setSaving(true)
     try {
       await db.expenseSplits.where('expenseId').equals(initial.id).delete()
+      await deleteDayAllocations(initial.id)
       await db.expenses.delete(initial.id)
       onClose()
     } finally {
@@ -434,6 +510,105 @@ export function AddExpenseSheet({
         <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">日期</div>
         <DatePicker value={expenseDate} onChange={setExpenseDate} />
 
+        {tripDates.length > 1 && (
+          <div className="mt-3">
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">这笔花在几天里</div>
+            <div className="flex border border-line rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => { setSpreadOpen(false); spreadDatesRef.current = []; setSpreadDates([]); setDayAmounts({}) }}
+                className={`flex-1 py-2 text-[12.5px] ${!spreadOpen ? 'bg-plan text-card font-medium' : 'text-muted'}`}
+              >
+                单日
+              </button>
+              <button
+                type="button"
+                onClick={() => setSpreadOpen(true)}
+                className={`flex-1 py-2 text-[12.5px] ${spreadOpen ? 'bg-plan text-card font-medium' : 'text-muted'}`}
+              >
+                跨多天
+              </button>
+            </div>
+
+            {!spreadOpen ? (
+              <div className="text-[11px] text-muted mt-1">整笔算在上面那一天的「当日花费」里</div>
+            ) : (
+              <>
+                <div className="text-[10.5px] tracking-widest uppercase text-muted mt-2.5 mb-1">摊到哪几天（可点选，不用连续）</div>
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                  {tripDates.map((d) => {
+                    const num = d.slice(-2).replace(/^0/, '')
+                    const picked = spreadDates.includes(d)
+                    return (
+                      <button
+                        type="button"
+                        key={d}
+                        onClick={() => toggleSpreadDate(d)}
+                        className={`flex-shrink-0 rounded-lg px-2.5 py-1.5 text-[11.5px] tabular border ${
+                          picked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-[#57534E]'
+                        }`}
+                      >
+                        {num}日
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {!spreadDates.length ? (
+                  <div className="text-[11px] text-negative mt-1">至少要选一天</div>
+                ) : (
+                  <>
+                    <div className="flex border border-line rounded-xl overflow-hidden mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setDayMode('equal')}
+                        className={`flex-1 py-1.5 text-[12px] ${dayMode === 'equal' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+                      >
+                        平均分到每天
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setDayMode('exact'); seedEqualDayAmounts(spreadDates) }}
+                        className={`flex-1 py-1.5 text-[12px] ${dayMode === 'exact' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+                      >
+                        每天自定义
+                      </button>
+                    </div>
+
+                    {dayMode === 'equal' ? (
+                      <div className="text-[11px] text-muted mt-1.5">
+                        共 {spreadDates.length} 天，每天各 {evenDayShare.toFixed(2)}（除不尽的零头算在第一天）
+                      </div>
+                    ) : (
+                      <div className="mt-2 flex flex-col gap-1.5">
+                        {spreadDates.map((d) => (
+                          <div key={d} className="flex items-center gap-2 bg-card border border-line rounded-xl px-3 py-2">
+                            <span className="text-[12.5px] flex-1 tabular">{d}</span>
+                            <input
+                              value={dayAmounts[d] ?? ''}
+                              onChange={(e) => setDayAmounts((prev) => ({ ...prev, [d]: e.target.value }))}
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              className="w-[80px] text-right rounded-lg border border-line bg-paper px-2 py-1 text-[12.5px] tabular outline-none focus:border-plan"
+                            />
+                          </div>
+                        ))}
+                        <div className={`text-[11px] mt-0.5 ${Math.abs(dayDiff) < 0.01 ? 'text-positive' : 'text-negative'}`}>
+                          {Math.abs(dayDiff) < 0.01
+                            ? '刚好分完 ✓'
+                            : dayDiff > 0
+                              ? `还剩 ${dayDiff.toFixed(2)} 没分完`
+                              : `超出了 ${Math.abs(dayDiff).toFixed(2)}`}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">付款人</div>
         <div className="flex flex-wrap gap-1.5">
           {members.map((m) => (
@@ -579,7 +754,7 @@ export function AddExpenseSheet({
           )}
           <button
             onClick={save}
-            disabled={saving || !numAmount || !categoryId || !rateReady || !customValid}
+            disabled={saving || !numAmount || !categoryId || !rateReady || !customValid || !daysValid}
             className="flex-1 rounded-2xl bg-plan text-card py-3.5 disabled:opacity-40 flex items-center justify-center"
             title={initial ? '保存修改' : '保存这笔'}
           >

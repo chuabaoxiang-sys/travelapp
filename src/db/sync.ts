@@ -14,6 +14,7 @@ const TABLE_ORDER = [
   'rateBookEntries',
   'expenses',
   'expenseSplits',
+  'expenseDayAllocations',
   'budgets',
   'settlements',
   'feedback',

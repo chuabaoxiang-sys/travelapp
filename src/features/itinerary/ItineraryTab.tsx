@@ -4,6 +4,7 @@ import { Trash2, X, Check, Plus } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { sortItineraryItems } from '../../domain/itinerary'
+import { spendByDate } from '../../domain/dayAllocations'
 import type { Trip, ItineraryItem } from '../../types'
 import { formatMoney } from '../../lib/money'
 import { TimePicker } from '../../components/TimePicker'
@@ -38,10 +39,12 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
   const routeLegs = useDayRouteLegs(currentDay?.id, items)
 
   const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const dayAllocations = useLiveQuery(() => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  // 住宿/周游券这类跨天开销只算它分摊到今天的那部分，不整笔算在某一天头上
   const dayTotal = useMemo(() => {
     if (!currentDay) return 0
-    return expenses.filter((e) => e.itineraryDayId === currentDay.id).reduce((a, e) => a + e.homeAmount, 0)
-  }, [expenses, currentDay])
+    return spendByDate(expenses, dayAllocations, itineraryDays).get(currentDay.date) ?? 0
+  }, [expenses, dayAllocations, itineraryDays, currentDay])
 
   // null = 表单关闭；'new' = 新增（表单出现在列表最下面）；具体 id = 正在编辑该行程项
   // （编辑表单要原地替换那张卡片，不能跑到列表底部——不然用户会搞不清自己在改哪一条）
@@ -109,6 +112,7 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
             itineraryDays={itineraryDays}
             items={allItems}
             expenses={expenses}
+            dayAllocations={dayAllocations}
             onJumpToTimeline={(date) => { setSelected(date); setViewMode('timeline') }}
           />
         )}
