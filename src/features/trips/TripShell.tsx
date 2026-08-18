@@ -51,12 +51,23 @@ export function TripShell({
 
   // 安卓装成PWA后没有浏览器返回按钮，系统返回键是唯一的"退一步"手势。不接这个的话
   // 弹层开着按返回会直接退出整个APP
-  useBackDismiss(sheetOpen, () => setSheetOpen(false))
-  useBackDismiss(moreOpen, () => setMoreOpen(false))
-  useBackDismiss(feedbackOpen, () => setFeedbackOpen(false))
-  useBackDismiss(shareSettingsOpen, () => setShareSettingsOpen(false))
-  useBackDismiss(inviteCodeOpen, () => setInviteCodeOpen(false))
-  useBackDismiss(activityOpen, () => setActivityOpen(false))
+  //
+  // 只按"有没有弹层开着"注册一次，而不是每个弹层各注册一次——后者在"关掉这个、
+  // 同时打开那个"的切换里必然出bug：关闭方的清理函数调 history.back() 回收历史，
+  // 但 back() 是异步的，等它真正触发 popstate 时，接住的已经是刚打开的那个弹层，
+  // 它会以为用户按了返回键、立刻把自己关掉。表现就是"从更多面板点分享设置/提交
+  // 反馈/行程动态完全没反应"（真机反馈过）。合成一个之后，弹层之间切换时这个
+  // hook 的 active 一直是 true，不发生卸载+装载，那个竞态从根上就不存在了
+  const anySheetOpen = sheetOpen || moreOpen || feedbackOpen || shareSettingsOpen || inviteCodeOpen || activityOpen
+  function closeAllSheets() {
+    setSheetOpen(false)
+    setMoreOpen(false)
+    setFeedbackOpen(false)
+    setShareSettingsOpen(false)
+    setInviteCodeOpen(false)
+    setActivityOpen(false)
+  }
+  useBackDismiss(anySheetOpen, closeAllSheets)
 
   // 未读提示：家里别人记的账，进"记账"tab之前先在tab上点个红点。只有账目能做到这件事，
   // 因为只有 expense 存了作者（recordedBy）；行程项和结算记录还没有作者字段
