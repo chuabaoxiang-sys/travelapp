@@ -11,7 +11,17 @@ import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 
-export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
+export function LedgerTab({
+  trip,
+  currentMemberId,
+  highlightSince = 0,
+}: {
+  trip: Trip
+  currentMemberId: string
+  // 比这个时间点更新、且不是自己记的账目会带一圈高亮边——让"上次打开之后家里
+  // 多出来的东西"一眼能认出来，而不是混在列表里跟三天前那条长得一样
+  highlightSince?: number
+}) {
   const expenses = useLiveQuery(
     () => db.expenses.where('tripId').equals(trip.id).reverse().sortBy('createdAt'),
     [trip.id],
@@ -105,13 +115,17 @@ export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMember
         {visibleExpenses.map((e) => {
           const cat = categoryOf(e.categoryId)
           const payer = memberOf(e.paidBy)
+          const recorder = memberOf(e.recordedBy)
           const isPersonal = e.splitType === 'none'
           const myShare = myShareOf(e.id, splits, currentMemberId)
+          const isNew = !!highlightSince && e.createdAt > highlightSince && e.recordedBy !== currentMemberId
           return (
             <button
               key={e.id}
               onClick={() => setEditingId(e.id)}
-              className="text-left flex items-center gap-3 bg-card border border-line rounded-2xl px-3.5 py-2.5 hover:border-plan/50 transition-colors"
+              className={`text-left flex items-center gap-3 bg-card rounded-2xl px-3.5 py-2.5 border transition-colors hover:border-plan/50 ${
+                isNew ? 'border-spend/70 bg-spend/[.04]' : 'border-line'
+              }`}
             >
               <CategoryBadge category={cat} />
               <div className="flex-1 min-w-0">
@@ -124,6 +138,12 @@ export function LedgerTab({ trip, currentMemberId }: { trip: Trip; currentMember
                   </span>
                   {isPersonal && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-line text-muted flex-shrink-0">个人开销</span>}
                 </div>
+                {/* 谁记的这笔账。只在"记的人 ≠ 付钱的人"时才显示——两者相同是最常见的
+                    情况，那时候多这一行纯属噪音。这个字段一直都在存，只是以前从来没
+                    显示过，所以"这笔是家里别人帮我记的"完全看不出来 */}
+                {recorder && e.recordedBy !== e.paidBy && (
+                  <div className="text-[10.5px] text-muted/80 mt-0.5 truncate">由 {recorder.displayName} 记录</div>
+                )}
                 {view === 'mine' && !isPersonal && (
                   <div className="text-[11px] text-plan mt-0.5">
                     你的份额 {myShare != null ? formatMoney(myShare, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency) : '—（你垫付，不分摊给自己）'}

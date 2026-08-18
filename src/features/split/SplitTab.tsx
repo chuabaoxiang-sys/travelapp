@@ -11,7 +11,7 @@ import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import type { Trip, Settlement } from '../../types'
 
-export function SplitTab({ trip }: { trip: Trip }) {
+export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
   const members = useLiveQuery(() => db.members.toArray()) ?? []
   const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const settlements = useLiveQuery(() => getSettlements(trip.id), [trip.id]) ?? []
@@ -71,6 +71,7 @@ export function SplitTab({ trip }: { trip: Trip }) {
       amount,
       settledDate: settleDate,
       note: settleNote.trim() || null,
+      createdBy: currentMemberId,
     })
     setOpenKey(null)
   }

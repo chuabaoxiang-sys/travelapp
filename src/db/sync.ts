@@ -105,8 +105,13 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
   return { pushed, failed }
 }
 
-export async function pullAll(): Promise<void> {
-  if (!supabase) return
+// 返回"这一轮真的有多少行发生了变化"，给UI用来提示"刚拿到新东西"。
+// 注意不能直接用 toPut.length 当这个数字——每一轮都会把远端所有行原样 bulkPut 回本地，
+// 所以 toPut 基本恒等于全表行数，拿它当"有新数据"会导致每轮都误报。这里只数真正
+// 有差异的：本地压根没有的行、或者 updatedAt 变了的行，加上被删掉的行。
+export async function pullAll(): Promise<number> {
+  if (!supabase) return 0
+  let changed = 0
 
   let dayToTrip: Map<string, string> | null = null
 
@@ -133,10 +138,14 @@ export async function pullAll(): Promise<void> {
         localRow.tripId = dayToTrip.get(localRow.dayId) ?? localRow.tripId
       }
 
+      const existing = localById.get(localRow.id)
       if (config.hasUpdatedAt) {
-        const existing = localById.get(localRow.id)
         // 本地有还没推上去的更新改动，这一轮先不覆盖——等那条推成功后下一轮自然就一致了
         if (existing && existing.updatedAt > localRow.updatedAt) continue
+        if (!existing || existing.updatedAt !== localRow.updatedAt) changed++
+      } else if (!existing) {
+        // 没有 updatedAt 的表只认"本地压根没这行"，改动无法便宜地判断，宁可少报不误报
+        changed++
       }
       toPut.push(localRow)
     }
@@ -152,6 +161,7 @@ export async function pullAll(): Promise<void> {
       .filter((id: string) => !remoteIds.has(id) && !pendingIds.has(id))
     if (idsToDelete.length) {
       await withoutOutboxTracking(() => table.bulkDelete(idsToDelete))
+      changed += idsToDelete.length
     }
 
     if (tableName === 'itineraryDays') {
@@ -159,6 +169,18 @@ export async function pullAll(): Promise<void> {
       dayToTrip = new Map(allDays.map((d) => [d.id, d.tripId]))
     }
   }
+
+  return changed
+}
+
+// "这一轮拉到了新东西"的订阅口子。做成极简的回调集合而不是引入状态库/context——
+// 目前只有顶部那个同步角标需要知道这件事，用来短暂显示"刚更新"
+type PullListener = (changedRows: number) => void
+const pullListeners = new Set<PullListener>()
+
+export function onPulledChanges(cb: PullListener): () => void {
+  pullListeners.add(cb)
+  return () => pullListeners.delete(cb)
 }
 
 export async function runSync(): Promise<void> {
@@ -166,7 +188,8 @@ export async function runSync(): Promise<void> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return
   try {
     await pushOutbox()
-    await pullAll()
+    const changed = await pullAll()
+    if (changed > 0) pullListeners.forEach((cb) => cb(changed))
   } catch {
     // 网络抖动/偶发失败，下个周期自然会重试，这里不需要往上抛出打断调用方
   }
@@ -174,11 +197,39 @@ export async function runSync(): Promise<void> {
 
 let syncTimer: ReturnType<typeof setInterval> | null = null
 
-// 启动周期性同步：一进App先跑一次，之后每30秒跑一次，网络恢复时也立刻跑一次
+const FOREGROUND_INTERVAL_MS = 10_000
+const BACKGROUND_INTERVAL_MS = 60_000
+
+function scheduleSync(intervalMs: number) {
+  if (syncTimer) clearInterval(syncTimer)
+  syncTimer = setInterval(() => void runSync(), intervalMs)
+}
+
+// 启动周期性同步。三条触发路径：
+//   1. 一进App立刻跑一次
+//   2. 定时跑——前台10秒一次，切到后台放宽到60秒
+//   3. 网络恢复(online)、以及页面重新回到前台(visibilitychange)时立刻跑一次
+//
+// 为什么要加 visibilitychange：这个APP的数据是一家人共享的，但同步一直是静默轮询。
+// 最常见的场景是"放下手机一阵子，再拿起来看家里其他人记了什么"——如果只靠定时器，
+// 这时候要等最多一整个周期才能看到新数据，会让人觉得APP是死的。回前台立刻拉一次
+// 几乎不花成本，却正好覆盖了感知延迟最要紧的那一刻。
+// 前台缩到10秒（原来固定30秒）是为了照顾"两个人当面一起对账"的场景；后台反而放宽到
+// 60秒，避免手机在口袋里时白白耗电/耗流量。
 export function startAutoSync() {
   if (!supabase) return
   void runSync()
   window.addEventListener('online', () => void runSync())
   if (syncTimer) return
-  syncTimer = setInterval(() => void runSync(), 30_000)
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      void runSync()
+      scheduleSync(FOREGROUND_INTERVAL_MS)
+    } else {
+      scheduleSync(BACKGROUND_INTERVAL_MS)
+    }
+  })
+
+  scheduleSync(document.visibilityState === 'visible' ? FOREGROUND_INTERVAL_MS : BACKGROUND_INTERVAL_MS)
 }

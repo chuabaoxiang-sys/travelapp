@@ -123,6 +123,9 @@ export interface ItineraryItem {
   lat: number | null
   lng: number | null
   notes: string | null
+  // 谁加的这一项。可空：这个字段是后加的（迁移0012），之前的历史数据没有归属信息，
+  // "行程动态"遇到 null 时会退化成"有人加了…"
+  createdBy: string | null
   createdAt: number
   updatedAt: number
 }
@@ -206,6 +209,9 @@ export interface Settlement {
   amount: number
   settledDate: string
   note: string | null
+  // 谁记的这笔结算（不一定是转账双方之一，可能是家里管账的人代记）。可空，理由同
+  // ItineraryItem.createdBy
+  createdBy: string | null
   createdAt: number
   updatedAt: number
 }

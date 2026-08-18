@@ -109,17 +109,17 @@ export async function ensureLocalTestSeed() {
   ]
 
   const items: ItineraryItem[] = [
-    { id: 'seed-item-1', householdId, dayId: 'seed-day-1', tripId: tripCurrent.id, orderIndex: 0, time: '14:20', title: '成田机场T2抵达', locationName: '千叶县成田市', lat: 35.7647, lng: 140.3864, notes: null, createdAt: now, updatedAt: now },
-    { id: 'seed-item-2', householdId, dayId: 'seed-day-1', tripId: tripCurrent.id, orderIndex: 1, time: '16:40', title: '浅草寺 · 仲见世通', locationName: '东京都台东区浅草2-3-1', lat: 35.7148, lng: 139.7967, notes: null, createdAt: now, updatedAt: now },
-    { id: 'seed-item-3', householdId, dayId: 'seed-day-1', tripId: tripCurrent.id, orderIndex: 2, time: '19:00', title: '隅田川边晚餐', locationName: null, lat: null, lng: null, notes: null, createdAt: now, updatedAt: now },
-    { id: 'seed-item-4', householdId, dayId: 'seed-day-2', tripId: tripCurrent.id, orderIndex: 0, time: '09:30', title: '上野动物园', locationName: '东京都台东区上野公园9-83', lat: 35.7161, lng: 139.7712, notes: null, createdAt: now, updatedAt: now },
+    { id: 'seed-item-1', householdId, dayId: 'seed-day-1', tripId: tripCurrent.id, orderIndex: 0, time: '14:20', title: '成田机场T2抵达', locationName: '千叶县成田市', lat: 35.7647, lng: 140.3864, notes: null, createdBy: null, createdAt: now, updatedAt: now },
+    { id: 'seed-item-2', householdId, dayId: 'seed-day-1', tripId: tripCurrent.id, orderIndex: 1, time: '16:40', title: '浅草寺 · 仲见世通', locationName: '东京都台东区浅草2-3-1', lat: 35.7148, lng: 139.7967, notes: null, createdBy: null, createdAt: now, updatedAt: now },
+    { id: 'seed-item-3', householdId, dayId: 'seed-day-1', tripId: tripCurrent.id, orderIndex: 2, time: '19:00', title: '隅田川边晚餐', locationName: null, lat: null, lng: null, notes: null, createdBy: null, createdAt: now, updatedAt: now },
+    { id: 'seed-item-4', householdId, dayId: 'seed-day-2', tripId: tripCurrent.id, orderIndex: 0, time: '09:30', title: '上野动物园', locationName: '东京都台东区上野公园9-83', lat: 35.7161, lng: 139.7712, notes: null, createdBy: null, createdAt: now, updatedAt: now },
     // 缺时间——测试"时间未定"这类边界渲染
-    { id: 'seed-item-5', householdId, dayId: 'seed-day-2', tripId: tripCurrent.id, orderIndex: 1, time: null, title: '国立科学博物馆（时间未定）', locationName: '东京都台东区上野公园7-20', lat: 35.7166, lng: 139.7745, notes: null, createdAt: now, updatedAt: now },
-    { id: 'seed-item-6', householdId, dayId: 'seed-day-3', tripId: tripCurrent.id, orderIndex: 0, time: '07:50', title: '小田急浪漫特快', locationName: '新宿站3番线', lat: 35.6896, lng: 139.7006, notes: null, createdAt: now, updatedAt: now },
+    { id: 'seed-item-5', householdId, dayId: 'seed-day-2', tripId: tripCurrent.id, orderIndex: 1, time: null, title: '国立科学博物馆（时间未定）', locationName: '东京都台东区上野公园7-20', lat: 35.7166, lng: 139.7745, notes: null, createdBy: null, createdAt: now, updatedAt: now },
+    { id: 'seed-item-6', householdId, dayId: 'seed-day-3', tripId: tripCurrent.id, orderIndex: 0, time: '07:50', title: '小田急浪漫特快', locationName: '新宿站3番线', lat: 35.6896, lng: 139.7006, notes: null, createdBy: null, createdAt: now, updatedAt: now },
     // 单独一个远距离地点——测试通勤提示的"超过3km只显示公里数"分支
-    { id: 'seed-item-7', householdId, dayId: 'seed-day-3', tripId: tripCurrent.id, orderIndex: 1, time: '11:00', title: '大涌谷 · 黑蛋', locationName: '神奈川县足柄下郡箱根町', lat: 35.2333, lng: 139.0167, notes: null, createdAt: now, updatedAt: now },
+    { id: 'seed-item-7', householdId, dayId: 'seed-day-3', tripId: tripCurrent.id, orderIndex: 1, time: '11:00', title: '大涌谷 · 黑蛋', locationName: '神奈川县足柄下郡箱根町', lat: 35.2333, lng: 139.0167, notes: null, createdBy: null, createdAt: now, updatedAt: now },
     // 边界情况行程的唯一一项——缺时间也缺地点，标题刻意很长测试折行
-    { id: 'seed-item-edge', householdId, dayId: 'seed-day-edge', tripId: tripEdge.id, orderIndex: 0, time: null, title: '还没想好去哪，先占个位置提醒自己周末要出门走走透透气', locationName: null, lat: null, lng: null, notes: null, createdAt: now, updatedAt: now },
+    { id: 'seed-item-edge', householdId, dayId: 'seed-day-edge', tripId: tripEdge.id, orderIndex: 0, time: null, title: '还没想好去哪，先占个位置提醒自己周末要出门走走透透气', locationName: null, lat: null, lng: null, notes: null, createdBy: null, createdAt: now, updatedAt: now },
   ]
 
   const rateBookEntries: RateBookEntry[] = [

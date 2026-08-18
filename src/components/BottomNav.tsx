@@ -1,3 +1,5 @@
+import { Plus } from 'lucide-react'
+
 // 图标路径来自设计稿《底部导航图标.dc.html》(claude.ai/design 项目 504930bf-8bee-40ef-8a96-d7c3e5f39ae7)
 // 规范：24×24 viewBox，stroke-width 1.6，圆头圆角；选中态图标 #4C1D95，未选中 #A79E92
 const ICON_PATHS: Record<TabKey, { d: string; d2: string }> = {
@@ -30,19 +32,39 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'split', label: '分账' },
 ]
 
-export function BottomNav({ active, onChange }: { active: TabKey; onChange: (k: TabKey) => void }) {
+export function BottomNav({
+  active,
+  onChange,
+  badges,
+}: {
+  active: TabKey
+  onChange: (k: TabKey) => void
+  // 每个tab上"别人新写了几条"的未读数。故意做成可选：不传就完全是原来的样子
+  badges?: Partial<Record<TabKey, number>>
+}) {
   return (
-    <div className="absolute left-0 right-0 bottom-0 z-10 bg-paper/[.92] backdrop-blur-[18px] border-t border-[#E4DCCF] pt-[9px] pb-[26px] px-3 flex flex-col items-center">
+    <div className="absolute left-0 right-0 bottom-0 z-10 bg-paper/[.92] backdrop-blur-[18px] border-t border-[#E4DCCF] pt-[9px] pb-safe-nav px-3 flex flex-col items-center">
       <div className="flex w-full">
         {TABS.map((t) => {
           const isActive = active === t.key
+          const unseen = badges?.[t.key] ?? 0
           return (
             <button
               key={t.key}
               onClick={() => onChange(t.key)}
               className="flex-1 flex flex-col items-center gap-1 py-0.5"
             >
-              <TabIcon tab={t.key} active={isActive} />
+              <span className="relative">
+                <TabIcon tab={t.key} active={isActive} />
+                {/* 只显示一个小圆点，不显示具体数字——数字会让人以为"必须逐条处理完"，
+                    而这里想传达的只是"有人动过，去看一眼" */}
+                {unseen > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-1 w-[7px] h-[7px] rounded-full bg-spend ring-2 ring-paper"
+                    aria-label={`有 ${unseen} 条新记录`}
+                  />
+                )}
+              </span>
               <span className={`text-[10.5px] tracking-wide ${isActive ? 'text-ink' : 'text-[#A79E92]'}`}>{t.label}</span>
             </button>
           )
@@ -56,9 +78,10 @@ export function Fab({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="absolute right-5 bottom-[104px] w-[54px] h-[54px] rounded-full bg-plan text-card text-[28px] font-light flex items-center justify-center z-20 shadow-[0_8px_20px_rgba(76,29,149,0.35)]"
+      title="记一笔"
+      className="absolute right-5 bottom-safe-fab w-[54px] h-[54px] rounded-full bg-plan text-card flex items-center justify-center z-20 shadow-[0_8px_20px_rgba(76,29,149,0.35)] transition-transform active:scale-95"
     >
-      ＋
+      <Plus className="w-7 h-7" strokeWidth={2} />
     </button>
   )
 }

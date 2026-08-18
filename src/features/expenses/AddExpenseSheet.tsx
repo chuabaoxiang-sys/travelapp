@@ -205,6 +205,10 @@ export function AddExpenseSheet({
   // 没有任何防抖手段，纯靠"手气好没人真的点这么快"撑着
   const [saving, setSaving] = useState(false)
 
+  // 保存成功后先闪一下"已记下"再关闭。之前保存完 sheet 直接消失，动作和结果之间
+  // 没有任何确认——记账是这个APP里最高频的操作，值得有一个明确的"成交"信号
+  const [saved, setSaved] = useState(false)
+
   async function save() {
     if (saving || !numAmount || !categoryId || !rateReady || !customValid || !daysValid) return
     setSaving(true)
@@ -317,7 +321,10 @@ export function AddExpenseSheet({
     } else {
       await deleteDayAllocations(expenseId)
     }
-    onClose()
+    // 数据已经落地了，这里只是让确认态露个脸再收起来。刻意短（约0.6秒）——
+    // 再长就从"确认"变成"挡路"了
+    setSaved(true)
+    setTimeout(onClose, 600)
   }
 
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -337,6 +344,17 @@ export function AddExpenseSheet({
 
   // 嵌套的 ConfirmDialog（confirmingDelete）打开时暂停这里自己的Escape监听
   useEscapeKey(!confirmingDelete, onClose)
+
+  if (saved) {
+    return (
+      <div className="absolute inset-0 z-30 flex items-center justify-center bg-ink/35">
+        <div className="pop-in bg-card rounded-3xl px-7 py-6 flex flex-col items-center gap-2 shadow-2xl">
+          <Check className="w-9 h-9 text-positive" strokeWidth={2.2} />
+          <div className="text-[13.5px] text-ink">已记下</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end">

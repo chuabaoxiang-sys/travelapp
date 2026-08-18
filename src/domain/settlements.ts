@@ -14,12 +14,21 @@ export async function createSettlement(params: {
   amount: number
   settledDate: string
   note: string | null
+  // 记这笔结算的人。可空是为了兼容还没传这个值的调用方/历史数据
+  createdBy?: string | null
 }) {
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('未找到所属团队')
   const id = crypto.randomUUID()
   const now = Date.now()
-  const settlement: Settlement = { id, householdId, ...params, createdAt: now, updatedAt: now }
+  const settlement: Settlement = {
+    id,
+    householdId,
+    ...params,
+    createdBy: params.createdBy ?? null,
+    createdAt: now,
+    updatedAt: now,
+  }
   await db.settlements.add(settlement)
   return id
 }

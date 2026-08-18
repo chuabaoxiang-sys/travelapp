@@ -130,7 +130,7 @@ describe('computeBalances（真实走一遍Dexie，用fake-indexeddb）', () => 
     // 阿明先还50给爸爸
     await db.settlements.add({
       id: 'settle-1', householdId: 'h1', tripId, fromMemberId: 'aming', toMemberId: 'papa', amount: 50,
-      settledDate: '2026-09-04', note: '转账', createdAt: now, updatedAt: now,
+      settledDate: '2026-09-04', note: '转账', createdBy: 'aming', createdAt: now, updatedAt: now,
     })
 
     balances = await computeBalances(tripId)

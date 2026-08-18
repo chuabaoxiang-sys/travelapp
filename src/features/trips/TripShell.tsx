@@ -15,6 +15,9 @@ import { FeedbackSheet } from '../feedback/FeedbackSheet'
 import { IdentitySwitcher } from '../members/IdentitySwitcher'
 import { InviteCodeSheet } from '../members/InviteCodeSheet'
 import { ShareStatusBadge } from './ShareStatusBadge'
+import { useBackDismiss } from '../../hooks/useBackDismiss'
+import { useLastSeen, countUnseen } from './useLastSeen'
+import { ActivityFeed } from '../activity/ActivityFeed'
 
 const NOT_FOUND = Symbol('trip-not-found')
 
@@ -40,18 +43,45 @@ export function TripShell({
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shareSettingsOpen, setShareSettingsOpen] = useState(false)
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false)
+  const [activityOpen, setActivityOpen] = useState(false)
 
   useEffect(() => {
     if (tripResult === NOT_FOUND) onSwitchTrip()
   }, [tripResult, onSwitchTrip])
 
+  // 安卓装成PWA后没有浏览器返回按钮，系统返回键是唯一的"退一步"手势。不接这个的话
+  // 弹层开着按返回会直接退出整个APP
+  useBackDismiss(sheetOpen, () => setSheetOpen(false))
+  useBackDismiss(moreOpen, () => setMoreOpen(false))
+  useBackDismiss(feedbackOpen, () => setFeedbackOpen(false))
+  useBackDismiss(shareSettingsOpen, () => setShareSettingsOpen(false))
+  useBackDismiss(inviteCodeOpen, () => setInviteCodeOpen(false))
+  useBackDismiss(activityOpen, () => setActivityOpen(false))
+
+  // 未读提示：家里别人记的账，进"记账"tab之前先在tab上点个红点。只有账目能做到这件事，
+  // 因为只有 expense 存了作者（recordedBy）；行程项和结算记录还没有作者字段
+  const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(tripId).toArray(), [tripId]) ?? []
+  const { seenAt: ledgerSeenAt, markSeen: markLedgerSeen } = useLastSeen(tripId, 'ledger')
+  const unseenLedger = countUnseen(expenses, ledgerSeenAt, currentMemberId, (e) => e.recordedBy)
+  // 进tab时把"上次看到哪"作为高亮基准记下来，同时把这一刻标成已看过。
+  // markLedgerSeen 会返回更新前的旧值，所以这里不需要再去读 ledgerSeenAt——
+  // 避免了"在 effect 里引用一个自己会改掉的值"那种要靠省略依赖才能成立的写法
+  const [ledgerHighlightSince, setLedgerHighlightSince] = useState(0)
+  useEffect(() => {
+    if (tab !== 'ledger') return
+    setLedgerHighlightSince(markLedgerSeen())
+  }, [tab, markLedgerSeen])
+
   if (tripResult === undefined || tripResult === NOT_FOUND) return null
   const trip = tripResult
 
   return (
-    <div className="min-h-screen bg-ink flex items-center justify-center p-4">
-      <div className="w-full max-w-[420px] h-[860px] max-h-[92vh] bg-paper paper-texture rounded-[34px] overflow-hidden relative flex flex-col shadow-2xl">
-        <div className="flex items-center justify-between px-5 pt-3.5 text-[11px] text-muted flex-shrink-0">
+    // 手机上占满整屏（100dvh 而不是 vh——地址栏伸缩时 vh 会跳）；从 sm 往上才恢复成
+    // 居中的"手机框"外观。那个框是当初做可点击设计稿留下来的，在电脑上是加分项，
+    // 但装到手机主屏幕之后会变成一圈深色边框 + 上下各浪费一截屏幕，反而不像原生APP
+    <div className="min-h-[100dvh] bg-ink flex items-center justify-center sm:p-4">
+      <div className="w-full h-[100dvh] bg-paper paper-texture overflow-hidden relative flex flex-col sm:max-w-[420px] sm:h-[860px] sm:max-h-[92vh] sm:rounded-[34px] sm:shadow-2xl">
+        <div className="flex items-center justify-between px-5 pt-safe-header text-[11px] text-muted flex-shrink-0">
           <IdentitySwitcher
             currentMemberId={currentMemberId}
             onSelectMember={onSelectMember}
@@ -93,14 +123,16 @@ export function TripShell({
         </div>
 
         <div className="flex-1 relative overflow-hidden">
-          {tab === 'itinerary' && <ItineraryTab trip={trip} />}
-          {tab === 'ledger' && <LedgerTab trip={trip} currentMemberId={currentMemberId} />}
+          {tab === 'itinerary' && <ItineraryTab trip={trip} currentMemberId={currentMemberId} />}
+          {tab === 'ledger' && (
+            <LedgerTab trip={trip} currentMemberId={currentMemberId} highlightSince={ledgerHighlightSince} />
+          )}
           {tab === 'budget' && <BudgetTab trip={trip} />}
-          {tab === 'split' && <SplitTab trip={trip} />}
+          {tab === 'split' && <SplitTab trip={trip} currentMemberId={currentMemberId} />}
         </div>
 
         <Fab onClick={() => setSheetOpen(true)} />
-        <BottomNav active={tab} onChange={setTab} />
+        <BottomNav active={tab} onChange={setTab} badges={{ ledger: unseenLedger }} />
 
         {sheetOpen && (
           <AddExpenseSheet trip={trip} currentMemberId={currentMemberId} onClose={() => setSheetOpen(false)} />
@@ -112,8 +144,11 @@ export function TripShell({
             onClose={() => setMoreOpen(false)}
             onOpenFeedback={() => { setMoreOpen(false); setFeedbackOpen(true) }}
             onOpenShareSettings={() => { setMoreOpen(false); setShareSettingsOpen(true) }}
+            onOpenActivity={() => { setMoreOpen(false); setActivityOpen(true) }}
           />
         )}
+
+        {activityOpen && <ActivityFeed trip={trip} onClose={() => setActivityOpen(false)} />}
 
         {feedbackOpen && (
           <FeedbackSheet tripId={trip.id} currentMemberId={currentMemberId} onClose={() => setFeedbackOpen(false)} />

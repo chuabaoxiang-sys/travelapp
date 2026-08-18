@@ -19,7 +19,7 @@ import { RouteLegHint } from '../../components/RouteLegHint'
 const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 type ViewMode = 'timeline' | 'calendar' | 'map'
 
-export function ItineraryTab({ trip }: { trip: Trip }) {
+export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
   const days = trip.startDate && trip.endDate ? dateRange(trip.startDate, trip.endDate) : []
   const [viewMode, setViewMode] = useState<ViewMode>('timeline')
   const [selected, setSelected] = useState(days[0] ?? '')
@@ -247,6 +247,7 @@ export function ItineraryTab({ trip }: { trip: Trip }) {
                   await db.itineraryItems.add({
                     id,
                     householdId,
+                    createdBy: currentMemberId,
                     dayId: day.id,
                     tripId: trip.id,
                     orderIndex: items.length,

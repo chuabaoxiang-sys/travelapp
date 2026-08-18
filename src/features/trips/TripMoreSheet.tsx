@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { X, Link2, RefreshCw } from 'lucide-react'
+import { X, Link2, RefreshCw, Users } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
@@ -50,11 +50,13 @@ export function TripMoreSheet({
   onClose,
   onOpenFeedback,
   onOpenShareSettings,
+  onOpenActivity,
 }: {
   trip: Trip
   onClose: () => void
   onOpenFeedback: () => void
   onOpenShareSettings: () => void
+  onOpenActivity: () => void
 }) {
   const [busy, setBusy] = useState<ExportKind | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -185,8 +187,22 @@ export function TripMoreSheet({
         </button>
 
         <button
-          onClick={onOpenFeedback}
+          onClick={onOpenActivity}
           className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left"
+        >
+          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
+            <Users className="w-[17px] h-[17px]" strokeWidth={1.8} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium">行程动态</div>
+            <div className="text-[10.5px] text-muted mt-0.5">看家里谁记了账、加了什么安排</div>
+          </div>
+          <span className="text-[11.5px] text-plan flex-shrink-0">去看看 ›</span>
+        </button>
+
+        <button
+          onClick={onOpenFeedback}
+          className="w-full flex items-center gap-3 py-2.5 border-t border-line text-left"
         >
           <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
             <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

@@ -39,6 +39,25 @@ body {
   color: var(--color-ink);
 }
 
+/* 安全区适配。index.html 设了 viewport-fit=cover，所以装成PWA全屏跑的时候，页面会
+   一直延伸到刘海和底部 home indicator 底下——这几个类把内容推回真正看得见的范围。
+   在普通浏览器里访问时这些 inset 全是 0，所以无条件加上不会凭空多出空白，也不影响
+   桌面上那个居中的"手机框"外观 */
+/* 注意这几个类都把"原本的固定留白"算进 calc 里，而不是只给 inset——因为它们会和
+   Tailwind 的间距类争同一个属性，后定义的赢，只写 inset 会把原有留白抹掉 */
+.pt-safe-header {
+  padding-top: calc(0.875rem + env(safe-area-inset-top)); /* 0.875rem = 原来的 pt-3.5 */
+}
+/* 26px 是原来硬编码的近似值，保留作为下限——没有 home indicator 的设备仍然需要
+   这段留白，不然导航栏会紧贴屏幕最底边 */
+.pb-safe-nav {
+  padding-bottom: max(26px, env(safe-area-inset-bottom));
+}
+/* FAB 要跟着底部安全区一起上移，否则满屏之后会压到 home indicator 上 */
+.bottom-safe-fab {
+  bottom: calc(104px + env(safe-area-inset-bottom));
+}
+
 .paper-texture {
   background-image:
     repeating-linear-gradient(0deg, rgba(140, 120, 90, 0.045) 0 1px, transparent 1px 4px),
@@ -67,6 +86,42 @@ body {
 .scroll-fade::-webkit-scrollbar {
   display: none;
   height: 0;
+}
+
+/* 全局按压反馈。触屏上没有 hover 态，点下去如果什么反应都没有，会让人怀疑
+   "我到底点到了吗"——这是这个APP之前最缺的一类反馈。做成全局规则而不是逐个按钮加类，
+   是因为它应该是所有可点元素的默认行为，漏掉一个反而显得不一致。
+   用 scale 而不是变色：不会和各个按钮自己的配色打架 */
+button:not(:disabled) {
+  transition: transform 0.08s ease-out;
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* 保存成功的短暂确认。记完一笔以前是 sheet 直接消失、没有任何"存好了"的信号，
+   动作和结果之间少了一环。复用登录界面已有的✓语言保持一致 */
+@keyframes pop-in {
+  0% { transform: scale(0.8); opacity: 0; }
+  60% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pop-in {
+  animation: pop-in 0.28s ease-out;
+}
+
+/* 有人明确要求减少动效时，全部退化成瞬间完成——动效是锦上添花，不能成为障碍 */
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled) {
+    transition: none;
+  }
+  button:not(:disabled):active {
+    transform: none;
+  }
+  .pop-in,
+  .shake {
+    animation: none;
+  }
 }
 
 /* 验证码输错时的轻微抖动提示——比单纯变红边框更明显地传达"这次不对，重试" */
