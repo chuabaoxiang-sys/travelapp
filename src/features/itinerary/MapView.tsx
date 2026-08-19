@@ -1,22 +1,32 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import type { ItineraryDay, ItineraryItem } from '../../types'
 import { formatTimeHM } from '../../lib/dates'
 
-// 图钉按"第几天"上色，直接借用记账那套分类配色（跟花费类型没关系，纯粹是
-// 这套颜色已经调好、彼此足够好区分，不用再挑一套新的）
-const DAY_COLORS = ['#0f766e', '#7c3aed', '#c2410c', '#b45309', '#be123c', '#57534e']
+// 图钉按"第几天"上色。行程可以有很多天，颜色要足够多才不会撞色——
+// 均匀分布色相、固定饱和度和明度，保证颜色彼此好区分，又不会跳成荧光色
+const DAY_COLOR_COUNT = 30
+const DAY_COLORS = Array.from(
+  { length: DAY_COLOR_COUNT },
+  (_, i) => `hsl(${Math.round((360 / DAY_COLOR_COUNT) * i)}, 60%, 40%)`
+)
 
 // react-leaflet 在 Vite 下用默认 marker 图标会因为资源路径解析不到而报 404，
-// 干脆不用默认图标，改成跟设计语言一致的自绘圆形数字徽章
+// 干脆不用默认图标，改成跟设计语言一致的自绘水滴图钉
 function pinIcon(label: string, color: string) {
   return L.divIcon({
     className: '',
-    html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};color:#FFFDF9;display:flex;align-items:center;justify-content:center;font:600 12px 'Noto Serif SC',serif;box-shadow:0 2px 6px rgba(31,27,22,.35);border:2px solid #FFFDF9;">${label}</div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -14],
+    html: `<div style="width:34px;height:42px;filter:drop-shadow(0 3px 5px rgba(31,20,10,.38));position:relative;">
+      <svg viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;">
+        <path d="M17 0C7.6 0 0 7.5 0 16.8c0 11.3 15 23.6 16.3 24.7.4.3 1 .3 1.4 0C19 40.4 34 28.1 34 16.8 34 7.5 26.4 0 17 0z" fill="${color}"/>
+        <circle cx="17" cy="16.5" r="11.5" fill="#FFFDF9" opacity="0.16"/>
+      </svg>
+      <div style="position:absolute;top:5px;left:0;right:0;text-align:center;font:700 12.5px 'Noto Serif SC',serif;color:#FFFDF9;">${label}</div>
+    </div>`,
+    iconSize: [34, 42],
+    iconAnchor: [17, 42],
+    popupAnchor: [0, -40],
   })
 }
 
@@ -33,6 +43,8 @@ function arrowIcon(angleDeg: number, color: string) {
 }
 
 export function MapView({ days, items }: { days: ItineraryDay[]; items: ItineraryItem[] }) {
+  const [activeDayId, setActiveDayId] = useState<string | null>(null)
+
   const pinned = useMemo(() => items.filter((it) => it.lat != null && it.lng != null), [items])
 
   const dayIndexByDate = useMemo(() => {
@@ -80,44 +92,48 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
             attribution="&copy; OpenStreetMap contributors"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {[...dayGroups.entries()].flatMap(([dayId, dayItems]) => {
-            if (dayItems.length < 2) return []
-            const dayNum = dayIndexByDate.get(dayId) ?? 1
-            const color = DAY_COLORS[(dayNum - 1) % DAY_COLORS.length]
-            const positions: [number, number][] = dayItems.map((it) => [it.lat as number, it.lng as number])
-            const arrows = dayItems.slice(0, -1).map((a, i) => {
-              const b = dayItems[i + 1]
-              const midLat = ((a.lat as number) + (b.lat as number)) / 2
-              const midLng = ((a.lng as number) + (b.lng as number)) / 2
-              const dLat = (b.lat as number) - (a.lat as number)
-              const dLng = ((b.lng as number) - (a.lng as number)) * Math.cos((midLat * Math.PI) / 180)
-              const angle = (Math.atan2(-dLat, dLng) * 180) / Math.PI
+          {activeDayId &&
+            (() => {
+              const dayItems = dayGroups.get(activeDayId) ?? []
+              if (dayItems.length < 2) return null
+              const dayNum = dayIndexByDate.get(activeDayId) ?? 1
+              const color = DAY_COLORS[(dayNum - 1) % DAY_COLORS.length]
+              const positions: [number, number][] = dayItems.map((it) => [it.lat as number, it.lng as number])
+              const arrows = dayItems.slice(0, -1).map((a, i) => {
+                const b = dayItems[i + 1]
+                const midLat = ((a.lat as number) + (b.lat as number)) / 2
+                const midLng = ((a.lng as number) + (b.lng as number)) / 2
+                const dLat = (b.lat as number) - (a.lat as number)
+                const dLng = ((b.lng as number) - (a.lng as number)) * Math.cos((midLat * Math.PI) / 180)
+                const angle = (Math.atan2(-dLat, dLng) * 180) / Math.PI
+                return (
+                  <Marker
+                    key={`arrow-${activeDayId}-${i}`}
+                    position={[midLat, midLng]}
+                    icon={arrowIcon(angle, color)}
+                    interactive={false}
+                    keyboard={false}
+                  />
+                )
+              })
               return (
-                <Marker
-                  key={`arrow-${dayId}-${i}`}
-                  position={[midLat, midLng]}
-                  icon={arrowIcon(angle, color)}
-                  interactive={false}
-                  keyboard={false}
-                />
+                <>
+                  <Polyline
+                    key={`halo-${activeDayId}`}
+                    positions={positions}
+                    pathOptions={{ color: '#FBF7EE', weight: 6, opacity: 0.9, lineCap: 'round' }}
+                    interactive={false}
+                  />
+                  <Polyline
+                    key={`line-${activeDayId}`}
+                    positions={positions}
+                    pathOptions={{ color, weight: 3, opacity: 0.92, lineCap: 'round' }}
+                    interactive={false}
+                  />
+                  {arrows}
+                </>
               )
-            })
-            return [
-              <Polyline
-                key={`halo-${dayId}`}
-                positions={positions}
-                pathOptions={{ color: '#FBF7EE', weight: 6, opacity: 0.9, lineCap: 'round' }}
-                interactive={false}
-              />,
-              <Polyline
-                key={`line-${dayId}`}
-                positions={positions}
-                pathOptions={{ color, weight: 3, opacity: 0.92, lineCap: 'round' }}
-                interactive={false}
-              />,
-              ...arrows,
-            ]
-          })}
+            })()}
           {pinned.map((it) => {
             const dayNum = dayIndexByDate.get(it.dayId) ?? 1
             const color = DAY_COLORS[(dayNum - 1) % DAY_COLORS.length]
@@ -136,26 +152,37 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
             )
           })}
         </MapContainer>
-        <div className="absolute top-3 left-3 right-3 flex flex-wrap gap-1.5 pointer-events-none" style={{ zIndex: 1000 }}>
+        <div className="absolute top-3 left-3 right-3 flex flex-wrap gap-1.5" style={{ zIndex: 1000 }}>
           {[...dayGroups.keys()]
             .sort((a, b) => (dayIndexByDate.get(a) ?? 0) - (dayIndexByDate.get(b) ?? 0))
             .map((dayId) => {
               const dayNum = dayIndexByDate.get(dayId) ?? 1
               const color = DAY_COLORS[(dayNum - 1) % DAY_COLORS.length]
+              const active = activeDayId === dayId
               return (
-                <div
+                <button
                   key={dayId}
-                  className="flex items-center gap-1.5 bg-card/90 rounded-full pl-1.5 pr-2.5 py-1 text-[10.5px] font-semibold text-ink shadow-sm"
+                  type="button"
+                  onClick={() => setActiveDayId((cur) => (cur === dayId ? null : dayId))}
+                  className="flex items-center gap-1.5 rounded-full pl-1.5 pr-2.5 py-1 text-[10.5px] font-semibold shadow-sm transition-colors"
+                  style={
+                    active
+                      ? { background: color, color: '#FFFDF9' }
+                      : { background: 'rgba(255,253,249,0.9)', color: '#1f1b16' }
+                  }
                 >
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: active ? '#FFFDF9' : color }}
+                  />
                   第{dayNum}天
-                </div>
+                </button>
               )
             })}
         </div>
       </div>
       <div className="px-4 py-2 text-[10.5px] text-muted text-center flex-shrink-0 bg-paper">
-        © OpenStreetMap contributors · 颜色代表第几天 · 箭头指向下一站
+        © OpenStreetMap contributors · 点上面的"第几天"看那天的路线
       </div>
     </div>
   )
