@@ -111,6 +111,11 @@ export interface ItineraryDay {
   updatedAt: number
 }
 
+// 'needed' = 标记为需要预约但还没订；'booked' = 已确认。null/undefined = 不适用
+// （大部分行程项，比如"公园散步"）。刻意只有这两个"已标记"状态，没有第三个
+// "not-needed"值——不需要预约的行程项就是没有这个字段，不用专门表示"确认不需要"
+export type BookingStatus = 'needed' | 'booked'
+
 export interface ItineraryItem {
   id: string
   householdId: string
@@ -123,6 +128,10 @@ export interface ItineraryItem {
   lat: number | null
   lng: number | null
   notes: string | null
+  bookingStatus?: BookingStatus | null
+  // 预约截止日期（YYYY-MM-DD）。这次先不做提醒功能，字段先加上，
+  // 免得以后做提醒时又要一次迁移
+  bookingDeadline?: string | null
   // 谁加的这一项。可空：这个字段是后加的（迁移0012），之前的历史数据没有归属信息，
   // "行程动态"遇到 null 时会退化成"有人加了…"
   createdBy: string | null

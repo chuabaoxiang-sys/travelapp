@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, X, Check, Plus } from 'lucide-react'
+import { Trash2, X, Check, Plus, Filter } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { sortItineraryItems } from '../../domain/itinerary'
 import { spendByDate } from '../../domain/dayAllocations'
-import type { Trip, ItineraryItem } from '../../types'
+import { toggleBookingStatus } from '../../domain/booking'
+import type { Trip, ItineraryItem, BookingStatus } from '../../types'
 import { formatMoney } from '../../lib/money'
 import { TimePicker } from '../../components/TimePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -50,6 +51,10 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
   // （编辑表单要原地替换那张卡片，不能跑到列表底部——不然用户会搞不清自己在改哪一条）
   const [formState, setFormState] = useState<'new' | string | null>(null)
 
+  // 行程比较多的时候，这个筛选能一眼看出"这趟行程还有哪几项没订"。只影响时间线
+  // 这里的显示，不影响日历/地图视图，也不影响还没建过的那几天能不能选
+  const [onlyNeeded, setOnlyNeeded] = useState(false)
+
   const stripRef = useRef<HTMLDivElement>(null)
   const [scrollState, setScrollState] = useState({ left: false, right: true })
 
@@ -91,7 +96,7 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-5 pt-3 pb-1 flex-shrink-0">
+      <div className="px-5 pt-3 pb-1 flex-shrink-0 flex items-center justify-between">
         <div className="flex gap-1 bg-[#EDE6DA] rounded-xl p-1 w-fit">
           {([['timeline', '时间线'], ['calendar', '日历'], ['map', '地图']] as [ViewMode, string][]).map(([key, label]) => (
             <button
@@ -103,6 +108,17 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
             </button>
           ))}
         </div>
+        {viewMode === 'timeline' && (
+          <button
+            onClick={() => setOnlyNeeded((v) => !v)}
+            className={`w-8 h-8 rounded-[10px] border flex items-center justify-center flex-shrink-0 ${
+              onlyNeeded ? 'border-spend bg-spend/10 text-spend' : 'border-line bg-card text-muted'
+            }`}
+            title="只看待预约"
+          >
+            <Filter className="w-[15px] h-[15px]" strokeWidth={1.8} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-hidden">
@@ -170,7 +186,7 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
                         countryCodes={trip.destinationCountries}
                         onCancel={() => setFormState(null)}
                         onDelete={() => setPendingDeleteId(it.id)}
-                        onSave={async (title, time, location, notes) => {
+                        onSave={async (title, time, location, notes, bookingStatus) => {
                           await db.itineraryItems.update(it.id, {
                             title,
                             time: time || null,
@@ -178,6 +194,7 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
                             lat: location.lat,
                             lng: location.lng,
                             notes: notes || null,
+                            bookingStatus,
                             updatedAt: Date.now(),
                           })
                           setFormState(null)
@@ -187,6 +204,12 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
                     </Fragment>
                   )
                 }
+
+                // 正在编辑的那一条不受筛选影响（上面那个分支已经处理过、提前return了），
+                // 其余的按"只看待预约"筛掉——保留在 items.map 里逐个跳过而不是先
+                // filter()出一份新数组，是为了不打乱 routeLegs[i] 的下标对应关系
+                if (onlyNeeded && it.bookingStatus !== 'needed') return null
+
                 const itemTotal = expenses.filter((e) => e.itineraryItemId === it.id).reduce((a, e) => a + e.homeAmount, 0)
                 return (
                   <Fragment key={it.id}>
@@ -202,6 +225,21 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
                       <div className="flex justify-between gap-2.5 items-baseline">
                         <div className="text-sm font-medium min-w-0 flex-1 truncate">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
                         <div className="flex items-center gap-2 flex-shrink-0">
+                          {it.bookingStatus && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                db.itineraryItems.update(it.id, { bookingStatus: toggleBookingStatus(it.bookingStatus!), updatedAt: Date.now() })
+                              }}
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                it.bookingStatus === 'needed' ? 'bg-spend/10 text-spend' : 'bg-positive/10 text-positive'
+                              }`}
+                              title="点一下切换预约状态"
+                            >
+                              {it.bookingStatus === 'needed' ? '待预约' : '已预约'}
+                            </button>
+                          )}
                           {itemTotal > 0 && <span className="text-xs tabular text-plan">{formatMoney(itemTotal)}</span>}
                           <button
                             type="button"
@@ -232,13 +270,16 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
               {!items.length && formState !== 'new' && (
                 <div className="text-[13px] text-muted py-4 text-center">这天还没有安排，点下面添加一项</div>
               )}
+              {!!items.length && onlyNeeded && !items.some((it) => it.bookingStatus === 'needed' || formState === it.id) && (
+                <div className="text-[13px] text-muted py-4 text-center">这天没有待预约的行程项</div>
+              )}
             </div>
 
             {formState === 'new' ? (
               <ItemForm
                 countryCodes={trip.destinationCountries}
                 onCancel={() => setFormState(null)}
-                onSave={async (title, time, location, notes) => {
+                onSave={async (title, time, location, notes, bookingStatus) => {
                   const day = await ensureDay(selected)
                   const householdId = await getCurrentHouseholdId()
                   if (!householdId) return
@@ -257,6 +298,7 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
                     lat: location.lat,
                     lng: location.lng,
                     notes: notes || null,
+                    bookingStatus,
                     createdAt: now,
                     updatedAt: now,
                   })
@@ -298,7 +340,7 @@ function ItemForm({
   countryCodes,
 }: {
   initial?: ItineraryItem
-  onSave: (title: string, time: string, location: LocationValue, notes: string) => void
+  onSave: (title: string, time: string, location: LocationValue, notes: string, bookingStatus: BookingStatus | null) => void
   onCancel: () => void
   onDelete?: () => void
   countryCodes?: string[]
@@ -311,6 +353,9 @@ function ItemForm({
     lng: initial?.lng ?? null,
   })
   const [notes, setNotes] = useState(initial?.notes ?? '')
+  // 选了不等于存了——跟标题/备注这些字段一样是本地草稿，点"取消"就丢弃，
+  // 只有点保存才会写回数据库
+  const [bookingStatus, setBookingStatus] = useState<BookingStatus | null>(initial?.bookingStatus ?? null)
 
   return (
     <div className="mt-2 bg-card border border-plan/40 rounded-2xl p-3 flex flex-col gap-2">
@@ -335,6 +380,32 @@ function ItemForm({
         />
         <div className="text-[10px] text-muted mt-1">拖右下角可以拉高；换行或加"1. 2. 3."就能分点</div>
       </div>
+      <div>
+        <div className="text-[10px] tracking-widest uppercase text-muted mb-1">预约状态</div>
+        <div className="flex border border-line rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setBookingStatus(null)}
+            className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === null ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+          >
+            无需预约
+          </button>
+          <button
+            type="button"
+            onClick={() => setBookingStatus('needed')}
+            className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === 'needed' ? 'bg-spend text-card font-medium' : 'text-muted'}`}
+          >
+            待预约
+          </button>
+          <button
+            type="button"
+            onClick={() => setBookingStatus('booked')}
+            className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === 'booked' ? 'bg-positive text-card font-medium' : 'text-muted'}`}
+          >
+            已预约
+          </button>
+        </div>
+      </div>
       <div className="flex gap-2 mt-1">
         {onDelete && (
           <button onClick={onDelete} className="rounded-lg border border-negative/30 text-negative px-3 py-1.5" title="删除">
@@ -345,7 +416,7 @@ function ItemForm({
           <X className="w-4 h-4" strokeWidth={1.8} />
         </button>
         <button
-          onClick={() => title.trim() && onSave(title.trim(), time, location, notes.trim())}
+          onClick={() => title.trim() && onSave(title.trim(), time, location, notes.trim(), bookingStatus)}
           className="flex-1 rounded-lg bg-plan text-card py-1.5 flex items-center justify-center"
           title="保存"
         >

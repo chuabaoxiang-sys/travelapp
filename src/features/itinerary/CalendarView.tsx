@@ -126,7 +126,18 @@ export function CalendarView({
           {selectedItems.map((it, i) => (
             <Fragment key={it.id}>
               <div className="bg-card border border-line rounded-2xl p-3">
-                <div className="text-sm font-medium">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
+                <div className="flex items-center gap-1.5">
+                  <div className="text-sm font-medium">{it.time ? `${formatTimeHM(it.time)} ` : ''}{it.title}</div>
+                  {it.bookingStatus && (
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        it.bookingStatus === 'needed' ? 'bg-spend/10 text-spend' : 'bg-positive/10 text-positive'
+                      }`}
+                    >
+                      {it.bookingStatus === 'needed' ? '待预约' : '已预约'}
+                    </span>
+                  )}
+                </div>
                 {it.locationName && <div className="text-[11.5px] text-muted mt-1">{it.locationName}</div>}
               </div>
               {i < selectedItems.length - 1 && <RouteLegHint leg={routeLegs[i]} />}
