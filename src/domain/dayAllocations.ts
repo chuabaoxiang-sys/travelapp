@@ -12,7 +12,7 @@ function round2(n: number) {
 // （界面上有实时校验，跟自定义分摊给成员那处是同一套提示）。
 //
 // 日期不要求连续也不要求有序——传进来什么顺序就按什么顺序算，余数给第一项。
-// 调用方（AddExpenseSheet）传的是按日历排好序的日期，所以"第一天"就是最早那天
+// 调用方（AddExpensePage）传的是按日历排好序的日期，所以"第一天"就是最早那天
 export function resolveDayShares(
   homeAmount: number,
   mode: DaySpreadMode,

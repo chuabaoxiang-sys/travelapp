@@ -185,7 +185,7 @@ export async function ensureSeedData() {
 
 // 按日期取或建一条 itineraryDay——记账时把费用挂到某一天，
 // 那一天在 itineraryDays 里可能还没有记录（用户还没在时间线加过行程项），
-// ItineraryTab 和 AddExpenseSheet 都要用到，所以提到这里共用一份
+// ItineraryTab 和 AddExpensePage 都要用到，所以提到这里共用一份
 export async function ensureItineraryDay(tripId: string, date: string) {
   const existing = await db.itineraryDays.where({ tripId, date }).first()
   if (existing) return existing

@@ -3,13 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
-import { AddExpenseSheet } from './AddExpenseSheet'
+import { AddExpensePage } from './AddExpensePage'
 import { RateBookScreen } from '../rates/RateBookScreen'
 import { getOverallBudget } from '../../domain/budgets'
 import { computeBalances } from '../../domain/splits'
 import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
+import { useBackDismiss } from '../../hooks/useBackDismiss'
 
 export function LedgerTab({
   trip,
@@ -44,6 +45,11 @@ export function LedgerTab({
   // "团队/我的"切换同时控制顶部数字和下面的账目列表——两个各自独立控制会出现
   // "团队总额+只看我的列表"这种自相矛盾的组合，不如合成一个视角切换更直观
   const [view, setView] = useState<'team' | 'mine'>('team')
+
+  // 编辑账目现在是全屏页而不是带X的弹层，安卓硬件返回键是唯一预期的退出方式——
+  // 之前这个入口完全没接返回键（只有TripShell里"＋"新增那条接了），弹层时代还有
+  // 个明显的关闭按钮兜底，全屏页上不接会比之前更糟
+  useBackDismiss(!!editingId, () => setEditingId(null))
 
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
   const myExpenseIds = myRelatedExpenseIds(expenses, splits, currentMemberId)
@@ -167,7 +173,7 @@ export function LedgerTab({
       </div>
 
       {editingExpense && (
-        <AddExpenseSheet
+        <AddExpensePage
           trip={trip}
           currentMemberId={currentMemberId}
           initial={editingExpense}

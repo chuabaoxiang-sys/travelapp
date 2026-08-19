@@ -7,7 +7,7 @@ import { ItineraryTab } from '../itinerary/ItineraryTab'
 import { LedgerTab } from '../expenses/LedgerTab'
 import { BudgetTab } from '../budget/BudgetTab'
 import { SplitTab } from '../split/SplitTab'
-import { AddExpenseSheet } from '../expenses/AddExpenseSheet'
+import { AddExpensePage } from '../expenses/AddExpensePage'
 import { SyncStatusBadge } from '../../components/SyncStatusBadge'
 import { TripMoreSheet } from './TripMoreSheet'
 import { ShareSettingsSheet } from './ShareSettingsSheet'
@@ -146,7 +146,7 @@ export function TripShell({
         <BottomNav active={tab} onChange={setTab} badges={{ ledger: unseenLedger }} />
 
         {sheetOpen && (
-          <AddExpenseSheet trip={trip} currentMemberId={currentMemberId} onClose={() => setSheetOpen(false)} />
+          <AddExpensePage trip={trip} currentMemberId={currentMemberId} onClose={() => setSheetOpen(false)} />
         )}
 
         {moreOpen && (

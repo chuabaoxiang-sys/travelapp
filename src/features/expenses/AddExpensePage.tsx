@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, CheckCheck, Trash2, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Check } from 'lucide-react'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { DatePicker } from '../../components/DatePicker'
@@ -16,7 +16,16 @@ import { Avatar } from '../../components/Avatar'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { Trip, ExpensePhase, Expense, SplitType, ExpenseSplit, DaySpreadMode, ExpenseDayAllocation } from '../../types'
 
-export function AddExpenseSheet({
+// 全屏页面而不是底部弹层——这个表单从"住宿/交通跨天分摊"上线后，塞进88%高度的
+// 弹层里必须一路拖到底才能存，实测过什么都没填就已经有111px在屏幕外。改成全屏页
+// + 行式布局：阶段/日期/备注/付款人/关联行程五项常驻可见，不折叠不隐藏；
+// 只有"怎么分"和"花在几天"这两项——各自都是"多选+平均/自定义切换+逐项金额+
+// 实时校验条"四层堆叠——才推进独立子页，子页有自己的返回键、校验条固定在页面底部。
+//
+// 顶栏"保存"用文字而不是图标：汇率簿页面已经用一个紫色✓表示"完成、自动保存"，
+// 这里如果也用✓图标，会被误读成同一种"点了就存好、随时能退出"，但这里的保存和
+// 取消是两个不同的、有后果的动作，需要文字把它们分清楚。
+export function AddExpensePage({
   trip,
   currentMemberId,
   initial,
@@ -60,6 +69,13 @@ export function AddExpenseSheet({
   )
   const [payer, setPayer] = useState(initial?.paidBy ?? currentMemberId)
   const [expenseDate, setExpenseDate] = useState(initial?.expenseDate ?? trip.startDate ?? new Date().toISOString().slice(0, 10))
+
+  // 哪个子页面正在显示——'怎么分'/'花在几天'这两项内部结构太重（chip多选+平均/
+  // 自定义切换+逐项金额+校验条），推成独立全屏子页；null 表示还在主页面。
+  // 子页的"‹ 返回"只是本地状态切换，不涉及浏览器历史——安卓硬件返回键仍然是
+  // "关掉整个记账页"（跟点取消/点背景一样，本来就不带二次确认，子页多退一层
+  // 不改变这个既有语义）；只有桌面 Escape 键会先退一层子页，见下面 useEscapeKey
+  const [activeDetail, setActiveDetail] = useState<'split' | 'days' | null>(null)
 
   // 住宿、周游券这类开销横跨好几天，整笔算在某一天会让那天的"当日花费"虚高、
   // 其他天虚低。打开"跨多天"之后逐天勾选（不要求连续），再选平均分还是每天自己填——
@@ -342,8 +358,14 @@ export function AddExpenseSheet({
     }
   }
 
-  // 嵌套的 ConfirmDialog（confirmingDelete）打开时暂停这里自己的Escape监听
-  useEscapeKey(!confirmingDelete, onClose)
+  // 嵌套的 ConfirmDialog（confirmingDelete）打开时暂停这里自己的Escape监听。
+  // 在子页（activeDetail 不为null）时 Escape 先退一层子页，而不是直接关掉整个页面——
+  // 这只是本地状态切换，不涉及浏览器历史，所以可以比安卓硬件返回键（由上层
+  // TripShell 统一处理，语义是"关掉整个记账页"）更精细一层
+  useEscapeKey(!confirmingDelete, () => {
+    if (activeDetail) { setActiveDetail(null); return }
+    onClose()
+  })
 
   if (saved) {
     return (
@@ -356,31 +378,80 @@ export function AddExpenseSheet({
     )
   }
 
+  const canSave = !saving && !!numAmount && !!categoryId && rateReady && customValid && daysValid
+
+  const payerName = members.find((m) => m.id === payer)?.displayName ?? '付款人'
+  const splitSummary = mode === 'personal'
+    ? `${payerName}的个人开销`
+    : splitMemberIds.length === 0
+      ? '未选择分摊对象'
+      : `${payerName}垫付 · ${splitMemberIds.length}人${splitMode === 'exact' && splitMemberIds.length >= 2 ? '自定义' : '平均'}分摊`
+  const daysSummary = !spreadOpen || !spreadDates.length ? '单日' : `跨${spreadDates.length}天${dayMode === 'exact' ? ' · 自定义' : ''}`
+
   return (
-    <div className="absolute inset-0 z-30 flex flex-col justify-end">
-      <div className="flex-1 bg-ink/35" onClick={onClose} />
-      <div className="bg-paper rounded-t-[26px] px-5 pt-3.5 pb-7 shadow-[0_-10px_40px_rgba(31,27,22,0.2)] max-h-[88%] overflow-y-auto no-scrollbar">
-        <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-3.5" />
-        <div className="flex justify-between items-center mb-1.5">
-          <span className="text-sm font-semibold">{initial ? '编辑这笔' : '记一笔'}</span>
-          <button onClick={onClose} className="text-muted" title="取消">
-            <X className="w-4 h-4" strokeWidth={1.8} />
+    <div className="absolute inset-0 z-30 bg-paper flex flex-col">
+      <div className="flex items-center justify-between px-4 pt-safe-header pb-2.5 border-b border-line flex-shrink-0">
+        <button onClick={onClose} className="text-muted text-[12.5px]">取消</button>
+        <span className="font-serif-sc text-[13.5px] font-semibold">{initial ? '编辑这笔' : '记一笔'}</span>
+        <div className="flex items-center gap-4">
+          {initial && (
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              disabled={saving}
+              className="text-negative/85 disabled:opacity-40"
+              title="删除"
+            >
+              <Trash2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
+            </button>
+          )}
+          <button
+            onClick={save}
+            disabled={!canSave}
+            className="text-plan text-[12.5px] font-semibold disabled:opacity-40"
+          >
+            保存
           </button>
         </div>
+      </div>
 
-        <div className="flex gap-1 bg-[#EDE6DA] rounded-xl p-1 my-2.5 w-fit">
-          {(['pre_trip', 'during_trip'] as ExpensePhase[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => { setPhase(p); setCategoryId('') }}
-              className={`rounded-lg px-3 py-1.5 text-[12.5px] ${phase === p ? 'bg-ink text-paper' : 'text-[#8A8177]'}`}
-            >
-              {p === 'pre_trip' ? '出行前' : '途中'}
-            </button>
-          ))}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 pb-safe-nav">
+        <div className="grid grid-cols-[1fr_84px] gap-2 rounded-2xl border-[1.5px] border-plan bg-card px-3.5 py-2.5">
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            inputMode="decimal"
+            placeholder="金额"
+            autoFocus={!initial}
+            className="text-[26px] font-serif-sc tabular outline-none min-w-0 bg-transparent"
+          />
+          <input
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            placeholder="币种"
+            className="rounded-lg border border-line bg-paper px-2 text-sm text-center uppercase outline-none focus:border-plan min-w-0 self-center"
+          />
         </div>
 
-        <div className="flex flex-wrap gap-1.5 py-1">
+        {isForeign && (
+          <div className="mt-2">
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">
+              选择汇率（{currency} → {trip.homeCurrency}）
+            </div>
+            <RateChipRow
+              tripId={trip.id}
+              currency={currency}
+              homeCurrency={trip.homeCurrency}
+              value={rateSelection}
+              onChange={setRateSelection}
+            />
+            <div className="text-[11px] text-muted mt-1.5">
+              {numRate > 0 ? <>≈ {trip.homeCurrency} {homeAmount.toFixed(2)}</> : '请选择或新增一个汇率'}
+            </div>
+          </div>
+        )}
+
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">分类</div>
+        <div className="flex flex-wrap gap-1.5">
           {visibleCategories.map((c) => {
             const color = categoryColor(c)
             const selected = categoryId === c.id
@@ -407,15 +478,56 @@ export function AddExpenseSheet({
           })}
         </div>
 
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">阶段</div>
+        <div className="flex gap-1 bg-[#EDE6DA] rounded-xl p-1 w-fit">
+          {(['pre_trip', 'during_trip'] as ExpensePhase[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => { setPhase(p); setCategoryId('') }}
+              className={`rounded-lg px-3 py-1.5 text-[12.5px] ${phase === p ? 'bg-ink text-paper' : 'text-[#8A8177]'}`}
+            >
+              {p === 'pre_trip' ? '出行前' : '途中'}
+            </button>
+          ))}
+        </div>
+
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">日期</div>
+        <DatePicker value={expenseDate} onChange={setExpenseDate} />
+
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">备注</div>
+        <input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="备注（可选）"
+          className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm outline-none focus:border-plan"
+        />
+
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">付款人</div>
+        <div className="flex flex-wrap gap-1.5">
+          {members.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setPayer(m.id)}
+              className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border ${
+                payer === m.id ? 'bg-ink text-paper border-ink' : 'bg-card border-line text-[#57534E]'
+              }`}
+            >
+              <Avatar member={m} size={20} />
+              {m.displayName}垫付
+            </button>
+          ))}
+        </div>
+
         {tripDates.length > 0 && (
-          <div className="mt-1">
+          <div className="mt-3">
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">关联行程</div>
             {!linkOpen ? (
               <button
                 type="button"
                 onClick={() => setLinkOpen(true)}
                 className="text-[12px] text-plan"
               >
-                🔗 关联到行程里的某天/某个行程项（可选）
+                关联到行程里的某天/某个行程项（可选）
               </button>
             ) : (
               <div className="bg-card border border-line rounded-xl p-2.5">
@@ -484,53 +596,179 @@ export function AddExpenseSheet({
           </div>
         )}
 
-        <div className="grid grid-cols-[1fr_84px] gap-2 mt-3">
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="decimal"
-            placeholder="金额"
-            className="rounded-xl border border-line bg-card px-3 py-2.5 text-lg font-serif-sc tabular outline-none focus:border-plan min-w-0"
-          />
-          <input
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-            placeholder="币种"
-            className="rounded-xl border border-line bg-card px-2 py-2.5 text-sm text-center uppercase outline-none focus:border-plan min-w-0"
-          />
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">详情</div>
+        <div className="border border-line bg-card rounded-xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setActiveDetail('split')}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 border-b border-line text-left"
+          >
+            <span className="text-[12.5px] text-muted">怎么分</span>
+            <span className="text-[12.5px] flex items-center gap-1">
+              {splitSummary}
+              <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />
+            </span>
+          </button>
+          {tripDates.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setActiveDetail('days')}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 text-left"
+            >
+              <span className="text-[12.5px] text-muted">花在几天</span>
+              <span className="text-[12.5px] flex items-center gap-1">
+                {daysSummary}
+                <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />
+              </span>
+            </button>
+          )}
         </div>
+      </div>
 
-        {isForeign && (
-          <div className="mt-2">
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">
-              选择汇率（{currency} → {trip.homeCurrency}）
-            </div>
-            <RateChipRow
-              tripId={trip.id}
-              currency={currency}
-              homeCurrency={trip.homeCurrency}
-              value={rateSelection}
-              onChange={setRateSelection}
-            />
-            <div className="text-[11px] text-muted mt-1.5">
-              {numRate > 0 ? <>≈ {trip.homeCurrency} {homeAmount.toFixed(2)}</> : '请选择或新增一个汇率'}
-            </div>
+      {activeDetail === 'split' && (
+        <div className="absolute inset-0 z-10 bg-paper flex flex-col">
+          <div className="flex items-center gap-3 px-4 pt-safe-header pb-2.5 border-b border-line flex-shrink-0">
+            <button onClick={() => setActiveDetail(null)} className="flex items-center gap-0.5 text-muted text-[12.5px]">
+              <ChevronLeft className="w-4 h-4" strokeWidth={2} />
+              返回
+            </button>
+            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">这笔怎么算</span>
           </div>
-        )}
 
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="备注（可选）"
-          className="w-full mt-2 rounded-xl border border-line bg-card px-3 py-2 text-sm outline-none focus:border-plan"
-        />
+          <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3">
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">这笔怎么算</div>
+            <div className="flex border border-line rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => { setMode('share'); setSplitMemberIds(members.map((m) => m.id)) }}
+                className={`flex-1 py-2 text-[12.5px] ${mode === 'share' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
+              >
+                大家分摊
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('personal'); setSplitMemberIds([]) }}
+                className={`flex-1 py-2 text-[12.5px] ${mode === 'personal' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
+              >
+                个人开销
+              </button>
+            </div>
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">日期</div>
-        <DatePicker value={expenseDate} onChange={setExpenseDate} />
+            {mode === 'share' ? (
+              <>
+                <div className="flex items-center justify-between mt-3 mb-1">
+                  <span className="text-[10.5px] tracking-widest uppercase text-muted">
+                    分摊给{splitMemberIds.length >= 2 && splitMode === 'equal' ? `（各 ${homeAmount ? (homeAmount / splitMemberIds.length).toFixed(2) : '0.00'}）` : ''}
+                  </span>
+                  {splitMemberIds.length !== members.length && (
+                    <button
+                      type="button"
+                      onClick={() => setSplitMemberIds(members.map((m) => m.id))}
+                      className="text-plan"
+                      title="全选"
+                    >
+                      <CheckCheck className="w-[15px] h-[15px]" strokeWidth={1.8} />
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {members.map((m) => {
+                    const checked = splitMemberIds.includes(m.id)
+                    return (
+                      <button
+                        type="button"
+                        key={m.id}
+                        onClick={() =>
+                          setSplitMemberIds((prev) => (checked ? prev.filter((id) => id !== m.id) : [...prev, m.id]))
+                        }
+                        className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border ${
+                          checked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-[#57534E]'
+                        }`}
+                      >
+                        <Avatar member={m} size={20} />
+                        {m.displayName} {checked ? '✓' : ''}
+                      </button>
+                    )
+                  })}
+                </div>
+                {splitMemberIds.length === 1 && (
+                  <div className="text-[11px] text-muted mt-1">只勾了一个人 = 算这个人自己的，不分摊</div>
+                )}
 
-        {tripDates.length > 1 && (
-          <div className="mt-3">
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">这笔花在几天里</div>
+                {splitMemberIds.length >= 2 && (
+                  <>
+                    <div className="flex border border-line rounded-xl overflow-hidden mt-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setSplitMode('equal')}
+                        className={`flex-1 py-1.5 text-[12px] ${splitMode === 'equal' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+                      >
+                        平均分摊
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSplitMode('exact'); seedEqualCustomAmounts(splitMemberIds) }}
+                        className={`flex-1 py-1.5 text-[12px] ${splitMode === 'exact' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+                      >
+                        自定义金额
+                      </button>
+                    </div>
+
+                    {splitMode === 'exact' && (
+                      <div className="mt-2 flex flex-col gap-1.5">
+                        {splitMemberIds.map((id) => {
+                          const m = members.find((mm) => mm.id === id)
+                          if (!m) return null
+                          return (
+                            <div key={id} className="flex items-center gap-2 bg-card border border-line rounded-xl px-3 py-2">
+                              <Avatar member={m} size={20} />
+                              <span className="text-[12.5px] flex-1">{m.displayName}</span>
+                              <input
+                                value={customAmounts[id] ?? ''}
+                                onChange={(e) => setCustomAmounts((prev) => ({ ...prev, [id]: e.target.value }))}
+                                inputMode="decimal"
+                                placeholder="0.00"
+                                className="w-[80px] text-right rounded-lg border border-line bg-paper px-2 py-1 text-[12.5px] tabular outline-none focus:border-plan"
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2 mt-3 text-[12px] text-muted bg-card border border-dashed border-line rounded-xl px-3 py-2.5">
+                <Avatar member={members.find((m) => m.id === payer)} size={20} />
+                这笔算{payerName}自己的开销，不会出现在"分账"的结算里。
+              </div>
+            )}
+          </div>
+
+          {usingExactSplit && (
+            <div className={`flex-shrink-0 px-4 py-2.5 border-t border-line text-[12px] ${customValid ? 'text-positive' : 'text-negative'}`}>
+              {Math.abs(customDiff) < 0.01
+                ? '刚好分完 ✓'
+                : customDiff > 0
+                  ? `还剩 ${customDiff.toFixed(2)} 没分完`
+                  : `超出了 ${Math.abs(customDiff).toFixed(2)}`}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeDetail === 'days' && (
+        <div className="absolute inset-0 z-10 bg-paper flex flex-col">
+          <div className="flex items-center gap-3 px-4 pt-safe-header pb-2.5 border-b border-line flex-shrink-0">
+            <button onClick={() => setActiveDetail(null)} className="flex items-center gap-0.5 text-muted text-[12.5px]">
+              <ChevronLeft className="w-4 h-4" strokeWidth={2} />
+              返回
+            </button>
+            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">花在几天里</span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3">
             <div className="flex border border-line rounded-xl overflow-hidden">
               <button
                 type="button"
@@ -549,7 +787,7 @@ export function AddExpenseSheet({
             </div>
 
             {!spreadOpen ? (
-              <div className="text-[11px] text-muted mt-1">整笔算在上面那一天的「当日花费」里</div>
+              <div className="text-[11px] text-muted mt-1">整笔算在这一天的「当日花费」里</div>
             ) : (
               <>
                 <div className="text-[10.5px] tracking-widest uppercase text-muted mt-2.5 mb-1">摊到哪几天（可点选，不用连续）</div>
@@ -611,13 +849,6 @@ export function AddExpenseSheet({
                             />
                           </div>
                         ))}
-                        <div className={`text-[11px] mt-0.5 ${Math.abs(dayDiff) < 0.01 ? 'text-positive' : 'text-negative'}`}>
-                          {Math.abs(dayDiff) < 0.01
-                            ? '刚好分完 ✓'
-                            : dayDiff > 0
-                              ? `还剩 ${dayDiff.toFixed(2)} 没分完`
-                              : `超出了 ${Math.abs(dayDiff).toFixed(2)}`}
-                        </div>
                       </div>
                     )}
                   </>
@@ -625,161 +856,18 @@ export function AddExpenseSheet({
               </>
             )}
           </div>
-        )}
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">付款人</div>
-        <div className="flex flex-wrap gap-1.5">
-          {members.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => setPayer(m.id)}
-              className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border ${
-                payer === m.id ? 'bg-ink text-paper border-ink' : 'bg-card border-line text-[#57534E]'
-              }`}
-            >
-              <Avatar member={m} size={20} />
-              {m.displayName}垫付
-            </button>
-          ))}
-        </div>
-
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">这笔怎么算</div>
-        <div className="flex border border-line rounded-xl overflow-hidden">
-          <button
-            type="button"
-            onClick={() => { setMode('share'); setSplitMemberIds(members.map((m) => m.id)) }}
-            className={`flex-1 py-2 text-[12.5px] ${mode === 'share' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
-          >
-            大家分摊
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('personal'); setSplitMemberIds([]) }}
-            className={`flex-1 py-2 text-[12.5px] ${mode === 'personal' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
-          >
-            个人开销
-          </button>
-        </div>
-
-        {mode === 'share' ? (
-          <>
-            <div className="flex items-center justify-between mt-3 mb-1">
-              <span className="text-[10.5px] tracking-widest uppercase text-muted">
-                分摊给{splitMemberIds.length >= 2 && splitMode === 'equal' ? `（各 ${homeAmount ? (homeAmount / splitMemberIds.length).toFixed(2) : '0.00'}）` : ''}
-              </span>
-              {splitMemberIds.length !== members.length && (
-                <button
-                  type="button"
-                  onClick={() => setSplitMemberIds(members.map((m) => m.id))}
-                  className="text-plan"
-                  title="全选"
-                >
-                  <CheckCheck className="w-[15px] h-[15px]" strokeWidth={1.8} />
-                </button>
-              )}
+          {usingExactDays && (
+            <div className={`flex-shrink-0 px-4 py-2.5 border-t border-line text-[12px] ${Math.abs(dayDiff) < 0.01 ? 'text-positive' : 'text-negative'}`}>
+              {Math.abs(dayDiff) < 0.01
+                ? '刚好分完 ✓'
+                : dayDiff > 0
+                  ? `还剩 ${dayDiff.toFixed(2)} 没分完`
+                  : `超出了 ${Math.abs(dayDiff).toFixed(2)}`}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {members.map((m) => {
-                const checked = splitMemberIds.includes(m.id)
-                return (
-                  <button
-                    type="button"
-                    key={m.id}
-                    onClick={() =>
-                      setSplitMemberIds((prev) => (checked ? prev.filter((id) => id !== m.id) : [...prev, m.id]))
-                    }
-                    className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border ${
-                      checked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-[#57534E]'
-                    }`}
-                  >
-                    <Avatar member={m} size={20} />
-                    {m.displayName} {checked ? '✓' : ''}
-                  </button>
-                )
-              })}
-            </div>
-            {splitMemberIds.length === 1 && (
-              <div className="text-[11px] text-muted mt-1">只勾了一个人 = 算这个人自己的，不分摊</div>
-            )}
-
-            {splitMemberIds.length >= 2 && (
-              <>
-                <div className="flex border border-line rounded-xl overflow-hidden mt-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setSplitMode('equal')}
-                    className={`flex-1 py-1.5 text-[12px] ${splitMode === 'equal' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
-                  >
-                    平均分摊
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSplitMode('exact'); seedEqualCustomAmounts(splitMemberIds) }}
-                    className={`flex-1 py-1.5 text-[12px] ${splitMode === 'exact' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
-                  >
-                    自定义金额
-                  </button>
-                </div>
-
-                {splitMode === 'exact' && (
-                  <div className="mt-2 flex flex-col gap-1.5">
-                    {splitMemberIds.map((id) => {
-                      const m = members.find((mm) => mm.id === id)
-                      if (!m) return null
-                      return (
-                        <div key={id} className="flex items-center gap-2 bg-card border border-line rounded-xl px-3 py-2">
-                          <Avatar member={m} size={20} />
-                          <span className="text-[12.5px] flex-1">{m.displayName}</span>
-                          <input
-                            value={customAmounts[id] ?? ''}
-                            onChange={(e) => setCustomAmounts((prev) => ({ ...prev, [id]: e.target.value }))}
-                            inputMode="decimal"
-                            placeholder="0.00"
-                            className="w-[80px] text-right rounded-lg border border-line bg-paper px-2 py-1 text-[12.5px] tabular outline-none focus:border-plan"
-                          />
-                        </div>
-                      )
-                    })}
-                    <div className={`text-[11px] mt-0.5 ${customValid ? 'text-positive' : 'text-negative'}`}>
-                      {Math.abs(customDiff) < 0.01
-                        ? '刚好分完 ✓'
-                        : customDiff > 0
-                          ? `还剩 ${customDiff.toFixed(2)} 没分完`
-                          : `超出了 ${Math.abs(customDiff).toFixed(2)}`}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        ) : (
-          <div className="flex items-center gap-2 mt-3 text-[12px] text-muted bg-card border border-dashed border-line rounded-xl px-3 py-2.5">
-            <Avatar member={members.find((m) => m.id === payer)} size={20} />
-            这笔算{members.find((m) => m.id === payer)?.displayName ?? '付款人'}自己的开销，不会出现在"分账"的结算里。
-          </div>
-        )}
-
-        <div className="flex gap-2 mt-4">
-          {initial && (
-            <button
-              onClick={() => setConfirmingDelete(true)}
-              disabled={saving}
-              className="rounded-2xl border border-negative/30 text-negative px-4 py-3.5 disabled:opacity-40"
-              title="删除"
-            >
-              <Trash2 className="w-[18px] h-[18px]" strokeWidth={1.8} />
-            </button>
           )}
-          <button
-            onClick={save}
-            disabled={saving || !numAmount || !categoryId || !rateReady || !customValid || !daysValid}
-            className="flex-1 rounded-2xl bg-plan text-card py-3.5 disabled:opacity-40 flex items-center justify-center"
-            title={initial ? '保存修改' : '保存这笔'}
-          >
-            <Check className="w-5 h-5" strokeWidth={2} />
-          </button>
         </div>
-      </div>
+      )}
 
       {confirmingDelete && (
         <ConfirmDialog
