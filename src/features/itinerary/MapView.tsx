@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, ZoomControl, useMap }
 import L from 'leaflet'
 import type { ItineraryDay, ItineraryItem } from '../../types'
 import { formatTimeHM } from '../../lib/dates'
+import { sortItineraryItems } from '../../domain/itinerary'
 
 // 图钉按"第几天"上色。行程可以有很多天，颜色要足够多才不会撞色——
 // 均匀分布色相、固定饱和度和明度，保证颜色彼此好区分，又不会跳成荧光色
@@ -61,7 +62,12 @@ function FitBounds({ positions, boundsKey }: { positions: [number, number][]; bo
 export function MapView({ days, items }: { days: ItineraryDay[]; items: ItineraryItem[] }) {
   const [activeDayId, setActiveDayId] = useState<string | null>(null)
 
-  const pinned = useMemo(() => items.filter((it) => it.lat != null && it.lng != null), [items])
+  // items 是 Dexie 查询的原始顺序，不代表实际时间顺序——图钉编号和连线走向
+  // 都要按时间排，不排序的话同一天的点会按插入顺序连线，跟真实行程顺序对不上
+  const pinned = useMemo(
+    () => sortItineraryItems(items).filter((it) => it.lat != null && it.lng != null),
+    [items]
+  )
 
   const dayIndexByDate = useMemo(() => {
     const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date))
