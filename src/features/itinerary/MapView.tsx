@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet'
+import { useEffect, useMemo, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Polyline, Popup, ZoomControl, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { ItineraryDay, ItineraryItem } from '../../types'
 import { formatTimeHM } from '../../lib/dates'
@@ -42,6 +42,22 @@ function arrowIcon(angleDeg: number, color: string) {
   })
 }
 
+// 选中某一天时，把地图缩放/移动到刚好框住那天的所有点——不然默认视角还停在
+// 第一天的位置，选中的那天如果离得远（比如跨城市的一日游），线会拉到屏幕外看不全
+function FitBounds({ positions, boundsKey }: { positions: [number, number][]; boundsKey: string }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!positions.length) return
+    if (positions.length === 1) {
+      map.setView(positions[0], 14)
+    } else {
+      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40] })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boundsKey])
+  return null
+}
+
 export function MapView({ days, items }: { days: ItineraryDay[]; items: ItineraryItem[] }) {
   const [activeDayId, setActiveDayId] = useState<string | null>(null)
 
@@ -70,6 +86,12 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
     ? [pinned[0].lat as number, pinned[0].lng as number]
     : [35.0, 135.7] // 兜底：日本关西附近，避免没有定位点时地图空白无从对焦
 
+  // 选中一天就框住那天，没选中就框住全部有定位的点
+  const fitPositions: [number, number][] = useMemo(() => {
+    const source = activeDayId ? dayGroups.get(activeDayId) ?? [] : pinned
+    return source.map((it) => [it.lat as number, it.lng as number])
+  }, [activeDayId, dayGroups, pinned])
+
   if (!pinned.length) {
     return (
       <div className="px-5 pt-3 pb-24 h-full flex flex-col items-center justify-center text-center gap-2">
@@ -87,11 +109,13 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 relative">
-        <MapContainer center={center} zoom={12} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={center} zoom={12} scrollWheelZoom zoomControl={false} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             attribution="&copy; OpenStreetMap contributors"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <ZoomControl position="bottomright" />
+          <FitBounds positions={fitPositions} boundsKey={activeDayId ?? 'all'} />
           {activeDayId &&
             (() => {
               const dayItems = dayGroups.get(activeDayId) ?? []
@@ -139,8 +163,15 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
             const color = DAY_COLORS[(dayNum - 1) % DAY_COLORS.length]
             const dayItems = dayGroups.get(it.dayId) ?? []
             const orderInDay = dayItems.findIndex((d) => d.id === it.id) + 1
+            // 选中某一天时，其他天的图钉变浅——更看得出到底在看哪天，别的天不用先视觉上排除掉
+            const dimmed = activeDayId != null && it.dayId !== activeDayId
             return (
-              <Marker key={it.id} position={[it.lat as number, it.lng as number]} icon={pinIcon(String(orderInDay), color)}>
+              <Marker
+                key={it.id}
+                position={[it.lat as number, it.lng as number]}
+                icon={pinIcon(String(orderInDay), color)}
+                opacity={dimmed ? 0.35 : 1}
+              >
                 <Popup>
                   <div style={{ fontSize: 13 }}>
                     <b>Day{dayNum} · {formatTimeHM(it.time)}</b>
