@@ -19,7 +19,10 @@ export function InviteCodeSheet({ onClose }: { onClose: () => void }) {
 
   async function copyCode() {
     if (!code) return
-    await navigator.clipboard.writeText(code)
+    // 之前只复制裸码，朋友收到一串字母数字不知道该干什么——现在带上说明文案和入口步骤，
+    // 复制出去就是一条能直接发给对方的完整消息
+    const message = `邀请你加入"旅记"——我们家用来记行程和账目的小工具\n打开 ${window.location.origin}\n点"有邀请码？点这里输入"，填你的邮箱 + 下面这串邀请码就能加入：\n\n${code}`
+    await navigator.clipboard.writeText(message)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
