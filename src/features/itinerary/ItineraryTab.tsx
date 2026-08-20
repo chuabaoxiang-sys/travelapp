@@ -18,6 +18,8 @@ import { MapView } from './MapView'
 import { dateRange, formatTimeHM } from '../../lib/dates'
 import { useDayRouteLegs } from '../../lib/routeLegs'
 import { RouteLegHint } from '../../components/RouteLegHint'
+import { WishlistScreen } from '../wishlist/WishlistScreen'
+import { useBackDismiss } from '../../hooks/useBackDismiss'
 
 const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 type ViewMode = 'timeline' | 'calendar' | 'map'
@@ -34,6 +36,8 @@ export function ItineraryTab({
   const days = trip.startDate && trip.endDate ? dateRange(trip.startDate, trip.endDate) : []
   const [viewMode, setViewMode] = useState<ViewMode>('timeline')
   const [selected, setSelected] = useState(days[0] ?? '')
+  const [wishlistOpen, setWishlistOpen] = useState(false)
+  useBackDismiss(wishlistOpen, () => setWishlistOpen(false))
 
   const itineraryDays = useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const currentDay = itineraryDays.find((d) => d.date === selected)
@@ -151,7 +155,7 @@ export function ItineraryTab({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
       <div className="px-5 pt-3 pb-1 flex-shrink-0 flex items-center justify-between">
         <div className="flex gap-1 bg-[#EDE6DA] rounded-xl p-1 w-fit">
           {([['timeline', '时间线'], ['calendar', '日历'], ['map', '地图']] as [ViewMode, string][]).map(([key, label]) => (
@@ -164,18 +168,28 @@ export function ItineraryTab({
             </button>
           ))}
         </div>
-        {viewMode === 'timeline' && (
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
-            onClick={() => setOnlyNeeded((v) => !v)}
-            className={`w-8 h-8 rounded-[10px] border flex items-center justify-center flex-shrink-0 ${
-              onlyNeeded ? 'border-spend bg-spend/10 text-spend' : 'border-line bg-card text-muted'
-            }`}
-            title="只看待预约"
+            onClick={() => setWishlistOpen(true)}
+            className="w-8 h-8 rounded-[10px] border border-plan/25 bg-plan/[0.06] text-plan flex items-center justify-center flex-shrink-0"
+            title="想去的地点"
           >
-            <Filter className="w-[15px] h-[15px]" strokeWidth={1.8} />
+            <Bookmark className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </button>
-        )}
+          {viewMode === 'timeline' && (
+            <button
+              onClick={() => setOnlyNeeded((v) => !v)}
+              className={`w-8 h-8 rounded-[10px] border flex items-center justify-center flex-shrink-0 ${
+                onlyNeeded ? 'border-spend bg-spend/10 text-spend' : 'border-line bg-card text-muted'
+              }`}
+              title="只看待预约"
+            >
+              <Filter className="w-[15px] h-[15px]" strokeWidth={1.8} />
+            </button>
+          )}
+        </div>
       </div>
+      {wishlistOpen && <WishlistScreen currentMemberId={currentMemberId} onClose={() => setWishlistOpen(false)} />}
 
       <div className="flex-1 overflow-hidden">
         {viewMode === 'calendar' && (
