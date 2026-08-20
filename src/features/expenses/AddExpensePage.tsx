@@ -258,6 +258,9 @@ export function AddExpensePage({
           await recordRateUsage(rateSelection.entryId)
         }
       } else if (rateSelection.mode === 'new') {
+        // 这一条是记账时顺手新建的，创建的同一刻就真的用它记了这一笔账，
+        // 所以直接算1次使用——跟汇率簿页面"+新增"/"另存为新标签"那种纯粹
+        // 记录、还没真的记过账的创建不一样
         const entry = await createRateBookEntry({
           tripId: trip.id,
           foreignCurrency: currency,
@@ -267,6 +270,7 @@ export function AddExpensePage({
           createdBy: currentMemberId,
           exchangedHomeAmount: rateSelection.exchangedHomeAmount,
           exchangedForeignAmount: rateSelection.exchangedForeignAmount,
+          useCount: 1,
         })
         rateBookEntryId = entry.id
       }

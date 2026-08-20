@@ -76,4 +76,18 @@ describe('createRateBookEntry', () => {
     expect(entry.exchangedHomeAmount).toBeNull()
     expect(entry.exchangedForeignAmount).toBeNull()
   })
+
+  it('不传 useCount 时是0——汇率簿页面"+新增"/"另存为新标签"这类纯记录动作，创建的时候还没真的记过账', async () => {
+    const entry = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '提前换的', rate: 0.03, source: 'manual', createdBy: 'papa',
+    })
+    expect(entry.useCount).toBe(0)
+  })
+
+  it('记账时顺手新建（传 useCount:1）——创建的同一刻就真的用它记了这一笔账', async () => {
+    const entry = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '现场估的', rate: 0.03, source: 'manual', createdBy: 'papa', useCount: 1,
+    })
+    expect(entry.useCount).toBe(1)
+  })
 })

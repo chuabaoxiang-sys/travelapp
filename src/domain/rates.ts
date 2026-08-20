@@ -32,6 +32,11 @@ export async function createRateBookEntry(params: {
   createdBy: string | null
   exchangedHomeAmount?: number | null
   exchangedForeignAmount?: number | null
+  // 只有"记账时顺手新建汇率"这个场景，创建的同一刻就真的拿去记了一笔账，
+  // 才该传1；汇率簿里"+新增"和"另存为新标签"都是纯粹的记录/管理动作，
+  // 跟有没有真的记过账无关，不传时默认0——不然会出现"用过1次"但其实
+  // 一笔账都没记过的假象
+  useCount?: number
 }): Promise<RateBookEntry> {
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('未找到所属团队')
@@ -47,7 +52,7 @@ export async function createRateBookEntry(params: {
     source: params.source,
     createdBy: params.createdBy,
     lastUsedAt: now,
-    useCount: 1,
+    useCount: params.useCount ?? 0,
     archived: false,
     createdAt: now,
     exchangedHomeAmount: params.exchangedHomeAmount ?? null,
