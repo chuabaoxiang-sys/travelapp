@@ -180,6 +180,11 @@ export interface Expense {
   // 这是一笔普通的单日开销（老数据都是这种），当天花费按 itineraryDayId 整笔算。
   // 有值时改为按 expenseDayAllocations 里那几行分别计入对应日期
   daySpreadMode?: DaySpreadMode | null
+  // 这笔钱是不是来自不止一批换汇——null/undefined 表示普通情况（老数据都是这种），
+  // rateBookEntryId/rateUsed/homeAmount 照旧直接用。true 时 rateBookEntryId 置空，
+  // rateUsed 改存这笔账的加权平均汇率、homeAmount 改为 expenseRateAllocations 里
+  // 各行加总——两者仍是给老代码看的快照，真正构成看 domain/rateAllocations.ts
+  rateSpread?: boolean | null
   createdAt: number
   updatedAt: number
 }
@@ -201,6 +206,21 @@ export interface ExpenseDayAllocation {
   tripId: string
   date: string // YYYY-MM-DD
   amount: number
+}
+
+// 一笔开销拆给不止一个汇率簿条目时，每一批分到多少。存的是外币金额（跟开销本身
+// 同一个币种）——"这笔钱几分来自哪批"天然发生在外币这一侧，不是本位币那一侧。
+// rateUsed/homeAmount 是这一行当时的快照，跟 Expense.rateUsed/homeAmount 是
+// 同一套"只记当时、不追溯"的规矩
+export interface ExpenseRateAllocation {
+  id: string
+  householdId: string
+  expenseId: string
+  tripId: string
+  rateBookEntryId: string
+  foreignAmount: number
+  rateUsed: number
+  homeAmount: number
 }
 
 export interface Budget {

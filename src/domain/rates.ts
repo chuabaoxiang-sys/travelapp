@@ -83,18 +83,30 @@ export interface RateEntryUsage {
 // （真实反馈过："这些汇率我很确定没用过，为什么还显示用过N次"）。现查就没有这个问题：
 // 开销删了，这里自然就不再算它。
 //
-// 目前只统计"直接用单一汇率选中它"的开销；等一笔账可以拆成多笔汇率之后，这里再补上
-// "拆分"里分到它头上的那部分。只有真的记录过换汇金额（exchangedForeignAmount 有值）
-// 的条目，"进度"这件事才有意义，但这个函数对所有条目都算，有没有意义由调用方决定要不要显示
+// 统计两种来源：单一汇率直接引用（e.rateBookEntryId），以及拆成多笔汇率时
+// expenseRateAllocations 里分到它头上的那部分（e.rateSpread 为真的开销，
+// rateBookEntryId 本身是空的，不会在下面第一段被重复计入）。只有真的记录过
+// 换汇金额（exchangedForeignAmount 有值）的条目，"进度"这件事才有意义，但这个
+// 函数对所有条目都算，有没有意义由调用方决定要不要显示
 export async function usageByEntry(tripId: string): Promise<Map<string, RateEntryUsage>> {
-  const expenses = await db.expenses.where('tripId').equals(tripId).toArray()
+  const [expenses, allocations] = await Promise.all([
+    db.expenses.where('tripId').equals(tripId).toArray(),
+    db.expenseRateAllocations.where('tripId').equals(tripId).toArray(),
+  ])
   const usage = new Map<string, RateEntryUsage>()
-  for (const e of expenses) {
-    if (!e.rateBookEntryId) continue
-    const cur = usage.get(e.rateBookEntryId) ?? { count: 0, foreignAmount: 0 }
+  function add(entryId: string, amount: number) {
+    const cur = usage.get(entryId) ?? { count: 0, foreignAmount: 0 }
     cur.count += 1
-    cur.foreignAmount = Math.round((cur.foreignAmount + e.expenseAmount) * 100) / 100
-    usage.set(e.rateBookEntryId, cur)
+    cur.foreignAmount = Math.round((cur.foreignAmount + amount) * 100) / 100
+    usage.set(entryId, cur)
+  }
+  for (const e of expenses) {
+    if (e.rateSpread) continue // 拆分的开销不走这条单选路径，由下面的 allocations 统计
+    if (!e.rateBookEntryId) continue
+    add(e.rateBookEntryId, e.expenseAmount)
+  }
+  for (const a of allocations) {
+    add(a.rateBookEntryId, a.foreignAmount)
   }
   return usage
 }

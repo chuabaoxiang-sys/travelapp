@@ -225,6 +225,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       recorded_by: e.recordedBy,
       split_type: e.splitType,
       day_spread_mode: e.daySpreadMode ?? null,
+      rate_spread: e.rateSpread ?? null,
       itinerary_day_id: e.itineraryDayId,
       itinerary_item_id: e.itineraryItemId,
       // 本地字段叫 description，远端表这一列叫 notes——纯粹是命名不统一，不是语义差异
@@ -248,6 +249,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       recordedBy: r.recorded_by,
       splitType: r.split_type,
       daySpreadMode: r.day_spread_mode ?? null,
+      rateSpread: r.rate_spread ?? null,
       itineraryDayId: r.itinerary_day_id,
       itineraryItemId: r.itinerary_item_id,
       description: r.notes,
@@ -295,6 +297,32 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       tripId: r.trip_id,
       date: r.day_date,
       amount: num(r.amount),
+    }),
+  },
+
+  expenseRateAllocations: {
+    remoteTable: 'expense_rate_allocation',
+    conflictColumns: 'id',
+    hasUpdatedAt: false,
+    toRemote: (a) => ({
+      id: a.id,
+      household_id: a.householdId,
+      expense_id: a.expenseId,
+      trip_id: a.tripId,
+      rate_book_entry_id: a.rateBookEntryId,
+      foreign_amount: a.foreignAmount,
+      rate_used: a.rateUsed,
+      home_amount: a.homeAmount,
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      householdId: r.household_id,
+      expenseId: r.expense_id,
+      tripId: r.trip_id,
+      rateBookEntryId: r.rate_book_entry_id,
+      foreignAmount: num(r.foreign_amount),
+      rateUsed: num(r.rate_used),
+      homeAmount: num(r.home_amount),
     }),
   },
 

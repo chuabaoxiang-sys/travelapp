@@ -10,11 +10,12 @@ import { RateChipRow, type RateSelection } from '../rates/RateChipRow'
 import { createRateBookEntry, recordRateUsage } from '../../domain/rates'
 import { saveExpenseSplits } from '../../domain/splits'
 import { saveDayAllocations, deleteDayAllocations } from '../../domain/dayAllocations'
+import { saveRateAllocations, deleteRateAllocations } from '../../domain/rateAllocations'
 import { categoryColor } from '../../lib/categoryColors'
 import { CategoryIcon } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
-import type { Trip, ExpensePhase, Expense, SplitType, ExpenseSplit, DaySpreadMode, ExpenseDayAllocation } from '../../types'
+import type { Trip, ExpensePhase, Expense, SplitType, ExpenseSplit, DaySpreadMode, ExpenseDayAllocation, ExpenseRateAllocation } from '../../types'
 
 // 全屏页面而不是底部弹层——这个表单从"住宿/交通跨天分摊"上线后，塞进88%高度的
 // 弹层里必须一路拖到底才能存，实测过什么都没填就已经有111px在屏幕外。改成全屏页
@@ -67,6 +68,24 @@ export function AddExpensePage({
   const [rateSelection, setRateSelection] = useState<RateSelection>(
     initial?.rateBookEntryId ? { mode: 'existing', entryId: initial.rateBookEntryId, rate: initial.rateUsed } : { mode: 'none' },
   )
+  // 编辑一笔本来就"拆多笔汇率"的开销时，回填它原本的分摊——rateSpread 是同步字段，
+  // 但具体拆了哪几笔、每笔多少要查 expenseRateAllocations，异步的，跟"关联行程"
+  // 那处一样用 useEffect+ref 只回填一次
+  const existingRateAllocations = useLiveQuery(
+    () => (initial?.rateSpread ? db.expenseRateAllocations.where('expenseId').equals(initial.id).toArray() : Promise.resolve<ExpenseRateAllocation[]>([])),
+    [initial?.id, initial?.rateSpread],
+  ) ?? []
+  const rateSplitInitialized = useRef(false)
+  useEffect(() => {
+    if (rateSplitInitialized.current) return
+    if (!initial?.rateSpread) { rateSplitInitialized.current = true; return }
+    if (!existingRateAllocations.length) return
+    setRateSelection({
+      mode: 'split',
+      allocations: existingRateAllocations.map((a) => ({ rateBookEntryId: a.rateBookEntryId, foreignAmount: a.foreignAmount, rate: a.rateUsed })),
+    })
+    rateSplitInitialized.current = true
+  }, [initial, existingRateAllocations])
   const [payer, setPayer] = useState(initial?.paidBy ?? currentMemberId)
   const [expenseDate, setExpenseDate] = useState(initial?.expenseDate ?? trip.startDate ?? new Date().toISOString().slice(0, 10))
 
@@ -166,11 +185,26 @@ export function AddExpensePage({
   const visibleCategories = categories.filter((c) => c.phase === phase || c.phase === 'either')
   const isForeign = currency !== trip.homeCurrency
   const numAmount = parseFloat(amount) || 0
+  // 拆多笔汇率时，rateUsed 是加权平均（各批本位币金额加总 / 开销外币总额），
+  // homeAmount 直接是各批本位币金额的加总——不是"总外币×一个混合汇率"反推出来的
+  const splitTotalForeign = rateSelection.mode === 'split'
+    ? Math.round(rateSelection.allocations.reduce((s, a) => s + a.foreignAmount, 0) * 100) / 100
+    : 0
+  const splitHomeTotal = rateSelection.mode === 'split'
+    ? Math.round(rateSelection.allocations.reduce((s, a) => s + a.foreignAmount * a.rate, 0) * 100) / 100
+    : 0
   // 编辑已有账目、且还没碰过汇率选择时，先用当初快照的 rateUsed 顶着，不强行要求重新选一次；
   // 一旦用户点了别的chip或改了新汇率，rateSelection 就会有值，改用那个
-  const numRate = !isForeign ? 1 : rateSelection.mode !== 'none' ? rateSelection.rate : initial?.rateUsed ?? 0
-  const homeAmount = numAmount * numRate
+  const numRate = !isForeign
+    ? 1
+    : rateSelection.mode === 'split'
+      ? (splitTotalForeign > 0 ? splitHomeTotal / splitTotalForeign : 0)
+      : rateSelection.mode !== 'none' ? rateSelection.rate : initial?.rateUsed ?? 0
+  const homeAmount = rateSelection.mode === 'split' ? splitHomeTotal : numAmount * numRate
   const rateReady = !isForeign || numRate > 0
+  // 拆分模式下，各批填的外币总额必须刚好等于这笔开销的外币总额才能保存——
+  // 跟"怎么分"/"花在几天"那两处的实时校验是同一套规矩
+  const rateSplitValid = rateSelection.mode !== 'split' || Math.abs(numAmount - splitTotalForeign) < 0.01
 
   // 切到"自定义金额"模式时，先按平均分摊帮忙填一份起点，用户在这个基础上改，
   // 不用每次都从0开始手算
@@ -226,7 +260,7 @@ export function AddExpensePage({
   const [saved, setSaved] = useState(false)
 
   async function save() {
-    if (saving || !numAmount || !categoryId || !rateReady || !customValid || !daysValid) return
+    if (saving || !numAmount || !categoryId || !rateReady || !rateSplitValid || !customValid || !daysValid) return
     setSaving(true)
     try {
       await doSave()
@@ -245,9 +279,11 @@ export function AddExpensePage({
     }
     const itineraryItemId = itineraryDayId ? linkItemId : null
 
-    // 汇率簿落地：选了已有chip就更新它的"最近使用"；填了新标签就先落一条新纪录，
-    // 两种情况都要拿到最终的 rateBookEntryId 存进这笔账目里
+    // 汇率簿落地：选了已有chip就更新它的"最近使用"；填了新标签就先落一条新纪录；
+    // 拆多笔汇率时 rateBookEntryId 置空，改由 expenseRateAllocations 记录具体拆法，
+    // 每一批用到的条目都要更新"最近使用"（不只是单选时的那一个）
     let rateBookEntryId: string | null = initial?.rateBookEntryId ?? null
+    const rateSpread = isForeign && rateSelection.mode === 'split'
     if (isForeign) {
       if (rateSelection.mode === 'existing') {
         rateBookEntryId = rateSelection.entryId
@@ -269,6 +305,9 @@ export function AddExpensePage({
           exchangedForeignAmount: rateSelection.exchangedForeignAmount,
         })
         rateBookEntryId = entry.id
+      } else if (rateSelection.mode === 'split') {
+        rateBookEntryId = null
+        await Promise.all(rateSelection.allocations.map((a) => recordRateUsage(a.rateBookEntryId)))
       }
     } else {
       rateBookEntryId = null
@@ -301,6 +340,7 @@ export function AddExpensePage({
         itineraryItemId,
         splitType,
         daySpreadMode,
+        rateSpread,
         updatedAt: Date.now(),
       })
     } else {
@@ -327,6 +367,7 @@ export function AddExpensePage({
         itineraryItemId,
         splitType,
         daySpreadMode,
+        rateSpread,
         createdAt: now,
         updatedAt: now,
       })
@@ -344,6 +385,13 @@ export function AddExpensePage({
     } else {
       await deleteDayAllocations(expenseId)
     }
+
+    // 同理，从"拆多笔汇率"改回单一汇率时把旧的拆分行清掉
+    if (rateSpread && rateSelection.mode === 'split') {
+      await saveRateAllocations(expenseId, trip.id, rateSelection.allocations)
+    } else {
+      await deleteRateAllocations(expenseId)
+    }
     // 数据已经落地了，这里只是让确认态露个脸再收起来。刻意短（约0.6秒）——
     // 再长就从"确认"变成"挡路"了
     setSaved(true)
@@ -358,6 +406,7 @@ export function AddExpensePage({
     try {
       await db.expenseSplits.where('expenseId').equals(initial.id).delete()
       await deleteDayAllocations(initial.id)
+      await deleteRateAllocations(initial.id)
       await db.expenses.delete(initial.id)
       onClose()
     } finally {
@@ -385,7 +434,7 @@ export function AddExpensePage({
     )
   }
 
-  const canSave = !saving && !!numAmount && !!categoryId && rateReady && customValid && daysValid
+  const canSave = !saving && !!numAmount && !!categoryId && rateReady && rateSplitValid && customValid && daysValid
 
   const payerName = members.find((m) => m.id === payer)?.displayName ?? '付款人'
   const splitSummary = mode === 'personal'
@@ -448,12 +497,15 @@ export function AddExpensePage({
               tripId={trip.id}
               currency={currency}
               homeCurrency={trip.homeCurrency}
+              expenseAmount={numAmount}
               value={rateSelection}
               onChange={setRateSelection}
             />
-            <div className="text-[11px] text-muted mt-1.5">
-              {numRate > 0 ? <>≈ {trip.homeCurrency} {homeAmount.toFixed(2)}</> : '请选择或新增一个汇率'}
-            </div>
+            {(rateSelection.mode !== 'split' || rateSplitValid) && (
+              <div className="text-[11px] text-muted mt-1.5">
+                {numRate > 0 ? <>≈ {trip.homeCurrency} {homeAmount.toFixed(2)}</> : '请选择或新增一个汇率'}
+              </div>
+            )}
           </div>
         )}
 

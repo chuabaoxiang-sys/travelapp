@@ -11,6 +11,7 @@ import type {
   Expense,
   ExpenseSplit,
   ExpenseDayAllocation,
+  ExpenseRateAllocation,
   Budget,
   Settlement,
   OutboxEntry,
@@ -42,6 +43,7 @@ const SYNCED_TABLES = [
   'rateBookEntries',
   'expenses',
   'expenseDayAllocations',
+  'expenseRateAllocations',
   'budgets',
   'settlements',
   'feedback',
@@ -58,6 +60,7 @@ export class TripJournalDB extends Dexie {
   expenses!: EntityTable<Expense, 'id'>
   expenseSplits!: EntityTable<ExpenseSplit, 'id'>
   expenseDayAllocations!: EntityTable<ExpenseDayAllocation, 'id'>
+  expenseRateAllocations!: EntityTable<ExpenseRateAllocation, 'id'>
   budgets!: EntityTable<Budget, 'id'>
   settlements!: EntityTable<Settlement, 'id'>
   outbox!: EntityTable<OutboxEntry, 'id'>
@@ -90,6 +93,11 @@ export class TripJournalDB extends Dexie {
     // 没有 daySpreadMode，继续按 itineraryDayId 整笔算在一天上
     this.version(3).stores({
       expenseDayAllocations: 'id, expenseId, tripId, date',
+    })
+    // 一笔开销拆给不止一批换汇的分摊行。同样是全新的表，老账目没有 rateSpread，
+    // 继续按 rateBookEntryId 单选那条老路径算
+    this.version(4).stores({
+      expenseRateAllocations: 'id, expenseId, tripId, rateBookEntryId',
     })
     registerOutboxHooks(this)
   }
@@ -202,11 +210,12 @@ export async function ensureItineraryDay(tripId: string, date: string) {
 export async function deleteTripCascade(tripId: string) {
   await db.transaction(
     'rw',
-    [db.trips, db.tripMembers, db.itineraryDays, db.itineraryItems, db.expenses, db.expenseSplits, db.expenseDayAllocations, db.budgets, db.settlements],
+    [db.trips, db.tripMembers, db.itineraryDays, db.itineraryItems, db.expenses, db.expenseSplits, db.expenseDayAllocations, db.expenseRateAllocations, db.budgets, db.settlements],
     async () => {
       const expenseIds = await db.expenses.where('tripId').equals(tripId).primaryKeys()
       await db.expenseSplits.where('expenseId').anyOf(expenseIds).delete()
       await db.expenseDayAllocations.where('tripId').equals(tripId).delete()
+      await db.expenseRateAllocations.where('tripId').equals(tripId).delete()
       await db.expenses.where('tripId').equals(tripId).delete()
       await db.itineraryItems.where('tripId').equals(tripId).delete()
       await db.itineraryDays.where('tripId').equals(tripId).delete()

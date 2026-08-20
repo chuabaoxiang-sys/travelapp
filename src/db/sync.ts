@@ -15,6 +15,7 @@ const TABLE_ORDER = [
   'expenses',
   'expenseSplits',
   'expenseDayAllocations',
+  'expenseRateAllocations',
   'budgets',
   'settlements',
   'feedback',

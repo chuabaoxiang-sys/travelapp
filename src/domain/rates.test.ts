@@ -18,18 +18,23 @@ describe('deriveRateFromExchangeAmounts', () => {
   })
 })
 
-function expense(id: string, rateBookEntryId: string | null, expenseAmount: number): Expense {
+function expense(id: string, rateBookEntryId: string | null, expenseAmount: number, rateSpread?: boolean): Expense {
   return {
     id, householdId: 'h1', tripId: 't1', categoryId: 'cat-food', phase: 'during_trip', description: null,
     expenseCurrency: 'JPY', expenseAmount, rateBookEntryId, rateUsed: 0.03, homeAmount: expenseAmount * 0.03,
     paidBy: 'papa', recordedBy: 'papa', expenseDate: '2026-08-21', itineraryDayId: null, itineraryItemId: null,
-    splitType: 'equal', createdAt: 0, updatedAt: 0,
+    splitType: 'equal', rateSpread: rateSpread ?? null, createdAt: 0, updatedAt: 0,
   }
+}
+
+function allocation(id: string, expenseId: string, rateBookEntryId: string, foreignAmount: number) {
+  return { id, householdId: 'h1', expenseId, tripId: 't1', rateBookEntryId, foreignAmount, rateUsed: 0.03, homeAmount: foreignAmount * 0.03 }
 }
 
 describe('usageByEntry（真实走Dexie）', () => {
   beforeEach(async () => {
     await db.expenses.clear()
+    await db.expenseRateAllocations.clear()
   })
 
   it('按 rateBookEntryId 把笔数和 expenseAmount 都加总，不同条目分开算', async () => {
@@ -59,6 +64,21 @@ describe('usageByEntry（真实走Dexie）', () => {
     expect((await usageByEntry('t1')).get('entry-a')).toEqual({ count: 2, foreignAmount: 4000 })
     await db.expenses.delete('e2')
     expect((await usageByEntry('t1')).get('entry-a')).toEqual({ count: 1, foreignAmount: 3000 })
+  })
+
+  it('拆多笔汇率的开销：rateBookEntryId 本身是空的，不直接计入；改由 expenseRateAllocations 里分到的那部分计入，和单选的开销混在一起累加不重不漏', async () => {
+    await db.expenses.bulkAdd([
+      expense('e1', 'entry-a', 500), // 单选，直接引用 entry-a
+      expense('e2', null, 3200, true), // 拆分开销本身 rateBookEntryId 为空
+    ])
+    await db.expenseRateAllocations.bulkAdd([
+      allocation('a1', 'e2', 'entry-a', 2000),
+      allocation('a2', 'e2', 'entry-b', 1200),
+    ])
+    const usage = await usageByEntry('t1')
+    // entry-a：单选的500 + 拆分里分到的2000 = 2500，两笔账各算一次，count是2
+    expect(usage.get('entry-a')).toEqual({ count: 2, foreignAmount: 2500 })
+    expect(usage.get('entry-b')).toEqual({ count: 1, foreignAmount: 1200 })
   })
 })
 
