@@ -232,8 +232,8 @@ export function ItineraryTab({
                 </div>
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar mt-2 pb-0.5">
                   {suggestions.map((s) => (
-                    <div key={s.id} className="flex-shrink-0 flex items-center gap-1.5 bg-card border border-line rounded-full pl-3 pr-1.5 py-1 text-[11px]">
-                      {s.name}
+                    <div key={s.id} className="flex-shrink-0 flex items-center gap-1.5 bg-card border border-line rounded-full pl-3 pr-1.5 py-1 text-[11px] max-w-[160px]">
+                      <span className="min-w-0 flex-1 truncate">{s.name}</span>
                       <button
                         onClick={() => addFromWishlist(s)}
                         className="w-5 h-5 rounded-full bg-plan text-card flex items-center justify-center flex-shrink-0"
