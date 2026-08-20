@@ -17,6 +17,16 @@ function getCommitSha(): string {
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 允许用 PORT 环境变量指定端口。Vite 默认只认 --port 参数、不读 PORT，
+  // 于是同一个项目开两个开发会话时，第二个必然抢不到 5173 也起不来——
+  // 工具链分配了端口，Vite 却依然去开 5173。
+  // 带 PORT 时用 strictPort：既然是外部指定的端口，起不来就应该直接报错，
+  // 而不是让 Vite 悄悄换到 5174，那样外面就找不到它了。
+  // 不带 PORT 时行为和以前完全一样（5173，被占用则自动顺延）
+  server: {
+    port: Number(process.env.PORT) || 5173,
+    strictPort: !!process.env.PORT,
+  },
   define: {
     __APP_COMMIT__: JSON.stringify(getCommitSha()),
     __APP_BUILD_TIME__: JSON.stringify(new Date().toISOString()),
