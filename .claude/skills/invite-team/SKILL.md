@@ -5,23 +5,38 @@ description: Use this whenever the user wants to invite someone (a new team, a t
 
 # Inviting someone into 旅记/TripJournal
 
-This app is multi-tenant: every team ("household") is isolated by Postgres RLS keyed on `household_id`, and login is real per-email magic-link auth (Supabase Auth) — no shared passwords, no invite codes issued by Claude. Full background on the isolation design lives in `supabase/migrations/0004_household_isolation.sql` and the project's plan file; you don't need to re-derive any of that here, just execute the invite.
+This app is multi-tenant: every team ("household") is isolated by Postgres RLS keyed on `household_id`. Login is per-email — the invitee gets a **6-digit code by email** and types it in; there are no passwords anywhere. Full background on the isolation design lives in `supabase/migrations/0004_household_isolation.sql`; you don't need to re-derive it here, just execute the invite.
 
-## Step 1: figure out which of the two paths this is
+Two facts that changed and are easy to get wrong from memory:
+- **Login is a 6-digit code, not a magic link.** It was a clickable link until 2026-08-16, changed because a link opened in a different browser/app than the one that requested it always failed to log in. Never tell an invitee to "click the link in the email."
+- **There is no site-wide password wall.** It existed until 2026-08-16 (`middleware.ts`, now deleted). Don't ask the user for it, don't leave a placeholder for it. The invitee goes straight to the login screen.
 
-Ask (or infer from context) whether this is:
-- **Joining an EXISTING team** the user already has (e.g. adding a family member or friend to their own team so they share data), or
-- **A brand-new, fully isolated team** (e.g. a stranger/tester who should never see the user's own data)
+## Step 1: which of the two paths is this?
 
-For "joining an existing team," check first whether the in-app self-serve invite-code flow covers it: any already-logged-in member of that team can go to the identity switcher (顶部身份切换) → "邀请新成员加入团队" to generate a code, and the invitee enters it via "有邀请码？点这里输入" on the login screen. If that flow exists and applies, just point the user at it — no SQL needed, and skip straight to Step 3 (invitee message) if they still want your help phrasing the message. Only fall back to manual SQL for "join existing team" if the user wants to do it that way anyway, or the self-serve feature isn't available/working for some reason.
+- **Joining an EXISTING team** the user already has (family member, someone who should share their data), or
+- **A brand-new, fully isolated team** (a tester/stranger who must never see the user's own data)
 
-Docs for this app are in `docs/邀请新团队流程.md` (Chinese) — that file is the living source of truth for this process, kept up to date as of the last invite. If it and this skill ever disagree, treat the doc as more current and update this skill afterward.
+If it's ambiguous — especially for a *tester* — **ask before doing anything**. Getting this wrong means handing someone full read/write access to the family's real financial records. A tester almost always wants their own isolated team.
 
-## Step 2: generate the SQL (new team, or manual join)
+### Joining an existing team → no SQL, point them at the in-app invite code
 
-You need: team name (for a new team) and one or more email addresses.
+This is fully self-serve and shipped (`0007_household_invite_code.sql`, `src/features/members/InviteCodeSheet.tsx`):
 
-**New team** — creates the household and registers every listed email to it in one statement:
+1. Any logged-in member of that team taps the identity avatar (顶部身份切换) → **「邀请新成员加入团队」** → **「复制邀请码」**.
+2. The invitee opens the app, taps **「有邀请码？点这里输入」** on the login screen, fills their own email in the *upper* field and the code in the field that appears below, then taps **「用邀请码加入」**.
+3. That immediately sends them a login code, so they never press 「发送验证码」 separately.
+
+Tell the user to send the code **separately** from the guide/link, so a forwarded message doesn't carry the code with it. A leaked code is fixable — the same sheet has a regenerate action that invalidates the old one.
+
+### Brand-new isolated team → SQL (Step 2)
+
+Self-serve creation of a *new* team was deliberately never built, so this path still needs the user to run SQL.
+
+`docs/邀请新团队流程.md` covers the same process in Chinese for the user's own reference. If it and this skill disagree, this skill is more current — update the doc to match rather than following it.
+
+## Step 2: SQL for a brand-new team
+
+You need the team name and one or more emails.
 
 ```sql
 with h as (
@@ -33,33 +48,63 @@ union all
 select id, '<邮箱2>' from h; -- 有几个邮箱就加几行 union all，只有一个的话删掉这行
 ```
 
-**Joining an existing team manually** (only if self-serve invite code doesn't apply):
+Manual join into an existing team (only if the invite-code path genuinely can't be used):
 
 ```sql
 insert into household_member (household_id, email)
 select id, '<新邮箱>' from household where name = '<已有团队名>';
 ```
 
-Tell the user explicitly: this needs to run on the **production** Supabase project's SQL Editor (project ref `pivhpufmgmcazztlshfw`), not the test project (`jwngufyqkdgwawsirdsl`) — those are two separate databases and production is the one real users touch. Wait for their confirmation it ran successfully before moving on; don't assume it worked.
+Say explicitly that this runs in the **production** Supabase SQL Editor (project ref `pivhpufmgmcazztlshfw`), not the test project (`jwngufyqkdgwawsirdsl`) — separate databases, production is the one real users touch. Wait for confirmation it ran; don't assume.
 
-You never need to re-verify data isolation for a new team — RLS already enforces it automatically via `current_household_id()`, proven end-to-end with two independent test teams. There's nothing to test per-invite.
+Never re-verify data isolation per invite — RLS enforces it via `current_household_id()` and it was proven with two independent test teams.
 
-## Step 3: give the user the invitee-facing message
+## Step 3: hand the invitee something to follow
 
-Fill in the email, leave the app URL and site password as something the user adds themselves — never write the actual Basic Auth site password into a file or message on their behalf, since that's a credential.
+There's already a built guide covering all five steps with screen-by-screen illustrations, so don't hand-write instructions from scratch:
+
+- `docs/旅记加入指引.html` — self-contained single file, good for desktop/archiving/printing. **Bad for phones**: an .html attachment usually opens as source code or not at all on iOS.
+- The same guide is published as an Artifact (a shareable link) — best for a phone recipient. It is **private by default**; the user must enable sharing from the page's share menu first or the recipient just sees nothing.
+- `docs/旅记-APP介绍.pptx` — optional 5-page intro to what the app is, useful alongside either of the above.
+
+If the user would rather paste plain text into WhatsApp/WeChat, use this — the quoted button names are verbatim from `src/features/auth/EmailLogin.tsx` and must not be paraphrased:
 
 ```
-你好！邀请你来试用「旅记」——一个记录旅行行程+账目的小工具。
+你好！邀请你一起用「旅记」——记录旅行行程和账目的小工具。
 
-打开这个网址：<APP网址>（当前生产地址是 https://travelapp-kappa-wheat.vercel.app，除非用户告诉你已经换了域名）
+网址：https://travelapp-kappa-wheat.vercel.app
+邀请码：__________
 
-会看到"先登录一下"的界面，输入你自己的邮箱（就是 <邀请邮箱>），点"发送登录链接"，然后去这个邮箱找一封邮件（如果没看到，查一下垃圾邮件夹），点开里面的链接就能登录，不用设密码。
+iPhone 请用 Safari 打开（不要用 Chrome，苹果只允许 Safari 装成真正的App）
 
-登录后选一个你的名字（第一次用的话可以自己新建），就能开始用了。有问题随时找我。
+1. 打开上面的网址
+2. 在「先登录一下」这屏，点蓝紫色按钮下面那行小字「有邀请码？点这里输入」（别直接点「发送验证码」，会提示邮箱没被邀请）
+3. 上面那栏填你自己的邮箱，下面新出现那栏填我给你的邀请码，点「用邀请码加入」
+4. 画面会跳到「查一下验证码」，同时邮箱会收到一封带6位数字的邮件（没看到翻一下垃圾邮件夹）。把6个数字填进格子，填满会自动登录，不用点确认
+5. 出现「你是谁？」时，第一次用就在下面输入你的名字，点「添加」
+
+有问题随时找我！
 ```
 
-Mention `docs/旅记-APP介绍.pptx` (a short intro deck) as optional to attach alongside this message, if it exists in the repo — it gives the invitee context before they ever open the app.
+Leave the invite code as a blank for the user to fill — never invent one, and never put a real code into a file.
 
-## Why this shape
+For a **brand-new team** (Step 2 path) the invitee has no code, so drop the 邀请码 line and step 2–3, and tell them to enter their email and tap 「发送验证码」 directly.
 
-The whole point of the email-magic-link design (over a shared invite code or admin backend) is that revoking someone is just deleting their `household_member` row, and nobody can enumerate who else is invited or how many teams exist — so don't build or suggest any "list all teams" tooling, and don't put real site passwords in writing. If a request seems to want either of those, flag the tension rather than just doing it.
+## Install-to-home-screen gotchas worth passing on
+
+Both were discovered from real devices and both look like app bugs when they're really platform limits:
+
+- **iPhone: only Safari can install it as a real app.** Chrome/Firefox/Edge on iOS cannot, even though their menus show a similar option. The app detects these and says so (`src/components/InstallPrompt.tsx`).
+- **Opening the link inside WeChat/WhatsApp's built-in browser has the same problem.** Tell iPhone users to long-press the URL, copy it, and paste it into Safari.
+- Android has none of this — the app pops its own install banner.
+
+## Don't
+
+- Don't suggest any "list all teams / all members" tooling. Team invisibility is deliberate (see `0004_household_isolation.sql`'s header).
+- Don't put credentials of any kind in writing.
+- Don't invite one email into a second team while it's still in another. As of now that breaks: `current_household_id()` does `limit 1` with no `order by`, `src/domain/household.ts` makes the same unordered pick independently, the two can disagree, and writes then get rejected by RLS. There's also no team-switcher UI. Remove them from the old team first (see the `remove-team-member` skill), or have them use a second email.
+
+## Related
+
+- Removing someone / moving them between teams: the `remove-team-member` skill.
+- Schema changes: the `supabase-migration-safety` skill.
