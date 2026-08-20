@@ -15,12 +15,11 @@ export async function getAllRateBookEntries(tripId: string): Promise<RateBookEnt
   return all.sort((a, b) => b.lastUsedAt - a.lastUsedAt)
 }
 
-// 记一笔账时点了某个已有汇率chip——更新它的"最近使用"和"使用次数"，
-// 但不改 rate 本身，保证以后排序会把它推到更前面
+// 记一笔账时点了某个已有汇率chip——更新它的"最近使用"，保证以后排序会把它推到更前面。
+// "用过几次"不再靠这里累加的计数器记（那种计数器只会涨不会跌，开销被删掉/改掉之后
+// 计数依然停在原来的高水位，跟真实情况对不上——见 usageByEntry 的说明），改成现查
 export async function recordRateUsage(id: string) {
-  const entry = await db.rateBookEntries.get(id)
-  if (!entry) return
-  await db.rateBookEntries.update(id, { lastUsedAt: Date.now(), useCount: entry.useCount + 1 })
+  await db.rateBookEntries.update(id, { lastUsedAt: Date.now() })
 }
 
 export async function createRateBookEntry(params: {
@@ -32,11 +31,6 @@ export async function createRateBookEntry(params: {
   createdBy: string | null
   exchangedHomeAmount?: number | null
   exchangedForeignAmount?: number | null
-  // 只有"记账时顺手新建汇率"这个场景，创建的同一刻就真的拿去记了一笔账，
-  // 才该传1；汇率簿里"+新增"和"另存为新标签"都是纯粹的记录/管理动作，
-  // 跟有没有真的记过账无关，不传时默认0——不然会出现"用过1次"但其实
-  // 一笔账都没记过的假象
-  useCount?: number
 }): Promise<RateBookEntry> {
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('未找到所属团队')
@@ -52,7 +46,6 @@ export async function createRateBookEntry(params: {
     source: params.source,
     createdBy: params.createdBy,
     lastUsedAt: now,
-    useCount: params.useCount ?? 0,
     archived: false,
     createdAt: now,
     exchangedHomeAmount: params.exchangedHomeAmount ?? null,
@@ -79,19 +72,31 @@ export async function unarchiveRateBookEntry(id: string) {
   await db.rateBookEntries.update(id, { archived: false })
 }
 
-// 这条汇率簿条目已经被花掉多少外币——目前只统计"直接用单一汇率选中它"的开销；
-// 等一笔账可以拆成多笔汇率之后，这里再补上"拆分"里分到它头上的那部分。只有真的
-// 记录过换汇金额（exchangedForeignAmount 有值）的条目，"进度"这件事才有意义，
-// 但这个函数对所有条目都算，有没有意义由调用方（看 exchangedForeignAmount 是否
-// 非空）决定要不要显示
-export async function usedForeignAmountByEntry(tripId: string): Promise<Map<string, number>> {
+export interface RateEntryUsage {
+  count: number
+  foreignAmount: number
+}
+
+// 这条汇率簿条目实际被多少笔开销用过、加起来花了多少外币——现查现算，不依赖任何
+// 存起来的计数器。之前"用过N次"是存了个只会涨不会跌的 useCount，开销被删掉或者
+// 改成别的汇率之后，这个数字不会跟着往下修正，用户拿真实数据一对就会发现完全对不上
+// （真实反馈过："这些汇率我很确定没用过，为什么还显示用过N次"）。现查就没有这个问题：
+// 开销删了，这里自然就不再算它。
+//
+// 目前只统计"直接用单一汇率选中它"的开销；等一笔账可以拆成多笔汇率之后，这里再补上
+// "拆分"里分到它头上的那部分。只有真的记录过换汇金额（exchangedForeignAmount 有值）
+// 的条目，"进度"这件事才有意义，但这个函数对所有条目都算，有没有意义由调用方决定要不要显示
+export async function usageByEntry(tripId: string): Promise<Map<string, RateEntryUsage>> {
   const expenses = await db.expenses.where('tripId').equals(tripId).toArray()
-  const used = new Map<string, number>()
+  const usage = new Map<string, RateEntryUsage>()
   for (const e of expenses) {
     if (!e.rateBookEntryId) continue
-    used.set(e.rateBookEntryId, Math.round(((used.get(e.rateBookEntryId) ?? 0) + e.expenseAmount) * 100) / 100)
+    const cur = usage.get(e.rateBookEntryId) ?? { count: 0, foreignAmount: 0 }
+    cur.count += 1
+    cur.foreignAmount = Math.round((cur.foreignAmount + e.expenseAmount) * 100) / 100
+    usage.set(e.rateBookEntryId, cur)
   }
-  return used
+  return usage
 }
 
 // 从"给出/换到"两个金额反推汇率，任一无效时返回 null——调用方拿到非 null

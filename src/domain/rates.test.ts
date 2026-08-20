@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { deriveRateFromExchangeAmounts, usedForeignAmountByEntry, createRateBookEntry, updateRateBookEntry } from './rates'
+import { deriveRateFromExchangeAmounts, usageByEntry, createRateBookEntry, updateRateBookEntry } from './rates'
 import { db } from '../db/dexie'
 import type { Expense } from '../types'
 
@@ -27,31 +27,38 @@ function expense(id: string, rateBookEntryId: string | null, expenseAmount: numb
   }
 }
 
-describe('usedForeignAmountByEntry（真实走Dexie）', () => {
+describe('usageByEntry（真实走Dexie）', () => {
   beforeEach(async () => {
     await db.expenses.clear()
   })
 
-  it('按 rateBookEntryId 把 expenseAmount 加总，不同条目分开算', async () => {
+  it('按 rateBookEntryId 把笔数和 expenseAmount 都加总，不同条目分开算', async () => {
     await db.expenses.bulkAdd([
       expense('e1', 'entry-a', 3000),
       expense('e2', 'entry-a', 1000),
       expense('e3', 'entry-b', 500),
     ])
-    const used = await usedForeignAmountByEntry('t1')
-    expect(used.get('entry-a')).toBe(4000)
-    expect(used.get('entry-b')).toBe(500)
+    const usage = await usageByEntry('t1')
+    expect(usage.get('entry-a')).toEqual({ count: 2, foreignAmount: 4000 })
+    expect(usage.get('entry-b')).toEqual({ count: 1, foreignAmount: 500 })
   })
 
   it('没有 rateBookEntryId 的开销（本位币记账）不计入任何条目', async () => {
     await db.expenses.bulkAdd([expense('e1', null, 300)])
-    const used = await usedForeignAmountByEntry('t1')
-    expect(used.size).toBe(0)
+    const usage = await usageByEntry('t1')
+    expect(usage.size).toBe(0)
   })
 
   it('没有任何开销引用过的条目，压根不会出现在返回的 Map 里', async () => {
-    const used = await usedForeignAmountByEntry('t1')
-    expect(used.has('entry-never-used')).toBe(false)
+    const usage = await usageByEntry('t1')
+    expect(usage.has('entry-never-used')).toBe(false)
+  })
+
+  it('现查现算——引用这个条目的开销被删掉之后，count/foreignAmount 会跟着降，不会停在历史高点', async () => {
+    await db.expenses.bulkAdd([expense('e1', 'entry-a', 3000), expense('e2', 'entry-a', 1000)])
+    expect((await usageByEntry('t1')).get('entry-a')).toEqual({ count: 2, foreignAmount: 4000 })
+    await db.expenses.delete('e2')
+    expect((await usageByEntry('t1')).get('entry-a')).toEqual({ count: 1, foreignAmount: 3000 })
   })
 })
 
@@ -77,19 +84,6 @@ describe('createRateBookEntry', () => {
     expect(entry.exchangedForeignAmount).toBeNull()
   })
 
-  it('不传 useCount 时是0——汇率簿页面"+新增"/"另存为新标签"这类纯记录动作，创建的时候还没真的记过账', async () => {
-    const entry = await createRateBookEntry({
-      tripId: 't1', foreignCurrency: 'JPY', label: '提前换的', rate: 0.03, source: 'manual', createdBy: 'papa',
-    })
-    expect(entry.useCount).toBe(0)
-  })
-
-  it('记账时顺手新建（传 useCount:1）——创建的同一刻就真的用它记了这一笔账', async () => {
-    const entry = await createRateBookEntry({
-      tripId: 't1', foreignCurrency: 'JPY', label: '现场估的', rate: 0.03, source: 'manual', createdBy: 'papa', useCount: 1,
-    })
-    expect(entry.useCount).toBe(1)
-  })
 })
 
 describe('updateRateBookEntry', () => {

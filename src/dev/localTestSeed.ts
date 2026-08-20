@@ -123,8 +123,8 @@ export async function ensureLocalTestSeed() {
   ]
 
   const rateBookEntries: RateBookEntry[] = [
-    { id: 'seed-rate-1', householdId, tripId: tripCurrent.id, foreignCurrency: 'JPY', label: '出发前网上换的现金', rate: 0.0296, source: 'manual', createdBy: 'seed-member-dad', lastUsedAt: now, useCount: 3, archived: false, createdAt: now },
-    { id: 'seed-rate-2', householdId, tripId: tripCurrent.id, foreignCurrency: 'JPY', label: '当地刷卡（银行汇率）', rate: 0.0301, source: 'api_accepted', createdBy: 'seed-member-mom', lastUsedAt: now, useCount: 1, archived: false, createdAt: now },
+    { id: 'seed-rate-1', householdId, tripId: tripCurrent.id, foreignCurrency: 'JPY', label: '出发前网上换的现金', rate: 0.0296, source: 'manual', createdBy: 'seed-member-dad', lastUsedAt: now, archived: false, createdAt: now },
+    { id: 'seed-rate-2', householdId, tripId: tripCurrent.id, foreignCurrency: 'JPY', label: '当地刷卡（银行汇率）', rate: 0.0301, source: 'api_accepted', createdBy: 'seed-member-mom', lastUsedAt: now, archived: false, createdAt: now },
   ]
 
   const budgets: Budget[] = [

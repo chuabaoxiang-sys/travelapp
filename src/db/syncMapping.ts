@@ -180,7 +180,6 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       rate: e.rate,
       source: e.source,
       created_by: e.createdBy,
-      use_count: e.useCount,
       last_used_at: e.lastUsedAt ? iso(e.lastUsedAt) : null,
       // 本地只存布尔值，没有归档时间点；归档瞬间就用当下时间戳，足够满足
       // "是否还出现在推荐列表"这个用途，不需要精确到哪一刻归档的
@@ -198,7 +197,6 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       rate: num(r.rate),
       source: r.source,
       createdBy: r.created_by,
-      useCount: r.use_count,
       lastUsedAt: r.last_used_at ? ms(r.last_used_at) : 0,
       archived: r.archived_at !== null,
       createdAt: ms(r.created_at),

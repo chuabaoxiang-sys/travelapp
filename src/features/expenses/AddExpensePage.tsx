@@ -251,16 +251,13 @@ export function AddExpensePage({
     if (isForeign) {
       if (rateSelection.mode === 'existing') {
         rateBookEntryId = rateSelection.entryId
-        // 只有这笔账"新用上"这个汇率条目才算一次使用——编辑已有账目、汇率没变
-        // 又点了保存，不该重复计次（不然反复编辑同一笔账，"用过N次"会越滚越大，
-        // 跟真实用过几笔账对不上）
+        // 只有这笔账"新用上"这个汇率条目才更新"最近使用"——编辑已有账目、汇率
+        // 没变又点了保存，不该刷新时间；"用过几次"不靠这里累加，是现查现算的
+        // （见 usageByEntry），这里只负责 lastUsedAt 排序用
         if (!initial || initial.rateBookEntryId !== rateSelection.entryId) {
           await recordRateUsage(rateSelection.entryId)
         }
       } else if (rateSelection.mode === 'new') {
-        // 这一条是记账时顺手新建的，创建的同一刻就真的用它记了这一笔账，
-        // 所以直接算1次使用——跟汇率簿页面"+新增"/"另存为新标签"那种纯粹
-        // 记录、还没真的记过账的创建不一样
         const entry = await createRateBookEntry({
           tripId: trip.id,
           foreignCurrency: currency,
@@ -270,7 +267,6 @@ export function AddExpensePage({
           createdBy: currentMemberId,
           exchangedHomeAmount: rateSelection.exchangedHomeAmount,
           exchangedForeignAmount: rateSelection.exchangedForeignAmount,
-          useCount: 1,
         })
         rateBookEntryId = entry.id
       }

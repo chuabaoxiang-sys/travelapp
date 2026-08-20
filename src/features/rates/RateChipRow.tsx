@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Plus, AlertTriangle } from 'lucide-react'
-import { getRateBookEntries, suggestLabels, usedForeignAmountByEntry, deriveRateFromExchangeAmounts } from '../../domain/rates'
+import { getRateBookEntries, suggestLabels, usageByEntry, deriveRateFromExchangeAmounts, type RateEntryUsage } from '../../domain/rates'
 import { fetchReferenceRate } from '../../api/fx'
 import { ExchangeAmountFields } from './ExchangeAmountFields'
 
@@ -32,7 +32,7 @@ export function RateChipRow({
 }) {
   const entries = useLiveQuery(() => getRateBookEntries(tripId, currency), [tripId, currency]) ?? []
   const topEntries = entries.slice(0, 4)
-  const usedByEntry = useLiveQuery(() => usedForeignAmountByEntry(tripId), [tripId]) ?? new Map<string, number>()
+  const usageMap = useLiveQuery(() => usageByEntry(tripId), [tripId]) ?? new Map<string, RateEntryUsage>()
 
   const [showNewForm, setShowNewForm] = useState(value.mode === 'new')
   const [newLabel, setNewLabel] = useState(value.mode === 'new' ? value.label : '')
@@ -91,7 +91,9 @@ export function RateChipRow({
     setExchangeHome(home)
     setExchangeForeign(foreign)
     const derived = deriveRateFromExchangeAmounts(home, foreign)
-    const rateStr = derived != null ? derived.toFixed(4) : newRate
+    // 7位小数——像日元这种面额大的币种，汇率小数点后差一点点，摊到大金额上
+    // 就是实打实的钱，4位不够精确
+    const rateStr = derived != null ? derived.toFixed(7) : newRate
     if (derived != null) {
       setPrefillTouched(true)
       setNewRate(rateStr)
@@ -105,7 +107,7 @@ export function RateChipRow({
         {topEntries.map((e) => {
           const isSelected = value.mode === 'existing' && value.entryId === e.id
           const hasExchangeAmount = e.exchangedForeignAmount != null
-          const remaining = hasExchangeAmount ? (e.exchangedForeignAmount as number) - (usedByEntry.get(e.id) ?? 0) : null
+          const remaining = hasExchangeAmount ? (e.exchangedForeignAmount as number) - (usageMap.get(e.id)?.foreignAmount ?? 0) : null
           const exhausted = remaining != null && remaining <= 0
           return (
             <button
@@ -144,7 +146,7 @@ export function RateChipRow({
       {value.mode === 'existing' && (() => {
         const selectedEntry = entries.find((e) => e.id === value.entryId)
         if (!selectedEntry || selectedEntry.exchangedForeignAmount == null) return null
-        const remaining = selectedEntry.exchangedForeignAmount - (usedByEntry.get(selectedEntry.id) ?? 0)
+        const remaining = selectedEntry.exchangedForeignAmount - (usageMap.get(selectedEntry.id)?.foreignAmount ?? 0)
         if (remaining > 0) return null
         return (
           <div className="text-[10.5px] text-spend mt-1.5 flex items-center gap-1">

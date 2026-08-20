@@ -7,8 +7,9 @@ import {
   archiveRateBookEntry,
   unarchiveRateBookEntry,
   createRateBookEntry,
-  usedForeignAmountByEntry,
+  usageByEntry,
   deriveRateFromExchangeAmounts,
+  type RateEntryUsage,
 } from '../../domain/rates'
 import { ExchangeAmountFields } from './ExchangeAmountFields'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -34,7 +35,7 @@ export function RateBookScreen({
   const entries = useLiveQuery(() => getAllRateBookEntries(trip.id), [trip.id]) ?? []
   const active = entries.filter((e) => !e.archived)
   const archived = entries.filter((e) => e.archived)
-  const usedByEntry = useLiveQuery(() => usedForeignAmountByEntry(trip.id), [trip.id]) ?? new Map<string, number>()
+  const usageMap = useLiveQuery(() => usageByEntry(trip.id), [trip.id]) ?? new Map<string, RateEntryUsage>()
 
   const byCurrency = new Map<string, RateBookEntry[]>()
   for (const e of active) {
@@ -212,7 +213,7 @@ export function RateBookScreen({
                         ) : (
                           <div className="font-serif-sc text-[16px] tabular">{e.rate}</div>
                         )}
-                        <div className="text-[10px] text-muted">用过 {e.useCount} 次</div>
+                        <div className="text-[10px] text-muted">用过 {usageMap.get(e.id)?.count ?? 0} 次</div>
                       </div>
                     </div>
                     {editingId === e.id && (
@@ -228,7 +229,7 @@ export function RateBookScreen({
                       </div>
                     )}
                     {editingId !== e.id && e.exchangedForeignAmount != null && (() => {
-                      const used = usedByEntry.get(e.id) ?? 0
+                      const used = usageMap.get(e.id)?.foreignAmount ?? 0
                       const total = e.exchangedForeignAmount as number
                       const over = used > total
                       const pct = total > 0 ? (used / total) * 100 : 0

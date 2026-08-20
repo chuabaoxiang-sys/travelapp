@@ -149,7 +149,6 @@ export interface RateBookEntry {
   source: 'manual' | 'api_accepted' | 'api_edited'
   createdBy: string | null
   lastUsedAt: number
-  useCount: number
   archived: boolean
   createdAt: number
   // 这条标签背后如果真的换过一次钱，这里存当时给出/换到的金额（比如"用500 MYR
