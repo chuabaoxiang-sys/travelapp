@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CountryPicker } from '../../components/CountryPicker'
 import { countryByCode } from '../../lib/countries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
+import { useBackDismiss } from '../../hooks/useBackDismiss'
 import type { Trip, TripStatus } from '../../types'
 
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -32,6 +33,7 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
   const [formState, setFormState] = useState<'new' | string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Trip | null>(null)
   const [wishlistOpen, setWishlistOpen] = useState(false)
+  useBackDismiss(wishlistOpen, () => setWishlistOpen(false))
 
   async function confirmRemoveTrip() {
     if (!pendingDelete) return
