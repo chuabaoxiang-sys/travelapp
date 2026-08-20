@@ -44,6 +44,9 @@ export function RateBookScreen({
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [editLabel, setEditLabel] = useState('')
+  const [editExchangeHome, setEditExchangeHome] = useState('')
+  const [editExchangeForeign, setEditExchangeForeign] = useState('')
   const [saveAsNewFor, setSaveAsNewFor] = useState<RateBookEntry | null>(null)
   const [newLabelValue, setNewLabelValue] = useState('')
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null)
@@ -99,11 +102,29 @@ export function RateBookScreen({
   function startEdit(e: RateBookEntry) {
     setEditingId(e.id)
     setEditValue(String(e.rate))
+    setEditLabel(e.label)
+    setEditExchangeHome(e.exchangedHomeAmount != null ? String(e.exchangedHomeAmount) : '')
+    setEditExchangeForeign(e.exchangedForeignAmount != null ? String(e.exchangedForeignAmount) : '')
+  }
+
+  function onEditExchangeChange(home: string, foreign: string) {
+    setEditExchangeHome(home)
+    setEditExchangeForeign(foreign)
+    const derived = deriveRateFromExchangeAmounts(home, foreign)
+    if (derived != null) setEditValue(derived.toFixed(7))
   }
 
   async function saveEdit(e: RateBookEntry) {
     const r = parseFloat(editValue)
-    if (r > 0) await updateRateBookEntry(e.id, r)
+    if (!(r > 0) || !editLabel.trim()) return
+    const home = parseFloat(editExchangeHome)
+    const foreign = parseFloat(editExchangeForeign)
+    await updateRateBookEntry(e.id, {
+      rate: r,
+      label: editLabel.trim(),
+      exchangedHomeAmount: home > 0 ? home : null,
+      exchangedForeignAmount: foreign > 0 ? foreign : null,
+    })
     setEditingId(null)
   }
 
@@ -116,6 +137,8 @@ export function RateBookScreen({
     if (!saveAsNewFor) return
     const r = parseFloat(editValue)
     if (!r || !newLabelValue.trim()) return
+    const home = parseFloat(editExchangeHome)
+    const foreign = parseFloat(editExchangeForeign)
     await createRateBookEntry({
       tripId: trip.id,
       foreignCurrency: saveAsNewFor.foreignCurrency,
@@ -123,6 +146,8 @@ export function RateBookScreen({
       rate: r,
       source: 'manual',
       createdBy: currentMemberId,
+      exchangedHomeAmount: home > 0 ? home : null,
+      exchangedForeignAmount: foreign > 0 ? foreign : null,
     })
     setSaveAsNewFor(null)
     setEditingId(null)
@@ -162,7 +187,15 @@ export function RateBookScreen({
                   <div key={e.id} className="bg-card border border-line rounded-2xl p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="font-serif-sc text-[14px] font-semibold truncate">{e.label}</div>
+                        {editingId === e.id ? (
+                          <input
+                            value={editLabel}
+                            onChange={(ev) => setEditLabel(ev.target.value)}
+                            className="w-full rounded-lg border border-plan bg-paper px-2 py-1 text-[14px] font-serif-sc font-semibold outline-none"
+                          />
+                        ) : (
+                          <div className="font-serif-sc text-[14px] font-semibold truncate">{e.label}</div>
+                        )}
                         <div className="text-[11px] text-muted mt-0.5">
                           {SOURCE_LABEL[e.source]} · 最近用于 {new Date(e.lastUsedAt).toLocaleDateString('zh-CN')}
                         </div>
@@ -182,7 +215,19 @@ export function RateBookScreen({
                         <div className="text-[10px] text-muted">用过 {e.useCount} 次</div>
                       </div>
                     </div>
-                    {e.exchangedForeignAmount != null && (() => {
+                    {editingId === e.id && (
+                      <div className="mt-2 pt-2 border-t border-dashed border-line">
+                        <ExchangeAmountFields
+                          homeCurrency={trip.homeCurrency}
+                          foreignCurrency={e.foreignCurrency}
+                          homeAmount={editExchangeHome}
+                          foreignAmount={editExchangeForeign}
+                          onChangeHomeAmount={(v) => onEditExchangeChange(v, editExchangeForeign)}
+                          onChangeForeignAmount={(v) => onEditExchangeChange(editExchangeHome, v)}
+                        />
+                      </div>
+                    )}
+                    {editingId !== e.id && e.exchangedForeignAmount != null && (() => {
                       const used = usedByEntry.get(e.id) ?? 0
                       const total = e.exchangedForeignAmount as number
                       const over = used > total

@@ -64,8 +64,11 @@ export async function createRateBookEntry(params: {
 
 // 编辑汇率簿里的某条：只影响以后新记的账，历史账目已经把 rateUsed/homeAmount
 // 快照在 expense 表里了，不会被这次编辑追溯改变
-export async function updateRateBookEntry(id: string, rate: number) {
-  await db.rateBookEntries.update(id, { rate })
+export async function updateRateBookEntry(
+  id: string,
+  updates: { rate: number; label: string; exchangedHomeAmount?: number | null; exchangedForeignAmount?: number | null },
+) {
+  await db.rateBookEntries.update(id, updates)
 }
 
 export async function archiveRateBookEntry(id: string) {

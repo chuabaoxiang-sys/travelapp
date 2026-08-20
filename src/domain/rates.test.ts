@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { deriveRateFromExchangeAmounts, usedForeignAmountByEntry, createRateBookEntry } from './rates'
+import { deriveRateFromExchangeAmounts, usedForeignAmountByEntry, createRateBookEntry, updateRateBookEntry } from './rates'
 import { db } from '../db/dexie'
 import type { Expense } from '../types'
 
@@ -89,5 +89,38 @@ describe('createRateBookEntry', () => {
       tripId: 't1', foreignCurrency: 'JPY', label: '现场估的', rate: 0.03, source: 'manual', createdBy: 'papa', useCount: 1,
     })
     expect(entry.useCount).toBe(1)
+  })
+})
+
+describe('updateRateBookEntry', () => {
+  beforeEach(async () => {
+    await db.rateBookEntries.clear()
+  })
+
+  it('能同时改标签、汇率、换汇金额三样', async () => {
+    const entry = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '旧标签', rate: 0.03, source: 'manual', createdBy: 'papa',
+    })
+    await updateRateBookEntry(entry.id, {
+      rate: 0.0296296, label: '新标签', exchangedHomeAmount: 200, exchangedForeignAmount: 6750,
+    })
+    const updated = await db.rateBookEntries.get(entry.id)
+    expect(updated?.label).toBe('新标签')
+    expect(updated?.rate).toBe(0.0296296)
+    expect(updated?.exchangedHomeAmount).toBe(200)
+    expect(updated?.exchangedForeignAmount).toBe(6750)
+  })
+
+  it('换汇金额传 null 时能把已有的清掉（比如编辑时把两个金额都删空）', async () => {
+    const entry = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '有换汇记录', rate: 0.03, source: 'manual', createdBy: 'papa',
+      exchangedHomeAmount: 500, exchangedForeignAmount: 16500,
+    })
+    await updateRateBookEntry(entry.id, {
+      rate: 0.03, label: '有换汇记录', exchangedHomeAmount: null, exchangedForeignAmount: null,
+    })
+    const updated = await db.rateBookEntries.get(entry.id)
+    expect(updated?.exchangedHomeAmount).toBeNull()
+    expect(updated?.exchangedForeignAmount).toBeNull()
   })
 })
