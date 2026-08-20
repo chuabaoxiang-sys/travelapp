@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2, X, Check, Plus, Filter, Bookmark } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
@@ -23,6 +23,7 @@ import { useBackDismiss } from '../../hooks/useBackDismiss'
 
 const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 type ViewMode = 'timeline' | 'calendar' | 'map'
+type ItemFormHandle = { finishEditing: () => void }
 
 export function ItineraryTab({
   trip,
@@ -103,6 +104,13 @@ export function ItineraryTab({
   // null = 表单关闭；'new' = 新增（表单出现在列表最下面）；具体 id = 正在编辑该行程项
   // （编辑表单要原地替换那张卡片，不能跑到列表底部——不然用户会搞不清自己在改哪一条）
   const [formState, setFormState] = useState<'new' | string | null>(null)
+  const itemFormRef = useRef<ItemFormHandle>(null)
+  // useBackDismiss要注册在ItineraryTab这个"本来就常驻"的组件上，不能放进ItemForm
+  // 自己内部——ItemForm的挂载/卸载本身就是表单的开/关信号，而开发环境下React
+  // StrictMode会把组件挂载后的effect故意"挂载→清理→再挂载"一遍来检测副作用，
+  // 这套history.pushState/back()的清理逻辑一旦跟着组件自己的挂载走，就会在打开的
+  // 瞬间被StrictMode的这次"演练性卸载"误当成一次真实的返回键，表单开出来又立刻自己关掉
+  useBackDismiss(formState !== null, () => itemFormRef.current?.finishEditing())
 
   // 表单展开后会占到屏幕靠下的位置，跟全局"记一笔"悬浮按钮的固定位置正好重叠，
   // 真机上看起来悬浮按钮糊在表单上面——开着表单时让 TripShell 把悬浮按钮先藏起来
@@ -283,6 +291,7 @@ export function ItineraryTab({
                   return (
                     <Fragment key={it.id}>
                       <ItemForm
+                        ref={itemFormRef}
                         initial={it}
                         countryCodes={trip.destinationCountries}
                         onCancel={() => setFormState(null)}
@@ -382,6 +391,7 @@ export function ItineraryTab({
 
             {formState === 'new' ? (
               <ItemForm
+                ref={itemFormRef}
                 countryCodes={trip.destinationCountries}
                 onCancel={() => setFormState(null)}
                 onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId) => {
@@ -438,13 +448,7 @@ export function ItineraryTab({
   )
 }
 
-function ItemForm({
-  initial,
-  onSave,
-  onCancel,
-  onDelete,
-  countryCodes,
-}: {
+const ItemForm = forwardRef<ItemFormHandle, {
   initial?: ItineraryItem
   onSave: (
     title: string,
@@ -457,7 +461,13 @@ function ItemForm({
   onCancel: () => void
   onDelete?: () => void
   countryCodes?: string[]
-}) {
+}>(function ItemForm({
+  initial,
+  onSave,
+  onCancel,
+  onDelete,
+  countryCodes,
+}, ref) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [time, setTime] = useState(initial?.time ?? '')
   const [location, setLocation] = useState<LocationValue>({
@@ -496,25 +506,31 @@ function ItemForm({
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [])
 
-  // 点表单外面关闭——跟点右下角的"✓"效果一样：填了标题就当作保存，标题还是空的
-  // 就当作取消（新建时点开又反悔不填，直接放弃更符合直觉）。放进ref里而不是
-  // 直接把title/notes等状态放进依赖数组，是不想让这个document监听器随着每次
-  // 打字重新挂载一遍——只订阅一次，回调里读的永远是最新值
-  const latestRef = useRef({ title, time, location, notes, bookingStatus, sourceWishlistId, onSave, onCancel })
-  latestRef.current = { title, time, location, notes, bookingStatus, sourceWishlistId, onSave, onCancel }
+  // 点表单外面/按手机返回键，都用同一套判断：填了标题就当作点了"✓"保存，
+  // 标题还是空的就当作取消（新建时点开又反悔不填，直接放弃更符合直觉）
+  function finishEditing() {
+    if (title.trim()) {
+      onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId)
+    } else {
+      onCancel()
+    }
+  }
+  // 点外面用的监听器放进ref而不是直接把finishEditing放进依赖数组，是不想让这个
+  // document监听器随着每次打字重新挂载一遍——只订阅一次，回调里读的永远是最新那份
+  const finishEditingRef = useRef(finishEditing)
+  finishEditingRef.current = finishEditing
   useEffect(() => {
     function handleOutsidePointerDown(e: PointerEvent) {
       if (formRef.current?.contains(e.target as Node)) return
-      const s = latestRef.current
-      if (s.title.trim()) {
-        s.onSave(s.title.trim(), s.time, s.location, s.notes.trim(), s.bookingStatus, s.sourceWishlistId)
-      } else {
-        s.onCancel()
-      }
+      finishEditingRef.current()
     }
     document.addEventListener('pointerdown', handleOutsidePointerDown)
     return () => document.removeEventListener('pointerdown', handleOutsidePointerDown)
   }, [])
+
+  // 返回键的处理注册在父组件ItineraryTab里（它本来就常驻，不会随表单开关而挂载/
+  // 卸载），这里只是把"该怎么收尾"这个动作暴露出去给父组件调用
+  useImperativeHandle(ref, () => ({ finishEditing }))
 
   return (
     <div ref={formRef} className="mt-2 bg-card border border-plan/40 rounded-2xl p-3 flex flex-col gap-2">
@@ -626,4 +642,4 @@ function ItemForm({
       )}
     </div>
   )
-}
+})
