@@ -20,8 +20,9 @@ export function InviteCodeSheet({ onClose }: { onClose: () => void }) {
   async function copyCode() {
     if (!code) return
     // 之前只复制裸码，朋友收到一串字母数字不知道该干什么——现在带上说明文案和入口步骤，
-    // 复制出去就是一条能直接发给对方的完整消息
-    const message = `邀请你加入"旅记"——我们家用来记行程和账目的小工具\n打开 ${window.location.origin}\n点"有邀请码？点这里输入"，填你的邮箱 + 下面这串邀请码就能加入：\n\n${code}`
+    // 复制出去就是一条能直接发给对方的完整消息。图文教程（public/join-guide.html，
+    // Vite原样发布成静态页）额外给一条链接，卡在哪一步都能照着截图对一遍
+    const message = `邀请你加入"旅记"——我们家用来记行程和账目的小工具\n打开 ${window.location.origin}\n点"有邀请码？点这里输入"，填你的邮箱 + 下面这串邀请码就能加入：\n\n${code}\n\n（一步步图文教程：${window.location.origin}/join-guide.html）`
     await navigator.clipboard.writeText(message)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
