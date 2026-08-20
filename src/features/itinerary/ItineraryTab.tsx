@@ -47,11 +47,17 @@ export function ItineraryTab({
 
   const allItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
 
-  // "反向提醒"：想去的地点里，哪些离这趟行程已经排上时间线的某个点足够近——
-  // 纯几何计算，现查现算，不受任何单独一天筛选影响（看的是整趟行程 allItems）
+  // "反向提醒"：想去的地点里，哪些离**当前这一天**已经排上时间线的点足够近——
+  // 距离锚点故意只用当前这一天的行程项（items），不是整趟行程的（allItems）：
+  // 跨城市的行程如果拿全部行程当锚点，看北海道那几天时也会推荐东京附近的地点，
+  // 隔着几百公里毫无意义。但"是否已经排入过"要看整趟行程，所以那部分仍传 allItems
   const wishlistPlaces = useLiveQuery(() => listWishlistPlaces()) ?? []
-  const suggestions = useMemo(() => nearbyWishlistSuggestions(wishlistPlaces, allItems), [wishlistPlaces, allItems])
-  // 关闭是当次会话级别的，不落库——下次重新进这趟行程还会再出现
+  const suggestions = useMemo(
+    () => nearbyWishlistSuggestions(wishlistPlaces, items, allItems),
+    [wishlistPlaces, items, allItems],
+  )
+  // 关闭是当次会话级别的，不落库——下次重新进这趟行程还会再出现；切换到别的日期
+  // 也会重新出现，因为不同天推荐的地点本来就不一样，不该被上一天的关闭状态带偏
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false)
 
   async function addFromWishlist(place: WishlistPlace) {
@@ -72,7 +78,7 @@ export function ItineraryTab({
       locationName: place.name,
       lat: place.lat,
       lng: place.lng,
-      notes: null,
+      notes: place.notes,
       bookingStatus: null,
       sourceWishlistId: place.id,
       createdAt: now,
@@ -198,7 +204,7 @@ export function ItineraryTab({
                   return (
                     <button
                       key={d}
-                      onClick={() => { setSelected(d); setFormState(null) }}
+                      onClick={() => { setSelected(d); setFormState(null); setSuggestionsDismissed(false) }}
                       className={`flex-shrink-0 rounded-2xl px-3.5 py-2 text-center border font-serif-sc ${
                         isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-[#57534E] border-line'
                       }`}
@@ -232,8 +238,11 @@ export function ItineraryTab({
                 </div>
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar mt-2 pb-0.5">
                   {suggestions.map((s) => (
-                    <div key={s.id} className="flex-shrink-0 flex items-center gap-1.5 bg-card border border-line rounded-full pl-3 pr-1.5 py-1 text-[11px] max-w-[160px]">
-                      <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                    <div key={s.id} className="flex-shrink-0 flex items-center gap-1.5 bg-card border border-line rounded-2xl pl-3 pr-1.5 py-1.5 text-[11px] max-w-[160px]">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{s.name}</div>
+                        {s.notes && <div className="truncate text-[9.5px] text-muted mt-0.5">{s.notes}</div>}
+                      </div>
                       <button
                         onClick={() => addFromWishlist(s)}
                         className="w-5 h-5 rounded-full bg-plan text-card flex items-center justify-center flex-shrink-0"
@@ -456,6 +465,8 @@ function ItemForm({
   function pickFromWishlist(p: WishlistPlace) {
     setLocation({ name: p.name, lat: p.lat, lng: p.lng })
     if (!title.trim()) setTitle(p.name)
+    // 跟标题一样，只在备注还是空的时候才带过来——避免盖掉用户已经手打的内容
+    if (!notes.trim() && p.notes) setNotes(p.notes)
     setSourceWishlistId(p.id)
     setWishlistPickerOpen(false)
     setWishlistFilter('')

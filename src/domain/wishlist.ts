@@ -86,14 +86,22 @@ export async function usageByWishlistEntry(): Promise<Map<string, WishlistUsage>
 // "反向提醒"用的匹配半径——够覆盖同一个城市/都会圈，又不至于把完全不相关的地方拉进来
 const NEARBY_THRESHOLD_METERS = 50_000
 
-// 这趟行程还没关联过的想去地点里，哪些"看起来跟这趟行程有关"（离这趟行程已经排上
-// 时间线的某个行程项足够近）。纯几何计算，不调用任何地图API、不新增存储字段。
-// tripItineraryItems 只需要传这一趟行程自己的行程项（调用方已经查过），不是全部行程的
-export function nearbyWishlistSuggestions(places: WishlistPlace[], tripItineraryItems: ItineraryItem[]): WishlistPlace[] {
+// 这趟行程还没关联过的想去地点里，哪些"看起来跟当前这一天有关"（离当前这一天已经
+// 排上时间线的某个行程项足够近）。纯几何计算，不调用任何地图API、不新增存储字段。
+//
+// 距离锚点故意只用"当前这一天"的行程项，不是整趟行程的——像"东京北海道"这种跨城市
+// 的行程，如果拿整趟行程的点当锚点，东京附近的地点会在看北海道那几天时也被推荐出来，
+// 隔着几百公里毫无意义。但"是否已经排入过"这件事要看整趟行程：已经在任何一天用过的
+// 地点，换到别的天看也不该重复推荐，所以这两个用途各传各的行程项列表
+export function nearbyWishlistSuggestions(
+  places: WishlistPlace[],
+  dayItineraryItems: ItineraryItem[],
+  tripItineraryItems: ItineraryItem[],
+): WishlistPlace[] {
   const alreadyLinkedIds = new Set(
     tripItineraryItems.map((it) => it.sourceWishlistId).filter((id): id is string => !!id),
   )
-  const anchors = tripItineraryItems.filter(
+  const anchors = dayItineraryItems.filter(
     (it): it is ItineraryItem & { lat: number; lng: number } => it.lat != null && it.lng != null,
   )
   if (!anchors.length) return []

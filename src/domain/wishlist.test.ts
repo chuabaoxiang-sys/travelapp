@@ -115,36 +115,39 @@ describe('nearbyWishlistSuggestions', () => {
     return { id, householdId: 'h1', name: id, lat, lng, notes: null, visited: false, createdBy: null, createdAt: 0, updatedAt: 0 }
   }
 
-  it('这趟行程一个行程项都还没排时，返回空数组（没有锚点可比）', () => {
-    const result = nearbyWishlistSuggestions([place('p1', 35.7, 139.7)], [])
+  it('当前这一天一个行程项都还没排时，返回空数组（没有锚点可比），即使整趟行程别的天有点', () => {
+    const otherDayItem = itineraryItem('i1', 't1', null)
+    otherDayItem.lat = 35.68
+    otherDayItem.lng = 139.77
+    const result = nearbyWishlistSuggestions([place('p1', 35.7, 139.7)], [], [otherDayItem])
     expect(result).toEqual([])
   })
 
-  it('离已排行程项足够近的地点会被推荐', () => {
+  it('离当前这一天的行程项足够近的地点会被推荐', () => {
     // 东京市中心附近，相距几公里
-    const items = [itineraryItem('i1', 't1', null)]
-    items[0].lat = 35.68
-    items[0].lng = 139.77
+    const dayItems = [itineraryItem('i1', 't1', null)]
+    dayItems[0].lat = 35.68
+    dayItems[0].lng = 139.77
     const nearby = place('p-near', 35.71, 139.8) // 大约4公里
-    const result = nearbyWishlistSuggestions([nearby], items)
+    const result = nearbyWishlistSuggestions([nearby], dayItems, dayItems)
     expect(result.map((p) => p.id)).toEqual(['p-near'])
   })
 
   it('离得太远的地点不会被推荐（比如另一个国家）', () => {
-    const items = [itineraryItem('i1', 't1', null)]
-    items[0].lat = 35.68
-    items[0].lng = 139.77
+    const dayItems = [itineraryItem('i1', 't1', null)]
+    dayItems[0].lat = 35.68
+    dayItems[0].lng = 139.77
     const far = place('p-far', 3.14, 101.69) // 吉隆坡，几千公里外
-    const result = nearbyWishlistSuggestions([far], items)
+    const result = nearbyWishlistSuggestions([far], dayItems, dayItems)
     expect(result).toEqual([])
   })
 
   it('没有坐标的地点不推荐，即使离得很"近"（无法判断）', () => {
-    const items = [itineraryItem('i1', 't1', null)]
-    items[0].lat = 35.68
-    items[0].lng = 139.77
+    const dayItems = [itineraryItem('i1', 't1', null)]
+    dayItems[0].lat = 35.68
+    dayItems[0].lng = 139.77
     const noCoords = place('p-no-coords', null, null)
-    expect(nearbyWishlistSuggestions([noCoords], items)).toEqual([])
+    expect(nearbyWishlistSuggestions([noCoords], dayItems, dayItems)).toEqual([])
   })
 
   it('已经跟这趟行程关联过（sourceWishlistId对应）的地点不重复推荐', () => {
@@ -155,7 +158,41 @@ describe('nearbyWishlistSuggestions', () => {
     alreadyLinked.lat = 35.68
     alreadyLinked.lng = 139.77
     const nearby = place('p-near', 35.71, 139.8)
-    const result = nearbyWishlistSuggestions([nearby], [anchorNear, alreadyLinked])
+    const result = nearbyWishlistSuggestions([nearby], [anchorNear, alreadyLinked], [anchorNear, alreadyLinked])
+    expect(result).toEqual([])
+  })
+
+  it('跨城市行程：只看当前这一天的锚点，别的天离得近也不会跨天推荐过来（核心修复点）', () => {
+    // 东京那几天的行程项
+    const tokyoItem = itineraryItem('tokyo-item', 't1', null)
+    tokyoItem.lat = 35.68
+    tokyoItem.lng = 139.77
+    // 北海道那几天的行程项——跟东京隔了800多公里
+    const hokkaidoItem = itineraryItem('hokkaido-item', 't1', null)
+    hokkaidoItem.lat = 43.06
+    hokkaidoItem.lng = 141.35
+
+    const tokyoPlace = place('p-tokyo', 35.71, 139.8) // 靠近东京行程项
+    const allTripItems = [tokyoItem, hokkaidoItem]
+
+    // 当前正在看北海道那一天：只传北海道的行程项当锚点，东京附近的地点不该被推荐
+    expect(nearbyWishlistSuggestions([tokyoPlace], [hokkaidoItem], allTripItems)).toEqual([])
+    // 当前正在看东京那一天：传东京的行程项当锚点，才会推荐出来
+    expect(nearbyWishlistSuggestions([tokyoPlace], [tokyoItem], allTripItems).map((p) => p.id)).toEqual(['p-tokyo'])
+  })
+
+  it('已经排进"别的天"的地点，看这一天时也不该重复推荐（排除逻辑要看整趟行程，不能只看当前这天）', () => {
+    // 这个地点已经通过"另一天"的行程项排进了行程（sourceWishlistId对应），
+    // 但当前这一天自己的行程项也离它很近——排除逻辑必须用整趟行程判断，才能正确跳过
+    const otherDayLinkedItem = itineraryItem('other-day-item', 't1', 'p-already-used')
+    otherDayLinkedItem.lat = 35.68
+    otherDayLinkedItem.lng = 139.77
+    const currentDayItem = itineraryItem('current-day-item', 't1', null)
+    currentDayItem.lat = 35.69
+    currentDayItem.lng = 139.78
+
+    const usedPlace = place('p-already-used', 35.71, 139.8)
+    const result = nearbyWishlistSuggestions([usedPlace], [currentDayItem], [otherDayLinkedItem, currentDayItem])
     expect(result).toEqual([])
   })
 })
