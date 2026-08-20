@@ -362,11 +362,10 @@ function ItemForm({
       <div className="flex gap-2">
         <TimePicker value={time} onChange={setTime} />
         <input
-          autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="做什么，例如「环球影城」"
-          className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
+          className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-base outline-none focus:border-plan"
         />
       </div>
       <LocationPicker value={location} onChange={setLocation} countryCodes={countryCodes} />
@@ -376,7 +375,7 @@ function ItemForm({
           onChange={(e) => setNotes(e.target.value)}
           placeholder="备注（可选）"
           rows={2}
-          className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan leading-relaxed"
+          className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-base outline-none focus:border-plan leading-relaxed"
         />
         <div className="text-[10px] text-muted mt-1">拖右下角可以拉高；换行或加"1. 2. 3."就能分点</div>
       </div>
