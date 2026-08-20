@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { isAllowedMapsUrl, extractPlaceFromUrl } from './resolve-maps-link'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { isAllowedMapsUrl, extractPlaceFromUrl, extractNameFromUrl, geocodeAddress } from './resolve-maps-link'
 
 describe('isAllowedMapsUrl', () => {
   it('接受 maps.app.goo.gl 短链接', () => {
@@ -47,5 +47,63 @@ describe('extractPlaceFromUrl', () => {
   it('没有/place/片段时name为null，但坐标仍然能提取', () => {
     const url = 'https://www.google.com/maps/@3.139,101.6869,15z'
     expect(extractPlaceFromUrl(url)).toEqual({ lat: 3.139, lng: 101.6869, name: null })
+  })
+})
+
+describe('extractNameFromUrl', () => {
+  it('两种坐标格式都没有时，仍然能单独取出/place/片段里的地址', () => {
+    // 真实案例：Google用内部编号指代地点的分享链接款式，data=里没有!3d!4d也没有@lat,lng，
+    // 但/place/片段里的地址还在——这是 geocodeAddress 兜底能用上的唯一线索
+    const url = 'https://www.google.com/maps/place/Futaba,+2+Chome-2-9+Sarugakucho,+Chiyoda+City,+Tokyo+101-0064,+Japan/data=!4m2!3m1!1s0x60188c166308e715:0x7f5757cbb9a7bef4!18m1!1e1'
+    expect(extractNameFromUrl(url)).toBe('Futaba, 2 Chome-2-9 Sarugakucho, Chiyoda City, Tokyo 101-0064, Japan')
+  })
+
+  it('没有/place/片段时返回null', () => {
+    expect(extractNameFromUrl('https://www.google.com/maps/@3.139,101.6869,15z')).toBeNull()
+  })
+})
+
+describe('geocodeAddress', () => {
+  const originalKey = process.env.GOOGLE_GEOCODING_API_KEY
+  const originalFetch = global.fetch
+
+  beforeEach(() => {
+    process.env.GOOGLE_GEOCODING_API_KEY = 'test-key'
+  })
+  afterEach(() => {
+    process.env.GOOGLE_GEOCODING_API_KEY = originalKey
+    global.fetch = originalFetch
+  })
+
+  it('没配置API key时直接返回null，不发请求', async () => {
+    delete process.env.GOOGLE_GEOCODING_API_KEY
+    const fetchSpy = vi.fn()
+    global.fetch = fetchSpy as unknown as typeof fetch
+    expect(await geocodeAddress('随便一个地址')).toBeNull()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('Geocoding API返回正常结果时提取lat/lng', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [{ geometry: { location: { lat: 35.7, lng: 139.77 } } }] }),
+    }) as unknown as typeof fetch
+    expect(await geocodeAddress('某个地址')).toEqual({ lat: 35.7, lng: 139.77 })
+  })
+
+  it('Geocoding API查不到结果（results为空）时返回null', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [] }),
+    }) as unknown as typeof fetch
+    expect(await geocodeAddress('查不到的地址')).toBeNull()
+  })
+
+  it('请求失败（网络错误/非200）时返回null，不抛出异常', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false }) as unknown as typeof fetch
+    expect(await geocodeAddress('某个地址')).toBeNull()
+
+    global.fetch = vi.fn().mockRejectedValue(new Error('network down')) as unknown as typeof fetch
+    expect(await geocodeAddress('某个地址')).toBeNull()
   })
 })
