@@ -62,7 +62,9 @@ export function RateChipRow({
       setFetchingRef(true)
       fetchReferenceRate(currency, homeCurrency).then((r) => {
         setFetchingRef(false)
-        if (r != null) setNewRate(r.toFixed(4))
+        // 7位小数——像日元这种面额大的币种，汇率小数点后差一点点，摊到大金额上
+        // 就是实打实的钱，4位不够精确
+        if (r != null) setNewRate(r.toFixed(7))
       })
     }
   }

@@ -251,7 +251,12 @@ export function AddExpensePage({
     if (isForeign) {
       if (rateSelection.mode === 'existing') {
         rateBookEntryId = rateSelection.entryId
-        await recordRateUsage(rateSelection.entryId)
+        // 只有这笔账"新用上"这个汇率条目才算一次使用——编辑已有账目、汇率没变
+        // 又点了保存，不该重复计次（不然反复编辑同一笔账，"用过N次"会越滚越大，
+        // 跟真实用过几笔账对不上）
+        if (!initial || initial.rateBookEntryId !== rateSelection.entryId) {
+          await recordRateUsage(rateSelection.entryId)
+        }
       } else if (rateSelection.mode === 'new') {
         const entry = await createRateBookEntry({
           tripId: trip.id,

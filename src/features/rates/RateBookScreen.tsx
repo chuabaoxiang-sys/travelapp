@@ -73,7 +73,9 @@ export function RateBookScreen({
     setAddExchangeHome(home)
     setAddExchangeForeign(foreign)
     const derived = deriveRateFromExchangeAmounts(home, foreign)
-    if (derived != null) setAddRate(derived.toFixed(4))
+    // 7位小数——像日元这种面额大的币种，汇率小数点后差一点点，摊到大金额上
+    // 就是实打实的钱，4位不够精确
+    if (derived != null) setAddRate(derived.toFixed(7))
   }
 
   async function confirmAdd() {
