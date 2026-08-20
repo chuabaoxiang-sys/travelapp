@@ -127,6 +127,7 @@ export function LocationPicker({
           onChange={(e) => handleType(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder="地点"
+          autoComplete="off"
           className={`w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan ${value.lat != null ? 'pr-16' : ''}`}
         />
         {value.lat != null && (

@@ -20,7 +20,15 @@ import { RouteLegHint } from '../../components/RouteLegHint'
 const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 type ViewMode = 'timeline' | 'calendar' | 'map'
 
-export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
+export function ItineraryTab({
+  trip,
+  currentMemberId,
+  onFormOpenChange,
+}: {
+  trip: Trip
+  currentMemberId: string
+  onFormOpenChange?: (open: boolean) => void
+}) {
   const days = trip.startDate && trip.endDate ? dateRange(trip.startDate, trip.endDate) : []
   const [viewMode, setViewMode] = useState<ViewMode>('timeline')
   const [selected, setSelected] = useState(days[0] ?? '')
@@ -50,6 +58,13 @@ export function ItineraryTab({ trip, currentMemberId }: { trip: Trip; currentMem
   // null = 表单关闭；'new' = 新增（表单出现在列表最下面）；具体 id = 正在编辑该行程项
   // （编辑表单要原地替换那张卡片，不能跑到列表底部——不然用户会搞不清自己在改哪一条）
   const [formState, setFormState] = useState<'new' | string | null>(null)
+
+  // 表单展开后会占到屏幕靠下的位置，跟全局"记一笔"悬浮按钮的固定位置正好重叠，
+  // 真机上看起来悬浮按钮糊在表单上面——开着表单时让 TripShell 把悬浮按钮先藏起来
+  useEffect(() => {
+    onFormOpenChange?.(formState !== null)
+    return () => onFormOpenChange?.(false)
+  }, [formState, onFormOpenChange])
 
   // 行程比较多的时候，这个筛选能一眼看出"这趟行程还有哪几项没订"。只影响时间线
   // 这里的显示，不影响日历/地图视图，也不影响还没建过的那几天能不能选
@@ -372,6 +387,7 @@ function ItemForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="做什么，例如「环球影城」"
+          autoComplete="off"
           className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
         />
       </div>
@@ -382,6 +398,7 @@ function ItemForm({
           onChange={(e) => setNotes(e.target.value)}
           placeholder="备注（可选）"
           rows={2}
+          autoComplete="off"
           className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan leading-relaxed"
         />
         <div className="text-[10px] text-muted mt-1">拖右下角可以拉高；换行或加"1. 2. 3."就能分点</div>

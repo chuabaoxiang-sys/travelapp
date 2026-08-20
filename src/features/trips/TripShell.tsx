@@ -44,6 +44,7 @@ export function TripShell({
   const [shareSettingsOpen, setShareSettingsOpen] = useState(false)
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
+  const [itineraryFormOpen, setItineraryFormOpen] = useState(false)
 
   useEffect(() => {
     if (tripResult === NOT_FOUND) onSwitchTrip()
@@ -134,7 +135,9 @@ export function TripShell({
         </div>
 
         <div className="flex-1 relative overflow-hidden">
-          {tab === 'itinerary' && <ItineraryTab trip={trip} currentMemberId={currentMemberId} />}
+          {tab === 'itinerary' && (
+            <ItineraryTab trip={trip} currentMemberId={currentMemberId} onFormOpenChange={setItineraryFormOpen} />
+          )}
           {tab === 'ledger' && (
             <LedgerTab trip={trip} currentMemberId={currentMemberId} highlightSince={ledgerHighlightSince} />
           )}
@@ -142,7 +145,7 @@ export function TripShell({
           {tab === 'split' && <SplitTab trip={trip} currentMemberId={currentMemberId} />}
         </div>
 
-        <Fab onClick={() => setSheetOpen(true)} />
+        {!(tab === 'itinerary' && itineraryFormOpen) && <Fab onClick={() => setSheetOpen(true)} />}
         <BottomNav active={tab} onChange={setTab} badges={{ ledger: unseenLedger }} />
 
         {sheetOpen && (
