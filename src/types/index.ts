@@ -152,6 +152,11 @@ export interface RateBookEntry {
   useCount: number
   archived: boolean
   createdAt: number
+  // 这条标签背后如果真的换过一次钱，这里存当时给出/换到的金额（比如"用500 MYR
+  // 换了16,500 JPY"）。可选——两个要么都填要么都不填；rate 依然是唯一参与计算的
+  // 字段，之后单独编辑 rate 不会联动改这两个数
+  exchangedHomeAmount?: number | null
+  exchangedForeignAmount?: number | null
 }
 
 export interface Expense {

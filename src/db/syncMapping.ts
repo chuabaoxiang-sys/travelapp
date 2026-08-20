@@ -186,6 +186,8 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       // "是否还出现在推荐列表"这个用途，不需要精确到哪一刻归档的
       archived_at: e.archived ? iso(Date.now()) : null,
       created_at: iso(e.createdAt),
+      exchanged_home_amount: e.exchangedHomeAmount ?? null,
+      exchanged_foreign_amount: e.exchangedForeignAmount ?? null,
     }),
     fromRemote: (r) => ({
       id: r.id,
@@ -200,6 +202,8 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       lastUsedAt: r.last_used_at ? ms(r.last_used_at) : 0,
       archived: r.archived_at !== null,
       createdAt: ms(r.created_at),
+      exchangedHomeAmount: numOrNull(r.exchanged_home_amount),
+      exchangedForeignAmount: numOrNull(r.exchanged_foreign_amount),
     }),
   },
 

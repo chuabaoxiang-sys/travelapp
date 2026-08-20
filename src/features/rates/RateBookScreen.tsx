@@ -1,7 +1,16 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, X, Pencil, Archive, ArchiveRestore } from 'lucide-react'
-import { getAllRateBookEntries, updateRateBookEntry, archiveRateBookEntry, unarchiveRateBookEntry, createRateBookEntry } from '../../domain/rates'
+import { Check, X, Pencil, Archive, ArchiveRestore, Plus } from 'lucide-react'
+import {
+  getAllRateBookEntries,
+  updateRateBookEntry,
+  archiveRateBookEntry,
+  unarchiveRateBookEntry,
+  createRateBookEntry,
+  usedForeignAmountByEntry,
+  deriveRateFromExchangeAmounts,
+} from '../../domain/rates'
+import { ExchangeAmountFields } from './ExchangeAmountFields'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -25,6 +34,7 @@ export function RateBookScreen({
   const entries = useLiveQuery(() => getAllRateBookEntries(trip.id), [trip.id]) ?? []
   const active = entries.filter((e) => !e.archived)
   const archived = entries.filter((e) => e.archived)
+  const usedByEntry = useLiveQuery(() => usedForeignAmountByEntry(trip.id), [trip.id]) ?? new Map<string, number>()
 
   const byCurrency = new Map<string, RateBookEntry[]>()
   for (const e of active) {
@@ -39,9 +49,50 @@ export function RateBookScreen({
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
 
-  // 两个嵌套弹层（confirmArchiveId 的 ConfirmDialog、saveAsNewFor 的 CenteredModal）
-  // 打开时暂停这里自己的Escape监听，避免一键关掉两层
-  useEscapeKey(!confirmArchiveId && !saveAsNewFor, onClose)
+  const [addOpen, setAddOpen] = useState(false)
+  const [addCurrency, setAddCurrency] = useState('')
+  const [addLabel, setAddLabel] = useState('')
+  const [addRate, setAddRate] = useState('')
+  const [addExchangeHome, setAddExchangeHome] = useState('')
+  const [addExchangeForeign, setAddExchangeForeign] = useState('')
+
+  // 三个嵌套弹层（confirmArchiveId 的 ConfirmDialog、saveAsNewFor/addOpen 的
+  // CenteredModal）打开时暂停这里自己的Escape监听，避免一键关掉两层
+  useEscapeKey(!confirmArchiveId && !saveAsNewFor && !addOpen, onClose)
+
+  function openAddModal() {
+    setAddCurrency('')
+    setAddLabel('')
+    setAddRate('')
+    setAddExchangeHome('')
+    setAddExchangeForeign('')
+    setAddOpen(true)
+  }
+
+  function onAddExchangeChange(home: string, foreign: string) {
+    setAddExchangeHome(home)
+    setAddExchangeForeign(foreign)
+    const derived = deriveRateFromExchangeAmounts(home, foreign)
+    if (derived != null) setAddRate(derived.toFixed(4))
+  }
+
+  async function confirmAdd() {
+    const r = parseFloat(addRate)
+    if (!addCurrency.trim() || !addLabel.trim() || !(r > 0)) return
+    const home = parseFloat(addExchangeHome)
+    const foreign = parseFloat(addExchangeForeign)
+    await createRateBookEntry({
+      tripId: trip.id,
+      foreignCurrency: addCurrency.trim().toUpperCase(),
+      label: addLabel.trim(),
+      rate: r,
+      source: 'manual',
+      createdBy: currentMemberId,
+      exchangedHomeAmount: home > 0 ? home : null,
+      exchangedForeignAmount: foreign > 0 ? foreign : null,
+    })
+    setAddOpen(false)
+  }
 
   function startEdit(e: RateBookEntry) {
     setEditingId(e.id)
@@ -79,9 +130,15 @@ export function RateBookScreen({
     <div className="absolute inset-0 z-30 bg-paper flex flex-col">
       <div className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0 border-b border-line">
         <span className="font-serif-sc text-[15px] font-semibold">汇率簿</span>
-        <button onClick={onClose} className="text-plan" title="完成">
-          <Check className="w-[17px] h-[17px]" strokeWidth={2} />
-        </button>
+        <div className="flex items-center gap-3.5">
+          <button onClick={openAddModal} className="flex items-center gap-1 text-plan text-[12.5px] font-semibold">
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.2} />
+            新增
+          </button>
+          <button onClick={onClose} className="text-plan" title="完成">
+            <Check className="w-[17px] h-[17px]" strokeWidth={2} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-3">
@@ -123,6 +180,32 @@ export function RateBookScreen({
                         <div className="text-[10px] text-muted">用过 {e.useCount} 次</div>
                       </div>
                     </div>
+                    {e.exchangedForeignAmount != null && (() => {
+                      const used = usedByEntry.get(e.id) ?? 0
+                      const total = e.exchangedForeignAmount as number
+                      const over = used > total
+                      const pct = total > 0 ? (used / total) * 100 : 0
+                      return (
+                        <>
+                          <div className="text-[11px] text-positive mt-2 pt-2 border-t border-dashed border-line flex items-center gap-1.5">
+                            <Check className="w-3 h-3 flex-shrink-0" strokeWidth={2.5} />
+                            已换：{e.exchangedHomeAmount} {trip.homeCurrency} → {e.exchangedForeignAmount.toLocaleString()} {e.foreignCurrency}
+                          </div>
+                          <div className={`flex items-baseline justify-between text-[10.5px] mt-1.5 ${over ? 'text-negative' : 'text-muted'}`}>
+                            <span>
+                              已用 <b className={over ? 'text-negative font-semibold' : 'text-ink font-semibold'}>{used.toLocaleString()}</b> / 已换 {total.toLocaleString()} {e.foreignCurrency}
+                            </span>
+                            <span>{over ? `超出 ${(used - total).toLocaleString()}` : `还剩 ${(total - used).toLocaleString()}`}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-line overflow-hidden mt-1">
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${Math.min(100, pct)}%`, background: over ? 'var(--color-negative)' : 'var(--color-positive)' }}
+                            />
+                          </div>
+                        </>
+                      )
+                    })()}
                     <div className="flex gap-2 mt-2.5">
                       {editingId === e.id ? (
                         <>
@@ -205,6 +288,59 @@ export function RateBookScreen({
               <X className="w-4 h-4" strokeWidth={1.8} />
             </button>
             <button onClick={confirmSaveAsNew} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title="保存">
+              <Check className="w-4 h-4" strokeWidth={2} />
+            </button>
+          </div>
+        </CenteredModal>
+      )}
+
+      {addOpen && (
+        <CenteredModal onClose={() => setAddOpen(false)}>
+          <div className="font-serif-sc text-[15px] text-ink mb-3">新增汇率</div>
+          <div className="flex gap-2 mb-2.5">
+            <div className="flex-1">
+              <div className="text-[10px] tracking-widest uppercase text-muted mb-1">币种</div>
+              <input
+                autoFocus
+                value={addCurrency}
+                onChange={(e) => setAddCurrency(e.target.value.toUpperCase())}
+                placeholder="例如 JPY"
+                className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm tabular outline-none focus:border-plan"
+              />
+            </div>
+            <div className="flex-1">
+              <div className="text-[10px] tracking-widest uppercase text-muted mb-1">汇率</div>
+              <input
+                value={addRate}
+                onChange={(e) => setAddRate(e.target.value)}
+                inputMode="decimal"
+                placeholder="0.0000"
+                className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm tabular outline-none focus:border-plan"
+              />
+            </div>
+          </div>
+          <div className="mb-2.5">
+            <div className="text-[10px] tracking-widest uppercase text-muted mb-1">标签</div>
+            <input
+              value={addLabel}
+              onChange={(e) => setAddLabel(e.target.value)}
+              placeholder="例如「机场换的」"
+              className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
+            />
+          </div>
+          <ExchangeAmountFields
+            homeCurrency={trip.homeCurrency}
+            foreignCurrency={addCurrency || '外币'}
+            homeAmount={addExchangeHome}
+            foreignAmount={addExchangeForeign}
+            onChangeHomeAmount={(v) => onAddExchangeChange(v, addExchangeForeign)}
+            onChangeForeignAmount={(v) => onAddExchangeChange(addExchangeHome, v)}
+          />
+          <div className="flex gap-2 mt-2">
+            <button onClick={() => setAddOpen(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+              <X className="w-4 h-4" strokeWidth={1.8} />
+            </button>
+            <button onClick={confirmAdd} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title="保存">
               <Check className="w-4 h-4" strokeWidth={2} />
             </button>
           </div>

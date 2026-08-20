@@ -260,6 +260,8 @@ export function AddExpensePage({
           rate: rateSelection.rate,
           source: rateSelection.source,
           createdBy: currentMemberId,
+          exchangedHomeAmount: rateSelection.exchangedHomeAmount,
+          exchangedForeignAmount: rateSelection.exchangedForeignAmount,
         })
         rateBookEntryId = entry.id
       }
