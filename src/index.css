@@ -133,3 +133,15 @@ button:not(:disabled):active {
 .shake {
   animation: shake 0.3s;
 }
+
+/* iOS Safari 有个规则：聚焦的输入框如果字体小于16px，会自动放大整个页面。
+   Android/桌面浏览器没有这个行为，所以不能全局把字号调大——那样Android上
+   看起来就跟其他文字比例不对。用 -webkit-touch-callout 探测只在iOS Safari
+   生效（Android Chrome不认这个属性），不影响其他平台看到的字号 */
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
