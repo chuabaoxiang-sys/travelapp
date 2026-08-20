@@ -75,11 +75,11 @@ describe('geocodeAddress', () => {
     global.fetch = originalFetch
   })
 
-  it('没配置API key时直接返回null，不发请求', async () => {
+  it('没配置API key时直接返回失败原因，不发请求', async () => {
     delete process.env.GOOGLE_GEOCODING_API_KEY
     const fetchSpy = vi.fn()
     global.fetch = fetchSpy as unknown as typeof fetch
-    expect(await geocodeAddress('随便一个地址')).toBeNull()
+    expect(await geocodeAddress('随便一个地址')).toEqual({ ok: false, reason: 'no_api_key' })
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
@@ -88,22 +88,30 @@ describe('geocodeAddress', () => {
       ok: true,
       json: async () => ({ results: [{ geometry: { location: { lat: 35.7, lng: 139.77 } } }] }),
     }) as unknown as typeof fetch
-    expect(await geocodeAddress('某个地址')).toEqual({ lat: 35.7, lng: 139.77 })
+    expect(await geocodeAddress('某个地址')).toEqual({ ok: true, lat: 35.7, lng: 139.77 })
   })
 
-  it('Geocoding API查不到结果（results为空）时返回null', async () => {
+  it('Geocoding API查不到结果时，reason带上Google自己的status（比如ZERO_RESULTS）方便排查', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ results: [] }),
+      json: async () => ({ results: [], status: 'ZERO_RESULTS' }),
     }) as unknown as typeof fetch
-    expect(await geocodeAddress('查不到的地址')).toBeNull()
+    expect(await geocodeAddress('查不到的地址')).toEqual({ ok: false, reason: 'ZERO_RESULTS' })
   })
 
-  it('请求失败（网络错误/非200）时返回null，不抛出异常', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false }) as unknown as typeof fetch
-    expect(await geocodeAddress('某个地址')).toBeNull()
+  it('key配置错误等场景（REQUEST_DENIED）也能在reason里看到，而不是笼统地返回null', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [], status: 'REQUEST_DENIED', error_message: 'API key not valid' }),
+    }) as unknown as typeof fetch
+    expect(await geocodeAddress('某个地址')).toEqual({ ok: false, reason: 'REQUEST_DENIED: API key not valid' })
+  })
+
+  it('请求失败（网络错误/非200）时返回失败原因，不抛出异常', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 }) as unknown as typeof fetch
+    expect(await geocodeAddress('某个地址')).toEqual({ ok: false, reason: 'http_500' })
 
     global.fetch = vi.fn().mockRejectedValue(new Error('network down')) as unknown as typeof fetch
-    expect(await geocodeAddress('某个地址')).toBeNull()
+    expect(await geocodeAddress('某个地址')).toEqual({ ok: false, reason: 'network down' })
   })
 })
