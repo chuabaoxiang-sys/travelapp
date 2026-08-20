@@ -50,6 +50,8 @@ export function LedgerTab({
   // 之前这个入口完全没接返回键（只有TripShell里"＋"新增那条接了），弹层时代还有
   // 个明显的关闭按钮兜底，全屏页上不接会比之前更糟
   useBackDismiss(!!editingId, () => setEditingId(null))
+  // 汇率簿同理——之前完全没接返回键，安卓上打开汇率簿按返回键会直接退出整个APP
+  useBackDismiss(rateBookOpen, () => setRateBookOpen(false))
 
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
   const myExpenseIds = myRelatedExpenseIds(expenses, splits, currentMemberId)
