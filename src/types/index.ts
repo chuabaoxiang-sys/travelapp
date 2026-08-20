@@ -135,6 +135,29 @@ export interface ItineraryItem {
   // 谁加的这一项。可空：这个字段是后加的（迁移0012），之前的历史数据没有归属信息，
   // "行程动态"遇到 null 时会退化成"有人加了…"
   createdBy: string | null
+  // 这一项如果是从"想去的地点"一键选出来的，记录来源，纯粹用于追溯——
+  // "这条想去的地点有没有被排入过行程"要现查这个字段，不能反过来在 WishlistPlace
+  // 上存一个标记（那种存法会跟 rateBookEntries.useCount 一样，引用行变化后跟事实脱节）
+  sourceWishlistId?: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+// 想去的地点——跨行程长期保留的收藏清单，按团队(household)存，不按行程(trip)存
+// （用户明确要求：这份清单的生命周期比任何单趟行程都长，规划新行程时能反复复用）。
+// "有没有被排入过行程"不存在这张表上，是现查 ItineraryItem.sourceWishlistId 算出来的——
+// 见 domain/wishlist.ts 的 usageByWishlistEntry
+export interface WishlistPlace {
+  id: string
+  householdId: string
+  name: string
+  lat: number | null
+  lng: number | null
+  notes: string | null
+  // "去过了"手动标记，跟"有没有排入过行程"是两件独立的事——用户可能没通过这个APP
+  // 排过行程就直接去吃了，也可能排进了行程但最后没去成
+  visited: boolean
+  createdBy: string | null
   createdAt: number
   updatedAt: number
 }

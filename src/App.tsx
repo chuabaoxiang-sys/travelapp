@@ -96,6 +96,7 @@ function App() {
     content = (
       <>
         <TripPicker
+          currentMemberId={memberId}
           onSelect={(id) => {
             localStorage.setItem(CURRENT_TRIP_KEY, id)
             setTripId(id)

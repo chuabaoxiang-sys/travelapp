@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Pencil, Trash2, X, Check, Plus } from 'lucide-react'
+import { Pencil, Trash2, X, Check, Plus, Bookmark } from 'lucide-react'
 import { db, deleteTripCascade } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { computeTripStatus } from '../../domain/trips'
@@ -8,6 +8,7 @@ import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CountryPicker } from '../../components/CountryPicker'
 import { countryByCode } from '../../lib/countries'
+import { WishlistScreen } from '../wishlist/WishlistScreen'
 import type { Trip, TripStatus } from '../../types'
 
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -24,12 +25,13 @@ const STATUS_CLASS: Record<TripStatus, string> = {
   archived: 'bg-line text-muted',
 }
 
-export function TripPicker({ onSelect }: { onSelect: (id: string) => void }) {
+export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: string) => void; currentMemberId: string }) {
   const trips = useLiveQuery(() => db.trips.orderBy('createdAt').reverse().toArray()) ?? []
   // null=不显示表单；'new'=新建（表单出现在列表最下面）；具体id=正在编辑该行程
   // （编辑表单原地替换那张卡片，不要跑到列表底部，否则行程一多就分不清在改哪个）
   const [formState, setFormState] = useState<'new' | string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Trip | null>(null)
+  const [wishlistOpen, setWishlistOpen] = useState(false)
 
   async function confirmRemoveTrip() {
     if (!pendingDelete) return
@@ -40,10 +42,19 @@ export function TripPicker({ onSelect }: { onSelect: (id: string) => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-ink p-6 flex items-center justify-center">
+    <div className="relative min-h-screen bg-ink p-6 flex items-center justify-center">
       <div className="w-full max-w-sm">
         <div className="text-[11px] tracking-widest text-card/50 uppercase">旅记 · TripJournal</div>
-        <h1 className="font-serif-sc text-2xl mt-2 text-card">我的行程</h1>
+        <div className="flex items-center justify-between mt-2">
+          <h1 className="font-serif-sc text-2xl text-card">我的行程</h1>
+          <button
+            onClick={() => setWishlistOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-card/20 bg-card/10 text-card px-3 py-1.5 text-[11.5px] font-semibold"
+          >
+            <Bookmark className="w-3.5 h-3.5" strokeWidth={2} />
+            想去的地点
+          </button>
+        </div>
 
         <div className="mt-5 flex flex-col gap-2">
           {trips.map((t) => {
@@ -131,6 +142,10 @@ export function TripPicker({ onSelect }: { onSelect: (id: string) => void }) {
           onConfirm={confirmRemoveTrip}
           onCancel={() => setPendingDelete(null)}
         />
+      )}
+
+      {wishlistOpen && (
+        <WishlistScreen currentMemberId={currentMemberId} onClose={() => setWishlistOpen(false)} />
       )}
     </div>
   )

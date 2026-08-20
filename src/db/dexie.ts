@@ -17,6 +17,7 @@ import type {
   OutboxEntry,
   Feedback,
   RouteLegCacheEntry,
+  WishlistPlace,
 } from '../types'
 
 // 会被同步到云端的表——本地写操作会自动记一条 outbox。expenseCategories 不算在内，
@@ -47,6 +48,7 @@ const SYNCED_TABLES = [
   'budgets',
   'settlements',
   'feedback',
+  'wishlistPlaces',
 ] as const
 
 export class TripJournalDB extends Dexie {
@@ -66,6 +68,7 @@ export class TripJournalDB extends Dexie {
   outbox!: EntityTable<OutboxEntry, 'id'>
   feedback!: EntityTable<Feedback, 'id'>
   routeLegCache!: EntityTable<RouteLegCacheEntry, 'dayId'>
+  wishlistPlaces!: EntityTable<WishlistPlace, 'id'>
 
   constructor() {
     super('trip-journal')
@@ -98,6 +101,11 @@ export class TripJournalDB extends Dexie {
     // 继续按 rateBookEntryId 单选那条老路径算
     this.version(4).stores({
       expenseRateAllocations: 'id, expenseId, tripId, rateBookEntryId',
+    })
+    // 想去的地点——全新的表，按团队(household)存，不挂 tripId，不受任何行程的
+    // 创建/删除影响（deleteTripCascade 故意不碰这张表）
+    this.version(5).stores({
+      wishlistPlaces: 'id, householdId, visited, createdAt',
     })
     registerOutboxHooks(this)
   }

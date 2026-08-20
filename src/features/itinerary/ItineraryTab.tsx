@@ -1,15 +1,17 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, X, Check, Plus, Filter } from 'lucide-react'
+import { Trash2, X, Check, Plus, Filter, Bookmark } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { sortItineraryItems } from '../../domain/itinerary'
 import { spendByDate } from '../../domain/dayAllocations'
 import { toggleBookingStatus } from '../../domain/booking'
-import type { Trip, ItineraryItem, BookingStatus } from '../../types'
+import { listWishlistPlaces, nearbyWishlistSuggestions } from '../../domain/wishlist'
+import type { Trip, ItineraryItem, BookingStatus, WishlistPlace } from '../../types'
 import { formatMoney } from '../../lib/money'
 import { TimePicker } from '../../components/TimePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { CenteredModal } from '../../components/CenteredModal'
 import { LocationPicker, type LocationValue } from '../../components/LocationPicker'
 import { CalendarView } from './CalendarView'
 import { MapView } from './MapView'
@@ -44,6 +46,39 @@ export function ItineraryTab({
   }, [currentDay?.id]) ?? []
 
   const allItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+
+  // "反向提醒"：想去的地点里，哪些离这趟行程已经排上时间线的某个点足够近——
+  // 纯几何计算，现查现算，不受任何单独一天筛选影响（看的是整趟行程 allItems）
+  const wishlistPlaces = useLiveQuery(() => listWishlistPlaces()) ?? []
+  const suggestions = useMemo(() => nearbyWishlistSuggestions(wishlistPlaces, allItems), [wishlistPlaces, allItems])
+  // 关闭是当次会话级别的，不落库——下次重新进这趟行程还会再出现
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false)
+
+  async function addFromWishlist(place: WishlistPlace) {
+    const day = await ensureDay(selected)
+    const householdId = await getCurrentHouseholdId()
+    if (!householdId) return
+    const id = crypto.randomUUID()
+    const now = Date.now()
+    await db.itineraryItems.add({
+      id,
+      householdId,
+      createdBy: currentMemberId,
+      dayId: day.id,
+      tripId: trip.id,
+      orderIndex: items.length,
+      time: null,
+      title: place.name,
+      locationName: place.name,
+      lat: place.lat,
+      lng: place.lng,
+      notes: null,
+      bookingStatus: null,
+      sourceWishlistId: place.id,
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
 
   const routeLegs = useDayRouteLegs(currentDay?.id, items)
 
@@ -184,6 +219,34 @@ export function ItineraryTab({
               )}
             </div>
 
+            {!suggestionsDismissed && suggestions.length > 0 && (
+              <div className="rounded-2xl border border-plan/25 bg-plan/5 px-3 py-2.5 mb-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[12px] font-semibold text-plan flex items-center gap-1.5">
+                    <Bookmark className="w-3.5 h-3.5" strokeWidth={2.2} />
+                    你标记过 {suggestions.length} 个附近想去的地点
+                  </div>
+                  <button onClick={() => setSuggestionsDismissed(true)} className="text-muted" title="关闭">
+                    <X className="w-3.5 h-3.5" strokeWidth={2} />
+                  </button>
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar mt-2 pb-0.5">
+                  {suggestions.map((s) => (
+                    <div key={s.id} className="flex-shrink-0 flex items-center gap-1.5 bg-card border border-line rounded-full pl-3 pr-1.5 py-1 text-[11px]">
+                      {s.name}
+                      <button
+                        onClick={() => addFromWishlist(s)}
+                        className="w-5 h-5 rounded-full bg-plan text-card flex items-center justify-center flex-shrink-0"
+                        title="加入今天"
+                      >
+                        <Plus className="w-3 h-3" strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-baseline justify-between mb-3">
               <div className="font-serif-sc text-sm">{selected} {currentDay?.title ? `· ${currentDay.title}` : ''}</div>
               <div className="text-[11.5px] text-muted tabular">当日花费 {formatMoney(dayTotal)}</div>
@@ -201,7 +264,7 @@ export function ItineraryTab({
                         countryCodes={trip.destinationCountries}
                         onCancel={() => setFormState(null)}
                         onDelete={() => setPendingDeleteId(it.id)}
-                        onSave={async (title, time, location, notes, bookingStatus) => {
+                        onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId) => {
                           await db.itineraryItems.update(it.id, {
                             title,
                             time: time || null,
@@ -210,6 +273,7 @@ export function ItineraryTab({
                             lng: location.lng,
                             notes: notes || null,
                             bookingStatus,
+                            sourceWishlistId,
                             updatedAt: Date.now(),
                           })
                           setFormState(null)
@@ -294,7 +358,7 @@ export function ItineraryTab({
               <ItemForm
                 countryCodes={trip.destinationCountries}
                 onCancel={() => setFormState(null)}
-                onSave={async (title, time, location, notes, bookingStatus) => {
+                onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId) => {
                   const day = await ensureDay(selected)
                   const householdId = await getCurrentHouseholdId()
                   if (!householdId) return
@@ -314,6 +378,7 @@ export function ItineraryTab({
                     lng: location.lng,
                     notes: notes || null,
                     bookingStatus,
+                    sourceWishlistId,
                     createdAt: now,
                     updatedAt: now,
                   })
@@ -355,7 +420,14 @@ function ItemForm({
   countryCodes,
 }: {
   initial?: ItineraryItem
-  onSave: (title: string, time: string, location: LocationValue, notes: string, bookingStatus: BookingStatus | null) => void
+  onSave: (
+    title: string,
+    time: string,
+    location: LocationValue,
+    notes: string,
+    bookingStatus: BookingStatus | null,
+    sourceWishlistId: string | null,
+  ) => void
   onCancel: () => void
   onDelete?: () => void
   countryCodes?: string[]
@@ -371,6 +443,23 @@ function ItemForm({
   // 选了不等于存了——跟标题/备注这些字段一样是本地草稿，点"取消"就丢弃，
   // 只有点保存才会写回数据库
   const [bookingStatus, setBookingStatus] = useState<BookingStatus | null>(initial?.bookingStatus ?? null)
+  // 这一项是不是从"想去的地点"一键选出来的——纯追溯用途。手动改地点（重新搜索/
+  // 贴地图链接）之后就不再对应那条来源了，要跟着清空，不然徽章会挂着错的来源
+  const [sourceWishlistId, setSourceWishlistId] = useState<string | null>(initial?.sourceWishlistId ?? null)
+  const [wishlistPickerOpen, setWishlistPickerOpen] = useState(false)
+  const [wishlistFilter, setWishlistFilter] = useState('')
+  const wishlistPlaces = useLiveQuery(() => listWishlistPlaces()) ?? []
+  const filteredWishlistPlaces = wishlistFilter.trim()
+    ? wishlistPlaces.filter((p) => p.name.includes(wishlistFilter.trim()))
+    : wishlistPlaces
+
+  function pickFromWishlist(p: WishlistPlace) {
+    setLocation({ name: p.name, lat: p.lat, lng: p.lng })
+    if (!title.trim()) setTitle(p.name)
+    setSourceWishlistId(p.id)
+    setWishlistPickerOpen(false)
+    setWishlistFilter('')
+  }
 
   const formRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -391,7 +480,19 @@ function ItemForm({
           className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
         />
       </div>
-      <LocationPicker value={location} onChange={setLocation} countryCodes={countryCodes} />
+      <button
+        type="button"
+        onClick={() => setWishlistPickerOpen(true)}
+        className="flex items-center gap-1 text-[11.5px] text-plan font-semibold border border-dashed border-plan/40 rounded-lg px-2.5 py-1.5 w-fit"
+      >
+        <Bookmark className="w-3 h-3" strokeWidth={2.2} />
+        从想去的地点里选一个
+      </button>
+      <LocationPicker
+        value={location}
+        onChange={(v) => { setLocation(v); setSourceWishlistId(null) }}
+        countryCodes={countryCodes}
+      />
       <div>
         <textarea
           value={notes}
@@ -439,13 +540,42 @@ function ItemForm({
           <X className="w-4 h-4" strokeWidth={1.8} />
         </button>
         <button
-          onClick={() => title.trim() && onSave(title.trim(), time, location, notes.trim(), bookingStatus)}
+          onClick={() => title.trim() && onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId)}
           className="flex-1 rounded-lg bg-plan text-card py-1.5 flex items-center justify-center"
           title="保存"
         >
           <Check className="w-4 h-4" strokeWidth={2} />
         </button>
       </div>
+
+      {wishlistPickerOpen && (
+        <CenteredModal onClose={() => setWishlistPickerOpen(false)}>
+          <div className="font-serif-sc text-[15px] text-ink mb-3">从想去的地点里选</div>
+          <input
+            autoFocus
+            value={wishlistFilter}
+            onChange={(e) => setWishlistFilter(e.target.value)}
+            placeholder="筛选…"
+            className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-plan mb-2"
+          />
+          <div className="flex flex-col gap-1.5 max-h-[240px] overflow-y-auto no-scrollbar">
+            {filteredWishlistPlaces.length === 0 && (
+              <div className="text-[12px] text-muted text-center py-4">没有匹配的地点</div>
+            )}
+            {filteredWishlistPlaces.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => pickFromWishlist(p)}
+                className="text-left rounded-xl border border-line bg-paper px-3 py-2 hover:border-plan"
+              >
+                <div className="text-[12.5px] font-semibold text-ink">{p.name}</div>
+                {p.notes && <div className="text-[10px] text-muted mt-0.5 truncate">{p.notes}</div>}
+              </button>
+            ))}
+          </div>
+        </CenteredModal>
+      )}
     </div>
   )
 }

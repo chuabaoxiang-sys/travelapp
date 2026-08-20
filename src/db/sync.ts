@@ -19,6 +19,7 @@ const TABLE_ORDER = [
   'budgets',
   'settlements',
   'feedback',
+  'wishlistPlaces',
 ] as const
 
 // Supabase 的错误是普通对象（PostgrestError：message/details/hint/code），不是 Error 实例，
