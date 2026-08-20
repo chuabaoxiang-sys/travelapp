@@ -299,7 +299,10 @@ export function ItineraryTab({
                             sourceWishlistId,
                             updatedAt: Date.now(),
                           })
-                          setFormState(null)
+                          // 用函数式更新而不是直接setFormState(null)：这个保存是异步的，
+                          // 如果保存过程中用户已经点开了另一张卡片（formState变成了别的id），
+                          // 这里不能把新打开的表单也顺手关掉
+                          setFormState((cur) => (cur === it.id ? null : cur))
                         }}
                       />
                       {legRow}
@@ -405,7 +408,7 @@ export function ItineraryTab({
                     createdAt: now,
                     updatedAt: now,
                   })
-                  setFormState(null)
+                  setFormState((cur) => (cur === 'new' ? null : cur))
                 }}
               />
             ) : (
@@ -491,6 +494,26 @@ function ItemForm({
     // 表单展开的位置就是点击"添加行程项"/某个行程项时所在的位置，展开后
     // 内容变高，很容易有一部分（尤其是保存按钮）落在屏幕外面，需要手动滑动才看得到
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [])
+
+  // 点表单外面关闭——跟点右下角的"✓"效果一样：填了标题就当作保存，标题还是空的
+  // 就当作取消（新建时点开又反悔不填，直接放弃更符合直觉）。放进ref里而不是
+  // 直接把title/notes等状态放进依赖数组，是不想让这个document监听器随着每次
+  // 打字重新挂载一遍——只订阅一次，回调里读的永远是最新值
+  const latestRef = useRef({ title, time, location, notes, bookingStatus, sourceWishlistId, onSave, onCancel })
+  latestRef.current = { title, time, location, notes, bookingStatus, sourceWishlistId, onSave, onCancel }
+  useEffect(() => {
+    function handleOutsidePointerDown(e: PointerEvent) {
+      if (formRef.current?.contains(e.target as Node)) return
+      const s = latestRef.current
+      if (s.title.trim()) {
+        s.onSave(s.title.trim(), s.time, s.location, s.notes.trim(), s.bookingStatus, s.sourceWishlistId)
+      } else {
+        s.onCancel()
+      }
+    }
+    document.addEventListener('pointerdown', handleOutsidePointerDown)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown)
   }, [])
 
   return (
