@@ -12,6 +12,7 @@ import { saveExpenseSplits } from '../../domain/splits'
 import { saveDayAllocations, deleteDayAllocations } from '../../domain/dayAllocations'
 import { saveRateAllocations, deleteRateAllocations } from '../../domain/rateAllocations'
 import { categoryColor } from '../../lib/categoryColors'
+import { round2 } from '../../lib/money'
 import { CategoryIcon } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -200,7 +201,7 @@ export function AddExpensePage({
     : rateSelection.mode === 'split'
       ? (splitTotalForeign > 0 ? splitHomeTotal / splitTotalForeign : 0)
       : rateSelection.mode !== 'none' ? rateSelection.rate : initial?.rateUsed ?? 0
-  const homeAmount = rateSelection.mode === 'split' ? splitHomeTotal : numAmount * numRate
+  const homeAmount = rateSelection.mode === 'split' ? splitHomeTotal : round2(numAmount * numRate)
   const rateReady = !isForeign || numRate > 0
   // 拆分模式下，各批填的外币总额必须刚好等于这笔开销的外币总额才能保存——
   // 跟"怎么分"/"花在几天"那两处的实时校验是同一套规矩
