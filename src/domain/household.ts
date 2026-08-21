@@ -57,18 +57,32 @@ export async function signOut() {
   cachedHouseholdId = null
 }
 
-// 查"当前登录邮箱属于哪个团队"——对应 household_member 表，RLS 只放行查自己那些行。
-// 如果查不到（邮箱还没被邀请进任何团队），返回 null，调用方要提示"此邮箱还没被邀请"
+// 查"我现在在哪个团队"。如果查不到（邮箱还没被邀请进任何团队），返回 null，
+// 调用方要提示"此邮箱还没被邀请"。
 //
-// 【排序必须和数据库端保持完全一致】household_member 允许一个邮箱属于多个团队
-// （复合主键 (household_id, email)，0004 刻意的设计）。这里挑出来的团队ID会被打进
-// 新记录的 householdId 字段，而服务端 RLS 用 current_household_id() 独立地再挑一次
-// 校验 `with check`。两边如果挑到不同的团队，写入会被静默拒绝、表现成"这条数据同步
-// 不上去"。所以两边都按 (created_at, household_id) 排序——改这里就必须同步改
-// supabase/migrations/0017_deterministic_current_household.sql 里的那个函数。
+// 【为什么必须问服务端，不能自己算】这个值会被打进新记录的 householdId 字段，而服务端
+// RLS 的 `with check (household_id = current_household_id())` 会独立地判断一次。两边
+// 不一致时写入会被静默拒绝，表现成"这条数据同步不上去"。
+//
+// 曾经这里是自己查 household_member 取"最早加入的那个团队"，和 0017 的规则对齐。
+// 但 0018 给服务端加了"当前团队指针"（优先读指针、回落到最早加入），客户端这份
+// 自己算的逻辑就再也追不上了——切换团队之后服务端认为你在B团队，客户端还以为在A团队。
+// 所以改成直接读服务端的答案：list_my_households() 里的 is_active 就是
+// current_household_id() 在服务端算出来的结果，没有第二套逻辑可以走偏。
 export async function getCurrentHouseholdId(): Promise<string | null> {
   if (cachedHouseholdId) return cachedHouseholdId
   if (!supabase || isLocalTestModeEnabled()) return LOCAL_TEST_HOUSEHOLD_ID
+
+  const teams = await listMyHouseholds()
+  const active = teams.find((t) => t.isActive) ?? teams[0]
+  if (active) {
+    cachedHouseholdId = active.id
+    return cachedHouseholdId
+  }
+
+  // 兜底：万一 list_my_households 这个 RPC 不可用（比如某个环境还没跑 0018 迁移），
+  // 退回旧的查表方式。宁可选到"最早加入的团队"，也不要因为一个 RPC 缺失就让所有人
+  // 都卡在"这个邮箱还没被邀请"进不去
   const { data, error } = await supabase
     .from('household_member')
     .select('household_id')

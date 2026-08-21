@@ -118,7 +118,6 @@ function App() {
             if (householdId) writePerTeam(CURRENT_TRIP_KEY, householdId, id)
             setTripId(id)
           }}
-          onSwitchedTeam={setHouseholdId}
         />
         <InstallPrompt />
       </>

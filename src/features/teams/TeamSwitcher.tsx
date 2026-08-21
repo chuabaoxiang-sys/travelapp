@@ -7,7 +7,7 @@ import { useBackDismiss } from '../../hooks/useBackDismiss'
 
 // 团队切换入口。刻意只在"属于2个以上团队"时才渲染任何东西——绝大多数人只属于
 // 一个团队，给他们加一行永远用不到的东西是纯噪音。
-export function TeamSwitcher({ onSwitched }: { onSwitched: (householdId: string) => void }) {
+export function TeamSwitcher() {
   const [teams, setTeams] = useState<MyHousehold[]>([])
   const [open, setOpen] = useState(false)
 
@@ -32,29 +32,12 @@ export function TeamSwitcher({ onSwitched }: { onSwitched: (householdId: string)
         <ChevronDown className="w-[14px] h-[14px] text-card/60 flex-shrink-0" strokeWidth={2} />
       </button>
 
-      {open && (
-        <TeamSwitchSheet
-          teams={teams}
-          onClose={() => setOpen(false)}
-          onSwitched={(id) => {
-            setOpen(false)
-            onSwitched(id)
-          }}
-        />
-      )}
+      {open && <TeamSwitchSheet teams={teams} onClose={() => setOpen(false)} />}
     </>
   )
 }
 
-function TeamSwitchSheet({
-  teams,
-  onClose,
-  onSwitched,
-}: {
-  teams: MyHousehold[]
-  onClose: () => void
-  onSwitched: (householdId: string) => void
-}) {
+function TeamSwitchSheet({ teams, onClose }: { teams: MyHousehold[]; onClose: () => void }) {
   // 打开弹层时就查一次待同步条数：有没推上去的记录时不能切（那些记录带着旧团队的
   // household_id，切过去会被RLS永久拒绝），所以直接把选项禁用掉并说明原因，
   // 而不是让人点了之后才报错
@@ -77,7 +60,14 @@ function TeamSwitchSheet({
     setError(null)
     try {
       await switchTeam(team.id)
-      onSwitched(team.id)
+      // 切换成功后整页重载，而不是把新的团队ID往React状态里传。
+      // 换团队等于把APP的地基换掉了：本地数据库刚被清空重建、当前身份和当前行程
+      // 都属于另一个团队、模块级缓存（getCurrentHouseholdId 的 cachedHouseholdId）
+      // 和一堆 useLiveQuery 订阅都要跟着变。逐个去追这些状态残留会没完没了——
+      // 第一版就是这么做的，结果切完界面还显示旧团队名，看起来像没生效。
+      // 重载一次让所有状态从头构建，是这种"全局上下文切换"最可靠的做法；
+      // 这个动作本来就很少发生，多等一次加载完全值得。
+      window.location.reload()
     } catch (err) {
       setSwitching(null)
       setError(
