@@ -111,9 +111,9 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-left outline-none focus:border-plan flex items-center justify-between"
+        className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-left outline-none focus:border-plan flex items-center justify-between gap-1.5"
       >
-        <span className={value ? 'text-ink tabular' : 'text-muted'}>{value ? formatDisplay(value) : placeholder}</span>
+        <span className={`min-w-0 truncate ${value ? 'text-ink tabular' : 'text-muted'}`}>{value ? formatDisplay(value) : placeholder}</span>
         <Calendar className="w-3.5 h-3.5 text-muted flex-shrink-0" strokeWidth={1.8} />
       </button>
 
