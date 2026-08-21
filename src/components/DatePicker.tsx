@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEscapeKey } from '../hooks/useEscapeKey'
 
@@ -44,6 +44,44 @@ export function DatePicker({
   const [viewY, setViewY] = useState(init.y)
   const [viewM, setViewM] = useState(init.m)
   const ref = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+
+  // 日历弹层的位置要算，不能写死。它宽 280px 而触发它的输入框可能只有一半卡片宽
+  // （比如"出发日期/返程日期"是两列并排），`absolute` 默认从容器左边展开的话，
+  // 右列那个必然把日历铺到屏幕外面去——真机上就是右边一整列日期看不见。
+  // 垂直方向同理：以前永远向下弹，不管下面还剩多少空间。
+  //
+  // 做法：打开时量一次弹层的真实尺寸（月份不同行数不同，高度会变，所以 viewY/viewM
+  // 也在依赖里），水平方向不够就整体往左推、但不越过左边界；下面放不下而上面更宽裕
+  // 就改成向上弹。算出来之前先渲染成透明的，避免看到跳一下
+  const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPos(null)
+      return
+    }
+    const anchor = ref.current?.getBoundingClientRect()
+    const popup = popupRef.current?.getBoundingClientRect()
+    if (!anchor || !popup) return
+
+    const MARGIN = 8
+    // 用布局视口（documentElement.clientWidth/Height）而不是 window.innerWidth/Height：
+    // innerWidth 会把桌面端的滚动条宽度算进去，导致按它算出来的位置还是差几像素被切；
+    // 真机上如果页面本身横向能滚，两者也会不一致。clientWidth 才是内容真正可用的宽度
+    const vw = document.documentElement.clientWidth
+    const vh = document.documentElement.clientHeight
+
+    // 先按"跟输入框左边对齐"，再夹进视口范围内。用 max(MARGIN, ...) 兜底：
+    // 万一屏幕比弹层还窄，至少保证左边不被切
+    const clampedLeft = Math.min(Math.max(anchor.left, MARGIN), Math.max(MARGIN, vw - popup.width - MARGIN))
+    const left = clampedLeft - anchor.left
+
+    const spaceBelow = vh - anchor.bottom
+    const openUp = spaceBelow < popup.height + MARGIN && anchor.top > spaceBelow
+
+    setPos(openUp ? { left, bottom: anchor.height + 6 } : { left, top: anchor.height + 6 })
+  }, [open, viewY, viewM])
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -80,7 +118,13 @@ export function DatePicker({
       </button>
 
       {open && (
-        <div className="absolute z-40 mt-1.5 w-[280px] rounded-2xl border border-line bg-card shadow-lg p-3">
+        <div
+          ref={popupRef}
+          style={pos ? { left: pos.left, top: pos.top, bottom: pos.bottom } : undefined}
+          className={`absolute z-40 w-[280px] max-w-[calc(100vw-16px)] rounded-2xl border border-line bg-card shadow-lg p-3 ${
+            pos ? '' : 'opacity-0 pointer-events-none'
+          }`}
+        >
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={() => shiftMonth(-1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">
               <ChevronLeft className="w-4 h-4" strokeWidth={1.8} />
