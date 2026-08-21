@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>旅记使用指南</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700&display=swap');
+
+  :root {
+    --color-ink: #1f1b16;
+    --color-paper: #f7f3ec;
+    --color-card: #fffdf9;
+    --color-line: #e8e0d4;
+    --color-plan: #4c1d95;
+    --color-spend: #e8703a;
+    --color-positive: #0f766e;
+    --color-negative: #b91c1c;
+    --color-muted: #8a8177;
+    --color-cat-transport: #0f766e;
+    --color-cat-stay: #7c3aed;
+    --color-cat-food: #c2410c;
+    --color-cat-ticket: #b45309;
+    --color-cat-shop: #be123c;
+    --color-cat-misc: #57534e;
+    --font-serif-sc: "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+    --font-sans-sc: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans-sc);
+    line-height: 1.6;
+  }
+
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  /* ===== Cover ===== */
+  .cover {
+    padding: 90px 28px 70px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(76,29,149,0.08), transparent 55%),
+      var(--color-paper);
+    border-bottom: 1px solid var(--color-line);
+  }
+  .cover .kicker {
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--color-muted);
+    text-transform: uppercase;
+  }
+  .cover h1 {
+    font-family: var(--font-serif-sc);
+    font-size: 44px;
+    font-weight: 700;
+    margin: 14px 0 10px;
+    letter-spacing: 0.02em;
+  }
+  .cover p.sub {
+    color: var(--color-muted);
+    font-size: 15px;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+  .cover .mark {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--color-plan);
+    color: var(--color-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-serif-sc);
+    font-weight: 700;
+    font-size: 22px;
+    margin: 0 auto 22px;
+  }
+
+  /* ===== TOC ===== */
+  .toc {
+    padding: 44px 28px 48px;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .toc h2 { font-family: var(--font-serif-sc); font-size: 14px; letter-spacing: 0.12em; color: var(--color-muted); text-transform: uppercase; margin: 0 0 18px; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; display: grid; gap: 2px; }
+  .toc li { counter-increment: toc; }
+  .toc a {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 12px 4px;
+    text-decoration: none; color: var(--color-ink);
+    border-bottom: 1px dashed var(--color-line);
+  }
+  .toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--font-serif-sc);
+    color: var(--color-plan);
+    font-size: 13px;
+    tabular-nums: 1;
+  }
+  .toc a .t { font-weight: 600; font-size: 15px; }
+  .toc a .d { color: var(--color-muted); font-size: 12.5px; margin-left: auto; text-align: right; }
+
+  /* ===== Sections ===== */
+  section.feature {
+    padding: 56px 28px;
+    border-bottom: 1px solid var(--color-line);
+  }
+  section.feature:last-of-type { border-bottom: none; }
+
+  .feature-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+  .feature-num { font-family: var(--font-serif-sc); font-size: 13px; color: var(--color-plan); font-weight: 700; }
+  .feature-head h2 { font-family: var(--font-serif-sc); font-size: 24px; margin: 0; font-weight: 700; }
+
+  .lede {
+    font-size: 15.5px;
+    color: #57534e;
+    margin: 10px 0 28px;
+    max-width: 520px;
+  }
+
+  .layout { display: grid; grid-template-columns: 220px 1fr; gap: 32px; align-items: start; }
+  .visual-col { display: flex; flex-direction: column; }
+
+  /* ---- phone frame ---- */
+  .phone {
+    width: 220px;
+    border-radius: 22px;
+    border: 1px solid var(--color-line);
+    background: var(--color-paper);
+    overflow: hidden;
+    box-shadow: 0 10px 26px rgba(31,27,22,0.12);
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .phone .bar { height: 10px; background: linear-gradient(90deg, var(--color-plan), #7c4fd0); }
+  .phone .scr { padding: 10px 10px 12px; font-size: 8.6px; }
+  .phone .top-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .avatar { width: 16px; height: 16px; border-radius: 999px; background: var(--color-plan); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; flex-shrink: 0; }
+  .pill { font-size: 6.6px; padding: 1.5px 5px; border-radius: 999px; background: rgba(76,29,149,0.08); color: var(--color-plan); white-space: nowrap; }
+  .pill.warn { background: rgba(232,112,58,0.12); color: var(--color-spend); }
+  .trip-row { display: flex; gap: 4px; margin-bottom: 6px; align-items: stretch; }
+  .trip-card { flex: 1; min-width: 0; background: var(--color-card); border: 1px solid var(--color-line); border-radius: 8px; padding: 6px 7px; display:flex; justify-content:space-between; align-items:center; gap:4px; }
+  .more-btn { width: 18px; flex-shrink: 0; background: var(--color-card); border: 1px solid var(--color-line); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--color-ink); font-size: 8px; letter-spacing: -1px; }
+  .trip-card .name { font-family: var(--font-serif-sc); font-weight: 700; font-size: 8.6px; }
+  .trip-card .dates { color: var(--color-muted); font-size: 6.8px; margin-top:1px; }
+  .segmented { display:flex; gap:2px; background:#EDE6DA; border-radius:6px; padding:2px; width: fit-content; margin-bottom:6px; }
+  .segmented span { border-radius:4px; padding:2.5px 6px; font-size:6.8px; }
+  .segmented span.on { background: var(--color-ink); color: var(--color-paper); }
+  .segmented span:not(.on) { color:#8A8177; }
+  .item-card { background: var(--color-card); border:1px solid var(--color-line); border-radius:9px; padding:6px 7px; margin-bottom:5px; }
+  .item-title { font-weight:600; font-size:8px; display:flex; justify-content:space-between; gap:4px; }
+  .item-sub { color: var(--color-muted); font-size:6.8px; margin-top:2px; }
+  .badge-cat { width:14px; height:14px; border-radius:5px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:7px; flex-shrink:0; }
+  .row-between { display:flex; justify-content:space-between; align-items:center; }
+  .muted { color: var(--color-muted); }
+  .plan-text { color: var(--color-plan); }
+  .total-card { background: var(--color-ink); color: var(--color-paper); border-radius: 9px; padding: 8px 8px; margin-bottom: 6px; }
+  .total-card .label { font-size: 6.6px; opacity:.75; }
+  .total-card .num { font-family: var(--font-serif-sc); font-size: 14px; font-weight:700; margin-top:2px; }
+  .fab { position:absolute; }
+  .chip-btn { border-radius:5px; padding:3px 5px; font-size:6.6px; border:1px solid var(--color-line); background:var(--color-card); }
+  .chip-btn.active { background: var(--color-cat-food); border-color: var(--color-cat-food); color:#fff; }
+  .amount-box { border:1.4px solid var(--color-plan); border-radius:8px; padding:6px 7px; display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; }
+  .amount-box .num { font-size: 15px; font-weight:700; font-family: var(--font-serif-sc); }
+  .field-label { font-size:6.6px; color: var(--color-muted); margin: 6px 0 2px; }
+  .field-box { border:1px solid var(--color-line); border-radius:6px; padding:4px 6px; background: var(--color-card); font-size:7.4px; }
+  .donut-wrap { display:flex; flex-direction:column; align-items:center; margin: 4px 0 8px; }
+  .donut { width:64px; height:64px; border-radius:50%; background: conic-gradient(var(--color-plan) 0% 33%, #e5ddcd 33% 100%); display:flex; align-items:center; justify-content:center; }
+  .donut .hole { width:44px; height:44px; border-radius:50%; background: var(--color-paper); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .donut .hole .pct { font-family: var(--font-serif-sc); font-weight:700; font-size:9px; }
+  .donut .hole .rest { font-size:5.6px; color: var(--color-muted); }
+  .bar-track { height:5px; border-radius:3px; background:#EDE6DA; overflow:hidden; margin-top:3px; }
+  .bar-fill { height:100%; border-radius:3px; }
+  .settle-row { display:flex; align-items:center; gap:4px; font-size:7.4px; margin-bottom:3px; }
+  .settle-btn { width:100%; text-align:center; background: var(--color-plan); color:#fff; border-radius:6px; padding:5px 0; font-size:7px; font-weight:600; margin-top:4px; }
+  .icon-btn { width:14px; height:14px; border-radius:4px; border:1px solid var(--color-line); background:var(--color-card); display:flex; align-items:center; justify-content:center; }
+  .icon-btn.plan { border-color: rgba(76,29,149,.3); background: rgba(76,29,149,.08); }
+  .toggle-row { display:flex; border-radius:6px; overflow:hidden; border:1px solid var(--color-line); margin: 4px 0; }
+  .toggle-row span { flex:1; text-align:center; padding:4px 0; font-size:6.8px; }
+  .toggle-row span.on { background: var(--color-ink); color:#fff; }
+  .member-chip { border:1.4px solid var(--color-plan); background: rgba(76,29,149,.08); color: var(--color-plan); border-radius:999px; padding:3px 6px; font-size:6.8px; display:inline-flex; align-items:center; gap:2px; }
+
+  /* ---- entry-point callout: 先说清楚入口在哪，再讲里面怎么操作 ---- */
+  .entry {
+    width: 220px;
+    border: 1px dashed var(--color-plan);
+    border-radius: 14px;
+    background: rgba(76,29,149,0.04);
+    padding: 8px 9px 9px;
+    margin-bottom: 10px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .entry .entry-tag {
+    font-size: 8.6px;
+    font-weight: 700;
+    color: var(--color-plan);
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+  }
+  .entry .entry-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2px 1px; font-size: 8px;
+  }
+  .entry .target {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 6px;
+    background: var(--color-card); border: 1px solid var(--color-line);
+    color: var(--color-plan); font-size: 9px;
+  }
+  .entry .target .ring {
+    position: absolute; inset: -5px;
+    border: 1.6px solid var(--color-negative);
+    border-radius: 9px;
+  }
+  .entry .entry-caption {
+    font-size: 8px; color: var(--color-negative); font-weight: 600;
+    margin-top: 6px; text-align: right;
+  }
+
+  /* ---- 时间线以外的两种视图，缩小展示 ---- */
+  .view-gallery { display: flex; gap: 8px; margin-top: 8px; width: 220px; }
+  .view-thumb { flex: 1; min-width: 0; }
+  .thumb-frame {
+    border: 1px solid var(--color-line); border-radius: 10px;
+    overflow: hidden; background: var(--color-card);
+    height: 118px; padding: 6px;
+  }
+  .thumb-label { font-size: 8px; color: var(--color-muted); text-align: center; margin-top: 4px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.5px; }
+  .cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 5px; border-radius: 2px; color: var(--color-muted); }
+  .cal-cell.on { background: rgba(76,29,149,0.12); color: var(--color-ink); font-weight: 700; }
+  .cal-cell .amt { font-size: 3.6px; color: var(--color-plan); }
+  .map-thumb {
+    position: relative; height: 100%; border-radius: 6px; overflow: hidden;
+    background: linear-gradient(160deg, #cfe3c9 0%, #cfe3c9 55%, #bcd9ec 55%, #bcd9ec 100%);
+  }
+  .map-legend { position: absolute; top: 3px; left: 3px; display: flex; gap: 2px; }
+  .map-legend span { font-size: 4px; padding: 1px 3px; border-radius: 999px; background: rgba(255,253,249,.9); border: 0.5px solid rgba(0,0,0,.1); }
+  .map-pin { position: absolute; width: 9px; height: 9px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .map-pin span { transform: rotate(45deg); color: #fff; font-size: 4.5px; font-weight: 700; }
+
+  .body-col h3.step-h { font-family: var(--font-serif-sc); font-size: 13.5px; margin: 0 0 10px; }
+  .steps { list-style: none; margin: 0 0 22px; padding: 0; counter-reset: step; display: grid; gap: 10px; }
+  .steps li { counter-increment: step; position: relative; padding-left: 30px; font-size: 13.5px; }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 1px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--color-plan);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tip {
+    background: #FFF8F0;
+    border-left: 3px solid var(--color-cat-ticket);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #57534e;
+  }
+  .tip b { color: var(--color-ink); }
+  .tip + .tip { margin-top: 8px; }
+
+  footer.doc-footer {
+    text-align: center;
+    padding: 40px 20px 56px;
+    color: var(--color-muted);
+    font-size: 12px;
+  }
+
+  @media (max-width: 640px) {
+    .layout { grid-template-columns: 1fr; }
+    .phone { margin: 0 auto; }
+  }
+
+  @media print {
+    body { background: #fff; }
+    .cover { padding-top: 50px; }
+    section.feature { page-break-inside: avoid; break-inside: avoid; padding: 30px 0; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="mark">旅</div>
+  <div class="kicker">TripJournal · User Guide</div>
+  <h1>旅记使用指南</h1>
+  <p class="sub">行程、账目、预算、分账，一份指南把常用功能讲清楚——照着手机上实际的样子来，不是纸上谈兵。</p>
+</div>
+
+<div class="toc page">
+  <h2>目录</h2>
+  <ol>
+    <li><a href="#f1"><span class="t">行程怎么记</span><span class="d">时间线 · 日历 · 地图</span></a></li>
+    <li><a href="#f2"><span class="t">账怎么记</span><span class="d">金额 · 分类 · 付款人 · 怎么分</span></a></li>
+    <li><a href="#f3"><span class="t">怎么分账结算</span><span class="d">自动算最少转账笔数</span></a></li>
+    <li><a href="#f4"><span class="t">预算怎么看</span><span class="d">总预算 · 分类预算</span></a></li>
+    <li><a href="#f5"><span class="t">想去的地点怎么用</span><span class="d">收藏清单 · 附近提醒</span></a></li>
+    <li><a href="#f6"><span class="t">汇率簿是干吗的</span><span class="d">记好汇率，记账不用现算</span></a></li>
+    <li><a href="#f7"><span class="t">导出与分享</span><span class="d">Excel/JSON/CSV · 分享链接</span></a></li>
+  </ol>
+</div>
+
+<!-- 1. 行程 -->
+<section class="feature page" id="f1">
+  <div class="feature-head"><span class="feature-num">01</span><h2>行程怎么记</h2></div>
+  <p class="lede">按天安排要做什么、几点到哪——这是打开APP后默认看到的第一屏。</p>
+  <div class="layout">
+    <div class="visual-col">
+    <div class="phone">
+      <div class="bar"></div>
+      <div class="scr">
+        <div class="top-row">
+          <div class="row-between" style="gap:4px;"><span class="avatar">爸</span><span>爸爸</span></div>
+          <div class="row-between" style="gap:3px;"><span class="pill">分享中</span><span class="pill warn">2条待同步</span></div>
+        </div>
+        <div class="trip-row">
+          <div class="trip-card">
+            <div><div class="name">东京5日家族游</div><div class="dates">2026-08-24 – 2026-08-28 · MYR</div></div>
+            <span class="muted" style="font-size:6.6px;">切换 ▾</span>
+          </div>
+          <div class="more-btn">···</div>
+        </div>
+        <div class="row-between">
+          <div class="segmented"><span class="on">时间线</span><span>日历</span><span>地图</span></div>
+          <div style="display:flex;gap:3px;"><div class="icon-btn plan">🔖</div><div class="icon-btn">▽</div></div>
+        </div>
+        <div class="row-between" style="margin:5px 0 4px;">
+          <span style="font-family:var(--font-serif-sc);font-size:7.6px;">2026-08-24 · 抵达 · 浅草老街</span>
+          <span class="muted" style="font-size:6.6px;">当日花费 RM536</span>
+        </div>
+        <div class="item-card">
+          <div class="item-title"><span>14:20 成田机场T2抵达</span></div>
+          <div class="item-sub">📍 千叶县成田市</div>
+        </div>
+        <div class="item-card">
+          <div class="item-title"><span>16:40 浅草寺・仲见世通</span></div>
+          <div class="item-sub">📍 东京都台东区浅草2-3-1</div>
+        </div>
+        <div class="item-card"><div class="item-title"><span>19:00 隅田川边晚餐</span></div></div>
+      </div>
+    </div>
+    <div class="view-gallery">
+      <div class="view-thumb">
+        <div class="thumb-frame">
+          <div class="cal-grid">
+            <div class="cal-cell">一</div><div class="cal-cell">二</div><div class="cal-cell">三</div><div class="cal-cell">四</div><div class="cal-cell">五</div><div class="cal-cell">六</div><div class="cal-cell">日</div>
+            <div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell"></div><div class="cal-cell">2</div>
+            <div class="cal-cell">3</div><div class="cal-cell">4</div><div class="cal-cell">5</div><div class="cal-cell">6</div><div class="cal-cell">7</div><div class="cal-cell">8</div><div class="cal-cell">9</div>
+            <div class="cal-cell">10</div><div class="cal-cell">11</div><div class="cal-cell">12</div><div class="cal-cell">13</div><div class="cal-cell">14</div><div class="cal-cell">15</div><div class="cal-cell">16</div>
+            <div class="cal-cell">17</div><div class="cal-cell">18</div><div class="cal-cell">19</div><div class="cal-cell">20</div><div class="cal-cell">21</div><div class="cal-cell">22</div><div class="cal-cell">23</div>
+            <div class="cal-cell on">24<span class="amt">536</span></div><div class="cal-cell on">25<span class="amt">220</span></div><div class="cal-cell on">26</div><div class="cal-cell on">27</div><div class="cal-cell on">28</div><div class="cal-cell">29</div><div class="cal-cell">30</div>
+          </div>
+        </div>
+        <div class="thumb-label">日历视图</div>
+      </div>
+      <div class="view-thumb">
+        <div class="thumb-frame" style="padding:0;">
+          <div class="map-thumb">
+            <div class="map-legend"><span>第1天</span><span>第2天</span></div>
+            <div class="map-pin" style="background:#b91c1c; top:38%; left:45%;"><span>1</span></div>
+            <div class="map-pin" style="background:#c2410c; top:55%; left:60%;"><span>2</span></div>
+            <div class="map-pin" style="background:#c2410c; top:70%; left:35%;"><span>2</span></div>
+          </div>
+        </div>
+        <div class="thumb-label">地图视图（按天上色）</div>
+      </div>
+    </div>
+    </div>
+    <div class="body-col">
+      <h3 class="step-h">具体步骤</h3>
+      <ol class="steps">
+        <li>行程页顶部有三个视图可以切换：<b>时间线</b>（按天逐条看）、<b>日历</b>（一个月看全貌，日期下面顺带显示当天花了多少）、<b>地图</b>（每天的行程点用不同颜色标出来，点上面的"第几天"图例还能只看那天的路线）。</li>
+        <li>先在上面横向选一个日期，再点最下面的"<b>添加行程项</b>"，依次填时间、要做什么、地点（可以搜索或直接贴Google Maps链接）、备注，点右下角"✓"保存。</li>
+        <li>点已有的卡片会展开成编辑框——改完点"✓"保存，或者<b>直接点卡片外面的空白处</b>：标题填了就自动保存，标题还是空的就直接放弃，不会留下一条空行程项。</li>
+        <li>手机上用返回键也能收起编辑框，不会因此退出整个APP。</li>
+      </ol>
+      <div class="tip"><b>小技巧：</b>紫色书签图标是"想去的地点"入口，规划行程时随时能从收藏清单里挑地方，不用重新搜索。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 记账 -->
+<section class="feature page" id="f2">
+  <div class="feature-head"><span class="feature-num">02</span><h2>账怎么记</h2></div>
+  <p class="lede">每一笔花费记下来，谁付的、算不算大家一起分，之后自动汇总。</p>
+  <div class="layout">
+    <div class="visual-col">
+    <div class="entry">
+      <div class="entry-tag">入口</div>
+      <div class="entry-bar">
+        <span style="font-family:var(--font-serif-sc);font-weight:700;">记账 · 共 4 笔</span>
+        <span class="target" style="background:var(--color-plan);color:#fff;border-color:var(--color-plan);">＋<span class="ring"></span></span>
+      </div>
+      <div class="entry-caption">"记账"tab右下角的紫色圆按钮</div>
+    </div>
+    <div class="phone">
+      <div class="bar"></div>
+      <div class="scr">
+        <div class="row-between" style="margin-bottom:5px;"><span class="muted" style="font-size:6.6px;">取消</span><span style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;">记一笔</span><span class="plan-text" style="font-size:6.8px;font-weight:600;">保存</span></div>
+        <div class="amount-box"><span class="num">68</span><span class="chip-btn" style="background:#eee;">MYR</span></div>
+        <div class="field-label">分类</div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px;">
+          <span class="chip-btn active">🍜 餐饮</span><span class="chip-btn">📦 杂项</span><span class="chip-btn">🛍 购物</span><span class="chip-btn">🏨 住宿</span>
+        </div>
+        <div class="field-label">阶段</div>
+        <div class="toggle-row"><span>出行前</span><span class="on">途中</span></div>
+        <div class="field-label">备注</div>
+        <div class="field-box">便利店零食</div>
+        <div class="field-label">付款人</div>
+        <div style="display:flex;gap:3px;margin-bottom:4px;">
+          <span class="member-chip">爸 爸爸垫付</span>
+        </div>
+        <div class="field-label">详情</div>
+        <div class="field-box row-between"><span>怎么分</span><span class="muted">爸爸垫付・3人平均分摊 ›</span></div>
+      </div>
+    </div>
+    </div>
+    <div class="body-col">
+      <h3 class="step-h">具体步骤</h3>
+      <ol class="steps">
+        <li>记账页右下角"+"，先填<b>金额</b>和<b>币种</b>——用外币记账时，只要汇率簿里有对应汇率，会自动换算成本位币。</li>
+        <li>选一个<b>分类</b>（餐饮/住宿/交通…），选是"出行前"还是"途中"花的，选<b>日期</b>，写<b>备注</b>。</li>
+        <li>选<b>付款人</b>——谁先垫付的钱。</li>
+        <li>点"<b>怎么分</b>"，决定这笔钱是"大家分摊"（选平均或自定义金额）还是"个人开销"（不分摊给别人）。</li>
+        <li>还可以点"关联行程"，把这笔账跟具体某个行程项绑在一起，之后从行程页也能看到。</li>
+      </ol>
+      <div class="tip">带小数的金额（比如509.60）现在会照实显示两位小数，不会被简化成整数——不用担心看着像存错了。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. 分账 -->
+<section class="feature page" id="f3">
+  <div class="feature-head"><span class="feature-num">03</span><h2>怎么分账结算</h2></div>
+  <p class="lede">谁垫付了多少、谁该找补给谁，APP自动算出最少的转账笔数。</p>
+  <div class="layout">
+    <div class="phone">
+      <div class="bar"></div>
+      <div class="scr">
+        <div style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;margin-bottom:5px;">费用分摊 · 按人结算</div>
+        <div class="muted" style="font-size:6.6px;text-align:center;margin-bottom:4px;">结算建议 · 还剩 2 笔</div>
+        <div class="item-card">
+          <div class="settle-row"><span class="avatar" style="background:#eab308;">大</span><span>大宝</span><span>→</span><span class="avatar" style="background:#f9a8d4;color:#831843;">妈</span><span>妈妈</span><span style="margin-left:auto;font-weight:700;">RM466.68</span></div>
+          <div class="settle-btn">去结算</div>
+        </div>
+        <div class="item-card">
+          <div class="settle-row"><span class="avatar" style="background:#eab308;">大</span><span>大宝</span><span>→</span><span class="avatar">爸</span><span>爸爸</span><span style="margin-left:auto;font-weight:700;">RM176.64</span></div>
+          <div class="settle-btn">去结算</div>
+        </div>
+        <div class="muted" style="font-size:6.6px;margin:6px 0 4px;">谁付了多少</div>
+        <div class="item-card">
+          <div class="row-between"><span style="font-weight:600;">妈妈</span><span style="color:var(--color-positive);font-weight:700;">应收 RM466.68</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:55%;background:var(--color-positive);"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="body-col">
+      <h3 class="step-h">具体步骤</h3>
+      <ol class="steps">
+        <li>分账页顶部"结算建议"会自动算出<b>最少的转账笔数</b>——不是每个人两两互转，而是合并成最少几笔，就能让大家都不亏不赚。</li>
+        <li>点"<b>去结算</b>"，展开的表单可以填<b>结清金额</b>（支持部分结清，比如先还一半）、<b>日期</b>、<b>备注</b>（比如"现金"还是"转账"）。</li>
+        <li>确认对方已经收到钱之后，点"<b>确认已结清</b>"，这笔就会从"还剩几笔"里划掉。</li>
+        <li>往下滚可以看"谁付了多少"——每个人垫付了多少、应该分摊多少，一目了然。</li>
+      </ol>
+      <div class="tip"><b>提醒：</b>结清记录之后还能在下面的"结算记录"里找到、改金额/日期，或者撤销，不用担心手滑点错。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 预算 -->
+<section class="feature page" id="f4">
+  <div class="feature-head"><span class="feature-num">04</span><h2>预算怎么看</h2></div>
+  <p class="lede">设个总预算，或者按分类分别设，随时看还剩多少、有没有超支。</p>
+  <div class="layout">
+    <div class="phone">
+      <div class="bar"></div>
+      <div class="scr">
+        <div style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;margin-bottom:5px;">预算</div>
+        <div class="donut-wrap">
+          <div class="donut"><div class="hole"><span class="pct">33%</span><span class="rest">还剩 RM3,354</span></div></div>
+          <div class="muted" style="font-size:6.8px;margin-top:4px;">RM1,646 / RM5,000</div>
+        </div>
+        <div class="row-between muted" style="font-size:6.6px;margin-bottom:3px;"><span>分类明细</span><span class="plan-text">+ 加分类预算</span></div>
+        <div class="item-card">
+          <div class="row-between"><span style="display:flex;align-items:center;gap:3px;"><span style="width:5px;height:5px;border-radius:999px;background:var(--color-cat-food);display:inline-block;"></span>餐饮</span><span>RM380 / RM2,000</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:19%;background:var(--color-cat-food);"></div></div>
+        </div>
+        <div class="item-card">
+          <div class="row-between"><span style="display:flex;align-items:center;gap:3px;"><span style="width:5px;height:5px;border-radius:999px;background:var(--color-cat-stay);display:inline-block;"></span>住宿现付</span><span>RM890 / RM3,500</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:25%;background:var(--color-cat-stay);"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="body-col">
+      <h3 class="step-h">具体步骤</h3>
+      <ol class="steps">
+        <li>第一次进预算页会提示"还没设置整趟行程的总预算"——填个数字确认，圆环图就会跟着显示已用比例。</li>
+        <li>点"<b>加分类预算</b>"，可以单独给"餐饮""住宿"这些分类设上限，各自有独立的进度条。</li>
+        <li>记的每一笔账都会自动算进对应分类和总预算里，不用手动更新。</li>
+        <li>想改总预算，点"<b>改总预算</b>"；不想再追踪了，点垃圾桶图标删除（已经记的账不受影响）。</li>
+      </ol>
+      <div class="tip">预算只是提醒自己，超支也不会锁住记账功能——该记还是能记，只是进度条会变红提醒一下。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. 想去的地点 -->
+<section class="feature page" id="f5">
+  <div class="feature-head"><span class="feature-num">05</span><h2>想去的地点怎么用</h2></div>
+  <p class="lede">刷到想去的餐厅/景点先存起来，不属于任何一趟具体行程，规划任何新行程都能用。</p>
+  <div class="layout">
+    <div class="visual-col">
+    <div class="entry">
+      <div class="entry-tag">入口（两处都可以）</div>
+      <div class="entry-bar" style="background:var(--color-ink); border-radius:6px; padding:5px 6px; margin-bottom:4px;">
+        <span style="color:var(--color-card);font-family:var(--font-serif-sc);font-weight:700;">我的行程</span>
+        <span class="target" style="width:auto;height:auto;padding:2px 6px;font-size:6.4px;background:rgba(255,253,249,.1);border:1px solid rgba(255,253,249,.2);color:var(--color-card);border-radius:999px;">🔖 想去的地点<span class="ring"></span></span>
+      </div>
+      <div class="entry-bar">
+        <span class="segmented" style="margin:0;"><span class="on" style="font-size:6px;padding:1.5px 4px;">时间线</span></span>
+        <span class="target">🔖<span class="ring"></span></span>
+      </div>
+      <div class="entry-caption">顶层"我的行程"列表（深色页头）/ 进了行程后"行程"tab头部</div>
+    </div>
+    <div class="phone">
+      <div class="bar"></div>
+      <div class="scr">
+        <div class="row-between" style="margin-bottom:6px;">
+          <span style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;">想去的地点</span>
+          <span class="plan-text" style="font-size:6.8px;font-weight:600;">+ 新增</span>
+        </div>
+        <div class="item-card">
+          <div class="row-between"><span style="font-weight:600;">一兰拉面 涩谷店</span><span class="chip-btn" style="font-size:6px;">○ 还没去</span></div>
+          <div class="item-sub">朋友推荐，记得点半熟蛋</div>
+        </div>
+        <div class="muted" style="font-size:6.6px;text-align:center;margin-top:10px;">还能收藏更多地点…</div>
+      </div>
+    </div>
+    </div>
+    <div class="body-col">
+      <h3 class="step-h">具体步骤</h3>
+      <ol class="steps">
+        <li>入口有两处：顶层"我的行程"列表页右上角的胶囊按钮；或者进了具体某趟行程后，<b>行程</b>tab头部的紫色书签图标（不管切到时间线/日历/地图哪个视图都在）。</li>
+        <li>点"<b>新增</b>"，填地点名字（可以搜索定位，或者贴Google Maps链接）和备注。</li>
+        <li>安排行程时，"添加行程项"表单上方有"从想去的地点里选一个"，选一条会自动带上名字和坐标，不用重新搜索。</li>
+        <li>安排行程时，如果清单里有地点离当天已排的行程比较近，时间线顶部会自动出现提示卡，点"+"直接加进当天。</li>
+        <li>每条地点可以标"还没去 / 已去过"，跟"有没有被排进过行程"是两件独立的事。</li>
+      </ol>
+      <div class="tip">删除收藏清单里的地点，不影响已经排进行程里的那些行程项——它们各自保留了自己的名字和坐标。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. 汇率簿 -->
+<section class="feature page" id="f6">
+  <div class="feature-head"><span class="feature-num">06</span><h2>汇率簿是干吗的</h2></div>
+  <p class="lede">提前记好换汇的汇率，之后用外币记账直接选，不用每次都自己拿计算器算。</p>
+  <div class="layout">
+    <div class="visual-col">
+    <div class="entry">
+      <div class="entry-tag">入口</div>
+      <div class="entry-bar">
+        <span style="font-family:var(--font-serif-sc);font-weight:700;">记账 · 共 4 笔</span>
+        <span class="target">簿<span class="ring"></span></span>
+      </div>
+      <div class="entry-caption">"记账"tab标题右边、写着"簿"字的小方块——没有图标，容易漏看</div>
+    </div>
+    <div class="phone">
+      <div class="bar"></div>
+      <div class="scr">
+        <div class="row-between" style="margin-bottom:5px;">
+          <span style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;">汇率簿</span>
+          <span class="plan-text" style="font-size:6.8px;font-weight:600;">+ 新增</span>
+        </div>
+        <div class="muted" style="font-size:6.6px;margin-bottom:3px;">JPY → MYR</div>
+        <div class="item-card">
+          <div class="row-between"><span style="font-weight:600;">出发前网上换的现金</span><span style="font-weight:700;">0.0296</span></div>
+          <div class="item-sub">手动输入 · 最近用于 2026/8/21</div>
+        </div>
+        <div class="item-card">
+          <div class="row-between"><span style="font-weight:600;">当地刷卡（银行汇率）</span><span style="font-weight:700;">0.0301</span></div>
+          <div class="item-sub">API参考值 · 最近用于 2026/8/21</div>
+        </div>
+        <div class="muted" style="font-size:6.2px;margin-top:6px;">编辑汇率只影响之后新记的账，不会改动过去已保存的记录金额。</div>
+      </div>
+    </div>
+    </div>
+    <div class="body-col">
+      <h3 class="step-h">具体步骤</h3>
+      <ol class="steps">
+        <li>从记账页点右上角写着"簿"字的按钮进入汇率簿，点"<b>新增</b>"，可以按当前汇率参考值直接采用，或者手动输入你实际换到的汇率（比如现金换汇跟银行刷卡汇率不一样）。</li>
+        <li>同一个货币对可以记<b>不止一条</b>——比如"出发前换的现金"和"当地刷卡"两种汇率分开记，记账时按实际情况挑对的那条。</li>
+        <li>记外币账目时，直接从这里选一条汇率，金额自动按汇率换算成本位币，不用自己算。</li>
+        <li>如果一笔开销的钱其实来自不止一批换汇（比如一部分现金一部分卡），可以在记账时拆开选多条汇率分别计入。</li>
+        <li>不再用的汇率可以"归档"（不会删除历史数据，只是不再出现在常用列表里）。</li>
+      </ol>
+      <div class="tip">汇率簿里的每条记录会显示"用过几次"，方便看出哪种换汇方式实际用得最多。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. 导出与分享 -->
+<section class="feature page" id="f7">
+  <div class="feature-head"><span class="feature-num">07</span><h2>导出与分享</h2></div>
+  <p class="lede">整趟行程的行程和账目，导出成文件带走，或者开一个只读链接给没装APP的人看。</p>
+  <div class="layout">
+    <div class="visual-col">
+    <div class="entry">
+      <div class="entry-tag">入口</div>
+      <div class="entry-bar">
+        <span style="font-family:var(--font-serif-sc);font-weight:700;">东京5日家族游</span>
+        <span class="target" style="border-radius:5px;">···<span class="ring"></span></span>
+      </div>
+      <div class="entry-caption">行程名字卡片右边，任何tab里都能点到</div>
+    </div>
+    <div class="phone">
+      <div class="bar"></div>
+      <div class="scr">
+        <div class="row-between" style="margin-bottom:6px;">
+          <span style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;">导出与分享</span>
+          <span class="muted">✕</span>
+        </div>
+        <div class="item-card">
+          <div class="row-between"><span style="font-weight:600;">导出 Excel</span><span class="plan-text" style="font-size:6.6px;">分享 ›</span></div>
+          <div class="item-sub">明细 + 汇总两个sheet</div>
+        </div>
+        <div class="item-card">
+          <div class="row-between"><span style="font-weight:600;">导出 JSON</span><span class="plan-text" style="font-size:6.6px;">分享 ›</span></div>
+          <div class="item-sub">给AI工具生成游记文案用</div>
+        </div>
+        <div class="item-card">
+          <div class="row-between"><span style="font-weight:600;">分享设置</span><span class="plan-text" style="font-size:6.6px;">设置 ›</span></div>
+          <div class="item-sub">只读分享链接已开启</div>
+        </div>
+        <div class="item-card">
+          <div class="row-between"><span style="font-weight:600;">行程动态</span><span class="plan-text" style="font-size:6.6px;">去看看 ›</span></div>
+          <div class="item-sub">看家里谁记了账、加了什么</div>
+        </div>
+      </div>
+    </div>
+    </div>
+    <div class="body-col">
+      <h3 class="step-h">具体步骤</h3>
+      <ol class="steps">
+        <li>点<b>导出Excel</b>——生成一个文件，明细和汇总各占一个sheet，行程和账目都在里面，导出后手机会弹出系统分享面板，选"保存到文件"或者发给别人都行。</li>
+        <li>点<b>导出JSON</b>——如果想用AI工具帮忙写游记文案或者剪短视频脚本，这个格式喂给AI比较方便；<b>导出CSV</b>——摊平成表格，方便导入Excel以外的其他工具。</li>
+        <li>点<b>分享设置</b>，可以开一个<b>只读链接</b>，发给没有装APP的亲戚朋友，对方点开链接就能看行程和账目，不用注册登录，也改不了任何内容。</li>
+        <li>点<b>行程动态</b>，能看到团队里每个人最近记了什么账、加了什么行程安排——谁改的一目了然。</li>
+        <li>最下面还有"<b>提交反馈</b>"（用得不顺手的地方直接说）和"<b>检查更新</b>"（手机上感觉APP没更新到最新版时，点一下强制刷新）。</li>
+      </ol>
+      <div class="tip"><b>提醒：</b>只读链接给出去之后，对方能看到的内容范围由"分享设置"里的选项决定，随时可以关掉链接收回访问权限。</div>
+    </div>
+  </div>
+</section>
+
+<footer class="doc-footer">旅记 · TripJournal　根据APP实际界面整理</footer>
+
+</body>
+</html>

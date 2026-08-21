@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { X, Link2, RefreshCw, Users } from 'lucide-react'
+import { X, Link2, RefreshCw, Users, BookOpen } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
@@ -199,6 +199,22 @@ export function TripMoreSheet({
           </div>
           <span className="text-[11.5px] text-plan flex-shrink-0">去看看 ›</span>
         </button>
+
+        <a
+          href="/user-guide.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left"
+        >
+          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
+            <BookOpen className="w-[17px] h-[17px]" strokeWidth={1.8} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium">使用指南</div>
+            <div className="text-[10.5px] text-muted mt-0.5">行程、记账、分账这些功能怎么用，照真实界面讲一遍</div>
+          </div>
+          <span className="text-[11.5px] text-plan flex-shrink-0">去看看 ›</span>
+        </a>
 
         <button
           onClick={onOpenFeedback}
