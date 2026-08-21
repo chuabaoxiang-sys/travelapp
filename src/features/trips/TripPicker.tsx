@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CountryPicker } from '../../components/CountryPicker'
 import { countryByCode } from '../../lib/countries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
+import { TeamSwitcher } from '../teams/TeamSwitcher'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import type { Trip, TripStatus } from '../../types'
 
@@ -26,7 +27,15 @@ const STATUS_CLASS: Record<TripStatus, string> = {
   archived: 'bg-line text-muted',
 }
 
-export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: string) => void; currentMemberId: string }) {
+export function TripPicker({
+  onSelect,
+  currentMemberId,
+  onSwitchedTeam,
+}: {
+  onSelect: (id: string) => void
+  currentMemberId: string
+  onSwitchedTeam: (householdId: string) => void
+}) {
   const trips = useLiveQuery(() => db.trips.orderBy('createdAt').reverse().toArray()) ?? []
   // null=不显示表单；'new'=新建（表单出现在列表最下面）；具体id=正在编辑该行程
   // （编辑表单原地替换那张卡片，不要跑到列表底部，否则行程一多就分不清在改哪个）
@@ -57,6 +66,8 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
             想去的地点
           </button>
         </div>
+
+        <TeamSwitcher onSwitched={onSwitchedTeam} />
 
         <div className="mt-5 flex flex-col gap-2">
           {trips.map((t) => {

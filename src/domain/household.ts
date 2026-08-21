@@ -85,6 +85,45 @@ export function clearHouseholdCache() {
   cachedHouseholdId = null
 }
 
+export interface MyHousehold {
+  id: string
+  name: string
+  isActive: boolean
+}
+
+// 我属于的所有团队（对应 list_my_households RPC，见 0018）。只返回自己的团队，
+// 查不到别人的、也查不到总共有多少个团队。返回 1 条以下时界面不该显示切换入口。
+export async function listMyHouseholds(): Promise<MyHousehold[]> {
+  // 本地开发环境给两个假团队，否则切换入口在本地永远不显示（它只在属于2个以上
+  // 团队时才渲染），这一屏就没法本地验证。双重限制在 DEV 构建 + 本地测试模式内，
+  // 生产构建里这段不可能生效。真正的切换动作在这种模式下会失败（没有云端），
+  // 弹层会正常显示失败提示——本地能验证的是布局和交互，不是切换本身
+  if (import.meta.env.DEV && (!supabase || isLocalTestModeEnabled())) {
+    return [
+      { id: LOCAL_TEST_HOUSEHOLD_ID, name: '本地测试团队', isActive: true },
+      { id: 'local-test-household-2', name: '另一个测试团队', isActive: false },
+    ]
+  }
+  if (!supabase || isLocalTestModeEnabled()) return []
+  const { data, error } = await supabase.rpc('list_my_households')
+  if (error || !data) return []
+  // RPC 的输出列刻意叫 team_id/team_name（不是 id/name），原因见 0018 里的注释
+  return (data as { team_id: string; team_name: string; is_active: boolean }[]).map((r) => ({
+    id: r.team_id,
+    name: r.team_name,
+    isActive: r.is_active,
+  }))
+}
+
+// 把服务端的"当前团队"指针指向某个团队。数据库那边会先校验你确实属于它，
+// 不属于会抛错。注意：调用这个之后本地数据还是旧团队的，必须接着走
+// domain/teamSwitch.ts 里的完整流程，不要单独调用这个函数
+export async function setActiveHousehold(householdId: string): Promise<void> {
+  if (!supabase) throw new Error('云端服务未配置')
+  const { error } = await supabase.rpc('set_active_household', { p_household_id: householdId })
+  if (error) throw error
+}
+
 // 拿当前团队的邀请码（第一次调用时数据库会懒生成）——给已登录成员看/复制，
 // 分享给想邀请的家人朋友
 export async function getHouseholdInviteCode(): Promise<string | null> {

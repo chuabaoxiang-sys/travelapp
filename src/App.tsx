@@ -12,16 +12,30 @@ import { useCurrentMemberId } from './features/members/useCurrentMemberId'
 import { TripPicker } from './features/trips/TripPicker'
 import { TripShell } from './features/trips/TripShell'
 import { InstallPrompt } from './components/InstallPrompt'
+import { readPerTeam, writePerTeam, removePerTeam } from './lib/perTeamStorage'
 
 const CURRENT_TRIP_KEY = 'trip-journal:current-trip-id'
+
+// 本地测试模式/没配Supabase时用的团队ID，跟 domain/household.ts 里的常量保持一致——
+// 那种场景下也需要一个稳定的值给"按团队分开存"的那两个记忆键当后缀
+const LOCAL_TEST_HOUSEHOLD_ID = 'local-test-household'
 
 type AuthState = 'checking' | 'signed-out' | 'no-household' | 'ready'
 
 function App() {
   const [ready, setReady] = useState(false)
   const [authState, setAuthState] = useState<AuthState>('checking')
-  const [memberId, setMemberId] = useCurrentMemberId()
-  const [tripId, setTripId] = useState<string | null>(() => localStorage.getItem(CURRENT_TRIP_KEY))
+  // 当前团队ID在这里解析一次并持有：下面"当前身份"和"当前行程"两个记忆值都要按团队
+  // 分开存，而它们在首次渲染时就要同步读到值，来不及等异步查询。切换团队后这个值会变，
+  // 那两个记忆值也会跟着切到新团队记住的那份
+  const [householdId, setHouseholdId] = useState<string | null>(null)
+  const [memberId, setMemberId] = useCurrentMemberId(householdId)
+  const [tripId, setTripId] = useState<string | null>(null)
+
+  // 跟着当前团队走：切换团队时读新团队上次看的那趟行程（没有就落到"我的行程"列表）
+  useEffect(() => {
+    setTripId(householdId ? readPerTeam(CURRENT_TRIP_KEY, householdId) : null)
+  }, [householdId])
 
   useEffect(() => {
     // ensureLocalTestSeed 内部自己判断"是不是本地无Supabase测试环境"，
@@ -35,18 +49,21 @@ function App() {
   // 跟原来"同步功能整体不工作但APP能用"的降级逻辑保持一致
   useEffect(() => {
     if (!supabase || isLocalTestModeEnabled()) {
+      setHouseholdId(LOCAL_TEST_HOUSEHOLD_ID)
       setAuthState('ready')
       return
     }
 
     async function checkSession(session: import('@supabase/supabase-js').Session | null) {
       if (!session) {
+        setHouseholdId(null)
         setAuthState('signed-out')
         return
       }
-      const householdId = await getCurrentHouseholdId()
-      setAuthState(householdId ? 'ready' : 'no-household')
-      if (householdId) startAutoSync()
+      const resolved = await getCurrentHouseholdId()
+      setHouseholdId(resolved)
+      setAuthState(resolved ? 'ready' : 'no-household')
+      if (resolved) startAutoSync()
     }
 
     // 只依赖 onAuthStateChange——它保证第一次回调一定是 INITIAL_SESSION 事件，带着
@@ -98,9 +115,10 @@ function App() {
         <TripPicker
           currentMemberId={memberId}
           onSelect={(id) => {
-            localStorage.setItem(CURRENT_TRIP_KEY, id)
+            if (householdId) writePerTeam(CURRENT_TRIP_KEY, householdId, id)
             setTripId(id)
           }}
+          onSwitchedTeam={setHouseholdId}
         />
         <InstallPrompt />
       </>
@@ -112,7 +130,7 @@ function App() {
           tripId={tripId}
           currentMemberId={memberId}
           onSwitchTrip={() => {
-            localStorage.removeItem(CURRENT_TRIP_KEY)
+            if (householdId) removePerTeam(CURRENT_TRIP_KEY, householdId)
             setTripId(null)
           }}
           onSelectMember={setMemberId}

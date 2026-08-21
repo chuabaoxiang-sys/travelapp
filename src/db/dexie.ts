@@ -134,6 +134,31 @@ export async function withoutOutboxTracking<T>(fn: () => Promise<T>): Promise<T>
   }
 }
 
+// 切换团队时清空本地已同步的数据，然后重新从云端拉新团队的。
+//
+// ⚠️ 这个函数是整个APP里最危险的一段：如果不走 withoutOutboxTracking，每一行的
+// 删除都会被 hook 记成一条 delete 到 outbox，下一轮同步就会把**云端**那些数据
+// 一起删掉——本意是"清掉本地缓存"，实际效果是"删除这个团队的全部真实数据"。
+// 所以这里的包裹不是优化，是正确性的前提，改动这段务必保留。
+//
+// 清的范围刻意列全，不直接复用 SYNCED_TABLES：
+//   - expenseSplits 不在 SYNCED_TABLES 里（它走的是按费用打包的 outbox 条目，
+//     见 0009 那次修复），但它同样是团队数据，漏清会让上一个团队的分摊明细
+//     残留在本地、和新团队的账目混在一起
+//   - routeLegCache 是纯本地派生缓存（按 dayId 存），换团队后那些 dayId 都不存在了，
+//     属于纯垃圾，顺手清掉
+//   - expenseCategories 刻意不清：那是所有安装共用的系统预置分类种子数据，
+//     不属于任何团队
+//   - outbox 刻意不清：调用方必须先确认它已经空了才允许切换（带着旧团队 household_id
+//     的待推送记录切过去会被 RLS 永久拒绝），所以这里没有东西可清
+export async function clearLocalTeamData() {
+  await withoutOutboxTracking(async () => {
+    for (const tableName of [...SYNCED_TABLES, 'expenseSplits', 'routeLegCache']) {
+      await db.table(tableName).clear()
+    }
+  })
+}
+
 function registerOutboxHooks(db: TripJournalDB) {
   for (const tableName of SYNCED_TABLES) {
     const table = db.table(tableName)
