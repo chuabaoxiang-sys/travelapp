@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ensureSeedData } from './db/dexie'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db, ensureSeedData } from './db/dexie'
 import { startAutoSync } from './db/sync'
 import { supabase } from './api/supabaseClient'
 import { getCurrentHouseholdId, signOut } from './domain/household'
@@ -31,6 +32,16 @@ function App() {
   const [householdId, setHouseholdId] = useState<string | null>(null)
   const [memberId, setMemberId] = useCurrentMemberId(householdId)
   const [tripId, setTripId] = useState<string | null>(null)
+
+  // 记住的这个身份，在当前团队的数据里必须真的存在。不校验的话，一旦记住的ID
+  // 属于别的团队（或者这个人在别的设备上被删了），APP 会带着一个查不到的身份继续跑：
+  // 头像变成"?"，而且因为 memberId 有值，"你是谁？"那一屏被整个跳过——真机上就是
+  // 这么暴露出来的。跟之前修过的"记住的行程已不存在导致白屏"是同一类问题。
+  // useLiveQuery 没查完时返回 undefined，这时不能判定"不存在"，否则数据还没拉回来
+  // 就会把人弹回选身份；只有确实拿到数组、里面没有这个ID，才算真的失效
+  const allMembers = useLiveQuery(() => db.members.toArray(), [householdId])
+  const memberMissing = !!memberId && !!allMembers && !allMembers.some((m) => m.id === memberId)
+  const effectiveMemberId = memberMissing ? null : memberId
 
   // 跟着当前团队走：切换团队时读新团队上次看的那趟行程（没有就落到"我的行程"列表）
   useEffect(() => {
@@ -102,7 +113,7 @@ function App() {
         </div>
       </div>
     )
-  } else if (!memberId) {
+  } else if (!effectiveMemberId) {
     content = (
       <>
         <MemberGate onPicked={setMemberId} />
@@ -113,7 +124,7 @@ function App() {
     content = (
       <>
         <TripPicker
-          currentMemberId={memberId}
+          currentMemberId={effectiveMemberId}
           onSelect={(id) => {
             if (householdId) writePerTeam(CURRENT_TRIP_KEY, householdId, id)
             setTripId(id)
@@ -127,7 +138,7 @@ function App() {
       <>
         <TripShell
           tripId={tripId}
-          currentMemberId={memberId}
+          currentMemberId={effectiveMemberId}
           onSwitchTrip={() => {
             if (householdId) removePerTeam(CURRENT_TRIP_KEY, householdId)
             setTripId(null)
