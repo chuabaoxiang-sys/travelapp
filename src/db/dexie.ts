@@ -18,6 +18,7 @@ import type {
   Feedback,
   RouteLegCacheEntry,
   WishlistPlace,
+  DiscoveryHint,
 } from '../types'
 
 // 会被同步到云端的表——本地写操作会自动记一条 outbox。expenseCategories 不算在内，
@@ -69,6 +70,7 @@ export class TripJournalDB extends Dexie {
   feedback!: EntityTable<Feedback, 'id'>
   routeLegCache!: EntityTable<RouteLegCacheEntry, 'dayId'>
   wishlistPlaces!: EntityTable<WishlistPlace, 'id'>
+  discoveryHints!: EntityTable<DiscoveryHint, 'id'>
 
   constructor() {
     super('trip-journal')
@@ -106,6 +108,11 @@ export class TripJournalDB extends Dexie {
     // 创建/删除影响（deleteTripCascade 故意不碰这张表）
     this.version(5).stores({
       wishlistPlaces: 'id, householdId, visited, createdAt',
+    })
+    // 入口发现提示的"谁看过哪个提示"——纯本地UI偏好，不进 SYNCED_TABLES，
+    // 也不在换团队时清空（这是"这个人熟不熟悉这个APP"，跟具体哪个团队无关）
+    this.version(6).stores({
+      discoveryHints: 'id, memberId',
     })
     registerOutboxHooks(this)
   }

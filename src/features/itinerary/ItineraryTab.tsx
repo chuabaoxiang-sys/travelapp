@@ -20,6 +20,8 @@ import { useDayRouteLegs } from '../../lib/routeLegs'
 import { RouteLegHint } from '../../components/RouteLegHint'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
+import { DiscoveryDot } from '../../components/DiscoveryDot'
+import { markHintSeen } from '../../domain/discoveryHints'
 
 const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 type ViewMode = 'timeline' | 'calendar' | 'map'
@@ -178,11 +180,12 @@ export function ItineraryTab({
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
-            onClick={() => setWishlistOpen(true)}
-            className="w-8 h-8 rounded-[10px] border border-plan/25 bg-plan/[0.06] text-plan flex items-center justify-center flex-shrink-0"
+            onClick={() => { setWishlistOpen(true); markHintSeen(currentMemberId, 'wishlist') }}
+            className="relative w-8 h-8 rounded-[10px] border border-plan/25 bg-plan/[0.06] text-plan flex items-center justify-center flex-shrink-0"
             title="想去的地点"
           >
             <Bookmark className="w-[15px] h-[15px]" strokeWidth={1.8} />
+            <DiscoveryDot memberId={currentMemberId} hintKey="wishlist" />
           </button>
           {viewMode === 'timeline' && (
             <button

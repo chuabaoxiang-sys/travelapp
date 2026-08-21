@@ -310,6 +310,15 @@ export interface RouteLegCacheEntry {
   fetchedAt: number
 }
 
+// 入口"发现提示"小红点——纯本地UI偏好，不需要跨设备同步，按人记（不是按设备）。
+// id 拼成 `memberId:hintKey`，同一个人不管在哪台设备上点过就不再提醒
+export interface DiscoveryHint {
+  id: string
+  memberId: string
+  hintKey: string
+  seenAt: number
+}
+
 export type FeedbackCategory = 'bug' | 'suggestion' | 'other'
 
 // 用户反馈：跟其他"可同步表"走同一套 outbox 机制，本地先记着，等接入

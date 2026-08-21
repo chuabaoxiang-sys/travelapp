@@ -13,6 +13,8 @@ import { TripMoreSheet } from './TripMoreSheet'
 import { ShareSettingsSheet } from './ShareSettingsSheet'
 import { FeedbackSheet } from '../feedback/FeedbackSheet'
 import { IdentitySwitcher } from '../members/IdentitySwitcher'
+import { DiscoveryDot } from '../../components/DiscoveryDot'
+import { markHintSeen } from '../../domain/discoveryHints'
 import { InviteCodeSheet } from '../members/InviteCodeSheet'
 import { ShareStatusBadge } from './ShareStatusBadge'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
@@ -122,8 +124,8 @@ export function TripShell({
             </span>
           </button>
           <button
-            onClick={() => setMoreOpen(true)}
-            className="w-[46px] rounded-[13px] border border-line bg-card flex items-center justify-center text-ink flex-shrink-0"
+            onClick={() => { setMoreOpen(true); markHintSeen(currentMemberId, 'moreSheet') }}
+            className="relative w-[46px] rounded-[13px] border border-line bg-card flex items-center justify-center text-ink flex-shrink-0"
             title="导出与分享"
           >
             <svg viewBox="0 0 24 24" className="w-[19px] h-[19px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -131,6 +133,7 @@ export function TripShell({
               <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
               <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none" />
             </svg>
+            <DiscoveryDot memberId={currentMemberId} hintKey="moreSheet" />
           </button>
         </div>
 

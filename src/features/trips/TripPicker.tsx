@@ -11,6 +11,8 @@ import { countryByCode } from '../../lib/countries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
 import { TeamSwitcher } from '../teams/TeamSwitcher'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
+import { DiscoveryDot } from '../../components/DiscoveryDot'
+import { markHintSeen } from '../../domain/discoveryHints'
 import type { Trip, TripStatus } from '../../types'
 
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -51,11 +53,12 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
         <div className="flex items-center justify-between mt-2">
           <h1 className="font-serif-sc text-2xl text-card">我的行程</h1>
           <button
-            onClick={() => setWishlistOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-card/20 bg-card/10 text-card px-3 py-1.5 text-[11.5px] font-semibold"
+            onClick={() => { setWishlistOpen(true); markHintSeen(currentMemberId, 'wishlist') }}
+            className="relative flex items-center gap-1.5 rounded-full border border-card/20 bg-card/10 text-card px-3 py-1.5 text-[11.5px] font-semibold"
           >
             <Bookmark className="w-3.5 h-3.5" strokeWidth={2} />
             想去的地点
+            <DiscoveryDot memberId={currentMemberId} hintKey="wishlist" borderClassName="border-ink" />
           </button>
         </div>
 

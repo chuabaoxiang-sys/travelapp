@@ -11,6 +11,8 @@ import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
+import { DiscoveryDot } from '../../components/DiscoveryDot'
+import { markHintSeen } from '../../domain/discoveryHints'
 
 export function LedgerTab({
   trip,
@@ -73,11 +75,12 @@ export function LedgerTab({
       <div className="flex items-center justify-between mb-1">
         <span className="font-serif-sc text-sm font-semibold">记账 · 共 {visibleExpenses.length} 笔</span>
         <button
-          onClick={() => setRateBookOpen(true)}
-          className="w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-[14px] text-plan"
+          onClick={() => { setRateBookOpen(true); markHintSeen(currentMemberId, 'rateBook') }}
+          className="relative w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-[14px] text-plan"
           title="汇率簿"
         >
           簿
+          <DiscoveryDot memberId={currentMemberId} hintKey="rateBook" />
         </button>
       </div>
 
