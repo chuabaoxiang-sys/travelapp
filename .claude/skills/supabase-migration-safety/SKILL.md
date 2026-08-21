@@ -13,7 +13,7 @@ There are two Supabase projects: **test** (`jwngufyqkdgwawsirdsl`) for proving a
 
 **1. Write the migration file**
 
-New file under `supabase/migrations/`, following the existing numbering (currently up to `0005`). Match the existing style: Chinese comments that explain *why* a design choice was made, not just what the SQL does — future-you (or future Claude) needs the reasoning, not a restatement of syntax. Look at `0004_household_isolation.sql` for the tone and level of detail expected.
+New file under `supabase/migrations/`, following the existing numbering — check what's actually there with `ls supabase/migrations/` rather than trusting a number written here, since this line goes stale every time a migration lands. Match the existing style: Chinese comments that explain *why* a design choice was made, not just what the SQL does — future-you (or future Claude) needs the reasoning, not a restatement of syntax. Look at `0004_household_isolation.sql` for the tone and level of detail expected.
 
 **2. Run it on the test project first**
 

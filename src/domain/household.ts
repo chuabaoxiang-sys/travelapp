@@ -57,12 +57,25 @@ export async function signOut() {
   cachedHouseholdId = null
 }
 
-// 查"当前登录邮箱属于哪个团队"——对应 household_member 表，RLS 只放行查自己那一条。
+// 查"当前登录邮箱属于哪个团队"——对应 household_member 表，RLS 只放行查自己那些行。
 // 如果查不到（邮箱还没被邀请进任何团队），返回 null，调用方要提示"此邮箱还没被邀请"
+//
+// 【排序必须和数据库端保持完全一致】household_member 允许一个邮箱属于多个团队
+// （复合主键 (household_id, email)，0004 刻意的设计）。这里挑出来的团队ID会被打进
+// 新记录的 householdId 字段，而服务端 RLS 用 current_household_id() 独立地再挑一次
+// 校验 `with check`。两边如果挑到不同的团队，写入会被静默拒绝、表现成"这条数据同步
+// 不上去"。所以两边都按 (created_at, household_id) 排序——改这里就必须同步改
+// supabase/migrations/0017_deterministic_current_household.sql 里的那个函数。
 export async function getCurrentHouseholdId(): Promise<string | null> {
   if (cachedHouseholdId) return cachedHouseholdId
   if (!supabase || isLocalTestModeEnabled()) return LOCAL_TEST_HOUSEHOLD_ID
-  const { data, error } = await supabase.from('household_member').select('household_id').limit(1).maybeSingle()
+  const { data, error } = await supabase
+    .from('household_member')
+    .select('household_id')
+    .order('created_at', { ascending: true })
+    .order('household_id', { ascending: true })
+    .limit(1)
+    .maybeSingle()
   if (error || !data) return null
   cachedHouseholdId = data.household_id
   return cachedHouseholdId
