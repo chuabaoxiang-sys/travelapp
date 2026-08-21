@@ -48,6 +48,11 @@ describe('extractPlaceFromUrl', () => {
     const url = 'https://www.google.com/maps/@3.139,101.6869,15z'
     expect(extractPlaceFromUrl(url)).toEqual({ lat: 3.139, lng: 101.6869, name: null })
   })
+
+  it('q=参数直接就是"纬度,经度"的纯坐标分享（没有/place/也没有!3d!4d/@）时，坐标仍能提取', () => {
+    const url = 'https://www.google.com/maps?q=35.6812,139.7671&entry=gps'
+    expect(extractPlaceFromUrl(url)).toEqual({ lat: 35.6812, lng: 139.7671, name: null })
+  })
 })
 
 describe('extractNameFromUrl', () => {
@@ -60,6 +65,18 @@ describe('extractNameFromUrl', () => {
 
   it('没有/place/片段时返回null', () => {
     expect(extractNameFromUrl('https://www.google.com/maps/@3.139,101.6869,15z')).toBeNull()
+  })
+
+  it('第三种款式（常见于iPhone分享）：没有/place/片段，地址整个塞进q=参数里', () => {
+    // 真实案例：iPhone上从Google Maps App分享出来的链接，跳转后长这样，
+    // 既没有/place/片段、也没有!3d!4d/@坐标，只有q=里的完整地址
+    const url = 'https://www.google.com/maps?q=Soup+Curry+Begirama,+10-2+Matsukazecho,+Hakodate,+Hokkaido+040-0035,+Japan&ftid=0x5f9ef3200d849c95:0xa28073a4f78e3925&entry=gps&g_st=ic'
+    expect(extractNameFromUrl(url)).toBe('Soup Curry Begirama, 10-2 Matsukazecho, Hakodate, Hokkaido 040-0035, Japan')
+  })
+
+  it('q=参数是纯"纬度,经度"坐标时，不当作地址文本返回（交给extractPlaceFromUrl处理坐标）', () => {
+    const url = 'https://www.google.com/maps?q=35.6812,139.7671&entry=gps'
+    expect(extractNameFromUrl(url)).toBeNull()
   })
 })
 

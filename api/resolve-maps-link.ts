@@ -31,16 +31,37 @@ export function isAllowedMapsUrl(raw: string): boolean {
 // 坐标格式都没匹配到，这个字段往往还在，可以喂给 geocodeAddress() 兜底
 export function extractNameFromUrl(finalUrl: string): string | null {
   const nameMatch = finalUrl.match(/\/place\/([^/@]+)/)
-  return nameMatch ? decodeURIComponent(nameMatch[1]).replace(/\+/g, ' ') : null
+  if (nameMatch) return decodeURIComponent(nameMatch[1]).replace(/\+/g, ' ')
+
+  // 第三种款式（常见于iOS上分享的Google Maps链接）：没有 /place/ 片段，
+  // 地址整个塞进了 q= 查询参数里，例如 /maps?q=地址&ftid=...&entry=gps。
+  // q 有时候是"纬度,经度"这种纯坐标而不是地址文本——那种情况交给
+  // extractPlaceFromUrl 的坐标匹配处理，这里只返回真正的地址文本
+  try {
+    const q = new URL(finalUrl).searchParams.get('q')
+    if (q && !/^-?\d+\.\d+,-?\d+\.\d+$/.test(q)) return q
+  } catch {
+    // 不是合法URL，忽略
+  }
+  return null
 }
 
 // 优先找 !3d<lat>!4d<lng>——这是地图上具体那个标记点的精确坐标；
-// 找不到才退而求其次用 @lat,lng（当前地图视野的中心点，可能因为缩放层级
-// 差出去好几公里，不如标记点准，只在没有标记点信息时才用）
+// 找不到就退而求其次用 @lat,lng（当前地图视野的中心点，可能因为缩放层级
+// 差出去好几公里，不如标记点准）；两种都没有时，最后再看 q= 参数是不是
+// 直接就是"纬度,经度"这种纯坐标分享（没有地址文本）
 export function extractPlaceFromUrl(finalUrl: string): { lat: number; lng: number; name: string | null } | null {
   const pinMatch = finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
   const centerMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-  const match = pinMatch ?? centerMatch
+  let match = pinMatch ?? centerMatch
+  if (!match) {
+    try {
+      const q = new URL(finalUrl).searchParams.get('q')
+      match = q?.match(/^(-?\d+\.\d+),(-?\d+\.\d+)$/) ?? null
+    } catch {
+      // 不是合法URL，忽略
+    }
+  }
   if (!match) return null
 
   return { lat: parseFloat(match[1]), lng: parseFloat(match[2]), name: extractNameFromUrl(finalUrl) }
