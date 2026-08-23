@@ -142,6 +142,20 @@ export function ItineraryTab({
     updateScrollState()
   }, [days.length])
 
+  // 精简吸顶条是独立的一条横向滚动区域，自己选中的日期跟完整日期条各自
+  // 记着各自的滚动位置——通过吸顶条跳到一个不在完整日期条当前可视范围内
+  // 的日期后，完整日期条虽然内部状态是对的，但划回顶部看到它时，选中的
+  // 那个日期可能还在视野外，看起来像"没跟着跳转"。这里在选中日期变化时，
+  // 把两条日期条都滚到能看见当前选中日期的位置，互不干扰、也不影响自己
+  // 手动划动
+  const compactStripRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    for (const ref of [stripRef, compactStripRef]) {
+      const chip = ref.current?.querySelector<HTMLElement>(`[data-date="${selected}"]`)
+      chip?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    }
+  }, [selected])
+
   // 行程项很多、往下滑很长时，日期条会跟着滚走，看不出自己在看哪一天。用一个
   // 1px高的哨兵放在日期条正下方，配合IntersectionObserver判断日期条是不是已经
   // 滚出可视区域——没有用滚动方向判断，越过阈值就收起、回到阈值以上就展开，
@@ -284,6 +298,7 @@ export function ItineraryTab({
                   return (
                     <button
                       key={d}
+                      data-date={d}
                       onClick={() => { setSelected(d); setFormState(null); setSuggestionsDismissed(false) }}
                       className={`flex-shrink-0 rounded-2xl px-3.5 py-2 text-center border font-serif-sc ${
                         isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-[#57534E] border-line'
@@ -313,13 +328,14 @@ export function ItineraryTab({
             更窄，同样能直接点别的日期跳转，不需要额外的"回到顶部"按钮 */}
             {dateStripCollapsed && (
               <div className="sticky top-0 z-20 -mx-5 px-5 py-2 mb-3.5 bg-paper border-b border-line shadow-sm">
-                <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                <div ref={compactStripRef} className="flex gap-1.5 overflow-x-auto no-scrollbar">
                   {days.map((d) => {
                     const num = d.slice(-2).replace(/^0/, '')
                     const isActive = d === selected
                     return (
                       <button
                         key={d}
+                        data-date={d}
                         onClick={() => { setSelected(d); setFormState(null); setSuggestionsDismissed(false) }}
                         className={`flex-shrink-0 w-8 h-8 rounded-lg text-center font-serif-sc text-[13px] font-semibold flex items-center justify-center border ${
                           isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-[#57534E] border-line'
