@@ -1,11 +1,14 @@
 import { useState, type ReactNode } from 'react'
-import { X, Link2, RefreshCw, Users, BookOpen } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { X, Link2, RefreshCw, Users, BookOpen, ListChecks } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import { effectiveShareScope } from '../../domain/share'
 import { formatAppVersion } from '../../lib/appVersion'
+import { db } from '../../db/dexie'
+import { STUCK_THRESHOLD } from '../../components/SyncDetailSheet'
 import type { Trip } from '../../types'
 
 type ExportKind = 'excel' | 'json' | 'csv'
@@ -51,13 +54,21 @@ export function TripMoreSheet({
   onOpenFeedback,
   onOpenShareSettings,
   onOpenActivity,
+  onOpenSyncDetail,
 }: {
   trip: Trip
   onClose: () => void
   onOpenFeedback: () => void
   onOpenShareSettings: () => void
   onOpenActivity: () => void
+  onOpenSyncDetail: () => void
 }) {
+  const pendingOutbox = useLiveQuery(() => db.outbox.where('status').equals('pending').toArray()) ?? []
+  const stuckCount = pendingOutbox.filter((e) => e.attempts >= STUCK_THRESHOLD).length
+  const syncSummary =
+    stuckCount > 0 ? `${stuckCount}条看起来卡住了，点击查看` : pendingOutbox.length > 0 ? `${pendingOutbox.length}条还在重试中` : '全部已同步'
+  const syncSummaryClass = stuckCount > 0 ? 'text-negative' : pendingOutbox.length > 0 ? 'text-spend' : 'text-muted'
+
   const [busy, setBusy] = useState<ExportKind | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -198,6 +209,20 @@ export function TripMoreSheet({
             <div className="text-[10.5px] text-muted mt-0.5">看家里谁记了账、加了什么安排</div>
           </div>
           <span className="text-[11.5px] text-plan flex-shrink-0">去看看 ›</span>
+        </button>
+
+        <button
+          onClick={onOpenSyncDetail}
+          className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left"
+        >
+          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
+            <ListChecks className="w-[17px] h-[17px]" strokeWidth={1.8} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium">同步详情</div>
+            <div className={`text-[10.5px] mt-0.5 ${syncSummaryClass}`}>{syncSummary}</div>
+          </div>
+          <span className="text-[11.5px] text-plan flex-shrink-0">查看 ›</span>
         </button>
 
         <a

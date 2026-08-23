@@ -20,6 +20,7 @@ import { ShareStatusBadge } from './ShareStatusBadge'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { useLastSeen, countUnseen } from './useLastSeen'
 import { ActivityFeed } from '../activity/ActivityFeed'
+import { SyncDetailSheet } from '../../components/SyncDetailSheet'
 
 const NOT_FOUND = Symbol('trip-not-found')
 
@@ -46,6 +47,7 @@ export function TripShell({
   const [shareSettingsOpen, setShareSettingsOpen] = useState(false)
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
+  const [syncDetailOpen, setSyncDetailOpen] = useState(false)
   const [itineraryFormOpen, setItineraryFormOpen] = useState(false)
 
   useEffect(() => {
@@ -61,7 +63,8 @@ export function TripShell({
   // 它会以为用户按了返回键、立刻把自己关掉。表现就是"从更多面板点分享设置/提交
   // 反馈/行程动态完全没反应"（真机反馈过）。合成一个之后，弹层之间切换时这个
   // hook 的 active 一直是 true，不发生卸载+装载，那个竞态从根上就不存在了
-  const anySheetOpen = sheetOpen || moreOpen || feedbackOpen || shareSettingsOpen || inviteCodeOpen || activityOpen
+  const anySheetOpen =
+    sheetOpen || moreOpen || feedbackOpen || shareSettingsOpen || inviteCodeOpen || activityOpen || syncDetailOpen
   function closeAllSheets() {
     setSheetOpen(false)
     setMoreOpen(false)
@@ -69,6 +72,7 @@ export function TripShell({
     setShareSettingsOpen(false)
     setInviteCodeOpen(false)
     setActivityOpen(false)
+    setSyncDetailOpen(false)
   }
   useBackDismiss(anySheetOpen, closeAllSheets)
 
@@ -162,10 +166,12 @@ export function TripShell({
             onOpenFeedback={() => { setMoreOpen(false); setFeedbackOpen(true) }}
             onOpenShareSettings={() => { setMoreOpen(false); setShareSettingsOpen(true) }}
             onOpenActivity={() => { setMoreOpen(false); setActivityOpen(true) }}
+            onOpenSyncDetail={() => { setMoreOpen(false); setSyncDetailOpen(true) }}
           />
         )}
 
         {activityOpen && <ActivityFeed trip={trip} onClose={() => setActivityOpen(false)} />}
+        {syncDetailOpen && <SyncDetailSheet onClose={() => setSyncDetailOpen(false)} />}
 
         {feedbackOpen && (
           <FeedbackSheet tripId={trip.id} currentMemberId={currentMemberId} onClose={() => setFeedbackOpen(false)} />

@@ -1,0 +1,97 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+import { X } from 'lucide-react'
+import { db } from '../db/dexie'
+import { useEscapeKey } from '../hooks/useEscapeKey'
+import type { OutboxEntry } from '../types'
+
+// 重试到这个次数还没成功，大概率是权限/数据冲突之类不会自愈的问题，值得
+// 标红提醒——次数少的还在正常等网络，不用紧张。这里刻意只是"标出来给人看"，
+// 不停止重试、不引入新的终止状态：万一真是网络问题，后台该怎么重试还怎么重试
+export const STUCK_THRESHOLD = 10
+
+const TABLE_LABELS: Record<string, string> = {
+  trips: '行程',
+  members: '家庭成员',
+  tripMembers: '行程成员',
+  itineraryDays: '行程日期',
+  itineraryItems: '行程项',
+  rateBookEntries: '汇率簿',
+  expenses: '账目',
+  expenseSplits: '账目分摊',
+  expenseDayAllocations: '跨天分摊',
+  expenseRateAllocations: '换汇分摊',
+  budgets: '预算',
+  settlements: '结算记录',
+  feedback: '反馈',
+  wishlistPlaces: '想去的地点',
+}
+
+function relativeTime(at: number, now: number): string {
+  const diffMin = Math.round((now - at) / 60_000)
+  if (diffMin < 1) return '刚刚'
+  if (diffMin < 60) return `${diffMin}分钟前`
+  const diffHr = Math.round(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}小时前`
+  const diffDay = Math.round(diffHr / 24)
+  if (diffDay < 30) return `${diffDay}天前`
+  return new Date(at).toISOString().slice(0, 10)
+}
+
+export function SyncDetailSheet({ onClose }: { onClose: () => void }) {
+  useEscapeKey(true, onClose)
+  const pending = useLiveQuery(() => db.outbox.where('status').equals('pending').sortBy('createdAt')) ?? []
+  const now = Date.now()
+  const sorted = [...pending].sort((a, b) => b.attempts - a.attempts)
+
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end">
+      <div className="flex-1 bg-ink/35" onClick={onClose} />
+      <div className="bg-paper rounded-t-[26px] px-5 pt-3.5 pb-7 shadow-[0_-10px_40px_rgba(31,27,22,0.2)] max-h-[88%] overflow-y-auto no-scrollbar">
+        <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-3.5" />
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-sm font-semibold">同步详情</span>
+          <button onClick={onClose} className="text-muted" title="关闭">
+            <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
+          </button>
+        </div>
+
+        {sorted.length === 0 ? (
+          <div className="text-center py-10 text-[12px] text-muted">
+            <div className="text-[26px] mb-2">✓</div>
+            全部已同步，没有卡住的记录
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {sorted.map((entry: OutboxEntry) => {
+              const stuck = entry.attempts >= STUCK_THRESHOLD
+              return (
+                <div
+                  key={entry.id}
+                  className={`rounded-xl border px-2.5 py-2 ${stuck ? 'border-negative/35 bg-negative/[0.04]' : 'border-line bg-card'}`}
+                >
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="text-[12.5px] font-semibold">
+                      {TABLE_LABELS[entry.tableName] ?? entry.tableName} · {entry.operation === 'delete' ? '删除' : '新增/修改'}
+                    </span>
+                    <span className="text-[10px] text-muted flex-shrink-0">{relativeTime(entry.createdAt, now)}</span>
+                  </div>
+                  {entry.attempts > 0 && (
+                    <div className={`text-[10.5px] mt-1 flex items-center gap-1 ${stuck ? 'text-negative' : 'text-spend'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      {stuck ? `重试${entry.attempts}次，看起来卡住了` : '正常重试中'}
+                    </div>
+                  )}
+                  {stuck && entry.lastError && (
+                    <div className="text-[10px] text-muted bg-paper rounded-md px-2 py-1.5 mt-1.5 font-mono break-all">
+                      {entry.lastError}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
