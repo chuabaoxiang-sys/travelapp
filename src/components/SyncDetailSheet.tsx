@@ -76,9 +76,12 @@ export function SyncDetailSheet({ onClose }: { onClose: () => void }) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col justify-end">
-      <div className="flex-1 bg-ink/35" onClick={onClose} />
-      <div className="bg-paper rounded-t-[26px] px-5 pt-3.5 pb-7 shadow-[0_-10px_40px_rgba(31,27,22,0.2)] max-h-[88%] overflow-y-auto no-scrollbar">
+    <div className="absolute inset-0 z-30 bg-ink/35" onClick={onClose}>
+      <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="pointer-events-auto bg-paper rounded-[26px] px-5 pt-3.5 pb-7 shadow-[0_-6px_28px_rgba(31,27,22,0.22)] max-h-[88%] overflow-y-auto no-scrollbar"
+        >
         <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-3.5" />
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm font-semibold">同步详情</span>
@@ -130,6 +133,7 @@ export function SyncDetailSheet({ onClose }: { onClose: () => void }) {
             })}
           </div>
         )}
+        </div>
       </div>
 
       {pendingDeleteId && (
