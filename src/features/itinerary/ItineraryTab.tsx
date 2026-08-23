@@ -142,19 +142,7 @@ export function ItineraryTab({
     updateScrollState()
   }, [days.length])
 
-  // 精简吸顶条是独立的一条横向滚动区域，自己选中的日期跟完整日期条各自
-  // 记着各自的滚动位置——通过吸顶条跳到一个不在完整日期条当前可视范围内
-  // 的日期后，完整日期条虽然内部状态是对的，但划回顶部看到它时，选中的
-  // 那个日期可能还在视野外，看起来像"没跟着跳转"。这里在选中日期变化时，
-  // 把两条日期条都滚到能看见当前选中日期的位置，互不干扰、也不影响自己
-  // 手动划动
   const compactStripRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    for (const ref of [stripRef, compactStripRef]) {
-      const chip = ref.current?.querySelector<HTMLElement>(`[data-date="${selected}"]`)
-      chip?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-    }
-  }, [selected])
 
   // 行程项很多、往下滑很长时，日期条会跟着滚走，看不出自己在看哪一天。用一个
   // 1px高的哨兵放在日期条正下方，配合IntersectionObserver判断日期条是不是已经
@@ -176,6 +164,21 @@ export function ItineraryTab({
     observer.observe(sentinel)
     return () => observer.disconnect()
   }, [viewMode])
+
+  // 精简吸顶条是独立的一条横向滚动区域，自己选中的日期跟完整日期条各自
+  // 记着各自的滚动位置——通过吸顶条跳到一个不在完整日期条当前可视范围内
+  // 的日期后，完整日期条虽然内部状态是对的，但划回顶部看到它时，选中的
+  // 那个日期可能还在视野外，看起来像"没跟着跳转"。这里在选中日期变化时，
+  // 把两条日期条都滚到能看见当前选中日期的位置，互不干扰、也不影响自己
+  // 手动划动。dateStripCollapsed也要作为依赖——不然精简条第一次挂载出来时
+  // （selected没变，只是从无到有装载），永远不会执行这次滚动定位，会一直
+  // 停在默认的最左边，显示的日期跟当前选中的完全对不上
+  useEffect(() => {
+    for (const ref of [stripRef, compactStripRef]) {
+      const chip = ref.current?.querySelector<HTMLElement>(`[data-date="${selected}"]`)
+      chip?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    }
+  }, [selected, dateStripCollapsed])
 
   async function ensureDay(date: string) {
     return ensureItineraryDay(trip.id, date)
