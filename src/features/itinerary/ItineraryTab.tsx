@@ -1,6 +1,6 @@
 import { Fragment, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, X, Check, Plus, Filter, Bookmark } from 'lucide-react'
+import { Trash2, X, Check, Plus, Filter, Bookmark, ChevronDown } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { sortItineraryItems, hasLinkedDaySpreadExpense, resolveDayForItemMove } from '../../domain/itinerary'
@@ -142,6 +142,31 @@ export function ItineraryTab({
     updateScrollState()
   }, [days.length])
 
+  // 行程项很多、往下滑很长时，日期条会跟着滚走，看不出自己在看哪一天。用一个
+  // 1px高的哨兵放在日期条正下方，配合IntersectionObserver判断日期条是不是已经
+  // 滚出可视区域——没有用滚动方向判断，越过阈值就收起、回到阈值以上就展开，
+  // 逻辑简单不容易出bug。root传时间线自己的滚动容器（不是viewport），因为
+  // 真正滚动的是这个内部div，不是整个页面
+  const timelineScrollRef = useRef<HTMLDivElement>(null)
+  const dateStripSentinelRef = useRef<HTMLDivElement>(null)
+  const [dateStripCollapsed, setDateStripCollapsed] = useState(false)
+
+  useEffect(() => {
+    const root = timelineScrollRef.current
+    const sentinel = dateStripSentinelRef.current
+    if (!root || !sentinel) return
+    const observer = new IntersectionObserver(([entry]) => setDateStripCollapsed(!entry.isIntersecting), {
+      root,
+      threshold: 0,
+    })
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [viewMode])
+
+  function scrollTimelineToTop() {
+    timelineScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   async function ensureDay(date: string) {
     return ensureItineraryDay(trip.id, date)
   }
@@ -245,40 +270,67 @@ export function ItineraryTab({
         )}
         {viewMode === 'map' && <MapView days={itineraryDays} items={allItems} />}
         {viewMode === 'timeline' && (
-          <div className="px-5 pt-2 pb-24 overflow-y-auto no-scrollbar h-full">
-            <div className="relative -mx-5 px-5 mb-3.5">
-              <div
-                ref={stripRef}
-                onScroll={updateScrollState}
-                className="flex gap-2 overflow-x-auto no-scrollbar pb-1 pt-0.5"
-              >
-                {days.map((d) => {
-                  const dow = DOW[new Date(d + 'T00:00:00').getDay()]
-                  const num = d.slice(-2).replace(/^0/, '')
-                  const isActive = d === selected
-                  return (
-                    <button
-                      key={d}
-                      onClick={() => { setSelected(d); setFormState(null); setSuggestionsDismissed(false) }}
-                      className={`flex-shrink-0 rounded-2xl px-3.5 py-2 text-center border font-serif-sc ${
-                        isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-[#57534E] border-line'
-                      }`}
-                    >
-                      <div className="text-[10px] opacity-70">{dow}</div>
-                      <div className="text-base mt-0.5">{num}</div>
-                    </button>
-                  )
-                })}
-              </div>
-              {scrollState.left && (
-                <div className="pointer-events-none absolute left-0 top-0.5 bottom-1 w-6 bg-gradient-to-r from-paper to-transparent" />
-              )}
-              {scrollState.right && (
-                <div className="pointer-events-none absolute right-0 top-0.5 bottom-1 w-8 bg-gradient-to-l from-paper to-transparent flex items-center justify-end">
-                  <span className="text-[#B8AE9E] text-xs mr-0.5">›</span>
+          <div ref={timelineScrollRef} className="px-5 pt-2 pb-24 overflow-y-auto no-scrollbar h-full">
+            {/* 收起状态下浮在左上角的小胶囊——复用选中日期chip本身的配色，缩小尺寸，
+            读起来像"这个chip自己缩小飘过去了"，不是冒出来一个新的header */}
+            <button
+              onClick={scrollTimelineToTop}
+              className="sticky top-0 z-20 flex items-center gap-1 rounded-full bg-ink text-paper font-serif-sc pl-3 pr-2 py-1.5 mb-1.5 shadow-md transition-all duration-200 ease-out"
+              style={{
+                opacity: dateStripCollapsed ? 1 : 0,
+                transform: dateStripCollapsed ? 'translateY(0)' : 'translateY(-4px)',
+                pointerEvents: dateStripCollapsed ? 'auto' : 'none',
+                marginBottom: dateStripCollapsed ? undefined : '-40px',
+              }}
+              title="回到日期条"
+            >
+              <span className="text-[10px] opacity-70">{DOW[new Date(selected + 'T00:00:00').getDay()]}</span>
+              <span className="text-[13px]">{selected.slice(-2).replace(/^0/, '')}</span>
+              <ChevronDown className="w-3 h-3 opacity-70" strokeWidth={2} />
+            </button>
+
+            <div
+              className="grid transition-[grid-template-rows] duration-200 ease-out"
+              style={{ gridTemplateRows: dateStripCollapsed ? '0fr' : '1fr' }}
+            >
+              <div className="overflow-hidden">
+                <div className="relative -mx-5 px-5 mb-3.5">
+                  <div
+                    ref={stripRef}
+                    onScroll={updateScrollState}
+                    className="flex gap-2 overflow-x-auto no-scrollbar pb-1 pt-0.5"
+                  >
+                    {days.map((d) => {
+                      const dow = DOW[new Date(d + 'T00:00:00').getDay()]
+                      const num = d.slice(-2).replace(/^0/, '')
+                      const isActive = d === selected
+                      return (
+                        <button
+                          key={d}
+                          onClick={() => { setSelected(d); setFormState(null); setSuggestionsDismissed(false) }}
+                          className={`flex-shrink-0 rounded-2xl px-3.5 py-2 text-center border font-serif-sc ${
+                            isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-[#57534E] border-line'
+                          }`}
+                        >
+                          <div className="text-[10px] opacity-70">{dow}</div>
+                          <div className="text-base mt-0.5">{num}</div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {scrollState.left && (
+                    <div className="pointer-events-none absolute left-0 top-0.5 bottom-1 w-6 bg-gradient-to-r from-paper to-transparent" />
+                  )}
+                  {scrollState.right && (
+                    <div className="pointer-events-none absolute right-0 top-0.5 bottom-1 w-8 bg-gradient-to-l from-paper to-transparent flex items-center justify-end">
+                      <span className="text-[#B8AE9E] text-xs mr-0.5">›</span>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
+            {/* 1px哨兵：IntersectionObserver靠它判断日期条是不是已经滚出可视区域 */}
+            <div ref={dateStripSentinelRef} className="h-px -mt-3.5" />
 
             {!suggestionsDismissed && suggestions.length > 0 && (
               <div className="rounded-2xl border border-plan/25 bg-plan/5 px-3 py-2.5 mb-3">
