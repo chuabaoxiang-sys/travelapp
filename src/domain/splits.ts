@@ -162,7 +162,6 @@ async function computeOpenDebtsAndPools(tripId: string) {
     // 自己分摊给自己（付款人本人的那一份，或者splitType='none'时的整笔自留）不算欠款
     if (!expense || split.memberId === expense.paidBy) continue
     const settledAmount = settledMap.get(`${split.expenseId}:${split.memberId}`) ?? 0
-    if (round2(split.shareAmount - settledAmount) <= 0.01) continue
     afterTagged.push({
       expenseId: expense.id,
       description: expense.description,
@@ -176,27 +175,38 @@ async function computeOpenDebtsAndPools(tripId: string) {
   }
   afterTagged.sort((a, b) => a.expenseDate.localeCompare(b.expenseDate))
 
-  const debts: OpenExpenseDebt[] = []
+  // 包含已经结清的（remaining<=0.01），openExpenseDebts/closedExpenseDebts
+  // 各自按remaining过滤——"查看已结清"要用到已结清那部分，不能在这里就扔掉
+  const allDebts: OpenExpenseDebt[] = []
   for (const debt of afterTagged) {
-    const remainingAfterTagged = round2(debt.totalShare - debt.settledAmount)
+    const remainingAfterTagged = Math.max(0, round2(debt.totalShare - debt.settledAmount))
     const poolKey = `${debt.debtorId}:${debt.creditorId}`
     const pool = pools.get(poolKey) ?? 0
     const prepaidAmount = round2(Math.min(pool, remainingAfterTagged))
     if (prepaidAmount > 0) pools.set(poolKey, round2(pool - prepaidAmount))
     const remaining = round2(remainingAfterTagged - prepaidAmount)
-    if (remaining <= 0.01) continue
-    debts.push({ ...debt, prepaidAmount, remaining })
+    allDebts.push({ ...debt, prepaidAmount, remaining })
   }
 
-  return { debts, pools }
+  return { allDebts, pools }
 }
 
 // "按笔结算"用的清单：只列还没还清的（remaining > 1分钱，留一点浮点误差容差，
 // 已经用预付款抵扣完的自然从列表里消失），不管这个人跟对方之间的净额是多少
 // （净额是simplifyDebts算总账用的，两者互不干扰）
 export async function openExpenseDebts(tripId: string): Promise<OpenExpenseDebt[]> {
-  const { debts } = await computeOpenDebtsAndPools(tripId)
-  return debts
+  const { allDebts } = await computeOpenDebtsAndPools(tripId)
+  return allDebts.filter((d) => d.remaining > 0.01)
+}
+
+// "查看已结清"用的清单：已经被"按笔结算"、预付款、或两者一起还清的账目。
+// 不记录具体是哪一笔结算/哪一次预付款还清的（预付款池子可能被好几笔账目
+// 分批消耗，硬凑成一句准确的话反而复杂）——UI 用 settledAmount/prepaidAmount
+// 是否>0 来决定标"按笔结算"还是"预付款抵扣"的标签，想看具体金额/日期去
+// "结算记录"里找
+export async function closedExpenseDebts(tripId: string): Promise<OpenExpenseDebt[]> {
+  const { allDebts } = await computeOpenDebtsAndPools(tripId)
+  return allDebts.filter((d) => d.remaining <= 0.01)
 }
 
 // 预付款还剩多少没花完——按"谁欠谁"这一对方向汇总，用来在"按笔结算"里提示

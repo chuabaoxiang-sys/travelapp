@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { resolveSplitShares, computeBalances, simplifyDebts, openExpenseDebts, prepaymentBalances, type PersonBalance } from './splits'
+import { resolveSplitShares, computeBalances, simplifyDebts, openExpenseDebts, closedExpenseDebts, prepaymentBalances, type PersonBalance } from './splits'
 import { db } from '../db/dexie'
 
 describe('resolveSplitShares', () => {
@@ -201,6 +201,25 @@ describe('openExpenseDebts（按笔结算用的清单，真实走Dexie）', () =
     const debts = await openExpenseDebts(tripId)
     expect(debts).toHaveLength(0)
   })
+
+  it('已经还清的账目会出现在closedExpenseDebts里，标注是按笔结算还清的；没还清的不会出现', async () => {
+    await db.expenses.bulkAdd([expense('exp2-test-4', 'papa', 220), expense('exp2-test-5', 'papa', 90)])
+    await db.expenseSplits.bulkAdd([
+      { id: 'split2-7', householdId: 'h1', expenseId: 'exp2-test-4', memberId: 'kn', shareAmount: 220 },
+      { id: 'split2-8', householdId: 'h1', expenseId: 'exp2-test-5', memberId: 'kn', shareAmount: 90 },
+    ])
+    await db.settlements.add({
+      id: 'settle2-4', householdId: 'h1', tripId, fromMemberId: 'kn', toMemberId: 'papa', amount: 220,
+      settledDate: '2026-09-03', note: null, createdBy: 'kn', expenseId: 'exp2-test-4', isPrepayment: false, createdAt: 0, updatedAt: 0,
+    })
+
+    const closed = await closedExpenseDebts(tripId)
+    expect(closed).toHaveLength(1)
+    expect(closed[0]).toMatchObject({ expenseId: 'exp2-test-4', settledAmount: 220, prepaidAmount: 0, remaining: 0 })
+
+    const open = await openExpenseDebts(tripId)
+    expect(open.map((d) => d.expenseId)).toEqual(['exp2-test-5'])
+  })
 })
 
 describe('预付款自动抵扣"按笔结算"（真实走Dexie）', () => {
@@ -242,6 +261,12 @@ describe('预付款自动抵扣"按笔结算"（真实走Dexie）', () => {
     const debts = await openExpenseDebts(tripId)
     expect(debts).toHaveLength(1)
     expect(debts[0]).toMatchObject({ expenseId: 'exp3-test-2', prepaidAmount: 50, remaining: 50 })
+
+    // 9-02那笔被预付款全额抵掉，从openExpenseDebts消失，但会出现在closedExpenseDebts里，
+    // 标注是预付款抵扣的（settledAmount为0，区别于"按笔结算"还清的情况）
+    const closed = await closedExpenseDebts(tripId)
+    expect(closed).toHaveLength(1)
+    expect(closed[0]).toMatchObject({ expenseId: 'exp3-test-1', settledAmount: 0, prepaidAmount: 150, remaining: 0 })
   })
 
   it('聚合结算不是预付款（isPrepayment=false）时不参与自动抵扣，哪怕金额一样', async () => {

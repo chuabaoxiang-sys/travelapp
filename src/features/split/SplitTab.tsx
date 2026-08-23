@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, CircleCheck, Pencil, Trash2, Check, Plus } from 'lucide-react'
+import { X, CircleCheck, Pencil, Trash2, Check, Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import { db } from '../../db/dexie'
-import { computeBalances, simplifyDebts, openExpenseDebts, prepaymentBalances, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
+import { computeBalances, simplifyDebts, openExpenseDebts, closedExpenseDebts, prepaymentBalances, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
 import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../../domain/settlements'
 import { formatMoney } from '../../lib/money'
 import { toLocalDateString } from '../../lib/dates'
@@ -149,6 +149,11 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
     () => prepaymentBalances(trip.id),
     [trip.id, expenses.length, expenses.map((e) => e.updatedAt).join(','), settlements.length, settlements.map((s) => s.updatedAt).join(',')],
   ) ?? []
+  const closedDebts = useLiveQuery(
+    () => closedExpenseDebts(trip.id),
+    [trip.id, expenses.length, expenses.map((e) => e.updatedAt).join(','), settlements.length, settlements.map((s) => s.updatedAt).join(',')],
+  ) ?? []
+  const [showClosed, setShowClosed] = useState(false)
 
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [settleAmount, setSettleAmount] = useState('')
@@ -443,7 +448,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         )}
       </div>
 
-      {(openDebts.length > 0 || prepayBalances.length > 0) && (
+      {(openDebts.length > 0 || prepayBalances.length > 0 || closedDebts.length > 0) && (
         <div className="bg-card border border-line rounded-2xl p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] tracking-widest uppercase text-muted">按笔结算</div>
@@ -527,6 +532,42 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                 结算选中的 {selectedDebts.length} 笔
               </button>
             </div>
+          )}
+          {closedDebts.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowClosed((v) => !v)}
+                className="w-full flex items-center justify-center gap-1 pt-2.5 mt-2 border-t border-dashed border-line text-plan text-[10.5px] font-semibold"
+              >
+                {showClosed ? <ChevronUp className="w-3 h-3" strokeWidth={2.2} /> : <ChevronDown className="w-3 h-3" strokeWidth={2.2} />}
+                {showClosed ? '收起已结清' : `查看已结清（${closedDebts.length}）`}
+              </button>
+              {showClosed && (
+                <div className="flex flex-col gap-1.5 mt-2">
+                  {closedDebts.map((d) => (
+                    <div key={debtKey(d)} className="flex items-center gap-2.5 rounded-xl border border-line bg-paper p-2.5 opacity-70">
+                      <span className="w-[18px] h-[18px] rounded-md bg-muted flex-shrink-0 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-card" strokeWidth={2.5} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] font-medium truncate text-muted">{titleOf(d)}</div>
+                        <div className="text-[10.5px] text-muted">{nameOf(d.debtorId)} 欠 {nameOf(d.creditorId)}</div>
+                      </div>
+                      {d.settledAmount > 0.01 && (
+                        <span className="text-[8.5px] px-1.5 py-0.5 rounded-full bg-plan/10 text-plan font-semibold flex-shrink-0">按笔结算</span>
+                      )}
+                      {d.prepaidAmount > 0.01 && (
+                        <span className="text-[8.5px] px-1.5 py-0.5 rounded-full bg-positive/10 text-positive font-semibold flex-shrink-0">
+                          {d.settledAmount > 0.01 ? '+预付款' : '预付款抵扣'}
+                        </span>
+                      )}
+                      <div className="text-[13px] font-semibold tabular text-muted flex-shrink-0">{formatMoney(d.totalShare)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
