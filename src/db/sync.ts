@@ -208,6 +208,29 @@ export async function runSync(): Promise<void> {
   }
 }
 
+// outbox里status='synced'的行只是"这条已经推送成功"的历史记录，本身不再有任何
+// 用途（连"同步详情"页面都只看pending的），但一直没有任何机制会删掉它们——
+// 从产生的那一刻起就永久留在本地，用得越久这张表就越大。这里每天检查一次，把
+// 超过7天的synced记录清掉；pending的行不管多老都不碰，那是"同步详情"该管的事，
+// 不该在这里被悄悄删掉
+const OUTBOX_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
+const PRUNE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
+const PRUNE_LAST_RUN_KEY = 'outboxPruneLastRunAt'
+
+export async function pruneSyncedOutbox(): Promise<void> {
+  const lastRun = Number(localStorage.getItem(PRUNE_LAST_RUN_KEY) ?? 0)
+  if (Date.now() - lastRun < PRUNE_CHECK_INTERVAL_MS) return
+  localStorage.setItem(PRUNE_LAST_RUN_KEY, String(Date.now()))
+
+  const cutoff = Date.now() - OUTBOX_RETENTION_MS
+  const staleIds = await db.outbox
+    .where('status')
+    .equals('synced')
+    .and((e) => e.createdAt < cutoff)
+    .primaryKeys()
+  if (staleIds.length) await db.outbox.bulkDelete(staleIds)
+}
+
 let syncTimer: ReturnType<typeof setInterval> | null = null
 
 const FOREGROUND_INTERVAL_MS = 10_000
@@ -232,6 +255,7 @@ function scheduleSync(intervalMs: number) {
 export function startAutoSync() {
   if (!supabase) return
   void runSync()
+  void pruneSyncedOutbox()
   window.addEventListener('online', () => void runSync())
   if (syncTimer) return
 
