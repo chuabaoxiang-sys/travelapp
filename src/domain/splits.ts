@@ -2,7 +2,7 @@ import { db, enqueueOutbox } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
 import type { SplitType } from '../types'
 
-function round2(n: number) {
+export function round2(n: number) {
   return Math.round(n * 100) / 100
 }
 
@@ -109,6 +109,59 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
     const net = round2(paid - owed + settledOut - settledIn)
     return { memberId, paid, owed, settledOut, settledIn, net, expenseCount: paidMap.get(memberId)?.count ?? 0 }
   })
+}
+
+export interface OpenExpenseDebt {
+  expenseId: string
+  description: string | null
+  categoryId: string
+  expenseDate: string
+  creditorId: string // 这笔账的付款人，也是这笔债该收钱的人
+  debtorId: string // 分摊到这个人身上、还没还清的那部分
+  totalShare: number // 这个人在这笔账里本来该分摊多少
+  settledAmount: number // 已经用"按笔结算"还了多少
+  remaining: number // 还欠多少——totalShare减掉settledAmount
+}
+
+// "按笔结算"用的清单：摊平成"哪笔账、谁欠谁、还剩多少"的列表，不管这个人跟
+// 对方之间的净额是多少（净额是simplifyDebts算总账用的，两者互不干扰）。
+// 只列还没还清的（remaining > 1分钱，留一点浮点误差容差），已经还完的自然
+// 从列表里消失，不需要额外维护"是否结清"的状态
+export async function openExpenseDebts(tripId: string): Promise<OpenExpenseDebt[]> {
+  const expenses = await db.expenses.where('tripId').equals(tripId).toArray()
+  const expenseById = new Map(expenses.map((e) => [e.id, e]))
+  const expenseIds = expenses.map((e) => e.id)
+  const splits = expenseIds.length ? await db.expenseSplits.where('expenseId').anyOf(expenseIds).toArray() : []
+  const settlements = await db.settlements.where('tripId').equals(tripId).toArray()
+
+  const settledMap = new Map<string, number>()
+  for (const s of settlements) {
+    if (!s.expenseId) continue
+    const key = `${s.expenseId}:${s.fromMemberId}`
+    settledMap.set(key, round2((settledMap.get(key) ?? 0) + s.amount))
+  }
+
+  const result: OpenExpenseDebt[] = []
+  for (const split of splits) {
+    const expense = expenseById.get(split.expenseId)
+    // 自己分摊给自己（付款人本人的那一份，或者splitType='none'时的整笔自留）不算欠款
+    if (!expense || split.memberId === expense.paidBy) continue
+    const settledAmount = settledMap.get(`${split.expenseId}:${split.memberId}`) ?? 0
+    const remaining = round2(split.shareAmount - settledAmount)
+    if (remaining <= 0.01) continue
+    result.push({
+      expenseId: expense.id,
+      description: expense.description,
+      categoryId: expense.categoryId,
+      expenseDate: expense.expenseDate,
+      creditorId: expense.paidBy,
+      debtorId: split.memberId,
+      totalShare: split.shareAmount,
+      settledAmount,
+      remaining,
+    })
+  }
+  return result.sort((a, b) => a.expenseDate.localeCompare(b.expenseDate))
 }
 
 export interface Transfer {

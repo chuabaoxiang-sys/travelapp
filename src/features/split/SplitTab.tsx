@@ -2,14 +2,19 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { X, CircleCheck, Pencil, Trash2, Check } from 'lucide-react'
 import { db } from '../../db/dexie'
-import { computeBalances, simplifyDebts, type Transfer } from '../../domain/splits'
+import { computeBalances, simplifyDebts, openExpenseDebts, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
 import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../../domain/settlements'
 import { formatMoney } from '../../lib/money'
 import { toLocalDateString } from '../../lib/dates'
 import { Avatar } from '../../components/Avatar'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { CenteredModal } from '../../components/CenteredModal'
 import type { Trip, Settlement } from '../../types'
+
+function debtKey(d: OpenExpenseDebt) {
+  return `${d.expenseId}:${d.debtorId}`
+}
 
 export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
   const members = useLiveQuery(() => db.members.toArray()) ?? []
@@ -28,10 +33,22 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
     ],
   ) ?? []
 
+  const categories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
+  const openDebts = useLiveQuery(
+    () => openExpenseDebts(trip.id),
+    [trip.id, expenses.length, expenses.map((e) => e.updatedAt).join(','), settlements.length, settlements.map((s) => s.updatedAt).join(',')],
+  ) ?? []
+
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [settleAmount, setSettleAmount] = useState('')
   const [settleDate, setSettleDate] = useState('')
   const [settleNote, setSettleNote] = useState('')
+
+  const [selectedDebtKeys, setSelectedDebtKeys] = useState<Set<string>>(new Set())
+  const [itemSettleOpen, setItemSettleOpen] = useState(false)
+  const [itemSettleAmount, setItemSettleAmount] = useState('')
+  const [itemSettleDate, setItemSettleDate] = useState('')
+  const [itemSettleNote, setItemSettleNote] = useState('')
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editAmount, setEditAmount] = useState('')
@@ -44,6 +61,65 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   }
   function nameOf(id: string) {
     return memberOf(id)?.displayName ?? '未知'
+  }
+  function titleOf(d: OpenExpenseDebt) {
+    return d.description || categories.find((c) => c.id === d.categoryId)?.name || '其他'
+  }
+
+  const selectedDebts = openDebts.filter((d) => selectedDebtKeys.has(debtKey(d)))
+  const selectedTotal = round2(selectedDebts.reduce((sum, d) => sum + d.remaining, 0))
+
+  function toggleDebt(d: OpenExpenseDebt) {
+    setSelectedDebtKeys((cur) => {
+      const next = new Set(cur)
+      const key = debtKey(d)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  function openItemSettle() {
+    if (selectedDebts.length === 0) return
+    setItemSettleAmount(selectedDebts.length === 1 ? String(selectedDebts[0].remaining) : String(selectedTotal))
+    setItemSettleDate(toLocalDateString(new Date()))
+    setItemSettleNote('')
+    setItemSettleOpen(true)
+  }
+
+  async function confirmSettleItems() {
+    if (selectedDebts.length === 0) return
+    if (selectedDebts.length === 1) {
+      const amount = parseFloat(itemSettleAmount)
+      if (!(amount > 0)) return
+      await createSettlement({
+        tripId: trip.id,
+        fromMemberId: selectedDebts[0].debtorId,
+        toMemberId: selectedDebts[0].creditorId,
+        amount,
+        settledDate: itemSettleDate,
+        note: itemSettleNote.trim() || null,
+        createdBy: currentMemberId,
+        expenseId: selectedDebts[0].expenseId,
+      })
+    } else {
+      // 多选时不支持部分结清——每笔都按各自还欠的全额单独记一条结算，
+      // 一次动作产生N条结算记录，避免"总额打了折怎么分摊到每一笔"的歧义
+      for (const d of selectedDebts) {
+        await createSettlement({
+          tripId: trip.id,
+          fromMemberId: d.debtorId,
+          toMemberId: d.creditorId,
+          amount: d.remaining,
+          settledDate: itemSettleDate,
+          note: itemSettleNote.trim() || null,
+          createdBy: currentMemberId,
+          expenseId: d.expenseId,
+        })
+      }
+    }
+    setSelectedDebtKeys(new Set())
+    setItemSettleOpen(false)
   }
 
   const transfers = simplifyDebts(balances)
@@ -186,6 +262,55 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         )}
       </div>
 
+      {openDebts.length > 0 && (
+        <div className="bg-card border border-line rounded-2xl p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[11px] tracking-widest uppercase text-muted">按笔结算</div>
+            <div className="text-[10.5px] text-muted">{openDebts.length}笔未结清</div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {openDebts.map((d) => {
+              const key = debtKey(d)
+              const checked = selectedDebtKeys.has(key)
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleDebt(d)}
+                  className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left ${
+                    checked ? 'border-plan bg-plan/5' : 'border-line bg-paper'
+                  }`}
+                >
+                  <span
+                    className={`w-[18px] h-[18px] rounded-md border-[1.5px] flex-shrink-0 flex items-center justify-center ${
+                      checked ? 'bg-plan border-plan' : 'border-line'
+                    }`}
+                  >
+                    {checked && <Check className="w-3 h-3 text-card" strokeWidth={2.5} />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[12.5px] font-medium truncate">{titleOf(d)}</div>
+                    <div className="text-[10.5px] text-muted">{nameOf(d.debtorId)} 欠 {nameOf(d.creditorId)}</div>
+                  </div>
+                  <div className="text-[13px] font-semibold tabular flex-shrink-0">{formatMoney(d.remaining)}</div>
+                </button>
+              )
+            })}
+          </div>
+          {selectedDebts.length > 0 && (
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-dashed border-line">
+              <div className="text-[11.5px] text-muted">已选 {selectedDebts.length} 笔 · 共 {formatMoney(selectedTotal)}</div>
+              <button
+                onClick={openItemSettle}
+                className="rounded-full bg-plan text-card px-4 py-1.5 text-[12px] font-medium"
+              >
+                结算选中的 {selectedDebts.length} 笔
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {settlements.length > 0 && (
         <div className="bg-card border border-line rounded-2xl p-4 mb-4">
           <div className="text-[11px] tracking-widest uppercase text-muted mb-1">结算记录</div>
@@ -289,6 +414,58 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
           onConfirm={() => { deleteSettlement(confirmDeleteId); setConfirmDeleteId(null) }}
           onCancel={() => setConfirmDeleteId(null)}
         />
+      )}
+
+      {itemSettleOpen && (
+        <CenteredModal onClose={() => setItemSettleOpen(false)}>
+          <div className="font-serif-sc text-[15px] text-ink mb-1">
+            结算选中的 {selectedDebts.length} 笔
+          </div>
+          <div className="text-[11px] text-muted mb-3">
+            {selectedDebts.length === 1
+              ? `${titleOf(selectedDebts[0])} · ${nameOf(selectedDebts[0].debtorId)} 欠 ${nameOf(selectedDebts[0].creditorId)}`
+              : '多笔一起结算时按各自还欠的全额分别记录，不支持只还一部分'}
+          </div>
+          <label className="text-[11px] text-muted block mb-2.5">
+            金额{selectedDebts.length === 1 ? '（可部分结清）' : ''}
+            <input
+              value={itemSettleAmount}
+              onChange={(e) => setItemSettleAmount(e.target.value)}
+              disabled={selectedDebts.length > 1}
+              inputMode="decimal"
+              className="block w-full mt-1 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[13px] tabular outline-none focus:border-plan disabled:opacity-60"
+            />
+          </label>
+          <label className="text-[11px] text-muted block mb-2.5">
+            日期
+            <div className="mt-1">
+              <DatePicker value={itemSettleDate} onChange={setItemSettleDate} />
+            </div>
+          </label>
+          <label className="text-[11px] text-muted block">
+            备注（可选）
+            <input
+              value={itemSettleNote}
+              onChange={(e) => setItemSettleNote(e.target.value)}
+              placeholder="例如：现金 / 转账"
+              className="block w-full mt-1 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[13px] outline-none focus:border-plan"
+            />
+          </label>
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => setItemSettleOpen(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+              <X className="w-4 h-4" strokeWidth={1.8} />
+            </button>
+            <button
+              onClick={confirmSettleItems}
+              disabled={selectedDebts.length === 1 && !(parseFloat(itemSettleAmount) > 0)}
+              className="flex-1 rounded-xl bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center gap-1.5"
+              title="确认已结清"
+            >
+              <CircleCheck className="w-4 h-4" strokeWidth={1.8} />
+              <span className="text-[12.5px] font-medium">确认已结清</span>
+            </button>
+          </div>
+        </CenteredModal>
       )}
     </div>
   )

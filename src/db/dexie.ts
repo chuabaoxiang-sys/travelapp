@@ -114,6 +114,11 @@ export class TripJournalDB extends Dexie {
     this.version(6).stores({
       discoveryHints: 'id, memberId',
     })
+    // 结算记录可以关联到具体某一笔账目（按笔结算）——加个索引方便查"这笔账目
+    // 有没有被结算过"，用来判断能不能编辑/删除那笔账目
+    this.version(7).stores({
+      settlements: 'id, tripId, fromMemberId, toMemberId, expenseId',
+    })
     registerOutboxHooks(this)
   }
 }

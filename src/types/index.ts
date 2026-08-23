@@ -268,6 +268,9 @@ export interface Settlement {
   // 谁记的这笔结算（不一定是转账双方之一，可能是家里管账的人代记）。可空，理由同
   // ItineraryItem.createdBy
   createdBy: string | null
+  // null=聚合结算（"结算建议"生成的那种，不对应单一账目）；有值=这条结算是针对
+  // 具体某一笔账目记的"按笔结算"，应用层会因此禁止编辑/删除那笔账目
+  expenseId: string | null
   createdAt: number
   updatedAt: number
 }

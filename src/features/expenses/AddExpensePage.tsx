@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Check, Lock } from 'lucide-react'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { DatePicker } from '../../components/DatePicker'
@@ -11,6 +11,7 @@ import { createRateBookEntry, recordRateUsage } from '../../domain/rates'
 import { saveExpenseSplits } from '../../domain/splits'
 import { saveDayAllocations, deleteDayAllocations } from '../../domain/dayAllocations'
 import { saveRateAllocations, deleteRateAllocations } from '../../domain/rateAllocations'
+import { isExpenseSettled } from '../../domain/settlements'
 import { categoryColor } from '../../lib/categoryColors'
 import { round2 } from '../../lib/money'
 import { CategoryIcon } from '../../components/CategoryBadge'
@@ -89,6 +90,14 @@ export function AddExpensePage({
   }, [initial, existingRateAllocations])
   const [payer, setPayer] = useState(initial?.paidBy ?? currentMemberId)
   const [expenseDate, setExpenseDate] = useState(initial?.expenseDate ?? trip.startDate ?? new Date().toISOString().slice(0, 10))
+
+  // 这笔账有没有被"按笔结算"过（哪怕只结算了一部分）——有的话金额/汇率/怎么分/
+  // 付款人这几项会锁住不能改，因为已经记录的结算是照着当时这几个字段算出来的，
+  // 改了会跟结算记录对不上。分类/阶段/日期/备注/关联行程这些跟钱无关，不受影响
+  const settled = useLiveQuery(
+    () => (initial ? isExpenseSettled(initial.id) : Promise.resolve(false)),
+    [initial?.id],
+  ) ?? false
 
   // 哪个子页面正在显示——'怎么分'/'花在几天'这两项内部结构太重（chip多选+平均/
   // 自定义切换+逐项金额+校验条），推成独立全屏子页；null 表示还在主页面。
@@ -402,7 +411,7 @@ export function AddExpensePage({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   async function remove() {
-    if (saving || !initial) return
+    if (saving || !initial || settled) return
     setSaving(true)
     try {
       await db.expenseSplits.where('expenseId').equals(initial.id).delete()
@@ -454,9 +463,9 @@ export function AddExpensePage({
           {initial && (
             <button
               onClick={() => setConfirmingDelete(true)}
-              disabled={saving}
+              disabled={saving || settled}
               className="text-negative/85 disabled:opacity-40"
-              title="删除"
+              title={settled ? '这笔账已经结算过，不能删除' : '删除'}
             >
               <Trash2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
             </button>
@@ -472,6 +481,12 @@ export function AddExpensePage({
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 pb-safe-nav">
+        {settled && (
+          <div className="flex items-center gap-2 rounded-xl bg-plan/8 text-plan px-3 py-2 text-[11.5px] mb-2.5">
+            <Lock className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
+            这笔账已经结算过，金额、汇率、怎么分、付款人都不能再改，也不能删除
+          </div>
+        )}
         <div className="grid grid-cols-[1fr_84px] gap-2 rounded-2xl border-[1.5px] border-plan bg-card px-3.5 py-2.5">
           <input
             value={amount}
@@ -479,18 +494,20 @@ export function AddExpensePage({
             inputMode="decimal"
             placeholder="金额"
             autoFocus={!initial}
-            className="text-[26px] font-serif-sc tabular outline-none min-w-0 bg-transparent"
+            disabled={settled}
+            className="text-[26px] font-serif-sc tabular outline-none min-w-0 bg-transparent disabled:opacity-60"
           />
           <input
             value={currency}
             onChange={(e) => setCurrency(e.target.value.toUpperCase())}
             placeholder="币种"
-            className="rounded-lg border border-line bg-paper px-2 text-sm text-center uppercase outline-none focus:border-plan min-w-0 self-center"
+            disabled={settled}
+            className="rounded-lg border border-line bg-paper px-2 text-sm text-center uppercase outline-none focus:border-plan min-w-0 self-center disabled:opacity-60"
           />
         </div>
 
         {isForeign && (
-          <div className="mt-2">
+          <div className={`mt-2 ${settled ? 'pointer-events-none opacity-60' : ''}`}>
             <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">
               选择汇率（{currency} → {trip.homeCurrency}）
             </div>
@@ -568,7 +585,8 @@ export function AddExpensePage({
             <button
               key={m.id}
               onClick={() => setPayer(m.id)}
-              className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border ${
+              disabled={settled}
+              className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border disabled:opacity-60 ${
                 payer === m.id ? 'bg-ink text-paper border-ink' : 'bg-card border-line text-[#57534E]'
               }`}
             >
@@ -661,12 +679,13 @@ export function AddExpensePage({
           <button
             type="button"
             onClick={() => setActiveDetail('split')}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 border-b border-line text-left"
+            disabled={settled}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 border-b border-line text-left disabled:opacity-60"
           >
             <span className="text-[12.5px] text-muted">怎么分</span>
             <span className="text-[12.5px] flex items-center gap-1">
               {splitSummary}
-              <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />
+              {!settled && <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />}
             </span>
           </button>
           {tripDates.length > 1 && (

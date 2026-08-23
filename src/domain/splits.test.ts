@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { resolveSplitShares, computeBalances, simplifyDebts, type PersonBalance } from './splits'
+import { resolveSplitShares, computeBalances, simplifyDebts, openExpenseDebts, type PersonBalance } from './splits'
 import { db } from '../db/dexie'
 
 describe('resolveSplitShares', () => {
@@ -130,12 +130,75 @@ describe('computeBalances（真实走一遍Dexie，用fake-indexeddb）', () => 
     // 阿明先还50给爸爸
     await db.settlements.add({
       id: 'settle-1', householdId: 'h1', tripId, fromMemberId: 'aming', toMemberId: 'papa', amount: 50,
-      settledDate: '2026-09-04', note: '转账', createdBy: 'aming', createdAt: now, updatedAt: now,
+      settledDate: '2026-09-04', note: '转账', createdBy: 'aming', expenseId: null, createdAt: now, updatedAt: now,
     })
 
     balances = await computeBalances(tripId)
     const byId2 = (id: string) => balances.find((b) => b.memberId === id)!
     expect(byId2('papa').net).toBe(120) // 170 - 50(收到)
     expect(byId2('aming').net).toBe(-80) // -130 + 50(还出去)
+  })
+})
+
+describe('openExpenseDebts（按笔结算用的清单，真实走Dexie）', () => {
+  const tripId = 'trip-test-2'
+
+  beforeEach(async () => {
+    await db.expenses.where('tripId').equals(tripId).delete()
+    await db.expenseSplits.where('expenseId').startsWith('exp2-test').delete()
+    await db.settlements.where('tripId').equals(tripId).delete()
+  })
+
+  function expense(id: string, paidBy: string, homeAmount: number) {
+    return {
+      id, householdId: 'h1', tripId, categoryId: 'cat-food', phase: 'during_trip' as const, description: '测试账目',
+      expenseCurrency: 'MYR', expenseAmount: homeAmount, rateBookEntryId: null, rateUsed: 1, homeAmount,
+      paidBy, recordedBy: paidBy, expenseDate: '2026-09-02', itineraryDayId: null, itineraryItemId: null,
+      splitType: 'equal' as const, createdAt: 0, updatedAt: 0,
+    }
+  }
+
+  it('只列真正欠别人钱的那部分，付款人自己的那一份不算欠款', async () => {
+    await db.expenses.add(expense('exp2-test-1', 'papa', 300))
+    await db.expenseSplits.bulkAdd([
+      { id: 'split2-1', householdId: 'h1', expenseId: 'exp2-test-1', memberId: 'papa', shareAmount: 100 },
+      { id: 'split2-2', householdId: 'h1', expenseId: 'exp2-test-1', memberId: 'mama', shareAmount: 100 },
+      { id: 'split2-3', householdId: 'h1', expenseId: 'exp2-test-1', memberId: 'aming', shareAmount: 100 },
+    ])
+
+    const debts = await openExpenseDebts(tripId)
+    expect(debts).toHaveLength(2)
+    expect(debts.map((d) => d.debtorId).sort()).toEqual(['aming', 'mama'])
+    expect(debts.every((d) => d.creditorId === 'papa' && d.remaining === 100)).toBe(true)
+  })
+
+  it('打了标签(expenseId)的结算会扣减对应那一笔的剩余欠款；没打标签的聚合结算不影响这个清单', async () => {
+    await db.expenses.add(expense('exp2-test-2', 'papa', 200))
+    await db.expenseSplits.bulkAdd([
+      { id: 'split2-4', householdId: 'h1', expenseId: 'exp2-test-2', memberId: 'papa', shareAmount: 100 },
+      { id: 'split2-5', householdId: 'h1', expenseId: 'exp2-test-2', memberId: 'mama', shareAmount: 100 },
+    ])
+    await db.settlements.bulkAdd([
+      // 打了标签的部分结清——mama对这笔账还剩40没还
+      { id: 'settle2-1', householdId: 'h1', tripId, fromMemberId: 'mama', toMemberId: 'papa', amount: 60, settledDate: '2026-09-03', note: null, createdBy: 'mama', expenseId: 'exp2-test-2', createdAt: 0, updatedAt: 0 },
+      // 没打标签的聚合结算——不应该影响这一笔的剩余欠款
+      { id: 'settle2-2', householdId: 'h1', tripId, fromMemberId: 'mama', toMemberId: 'papa', amount: 500, settledDate: '2026-09-03', note: null, createdBy: 'mama', expenseId: null, createdAt: 0, updatedAt: 0 },
+    ])
+
+    const debts = await openExpenseDebts(tripId)
+    expect(debts).toHaveLength(1)
+    expect(debts[0]).toMatchObject({ debtorId: 'mama', creditorId: 'papa', totalShare: 100, settledAmount: 60, remaining: 40 })
+  })
+
+  it('打了标签的结算刚好还清整笔时，这笔账从清单里消失', async () => {
+    await db.expenses.add(expense('exp2-test-3', 'papa', 220))
+    await db.expenseSplits.add({ id: 'split2-6', householdId: 'h1', expenseId: 'exp2-test-3', memberId: 'kn', shareAmount: 220 })
+    await db.settlements.add({
+      id: 'settle2-3', householdId: 'h1', tripId, fromMemberId: 'kn', toMemberId: 'papa', amount: 220,
+      settledDate: '2026-09-03', note: null, createdBy: 'kn', expenseId: 'exp2-test-3', createdAt: 0, updatedAt: 0,
+    })
+
+    const debts = await openExpenseDebts(tripId)
+    expect(debts).toHaveLength(0)
   })
 })
