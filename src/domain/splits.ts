@@ -120,14 +120,22 @@ export interface OpenExpenseDebt {
   debtorId: string // 分摊到这个人身上、还没还清的那部分
   totalShare: number // 这个人在这笔账里本来该分摊多少
   settledAmount: number // 已经用"按笔结算"还了多少
-  remaining: number // 还欠多少——totalShare减掉settledAmount
+  prepaidAmount: number // 已经被预付款自动抵扣了多少
+  remaining: number // 还欠多少——totalShare减掉settledAmount、prepaidAmount
 }
 
-// "按笔结算"用的清单：摊平成"哪笔账、谁欠谁、还剩多少"的列表，不管这个人跟
-// 对方之间的净额是多少（净额是simplifyDebts算总账用的，两者互不干扰）。
-// 只列还没还清的（remaining > 1分钱，留一点浮点误差容差），已经还完的自然
-// 从列表里消失，不需要额外维护"是否结清"的状态
-export async function openExpenseDebts(tripId: string): Promise<OpenExpenseDebt[]> {
+export interface PrepaymentBalance {
+  fromMemberId: string
+  toMemberId: string
+  remaining: number // 预付款还没被"按笔结算"抵扣完的部分
+}
+
+// 摊平出"哪笔账、谁欠谁、还没被按笔结算还清多少"，按账目日期从早到晚排序，
+// 再用预付款余额池依次抵扣（预付款只挂在"谁欠谁"这一对方向上，不会抵扣到
+// 别的方向、也不会碰"结算建议"生成的聚合结算）。openExpenseDebts 和
+// prepaymentBalances 需要的是同一份计算结果的两个切面（前者要抵扣后的账目
+// 清单，后者要抵扣剩下的池子），放一起算避免两份逻辑各写一遍、口径跑偏
+async function computeOpenDebtsAndPools(tripId: string) {
   const expenses = await db.expenses.where('tripId').equals(tripId).toArray()
   const expenseById = new Map(expenses.map((e) => [e.id, e]))
   const expenseIds = expenses.map((e) => e.id)
@@ -141,15 +149,21 @@ export async function openExpenseDebts(tripId: string): Promise<OpenExpenseDebt[
     settledMap.set(key, round2((settledMap.get(key) ?? 0) + s.amount))
   }
 
-  const result: OpenExpenseDebt[] = []
+  const pools = new Map<string, number>()
+  for (const s of settlements) {
+    if (s.expenseId || !s.isPrepayment) continue
+    const key = `${s.fromMemberId}:${s.toMemberId}`
+    pools.set(key, round2((pools.get(key) ?? 0) + s.amount))
+  }
+
+  const afterTagged: Omit<OpenExpenseDebt, 'prepaidAmount' | 'remaining'>[] = []
   for (const split of splits) {
     const expense = expenseById.get(split.expenseId)
     // 自己分摊给自己（付款人本人的那一份，或者splitType='none'时的整笔自留）不算欠款
     if (!expense || split.memberId === expense.paidBy) continue
     const settledAmount = settledMap.get(`${split.expenseId}:${split.memberId}`) ?? 0
-    const remaining = round2(split.shareAmount - settledAmount)
-    if (remaining <= 0.01) continue
-    result.push({
+    if (round2(split.shareAmount - settledAmount) <= 0.01) continue
+    afterTagged.push({
       expenseId: expense.id,
       description: expense.description,
       categoryId: expense.categoryId,
@@ -158,10 +172,43 @@ export async function openExpenseDebts(tripId: string): Promise<OpenExpenseDebt[
       debtorId: split.memberId,
       totalShare: split.shareAmount,
       settledAmount,
-      remaining,
     })
   }
-  return result.sort((a, b) => a.expenseDate.localeCompare(b.expenseDate))
+  afterTagged.sort((a, b) => a.expenseDate.localeCompare(b.expenseDate))
+
+  const debts: OpenExpenseDebt[] = []
+  for (const debt of afterTagged) {
+    const remainingAfterTagged = round2(debt.totalShare - debt.settledAmount)
+    const poolKey = `${debt.debtorId}:${debt.creditorId}`
+    const pool = pools.get(poolKey) ?? 0
+    const prepaidAmount = round2(Math.min(pool, remainingAfterTagged))
+    if (prepaidAmount > 0) pools.set(poolKey, round2(pool - prepaidAmount))
+    const remaining = round2(remainingAfterTagged - prepaidAmount)
+    if (remaining <= 0.01) continue
+    debts.push({ ...debt, prepaidAmount, remaining })
+  }
+
+  return { debts, pools }
+}
+
+// "按笔结算"用的清单：只列还没还清的（remaining > 1分钱，留一点浮点误差容差，
+// 已经用预付款抵扣完的自然从列表里消失），不管这个人跟对方之间的净额是多少
+// （净额是simplifyDebts算总账用的，两者互不干扰）
+export async function openExpenseDebts(tripId: string): Promise<OpenExpenseDebt[]> {
+  const { debts } = await computeOpenDebtsAndPools(tripId)
+  return debts
+}
+
+// 预付款还剩多少没花完——按"谁欠谁"这一对方向汇总，用来在"按笔结算"里提示
+// "这笔钱还没抵扣完"，不然预付款全部被抵掉之前，钱去哪了不透明
+export async function prepaymentBalances(tripId: string): Promise<PrepaymentBalance[]> {
+  const { pools } = await computeOpenDebtsAndPools(tripId)
+  return [...pools.entries()]
+    .filter(([, remaining]) => remaining > 0.01)
+    .map(([key, remaining]) => {
+      const [fromMemberId, toMemberId] = key.split(':')
+      return { fromMemberId, toMemberId, remaining }
+    })
 }
 
 export interface Transfer {

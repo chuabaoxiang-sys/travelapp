@@ -14,7 +14,7 @@ describe('isExpenseSettled', () => {
   it('哪怕只有一条结算记录（部分结清）也算已结算', async () => {
     await db.settlements.add({
       id: 'settle-lock-1', householdId: 'h1', tripId: 't1', fromMemberId: 'a', toMemberId: 'b', amount: 10,
-      settledDate: '2026-09-01', note: null, createdBy: 'a', expenseId: 'exp-lock-test', createdAt: 0, updatedAt: 0,
+      settledDate: '2026-09-01', note: null, createdBy: 'a', expenseId: 'exp-lock-test', isPrepayment: false, createdAt: 0, updatedAt: 0,
     })
     expect(await isExpenseSettled('exp-lock-test')).toBe(true)
   })
@@ -22,7 +22,7 @@ describe('isExpenseSettled', () => {
   it('聚合结算（expenseId为null）不会误判成这笔账目被结算', async () => {
     await db.settlements.add({
       id: 'settle-lock-2', householdId: 'h1', tripId: 't1', fromMemberId: 'a', toMemberId: 'b', amount: 500,
-      settledDate: '2026-09-01', note: null, createdBy: 'a', expenseId: null, createdAt: 0, updatedAt: 0,
+      settledDate: '2026-09-01', note: null, createdBy: 'a', expenseId: null, isPrepayment: false, createdAt: 0, updatedAt: 0,
     })
     expect(await isExpenseSettled('exp-lock-test')).toBe(false)
   })

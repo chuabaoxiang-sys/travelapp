@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { X, CircleCheck, Pencil, Trash2, Check, Plus } from 'lucide-react'
 import { db } from '../../db/dexie'
-import { computeBalances, simplifyDebts, openExpenseDebts, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
+import { computeBalances, simplifyDebts, openExpenseDebts, prepaymentBalances, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
 import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../../domain/settlements'
 import { formatMoney } from '../../lib/money'
 import { toLocalDateString } from '../../lib/dates'
@@ -145,6 +145,10 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
     () => openExpenseDebts(trip.id),
     [trip.id, expenses.length, expenses.map((e) => e.updatedAt).join(','), settlements.length, settlements.map((s) => s.updatedAt).join(',')],
   ) ?? []
+  const prepayBalances = useLiveQuery(
+    () => prepaymentBalances(trip.id),
+    [trip.id, expenses.length, expenses.map((e) => e.updatedAt).join(','), settlements.length, settlements.map((s) => s.updatedAt).join(',')],
+  ) ?? []
 
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [settleAmount, setSettleAmount] = useState('')
@@ -204,6 +208,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
       note: manualNote.trim() || null,
       createdBy: currentMemberId,
       expenseId: null,
+      isPrepayment: true,
     })
     setManualSettleOpen(false)
   }
@@ -438,12 +443,22 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         )}
       </div>
 
-      {openDebts.length > 0 && (
+      {(openDebts.length > 0 || prepayBalances.length > 0) && (
         <div className="bg-card border border-line rounded-2xl p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] tracking-widest uppercase text-muted">按笔结算</div>
             <div className="text-[10.5px] text-muted">{visibleDebts.length}笔未结清</div>
           </div>
+          {prepayBalances.map((p) => (
+            <div
+              key={`${p.fromMemberId}:${p.toMemberId}`}
+              className="flex items-center gap-1.5 rounded-lg bg-plan/5 border border-plan/25 px-2.5 py-1.5 mb-2 text-[10.5px]"
+            >
+              <span>
+                {nameOf(p.fromMemberId)}→{nameOf(p.toMemberId)} 预付款还剩 <span className="text-plan font-semibold">{formatMoney(p.remaining)}</span> 未用完
+              </span>
+            </div>
+          ))}
           {distinctPairs.length > 1 && (
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-2 pb-0.5">
               <button
@@ -492,7 +507,10 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="text-[12.5px] font-medium truncate">{titleOf(d)}</div>
-                    <div className="text-[10.5px] text-muted">{nameOf(d.debtorId)} 欠 {nameOf(d.creditorId)}</div>
+                    <div className="text-[10.5px] text-muted">
+                      {nameOf(d.debtorId)} 欠 {nameOf(d.creditorId)}
+                      {d.prepaidAmount > 0.01 && <span className="text-positive"> · 已用预付款抵{formatMoney(d.prepaidAmount)}</span>}
+                    </div>
                   </div>
                   <div className="text-[13px] font-semibold tabular flex-shrink-0">{formatMoney(d.remaining)}</div>
                 </button>

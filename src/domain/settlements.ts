@@ -18,6 +18,9 @@ export async function createSettlement(params: {
   createdBy?: string | null
   // 这笔结算是针对具体哪一笔账目记的——不传/传null就是聚合结算，行为跟以前一样
   expenseId?: string | null
+  // 这是不是一笔预付款（只对聚合结算有意义）——会被"按笔结算"自动拿去抵扣这两人
+  // 之间后续的具体账目。不传默认false，跟"结算建议"接受时创建的行为一样
+  isPrepayment?: boolean
 }) {
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('未找到所属团队')
@@ -29,6 +32,7 @@ export async function createSettlement(params: {
     ...params,
     createdBy: params.createdBy ?? null,
     expenseId: params.expenseId ?? null,
+    isPrepayment: params.isPrepayment ?? false,
     createdAt: now,
     updatedAt: now,
   }

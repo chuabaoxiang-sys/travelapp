@@ -271,6 +271,10 @@ export interface Settlement {
   // null=聚合结算（"结算建议"生成的那种，不对应单一账目）；有值=这条结算是针对
   // 具体某一笔账目记的"按笔结算"，应用层会因此禁止编辑/删除那笔账目
   expenseId: string | null
+  // 只对expenseId为null的聚合结算有意义：true=用户在"结算记录"手动新增的预付款，
+  // 会被"按笔结算"自动拿去抵扣这两人之间后续的具体账目；false（含"结算建议"接受时
+  // 生成的）不参与自动抵扣——避免把不对应真实账目的简化转账错误核销到具体账目上
+  isPrepayment: boolean
   createdAt: number
   updatedAt: number
 }
