@@ -44,6 +44,16 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   const [settleDate, setSettleDate] = useState('')
   const [settleNote, setSettleNote] = useState('')
 
+  // "谁欠谁"筛选——只有清单里真的出现2组以上不同的人物对时才显示筛选行，
+  // 只有1组人（最常见的情况）摆一排筛选反而是多余的干扰。用派生值而不是
+  // 直接拿pairFilter去过滤：选中的那组人如果因为结算完/换行程而从清单里
+  // 消失了，effectivePairFilter会自动退回"全部"，不会卡在一个空列表上
+  const [pairFilter, setPairFilter] = useState<string | null>(null)
+  const pairKey = (d: OpenExpenseDebt) => `${d.debtorId}:${d.creditorId}`
+  const distinctPairs = [...new Map(openDebts.map((d) => [pairKey(d), d])).values()]
+  const effectivePairFilter = pairFilter && distinctPairs.some((d) => pairKey(d) === pairFilter) ? pairFilter : null
+  const visibleDebts = effectivePairFilter ? openDebts.filter((d) => pairKey(d) === effectivePairFilter) : openDebts
+
   const [selectedDebtKeys, setSelectedDebtKeys] = useState<Set<string>>(new Set())
   const [itemSettleOpen, setItemSettleOpen] = useState(false)
   const [itemSettleAmount, setItemSettleAmount] = useState('')
@@ -266,10 +276,36 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         <div className="bg-card border border-line rounded-2xl p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] tracking-widest uppercase text-muted">按笔结算</div>
-            <div className="text-[10.5px] text-muted">{openDebts.length}笔未结清</div>
+            <div className="text-[10.5px] text-muted">{visibleDebts.length}笔未结清</div>
           </div>
+          {distinctPairs.length > 1 && (
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-2 pb-0.5">
+              <button
+                onClick={() => setPairFilter(null)}
+                className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10.5px] border ${
+                  effectivePairFilter === null ? 'bg-plan text-card border-plan font-medium' : 'border-line text-muted'
+                }`}
+              >
+                全部
+              </button>
+              {distinctPairs.map((d) => {
+                const key = pairKey(d)
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setPairFilter(key)}
+                    className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10.5px] border whitespace-nowrap ${
+                      effectivePairFilter === key ? 'bg-plan text-card border-plan font-medium' : 'border-line text-muted'
+                    }`}
+                  >
+                    {nameOf(d.debtorId)}→{nameOf(d.creditorId)}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
-            {openDebts.map((d) => {
+            {visibleDebts.map((d) => {
               const key = debtKey(d)
               const checked = selectedDebtKeys.has(key)
               return (
