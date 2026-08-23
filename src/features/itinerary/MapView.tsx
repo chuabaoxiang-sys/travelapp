@@ -110,7 +110,7 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
 
   if (!pinned.length) {
     return (
-      <div className="px-5 pt-3 pb-24 h-full flex flex-col items-center justify-center text-center gap-2">
+      <div className="px-5 pt-3 pb-safe-fab-clearance h-full flex flex-col items-center justify-center text-center gap-2">
         <div className="w-[60px] h-[60px] rounded-full bg-[#EDE6DA] flex items-center justify-center font-serif-sc text-2xl text-muted">
           图
         </div>

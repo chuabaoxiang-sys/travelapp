@@ -92,7 +92,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
 
   if (!hasAnyMoney) {
     return (
-      <div className="px-5 pt-16 pb-24 h-full flex flex-col items-center text-center gap-2">
+      <div className="px-5 pt-16 pb-safe-fab-clearance h-full flex flex-col items-center text-center gap-2">
         <div className="w-[60px] h-[60px] rounded-full bg-[#EDE6DA] flex items-center justify-center font-serif-sc text-2xl text-muted">分</div>
         <div className="font-serif-sc text-[15px] mt-2">还没有可以结算的账目</div>
         <div className="text-[12.5px] text-muted max-w-[220px]">记账时勾选"分摊给"多个人，这里就会自动算出谁该收谁的钱。</div>
@@ -101,7 +101,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   }
 
   return (
-    <div className="px-5 pt-3 pb-24 overflow-y-auto no-scrollbar h-full">
+    <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full">
       <div className="font-serif-sc text-sm font-semibold mb-3">费用分摊 · 按人结算</div>
 
       <div className="bg-card border border-line rounded-2xl p-4 mb-4">

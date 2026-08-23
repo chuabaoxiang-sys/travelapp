@@ -67,7 +67,7 @@ export function CalendarView({
   const routeLegs = useDayRouteLegs(selectedDay?.id, selectedItems)
 
   return (
-    <div className="px-5 pt-3 pb-24 overflow-y-auto no-scrollbar h-full">
+    <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full">
       <div className="bg-card border border-line rounded-2xl p-3.5 mb-3.5">
         <div className="flex items-center justify-between mb-2.5">
           <button type="button" onClick={() => shiftMonth(-1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">

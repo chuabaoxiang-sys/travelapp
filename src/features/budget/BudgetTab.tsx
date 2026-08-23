@@ -57,7 +57,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
   }
 
   return (
-    <div className="px-5 pt-3 pb-24 overflow-y-auto no-scrollbar h-full">
+    <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full">
       <div className="font-serif-sc text-sm font-semibold mb-2">预算</div>
 
       {overallBudget && !editingOverall ? (

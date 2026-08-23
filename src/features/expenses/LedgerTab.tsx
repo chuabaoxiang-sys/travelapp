@@ -71,7 +71,7 @@ export function LedgerTab({
   }
 
   return (
-    <div className="px-5 pt-3 pb-24 overflow-y-auto no-scrollbar h-full relative">
+    <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full relative">
       <div className="flex items-center justify-between mb-1">
         <span className="font-serif-sc text-sm font-semibold">记账 · 共 {visibleExpenses.length} 笔</span>
         <button

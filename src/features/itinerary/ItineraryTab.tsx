@@ -226,7 +226,7 @@ export function ItineraryTab({
 
   if (!days.length) {
     return (
-      <div className="px-5 pt-3 pb-24 text-sm text-muted">
+      <div className="px-5 pt-3 pb-safe-fab-clearance text-sm text-muted">
         这趟行程还没设置起止日期，暂时无法按天规划行程——可以先去「记账」标签试试记一笔。
       </div>
     )
@@ -283,7 +283,7 @@ export function ItineraryTab({
         )}
         {viewMode === 'map' && <MapView days={itineraryDays} items={allItems} />}
         {viewMode === 'timeline' && (
-          <div ref={timelineScrollRef} className="px-5 pb-24 overflow-y-auto no-scrollbar h-full">
+          <div ref={timelineScrollRef} className="px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full">
             {/* 完整日期条——正常展开时的样子，不做任何形变/收起动画，原样滚走。
             pt-2放在这里而不是放在滚动容器本身，是因为滚动容器如果自己带
             padding-top，sticky吸顶栏只会贴到padding内侧、留出一条padding高度

@@ -57,6 +57,13 @@ body {
 .bottom-safe-fab {
   bottom: calc(104px + env(safe-area-inset-bottom));
 }
+/* 各个tab自己的滚动列表，底部padding要盖过FAB整个高度（104px偏移+54px直径）
+   再留一点呼吸空间，不然划到底最后一张卡片会被悬浮的FAB挡住一截（真实反馈
+   过）。跟FAB自己一样叠加安全区——真机上有home条时FAB会再往上顶一截，列表
+   底部空间不跟着加大的话，安全区越大反而挡得越多 */
+.pb-safe-fab-clearance {
+  padding-bottom: calc(104px + 54px + 20px + env(safe-area-inset-bottom));
+}
 
 .paper-texture {
   background-image:
