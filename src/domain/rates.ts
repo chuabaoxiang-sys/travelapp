@@ -72,6 +72,13 @@ export async function unarchiveRateBookEntry(id: string) {
   await db.rateBookEntries.update(id, { archived: false })
 }
 
+// 真正删除——只有从没被任何账目用过的标签才允许走这条路，调用方必须自己先用
+// usageByEntry 确认过 count===0。用过的标签一律只能归档：硬删会让历史账目
+// 找不到自己引用的那条汇率来源，归档则完全不影响已经记好的账
+export async function deleteRateBookEntry(id: string) {
+  await db.rateBookEntries.delete(id)
+}
+
 export interface RateEntryUsage {
   count: number
   foreignAmount: number

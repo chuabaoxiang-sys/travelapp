@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, X, Pencil, Archive, ArchiveRestore, Plus } from 'lucide-react'
+import { Check, X, Pencil, Archive, ArchiveRestore, Trash2, Plus } from 'lucide-react'
 import {
   getAllRateBookEntries,
   updateRateBookEntry,
   archiveRateBookEntry,
   unarchiveRateBookEntry,
+  deleteRateBookEntry,
   createRateBookEntry,
   usageByEntry,
   deriveRateFromExchangeAmounts,
@@ -51,6 +52,7 @@ export function RateBookScreen({
   const [saveAsNewFor, setSaveAsNewFor] = useState<RateBookEntry | null>(null)
   const [newLabelValue, setNewLabelValue] = useState('')
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
 
   const [addOpen, setAddOpen] = useState(false)
@@ -62,7 +64,7 @@ export function RateBookScreen({
 
   // 三个嵌套弹层（confirmArchiveId 的 ConfirmDialog、saveAsNewFor/addOpen 的
   // CenteredModal）打开时暂停这里自己的Escape监听，避免一键关掉两层
-  useEscapeKey(!confirmArchiveId && !saveAsNewFor && !addOpen, onClose)
+  useEscapeKey(!confirmArchiveId && !confirmDeleteId && !saveAsNewFor && !addOpen, onClose)
 
   function openAddModal() {
     setAddCurrency('')
@@ -184,7 +186,9 @@ export function RateBookScreen({
             <div className="flex flex-col gap-2">
               {list
                 .sort((a, b) => b.lastUsedAt - a.lastUsedAt)
-                .map((e) => (
+                .map((e) => {
+                  const usageCount = usageMap.get(e.id)?.count ?? 0
+                  return (
                   <div key={e.id} className="bg-card border border-line rounded-2xl p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -213,7 +217,7 @@ export function RateBookScreen({
                         ) : (
                           <div className="font-serif-sc text-[16px] tabular">{e.rate}</div>
                         )}
-                        <div className="text-[10px] text-muted">用过 {usageMap.get(e.id)?.count ?? 0} 次</div>
+                        <div className="text-[10px] text-muted">用过 {usageCount} 次</div>
                       </div>
                     </div>
                     {editingId === e.id && (
@@ -270,14 +274,21 @@ export function RateBookScreen({
                           <button onClick={() => startEdit(e)} className="text-plan px-2 py-1 border border-dashed border-plan/50 rounded-md" title="编辑">
                             <Pencil className="w-3.5 h-3.5" strokeWidth={1.8} />
                           </button>
-                          <button onClick={() => setConfirmArchiveId(e.id)} className="text-muted px-2 py-1 border border-dashed border-line rounded-md" title="归档">
-                            <Archive className="w-3.5 h-3.5" strokeWidth={1.8} />
-                          </button>
+                          {usageCount === 0 ? (
+                            <button onClick={() => setConfirmDeleteId(e.id)} className="text-negative px-2 py-1 border border-dashed border-negative/40 rounded-md" title="删除">
+                              <Trash2 className="w-3.5 h-3.5" strokeWidth={1.8} />
+                            </button>
+                          ) : (
+                            <button onClick={() => setConfirmArchiveId(e.id)} className="text-muted px-2 py-1 border border-dashed border-line rounded-md" title="归档">
+                              <Archive className="w-3.5 h-3.5" strokeWidth={1.8} />
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
             </div>
           </div>
         ))}
@@ -318,6 +329,16 @@ export function RateBookScreen({
           danger={false}
           onConfirm={() => { archiveRateBookEntry(confirmArchiveId); setConfirmArchiveId(null) }}
           onCancel={() => setConfirmArchiveId(null)}
+        />
+      )}
+
+      {confirmDeleteId && (
+        <ConfirmDialog
+          title="删除这个汇率标签？"
+          message="从没有账目用过这条汇率，删除不会影响任何已保存的记录，且无法撤销。"
+          confirmLabel="删除"
+          onConfirm={() => { deleteRateBookEntry(confirmDeleteId); setConfirmDeleteId(null) }}
+          onCancel={() => setConfirmDeleteId(null)}
         />
       )}
 
