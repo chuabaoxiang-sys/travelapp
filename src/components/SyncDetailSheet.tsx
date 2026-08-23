@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X } from 'lucide-react'
+import { X, Trash2 } from 'lucide-react'
 import { db } from '../db/dexie'
 import { useEscapeKey } from '../hooks/useEscapeKey'
+import { ConfirmDialog } from './ConfirmDialog'
 import type { OutboxEntry } from '../types'
 
 // 重试到这个次数还没成功，大概率是权限/数据冲突之类不会自愈的问题，值得
@@ -26,6 +28,35 @@ const TABLE_LABELS: Record<string, string> = {
   wishlistPlaces: '想去的地点',
 }
 
+// 从payload里挑一个人能看懂的字段，帮用户定位"到底是哪一条"卡住了——
+// 光看"账目·新增/修改"认不出是哪笔账。delete操作没有payload（见dexie.ts
+// 的deleting hook），认不出来时就不显示这一行，不瞎猜
+function describeRecord(entry: OutboxEntry): string | null {
+  if (entry.operation === 'delete' || !entry.payload || typeof entry.payload !== 'object') return null
+  const p = entry.payload as Record<string, unknown>
+  const pick = (...fields: string[]) => fields.map((f) => p[f]).find((v): v is string => typeof v === 'string' && v.length > 0)
+  switch (entry.tableName) {
+    case 'trips':
+    case 'wishlistPlaces':
+      return pick('name') ?? null
+    case 'members':
+      return pick('displayName') ?? null
+    case 'itineraryDays':
+      return pick('date') ?? null
+    case 'itineraryItems':
+    case 'rateBookEntries':
+      return pick('title', 'label') ?? null
+    case 'expenses':
+      return pick('description') ?? (typeof p.expenseAmount === 'number' ? `金额 ${p.expenseAmount}` : null)
+    case 'settlements':
+      return typeof p.amount === 'number' ? `金额 ${p.amount}` : null
+    case 'feedback':
+      return pick('content') ?? null
+    default:
+      return null
+  }
+}
+
 function relativeTime(at: number, now: number): string {
   const diffMin = Math.round((now - at) / 60_000)
   if (diffMin < 1) return '刚刚'
@@ -42,6 +73,7 @@ export function SyncDetailSheet({ onClose }: { onClose: () => void }) {
   const pending = useLiveQuery(() => db.outbox.where('status').equals('pending').sortBy('createdAt')) ?? []
   const now = Date.now()
   const sorted = [...pending].sort((a, b) => b.attempts - a.attempts)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end">
@@ -64,17 +96,24 @@ export function SyncDetailSheet({ onClose }: { onClose: () => void }) {
           <div className="flex flex-col gap-2">
             {sorted.map((entry: OutboxEntry) => {
               const stuck = entry.attempts >= STUCK_THRESHOLD
+              const record = describeRecord(entry)
               return (
                 <div
                   key={entry.id}
                   className={`rounded-xl border px-2.5 py-2 ${stuck ? 'border-negative/35 bg-negative/[0.04]' : 'border-line bg-card'}`}
                 >
-                  <div className="flex justify-between items-baseline gap-2">
+                  <div className="flex justify-between items-start gap-2">
                     <span className="text-[12.5px] font-semibold">
                       {TABLE_LABELS[entry.tableName] ?? entry.tableName} · {entry.operation === 'delete' ? '删除' : '新增/修改'}
                     </span>
-                    <span className="text-[10px] text-muted flex-shrink-0">{relativeTime(entry.createdAt, now)}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-[10px] text-muted">{relativeTime(entry.createdAt, now)}</span>
+                      <button onClick={() => setPendingDeleteId(entry.id)} className="text-muted" title="放弃同步">
+                        <Trash2 className="w-[13px] h-[13px]" strokeWidth={1.8} />
+                      </button>
+                    </div>
                   </div>
+                  {record && <div className="text-[11px] text-ink/70 mt-0.5 truncate">{record}</div>}
                   {entry.attempts > 0 && (
                     <div className={`text-[10.5px] mt-1 flex items-center gap-1 ${stuck ? 'text-negative' : 'text-spend'}`}>
                       <span className="w-1.5 h-1.5 rounded-full bg-current" />
@@ -92,6 +131,19 @@ export function SyncDetailSheet({ onClose }: { onClose: () => void }) {
           </div>
         )}
       </div>
+
+      {pendingDeleteId && (
+        <ConfirmDialog
+          title="放弃同步这条记录？"
+          message="本地这条数据不会被删除，还在你手机上——但这次改动以后不会再同步给其他设备/家人，也不会再重试。确定要放弃吗？"
+          confirmLabel="放弃同步"
+          onConfirm={async () => {
+            await db.outbox.delete(pendingDeleteId)
+            setPendingDeleteId(null)
+          }}
+          onCancel={() => setPendingDeleteId(null)}
+        />
+      )}
     </div>
   )
 }
