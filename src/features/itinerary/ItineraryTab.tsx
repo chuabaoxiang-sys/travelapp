@@ -3,13 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2, X, Check, Plus, Filter, Bookmark } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
-import { sortItineraryItems } from '../../domain/itinerary'
+import { sortItineraryItems, hasLinkedDaySpreadExpense, resolveDayForItemMove } from '../../domain/itinerary'
 import { spendByDate } from '../../domain/dayAllocations'
 import { toggleBookingStatus } from '../../domain/booking'
 import { listWishlistPlaces, nearbyWishlistSuggestions } from '../../domain/wishlist'
 import type { Trip, ItineraryItem, BookingStatus, WishlistPlace } from '../../types'
 import { formatMoney } from '../../lib/money'
 import { TimePicker } from '../../components/TimePicker'
+import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { LocationPicker, type LocationValue } from '../../components/LocationPicker'
@@ -156,6 +157,35 @@ export function ItineraryTab({
     setPendingDeleteId(null)
   }
 
+  type ItemFieldEdits = {
+    title: string
+    time: string
+    location: LocationValue
+    notes: string
+    bookingStatus: BookingStatus | null
+    sourceWishlistId: string | null
+  }
+
+  // 换日期的确认框只在"关联的账目用了跨天分摊"时才需要弹出（见domain/itinerary.ts
+  // 的注释）；等用户确认后才真正执行，取消的话表单保持打开，其余没改动的字段不丢
+  const [pendingDaySpreadMove, setPendingDaySpreadMove] = useState<{ itemId: string; newDate: string; fields: ItemFieldEdits } | null>(null)
+
+  async function applyItemSave(itemId: string, newDate: string, fields: ItemFieldEdits) {
+    const dayId = newDate !== selected ? await resolveDayForItemMove(trip.id, newDate, itemId) : undefined
+    await db.itineraryItems.update(itemId, {
+      ...(dayId ? { dayId } : {}),
+      title: fields.title,
+      time: fields.time || null,
+      locationName: fields.location.name || null,
+      lat: fields.location.lat,
+      lng: fields.location.lng,
+      notes: fields.notes || null,
+      bookingStatus: fields.bookingStatus,
+      sourceWishlistId: fields.sourceWishlistId,
+      updatedAt: Date.now(),
+    })
+  }
+
   if (!days.length) {
     return (
       <div className="px-5 pt-3 pb-24 text-sm text-muted">
@@ -296,21 +326,17 @@ export function ItineraryTab({
                       <ItemForm
                         ref={itemFormRef}
                         initial={it}
+                        currentDate={selected}
                         countryCodes={trip.destinationCountries}
                         onCancel={() => setFormState(null)}
                         onDelete={() => setPendingDeleteId(it.id)}
-                        onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId) => {
-                          await db.itineraryItems.update(it.id, {
-                            title,
-                            time: time || null,
-                            locationName: location.name || null,
-                            lat: location.lat,
-                            lng: location.lng,
-                            notes: notes || null,
-                            bookingStatus,
-                            sourceWishlistId,
-                            updatedAt: Date.now(),
-                          })
+                        onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId, date) => {
+                          const fields = { title, time, location, notes, bookingStatus, sourceWishlistId }
+                          if (date !== selected && (await hasLinkedDaySpreadExpense(it.id))) {
+                            setPendingDaySpreadMove({ itemId: it.id, newDate: date, fields })
+                            return
+                          }
+                          await applyItemSave(it.id, date, fields)
                           // 用函数式更新而不是直接setFormState(null)：这个保存是异步的，
                           // 如果保存过程中用户已经点开了另一张卡片（formState变成了别的id），
                           // 这里不能把新打开的表单也顺手关掉
@@ -395,6 +421,7 @@ export function ItineraryTab({
             {formState === 'new' ? (
               <ItemForm
                 ref={itemFormRef}
+                currentDate={selected}
                 countryCodes={trip.destinationCountries}
                 onCancel={() => setFormState(null)}
                 onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId) => {
@@ -447,12 +474,29 @@ export function ItineraryTab({
           onCancel={() => setPendingDeleteId(null)}
         />
       )}
+
+      {pendingDaySpreadMove && (
+        <ConfirmDialog
+          title="这笔行程项关联的账目做了跨天分摊"
+          message="换到新日期后，那笔账目分摊到每一天的日期不会跟着自动调整，需要你自己去记账页确认或调整。确定要换日期吗？"
+          confirmLabel="确定换"
+          danger={false}
+          onConfirm={async () => {
+            const { itemId, newDate, fields } = pendingDaySpreadMove
+            await applyItemSave(itemId, newDate, fields)
+            setFormState((cur) => (cur === itemId ? null : cur))
+            setPendingDaySpreadMove(null)
+          }}
+          onCancel={() => setPendingDaySpreadMove(null)}
+        />
+      )}
     </div>
   )
 }
 
 const ItemForm = forwardRef<ItemFormHandle, {
   initial?: ItineraryItem
+  currentDate: string
   onSave: (
     title: string,
     time: string,
@@ -460,12 +504,14 @@ const ItemForm = forwardRef<ItemFormHandle, {
     notes: string,
     bookingStatus: BookingStatus | null,
     sourceWishlistId: string | null,
+    date: string,
   ) => void
   onCancel: () => void
   onDelete?: () => void
   countryCodes?: string[]
 }>(function ItemForm({
   initial,
+  currentDate,
   onSave,
   onCancel,
   onDelete,
@@ -473,6 +519,9 @@ const ItemForm = forwardRef<ItemFormHandle, {
 }, ref) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [time, setTime] = useState(initial?.time ?? '')
+  // 只有编辑已有行程项时才允许换日期——新建的项本来就是往当前选中这天加，
+  // 没有"换到哪天"这个概念
+  const [date, setDate] = useState(currentDate)
   const [location, setLocation] = useState<LocationValue>({
     name: initial?.locationName ?? '',
     lat: initial?.lat ?? null,
@@ -513,7 +562,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
   // 标题还是空的就当作取消（新建时点开又反悔不填，直接放弃更符合直觉）
   function finishEditing() {
     if (title.trim()) {
-      onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId)
+      onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId, date)
     } else {
       onCancel()
     }
@@ -547,6 +596,12 @@ const ItemForm = forwardRef<ItemFormHandle, {
           className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
         />
       </div>
+      {initial && (
+        <div>
+          <div className="text-[10px] tracking-widest uppercase text-muted mb-1">日期</div>
+          <DatePicker value={date} onChange={setDate} />
+        </div>
+      )}
       <button
         type="button"
         onClick={() => setWishlistPickerOpen(true)}
@@ -607,7 +662,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
           <X className="w-4 h-4" strokeWidth={1.8} />
         </button>
         <button
-          onClick={() => title.trim() && onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId)}
+          onClick={() => title.trim() && onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId, date)}
           className="flex-1 rounded-lg bg-plan text-card py-1.5 flex items-center justify-center"
           title="保存"
         >
