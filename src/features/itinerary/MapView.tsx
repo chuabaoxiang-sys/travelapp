@@ -76,6 +76,16 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
     return map
   }, [days])
 
+  // 图例用"月-日"而不是图钉上那个"第几天"序号——序号在长行程里连续两位数
+  // 视觉上不够好区分（"第11天"和"第21天"共享数字1，一眼扫过去容易看错），
+  // 完整日期多了月份和分隔符，反而更好认，也是用户平时记行程时脑子里想的
+  // 那个"几号"
+  const dateByDayId = useMemo(() => {
+    const map = new Map<string, string>()
+    days.forEach((d) => map.set(d.id, d.date.slice(5)))
+    return map
+  }, [days])
+
   // 同一天的图钉按顺序连成一条线；分组和图钉上的序号都只算"当天有定位的点"，
   // 没有定位的行程项本来就不在地图上，不占序号
   const dayGroups = useMemo(() => {
@@ -189,7 +199,7 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
             )
           })}
         </MapContainer>
-        <div className="absolute top-3 left-3 right-3 flex flex-wrap gap-1.5" style={{ zIndex: 1000 }}>
+        <div className="absolute top-3 left-3 right-3 flex gap-1.5 overflow-x-auto no-scrollbar" style={{ zIndex: 1000 }}>
           {[...dayGroups.keys()]
             .sort((a, b) => (dayIndexByDate.get(a) ?? 0) - (dayIndexByDate.get(b) ?? 0))
             .map((dayId) => {
@@ -201,7 +211,7 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
                   key={dayId}
                   type="button"
                   onClick={() => setActiveDayId((cur) => (cur === dayId ? null : dayId))}
-                  className="flex items-center gap-1.5 rounded-full pl-1.5 pr-2.5 py-1 text-[10.5px] font-semibold shadow-sm transition-colors"
+                  className="flex items-center gap-1.5 rounded-full pl-1.5 pr-2.5 py-1 text-[10.5px] font-semibold shadow-sm transition-colors flex-shrink-0"
                   style={
                     active
                       ? { background: color, color: '#FFFDF9' }
@@ -212,14 +222,14 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
                     className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ background: active ? '#FFFDF9' : color }}
                   />
-                  第{dayNum}天
+                  {dateByDayId.get(dayId)}
                 </button>
               )
             })}
         </div>
       </div>
       <div className="px-4 py-2 text-[10.5px] text-muted text-center flex-shrink-0 bg-paper">
-        © OpenStreetMap contributors · 点上面的"第几天"看那天的路线
+        © OpenStreetMap contributors · 点上面的日期看那天的路线
       </div>
     </div>
   )
