@@ -107,7 +107,7 @@ export function TripShell({
           />
           <div className="flex items-center gap-2">
             <ShareStatusBadge trip={trip} onOpen={() => setShareSettingsOpen(true)} />
-            <SyncStatusBadge />
+            <SyncStatusBadge onOpenDetail={() => setSyncDetailOpen(true)} />
           </div>
         </div>
 

@@ -10,7 +10,7 @@ import { onPulledChanges } from '../db/sync'
 // 拉到真的有变化时闪一下这个提示，是让"家里还有别人在用"这件事有存在感的最低成本做法。
 const JUST_UPDATED_MS = 3500
 
-export function SyncStatusBadge() {
+export function SyncStatusBadge({ onOpenDetail }: { onOpenDetail: () => void }) {
   const pendingCount = useLiveQuery(() => db.outbox.where('status').equals('pending').count()) ?? 0
   const [justUpdated, setJustUpdated] = useState(false)
 
@@ -22,26 +22,40 @@ export function SyncStatusBadge() {
     return off
   }, [])
 
+  // 点这个角标直接打开"同步详情"，跟"···更多"里那个入口效果一样——待同步的时候
+  // 尤其有用，不用绕去更多面板才能看具体卡在哪一条
   // 有待同步的东西时优先显示待同步——那是"还没送出去"，比"刚收到"更需要用户知道
   if (pendingCount > 0) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-spend/10 text-spend px-2.5 py-0.5 text-[10px]">
+      <button
+        type="button"
+        onClick={onOpenDetail}
+        className="inline-flex items-center gap-1.5 rounded-full bg-spend/10 text-spend px-2.5 py-0.5 text-[10px]"
+      >
         <span className="w-1.5 h-1.5 rounded-full bg-current" /> {pendingCount}条待同步
-      </span>
+      </button>
     )
   }
 
   if (justUpdated) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-plan/10 text-plan px-2.5 py-0.5 text-[10px]">
+      <button
+        type="button"
+        onClick={onOpenDetail}
+        className="inline-flex items-center gap-1.5 rounded-full bg-plan/10 text-plan px-2.5 py-0.5 text-[10px]"
+      >
         <span className="w-1.5 h-1.5 rounded-full bg-current" /> 刚更新
-      </span>
+      </button>
     )
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-positive/10 text-positive px-2.5 py-0.5 text-[10px]">
+    <button
+      type="button"
+      onClick={onOpenDetail}
+      className="inline-flex items-center gap-1.5 rounded-full bg-positive/10 text-positive px-2.5 py-0.5 text-[10px]"
+    >
       <span className="w-1.5 h-1.5 rounded-full bg-current" /> 已同步
-    </span>
+    </button>
   )
 }
