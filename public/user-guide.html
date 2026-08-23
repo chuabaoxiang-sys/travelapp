@@ -316,7 +316,7 @@
     <li><a href="#f4"><span class="t">预算怎么看</span><span class="d">总预算 · 分类预算</span></a></li>
     <li><a href="#f5"><span class="t">想去的地点怎么用</span><span class="d">收藏清单 · 附近提醒</span></a></li>
     <li><a href="#f6"><span class="t">汇率簿是干吗的</span><span class="d">记好汇率，记账不用现算</span></a></li>
-    <li><a href="#f7"><span class="t">导出与分享</span><span class="d">Excel/JSON/CSV · 分享链接</span></a></li>
+    <li><a href="#f7"><span class="t">更多：导出/分享/同步详情</span><span class="d">Excel/JSON/CSV · 分享链接 · 同步状态</span></a></li>
   </ol>
 </div>
 
@@ -619,10 +619,10 @@
   </div>
 </section>
 
-<!-- 7. 导出与分享 -->
+<!-- 7. 更多 -->
 <section class="feature page" id="f7">
-  <div class="feature-head"><span class="feature-num">07</span><h2>导出与分享</h2></div>
-  <p class="lede">整趟行程的行程和账目，导出成文件带走，或者开一个只读链接给没装APP的人看。</p>
+  <div class="feature-head"><span class="feature-num">07</span><h2>更多</h2></div>
+  <p class="lede">导出行程带走、开只读链接给别人看、看同步状态，这些不常用但要用时得找得到的功能，都在这里。</p>
   <div class="layout">
     <div class="visual-col">
     <div class="entry">
@@ -637,24 +637,33 @@
       <div class="bar"></div>
       <div class="scr">
         <div class="row-between" style="margin-bottom:6px;">
-          <span style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;">导出与分享</span>
+          <span style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;">更多</span>
           <span class="muted">✕</span>
         </div>
+        <div class="muted" style="font-size:6.2px;font-weight:700;letter-spacing:.05em;margin:4px 0 3px;">导出与分享</div>
         <div class="item-card">
-          <div class="row-between"><span style="font-weight:600;">导出 Excel</span><span class="plan-text" style="font-size:6.6px;">分享 ›</span></div>
-          <div class="item-sub">明细 + 汇总两个sheet</div>
-        </div>
-        <div class="item-card">
-          <div class="row-between"><span style="font-weight:600;">导出 JSON</span><span class="plan-text" style="font-size:6.6px;">分享 ›</span></div>
-          <div class="item-sub">给AI工具生成游记文案用</div>
+          <div class="row-between">
+            <span style="font-weight:600;">导出行程</span>
+            <span style="display:flex;gap:3px;">
+              <span style="width:16px;height:16px;border:1px solid var(--color-line);border-radius:4px;font-size:4.5px;display:flex;align-items:center;justify-content:center;">EXCEL</span>
+              <span style="width:16px;height:16px;border:1px solid var(--color-line);border-radius:4px;font-size:4.5px;display:flex;align-items:center;justify-content:center;">JSON</span>
+              <span style="width:16px;height:16px;border:1px solid var(--color-line);border-radius:4px;font-size:4.5px;display:flex;align-items:center;justify-content:center;">CSV</span>
+            </span>
+          </div>
+          <div class="item-sub">选个格式，明细+汇总都在里面</div>
         </div>
         <div class="item-card">
           <div class="row-between"><span style="font-weight:600;">分享设置</span><span class="plan-text" style="font-size:6.6px;">设置 ›</span></div>
           <div class="item-sub">只读分享链接已开启</div>
         </div>
+        <div class="muted" style="font-size:6.2px;font-weight:700;letter-spacing:.05em;margin:6px 0 3px;">更多</div>
         <div class="item-card">
           <div class="row-between"><span style="font-weight:600;">行程动态</span><span class="plan-text" style="font-size:6.6px;">去看看 ›</span></div>
           <div class="item-sub">看家里谁记了账、加了什么</div>
+        </div>
+        <div class="item-card">
+          <div class="row-between"><span style="font-weight:600;">同步详情</span><span class="plan-text" style="font-size:6.6px;">查看 ›</span></div>
+          <div class="item-sub">全部已同步</div>
         </div>
       </div>
     </div>
@@ -662,10 +671,9 @@
     <div class="body-col">
       <h3 class="step-h">具体步骤</h3>
       <ol class="steps">
-        <li>点<b>导出Excel</b>——生成一个文件，明细和汇总各占一个sheet，行程和账目都在里面，导出后手机会弹出系统分享面板，选"保存到文件"或者发给别人都行。</li>
-        <li>点<b>导出JSON</b>——如果想用AI工具帮忙写游记文案或者剪短视频脚本，这个格式喂给AI比较方便；<b>导出CSV</b>——摊平成表格，方便导入Excel以外的其他工具。</li>
+        <li><b>导出与分享</b>这一组：点<b>导出行程</b>右边的<b>EXCEL/JSON/CSV</b>任一个格式——Excel是明细+汇总两个sheet；JSON方便喂给AI工具写游记文案、剪短视频脚本；CSV摊平成表格方便导入其他工具。生成后手机会弹出系统分享面板，选"保存到文件"或者发给别人都行。</li>
         <li>点<b>分享设置</b>，可以开一个<b>只读链接</b>，发给没有装APP的亲戚朋友，对方点开链接就能看行程和账目，不用注册登录，也改不了任何内容。</li>
-        <li>点<b>行程动态</b>，能看到团队里每个人最近记了什么账、加了什么行程安排——谁改的一目了然。</li>
+        <li><b>更多</b>这一组是杂项功能：<b>行程动态</b>能看到团队里每个人最近记了什么账、加了什么行程安排；<b>同步详情</b>能看到哪些记录还没同步成功、卡在哪一步，卡住太久的还能手动放弃同步。</li>
         <li>最下面还有"<b>提交反馈</b>"（用得不顺手的地方直接说）和"<b>检查更新</b>"（手机上感觉APP没更新到最新版时，点一下强制刷新）。</li>
       </ol>
       <div class="tip"><b>提醒：</b>只读链接给出去之后，对方能看到的内容范围由"分享设置"里的选项决定，随时可以关掉链接收回访问权限。</div>
