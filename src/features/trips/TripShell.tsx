@@ -130,7 +130,7 @@ export function TripShell({
           <button
             onClick={() => { setMoreOpen(true); markHintSeen(currentMemberId, 'moreSheet') }}
             className="relative w-[46px] rounded-[13px] border border-line bg-card flex items-center justify-center text-ink flex-shrink-0"
-            title="导出与分享"
+            title="更多"
           >
             <svg viewBox="0 0 24 24" className="w-[19px] h-[19px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
               <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />

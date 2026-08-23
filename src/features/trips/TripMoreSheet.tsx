@@ -13,11 +13,11 @@ import type { Trip } from '../../types'
 
 type ExportKind = 'excel' | 'json' | 'csv'
 
-const EXPORT_OPTIONS: { kind: ExportKind; title: string; desc: string; icon: ReactNode }[] = [
+const EXPORT_OPTIONS: { kind: ExportKind; label: string; desc: string; icon: ReactNode }[] = [
   {
     kind: 'excel',
-    title: '导出 Excel',
-    desc: '明细 + 汇总两个sheet，行程和账目都在里面',
+    label: 'EXCEL',
+    desc: 'Excel · 明细 + 汇总两个sheet，行程和账目都在里面',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="4" y="3" width="16" height="18" rx="2" />
@@ -27,8 +27,8 @@ const EXPORT_OPTIONS: { kind: ExportKind; title: string; desc: string; icon: Rea
   },
   {
     kind: 'json',
-    title: '导出 JSON',
-    desc: '给AI工具生成游记文案/短视频脚本用',
+    label: 'JSON',
+    desc: 'JSON · 给AI工具生成游记文案/短视频脚本用',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M7 3h7l5 5v13H7z" />
@@ -38,8 +38,8 @@ const EXPORT_OPTIONS: { kind: ExportKind; title: string; desc: string; icon: Rea
   },
   {
     kind: 'csv',
-    title: '导出 CSV',
-    desc: '摊平成表格，方便导入其他工具',
+    label: 'CSV',
+    desc: 'CSV · 摊平成表格，方便导入其他工具',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 6h16M4 12h16M4 18h16" />
@@ -147,43 +147,52 @@ export function TripMoreSheet({
         <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-3.5" />
 
         <div className="flex justify-between items-center mb-1">
-          <span className="text-sm font-semibold">导出与分享</span>
+          <span className="text-sm font-semibold">更多</span>
           <button onClick={onClose} className="text-muted" title="关闭">
             <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </button>
         </div>
 
-        <div className="flex flex-col">
-          {EXPORT_OPTIONS.map((opt) => {
-            const isReady = readyFile?.kind === opt.kind
-            return (
-              <button
-                key={opt.kind}
-                onClick={isReady ? handleShare : () => handlePrepare(opt.kind)}
-                disabled={busy !== null}
-                className={`flex items-center gap-3 py-2.5 border-t border-line first:border-t-0 first:mt-1.5 text-left disabled:opacity-50 ${isReady ? 'bg-plan/5 -mx-5 px-5' : ''}`}
-              >
-                <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0 [&_svg]:w-[17px] [&_svg]:h-[17px]">
+        <div className="text-[10px] font-bold text-muted tracking-wide mt-3.5 mb-1.5">导出与分享</div>
+
+        <div className="flex items-center gap-3 py-1.5">
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium">导出行程</div>
+            <div className="text-[10.5px] text-muted mt-0.5">
+              {busy
+                ? '生成中…'
+                : readyFile
+                  ? `${EXPORT_OPTIONS.find((o) => o.kind === readyFile.kind)?.label}文件已就绪，点击分享`
+                  : '选个格式，明细+汇总都在里面'}
+            </div>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            {EXPORT_OPTIONS.map((opt) => {
+              const isReady = readyFile?.kind === opt.kind
+              return (
+                <button
+                  key={opt.kind}
+                  onClick={isReady ? handleShare : () => handlePrepare(opt.kind)}
+                  disabled={busy !== null}
+                  title={opt.desc}
+                  className={`w-10 h-10 rounded-[11px] border flex flex-col items-center justify-center gap-0.5 disabled:opacity-50 [&_svg]:w-[15px] [&_svg]:h-[15px] ${
+                    isReady ? 'bg-plan text-paper border-plan' : 'bg-card border-line text-plan'
+                  }`}
+                >
                   {opt.icon}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium">{opt.title}</div>
-                  <div className="text-[10.5px] text-muted mt-0.5">{opt.desc}</div>
-                </div>
-                <span className="text-[11.5px] text-plan flex-shrink-0 font-medium">
-                  {busy === opt.kind ? '生成中…' : isReady ? '文件已就绪，点击分享 ›' : '分享 ›'}
-                </span>
-              </button>
-            )
-          })}
+                  <span className={`text-[7px] font-bold ${isReady ? 'text-paper/80' : 'text-muted'}`}>{opt.label}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        {error && <div className="text-[11.5px] text-negative mt-2">{error}</div>}
-        {note && <div className="text-[11.5px] text-muted mt-2">{note}</div>}
+        {error && <div className="text-[11.5px] text-negative mt-1">{error}</div>}
+        {note && <div className="text-[11.5px] text-muted mt-1">{note}</div>}
 
         <button
           onClick={onOpenShareSettings}
-          className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left"
+          className="w-full flex items-center gap-3 py-2.5 mt-1 border-t border-line text-left"
         >
           <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
             <Link2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
@@ -197,79 +206,72 @@ export function TripMoreSheet({
           <span className="text-[11.5px] text-plan flex-shrink-0">设置 ›</span>
         </button>
 
-        <button
-          onClick={onOpenActivity}
-          className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left"
-        >
-          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
-            <Users className="w-[17px] h-[17px]" strokeWidth={1.8} />
+        <div className="text-[10px] font-bold text-muted tracking-wide mt-4 mb-1.5">更多</div>
+
+        <button onClick={onOpenActivity} className="w-full flex items-center gap-2.5 py-2 text-left">
+          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+            <Users className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium">行程动态</div>
-            <div className="text-[10.5px] text-muted mt-0.5">看家里谁记了账、加了什么安排</div>
+            <div className="text-[12px] font-medium">行程动态</div>
+            <div className="text-[9.5px] text-muted mt-0.5">看家里谁记了账、加了什么安排</div>
           </div>
-          <span className="text-[11.5px] text-plan flex-shrink-0">去看看 ›</span>
+          <span className="text-[10.5px] text-plan flex-shrink-0">去看看 ›</span>
         </button>
 
-        <button
-          onClick={onOpenSyncDetail}
-          className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left"
-        >
-          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
-            <ListChecks className="w-[17px] h-[17px]" strokeWidth={1.8} />
+        <button onClick={onOpenSyncDetail} className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left">
+          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+            <ListChecks className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium">同步详情</div>
-            <div className={`text-[10.5px] mt-0.5 ${syncSummaryClass}`}>{syncSummary}</div>
+            <div className="text-[12px] font-medium">同步详情</div>
+            <div className={`text-[9.5px] mt-0.5 ${syncSummaryClass}`}>{syncSummary}</div>
           </div>
-          <span className="text-[11.5px] text-plan flex-shrink-0">查看 ›</span>
+          <span className="text-[10.5px] text-plan flex-shrink-0">查看 ›</span>
         </button>
 
         <a
           href="/user-guide.html"
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left"
+          className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left"
         >
-          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
-            <BookOpen className="w-[17px] h-[17px]" strokeWidth={1.8} />
+          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+            <BookOpen className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium">使用指南</div>
-            <div className="text-[10.5px] text-muted mt-0.5">行程、记账、分账这些功能怎么用，照真实界面讲一遍</div>
+            <div className="text-[12px] font-medium">使用指南</div>
+            <div className="text-[9.5px] text-muted mt-0.5">行程、记账、分账这些功能怎么用，照真实界面讲一遍</div>
           </div>
-          <span className="text-[11.5px] text-plan flex-shrink-0">去看看 ›</span>
+          <span className="text-[10.5px] text-plan flex-shrink-0">去看看 ›</span>
         </a>
 
-        <button
-          onClick={onOpenFeedback}
-          className="w-full flex items-center gap-3 py-2.5 border-t border-line text-left"
-        >
-          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
-            <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <button onClick={onOpenFeedback} className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left">
+          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+            <svg viewBox="0 0 24 24" className="w-[15px] h-[15px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
             </svg>
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium">提交反馈</div>
-            <div className="text-[10.5px] text-muted mt-0.5">用得不顺手的地方、想加的功能，都可以说</div>
+            <div className="text-[12px] font-medium">提交反馈</div>
+            <div className="text-[9.5px] text-muted mt-0.5">用得不顺手的地方、想加的功能，都可以说</div>
           </div>
-          <span className="text-[11.5px] text-plan flex-shrink-0">去反馈 ›</span>
+          <span className="text-[10.5px] text-plan flex-shrink-0">去反馈 ›</span>
         </button>
 
         <button
           onClick={handleManualRefresh}
           disabled={refreshing}
-          className="w-full flex items-center gap-3 py-2.5 mt-2 border-t border-line text-left disabled:opacity-50"
+          className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left disabled:opacity-50"
         >
-          <span className="w-[34px] h-[34px] rounded-[10px] bg-card border border-line flex items-center justify-center text-plan flex-shrink-0">
-            <RefreshCw className={`w-[17px] h-[17px] ${refreshing ? 'animate-spin' : ''}`} strokeWidth={1.8} />
+          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+            <RefreshCw className={`w-[15px] h-[15px] ${refreshing ? 'animate-spin' : ''}`} strokeWidth={1.8} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium">检查更新</div>
-            <div className="text-[10.5px] text-muted mt-0.5 tabular">当前版本 {formatAppVersion()}</div>
+            <div className="text-[12px] font-medium">检查更新</div>
+            <div className="text-[9.5px] text-muted mt-0.5 tabular">当前版本 {formatAppVersion()}</div>
           </div>
-          <span className="text-[11.5px] text-plan flex-shrink-0">{refreshing ? '刷新中…' : '点击刷新'}</span>
+          <span className="text-[10.5px] text-plan flex-shrink-0">{refreshing ? '刷新中…' : '点击刷新'}</span>
         </button>
       </div>
     </div>
