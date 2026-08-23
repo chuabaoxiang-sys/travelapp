@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, CircleCheck, Pencil, Trash2, Check } from 'lucide-react'
+import { X, CircleCheck, Pencil, Trash2, Check, Plus } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { computeBalances, simplifyDebts, openExpenseDebts, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
 import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../../domain/settlements'
@@ -10,10 +10,117 @@ import { Avatar } from '../../components/Avatar'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
-import type { Trip, Settlement } from '../../types'
+import type { Trip, Settlement, Member } from '../../types'
 
 function debtKey(d: OpenExpenseDebt) {
   return `${d.expenseId}:${d.debtorId}`
+}
+
+// "记一笔结算"表单——不依赖已有欠款/账目，用来记预付款这类场景。抽成组件
+// 是因为空状态页和主页面各有一个入口，两边共用同一份表单，不重复一份JSX
+function ManualSettleModal({
+  members,
+  from,
+  to,
+  amount,
+  date,
+  note,
+  onFromChange,
+  onToChange,
+  onAmountChange,
+  onDateChange,
+  onNoteChange,
+  onCancel,
+  onConfirm,
+}: {
+  members: Member[]
+  from: string | null
+  to: string | null
+  amount: string
+  date: string
+  note: string
+  onFromChange: (id: string) => void
+  onToChange: (id: string) => void
+  onAmountChange: (v: string) => void
+  onDateChange: (v: string) => void
+  onNoteChange: (v: string) => void
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <CenteredModal onClose={onCancel}>
+      <div className="font-serif-sc text-[15px] text-ink mb-3">记一笔结算</div>
+      <label className="text-[11px] text-muted block mb-1.5">谁付出</label>
+      <div className="flex flex-wrap gap-1.5 mb-2.5">
+        {members.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => onFromChange(m.id)}
+            className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3 py-1 text-[12px] border ${
+              from === m.id ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-[#57534E]'
+            }`}
+          >
+            <Avatar member={m} size={18} />
+            {m.displayName}
+          </button>
+        ))}
+      </div>
+      <label className="text-[11px] text-muted block mb-1.5">付给</label>
+      <div className="flex flex-wrap gap-1.5 mb-2.5">
+        {members.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => onToChange(m.id)}
+            className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3 py-1 text-[12px] border ${
+              to === m.id ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-[#57534E]'
+            }`}
+          >
+            <Avatar member={m} size={18} />
+            {m.displayName}
+          </button>
+        ))}
+      </div>
+      <label className="text-[11px] text-muted block mb-2.5">
+        金额
+        <input
+          value={amount}
+          onChange={(e) => onAmountChange(e.target.value)}
+          inputMode="decimal"
+          autoFocus
+          className="block w-full mt-1 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[13px] tabular outline-none focus:border-plan"
+        />
+      </label>
+      <label className="text-[11px] text-muted block mb-2.5">
+        日期
+        <div className="mt-1">
+          <DatePicker value={date} onChange={onDateChange} />
+        </div>
+      </label>
+      <label className="text-[11px] text-muted block">
+        备注（可选）
+        <input
+          value={note}
+          onChange={(e) => onNoteChange(e.target.value)}
+          placeholder="例如：预付、现金"
+          className="block w-full mt-1 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[13px] outline-none focus:border-plan"
+        />
+      </label>
+      <div className="flex gap-2 mt-4">
+        <button onClick={onCancel} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+          <X className="w-4 h-4" strokeWidth={1.8} />
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={!from || !to || from === to || !(parseFloat(amount) > 0)}
+          className="flex-1 rounded-xl bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center gap-1.5"
+          title="确认"
+        >
+          <CircleCheck className="w-4 h-4" strokeWidth={1.8} />
+          <span className="text-[12.5px] font-medium">确认</span>
+        </button>
+      </div>
+    </CenteredModal>
+  )
 }
 
 export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
@@ -65,6 +172,41 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   const [editDate, setEditDate] = useState('')
   const [editNote, setEditNote] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  // 手动记一笔结算——不依赖"已有欠款"或"具体账目"，用来记预付款这类场景：
+  // 有人提前给了一大笔钱，之后会持续用来抵消他名下的开销，但这笔钱产生的
+  // 时候，"结算建议"和"按笔结算"这两个入口都还没有东西可以让他结算
+  const [manualSettleOpen, setManualSettleOpen] = useState(false)
+  const [manualFrom, setManualFrom] = useState<string | null>(null)
+  const [manualTo, setManualTo] = useState<string | null>(null)
+  const [manualAmount, setManualAmount] = useState('')
+  const [manualDate, setManualDate] = useState('')
+  const [manualNote, setManualNote] = useState('')
+
+  function openManualSettle() {
+    setManualFrom(null)
+    setManualTo(null)
+    setManualAmount('')
+    setManualDate(toLocalDateString(new Date()))
+    setManualNote('')
+    setManualSettleOpen(true)
+  }
+
+  async function confirmManualSettle() {
+    const amount = parseFloat(manualAmount)
+    if (!manualFrom || !manualTo || manualFrom === manualTo || !(amount > 0)) return
+    await createSettlement({
+      tripId: trip.id,
+      fromMemberId: manualFrom,
+      toMemberId: manualTo,
+      amount,
+      settledDate: manualDate,
+      note: manualNote.trim() || null,
+      createdBy: currentMemberId,
+      expenseId: null,
+    })
+    setManualSettleOpen(false)
+  }
 
   function memberOf(id: string) {
     return members.find((m) => m.id === id)
@@ -133,7 +275,10 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   }
 
   const transfers = simplifyDebts(balances)
-  const hasAnyMoney = balances.some((b) => b.paid > 0 || b.owed > 0)
+  // 有结算记录（哪怕是一笔还没对应任何账目的预付款）也算"有money活动"——
+  // 不然KN提前打了一笔预付款，账目还一笔没记，这个页面会一直显示"还没有
+  // 可以结算的账目"，看不到这笔预付款，也没地方能再管理它
+  const hasAnyMoney = balances.some((b) => b.paid > 0 || b.owed > 0 || b.settledOut > 0 || b.settledIn > 0)
 
   function openSettle(t: Transfer) {
     const key = `${t.from}-${t.to}`
@@ -182,6 +327,27 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         <div className="w-[60px] h-[60px] rounded-full bg-[#EDE6DA] flex items-center justify-center font-serif-sc text-2xl text-muted">分</div>
         <div className="font-serif-sc text-[15px] mt-2">还没有可以结算的账目</div>
         <div className="text-[12.5px] text-muted max-w-[220px]">记账时勾选"分摊给"多个人，这里就会自动算出谁该收谁的钱。</div>
+        <button onClick={openManualSettle} className="flex items-center gap-1 text-plan text-[12.5px] font-semibold mt-2">
+          <Plus className="w-3.5 h-3.5" strokeWidth={2.2} />
+          有预付款想先记一笔？
+        </button>
+        {manualSettleOpen && (
+          <ManualSettleModal
+            members={members}
+            from={manualFrom}
+            to={manualTo}
+            amount={manualAmount}
+            date={manualDate}
+            note={manualNote}
+            onFromChange={setManualFrom}
+            onToChange={setManualTo}
+            onAmountChange={setManualAmount}
+            onDateChange={setManualDate}
+            onNoteChange={setManualNote}
+            onCancel={() => setManualSettleOpen(false)}
+            onConfirm={confirmManualSettle}
+          />
+        )}
       </div>
     )
   }
@@ -347,9 +513,20 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         </div>
       )}
 
-      {settlements.length > 0 && (
-        <div className="bg-card border border-line rounded-2xl p-4 mb-4">
-          <div className="text-[11px] tracking-widest uppercase text-muted mb-1">结算记录</div>
+      <div className="bg-card border border-line rounded-2xl p-4 mb-4">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-[11px] tracking-widest uppercase text-muted">结算记录</div>
+          <button onClick={openManualSettle} className="flex items-center gap-1 text-plan text-[11.5px] font-semibold">
+            <Plus className="w-3 h-3" strokeWidth={2.2} />
+            新增
+          </button>
+        </div>
+        {settlements.length === 0 ? (
+          <div className="text-[11.5px] text-muted text-center py-2">
+            还没有结算记录。想提前记一笔预付款，或者跟建议金额不一样的结算，点上面"新增"。
+          </div>
+        ) : (
+          <>
           {settlements.map((s) => (
             <div key={s.id}>
               <div className="flex items-center gap-2 py-2.5 border-t border-line first:border-t-0">
@@ -401,8 +578,9 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
               )}
             </div>
           ))}
-        </div>
-      )}
+          </>
+        )}
+      </div>
 
       <div className="font-serif-sc text-[13.5px] font-semibold mb-2">谁付了多少</div>
       <div className="flex flex-col gap-2">
@@ -502,6 +680,24 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
             </button>
           </div>
         </CenteredModal>
+      )}
+
+      {manualSettleOpen && (
+        <ManualSettleModal
+          members={members}
+          from={manualFrom}
+          to={manualTo}
+          amount={manualAmount}
+          date={manualDate}
+          note={manualNote}
+          onFromChange={setManualFrom}
+          onToChange={setManualTo}
+          onAmountChange={setManualAmount}
+          onDateChange={setManualDate}
+          onNoteChange={setManualNote}
+          onCancel={() => setManualSettleOpen(false)}
+          onConfirm={confirmManualSettle}
+        />
       )}
     </div>
   )
