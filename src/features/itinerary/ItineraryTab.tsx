@@ -266,9 +266,12 @@ export function ItineraryTab({
         )}
         {viewMode === 'map' && <MapView days={itineraryDays} items={allItems} />}
         {viewMode === 'timeline' && (
-          <div ref={timelineScrollRef} className="px-5 pt-2 pb-24 overflow-y-auto no-scrollbar h-full">
-            {/* 完整日期条——正常展开时的样子，不做任何形变/收起动画，原样滚走 */}
-            <div className="relative -mx-5 px-5 mb-3.5">
+          <div ref={timelineScrollRef} className="px-5 pb-24 overflow-y-auto no-scrollbar h-full">
+            {/* 完整日期条——正常展开时的样子，不做任何形变/收起动画，原样滚走。
+            pt-2放在这里而不是放在滚动容器本身，是因为滚动容器如果自己带
+            padding-top，sticky吸顶栏只会贴到padding内侧、留出一条padding高度
+            的缝，划过的行程卡片会从这条缝里露出来 */}
+            <div className="relative -mx-5 px-5 pt-2 mb-3.5">
               <div
                 ref={stripRef}
                 onScroll={updateScrollState}
