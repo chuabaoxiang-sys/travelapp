@@ -185,15 +185,26 @@ export function onPulledChanges(cb: PullListener): () => void {
   return () => pullListeners.delete(cb)
 }
 
+// 网络不好时一轮同步可能比10秒的前台间隔还慢，定时器不会等上一轮跑完就又
+// 触发下一轮。两轮同时跑，各自的 pullAll() 会重叠使用 dexie.ts 里那个屏蔽
+// outbox 记录的计数器——单靠计数器只能防止"提前解除屏蔽"，但两轮各自完整
+// 跑一遍推送/拉取本身就是重复劳动，也可能读到彼此中途的过渡状态。这里直接
+// 用一个进行中标记把重叠的调用整个跳过，同一时间只让一轮真正在跑
+let syncInFlight = false
+
 export async function runSync(): Promise<void> {
   if (!supabase) return
   if (typeof navigator !== 'undefined' && !navigator.onLine) return
+  if (syncInFlight) return
+  syncInFlight = true
   try {
     await pushOutbox()
     const changed = await pullAll()
     if (changed > 0) pullListeners.forEach((cb) => cb(changed))
   } catch {
     // 网络抖动/偶发失败，下个周期自然会重试，这里不需要往上抛出打断调用方
+  } finally {
+    syncInFlight = false
   }
 }
 

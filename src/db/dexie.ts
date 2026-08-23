@@ -130,14 +130,20 @@ export const db = new TripJournalDB()
 // "本地新写入"又重新记一条 outbox，推回云端造成两台设备之间来回震荡的无效流量。
 // 用一个简单的模块级标记而不是给每次调用传参，因为 bulkPut 内部对每一行都会
 // 触发一次 hook，没法在 bulkPut 的调用点之外单独给每一行传标记。
-let suppressOutboxTracking = false
+//
+// 用计数器而不是布尔值：网络不好时两轮 runSync() 可能会重叠执行（各自的
+// pullAll() 都在写不同的表），如果只是个布尔开关，先结束的那次调用退出时
+// 会把标记直接置回 false，把还没结束的另一次也一起"解除屏蔽"，导致它接下来
+// 拉回来的行被误记成本地新写入——这正是 2026-08-23 那次"完全没操作就冒出待
+// 同步"的根源。计数器保证只有最外层的调用退出时才会真正关闭屏蔽
+let suppressOutboxDepth = 0
 
 export async function withoutOutboxTracking<T>(fn: () => Promise<T>): Promise<T> {
-  suppressOutboxTracking = true
+  suppressOutboxDepth++
   try {
     return await fn()
   } finally {
-    suppressOutboxTracking = false
+    suppressOutboxDepth--
   }
 }
 
@@ -171,21 +177,21 @@ function registerOutboxHooks(db: TripJournalDB) {
     const table = db.table(tableName)
 
     table.hook('creating', (primKey, obj) => {
-      if (suppressOutboxTracking) return
+      if (suppressOutboxDepth > 0) return
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, String(primKey ?? (obj as { id: string }).id), 'upsert', obj)
       })
     })
 
     table.hook('updating', (modifications, primKey, obj) => {
-      if (suppressOutboxTracking) return
+      if (suppressOutboxDepth > 0) return
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, String(primKey), 'upsert', { ...obj, ...modifications })
       })
     })
 
     table.hook('deleting', (primKey) => {
-      if (suppressOutboxTracking) return
+      if (suppressOutboxDepth > 0) return
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, String(primKey), 'delete', null)
       })
