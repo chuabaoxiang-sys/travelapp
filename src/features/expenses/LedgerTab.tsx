@@ -10,6 +10,9 @@ import { computeBalances } from '../../domain/splits'
 import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
+import { spentOnDate } from '../../domain/dayAllocations'
+import { resolveAllowance } from '../../domain/dailyAllowance'
+import { SpendHero } from './SpendHero'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { DiscoveryDot } from '../../components/DiscoveryDot'
 import { markHintSeen } from '../../domain/discoveryHints'
@@ -56,6 +59,24 @@ export function LedgerTab({
   useBackDismiss(rateBookOpen, () => setRateBookOpen(false))
 
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
+  const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
+
+  // 用 spentOnDate（按 expenseDate 归日）而不是行程页那个 spendByDate（按
+  // itineraryDayId 归日）——两者口径不同，详见 dayAllocations.ts 里的说明。
+  // 这里要的是"今天从口袋里出去多少钱"，关联没关联行程都得算
+  const dayAllocations = useLiveQuery(
+    () => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id],
+  ) ?? []
+  const todayISO = new Date().toLocaleDateString('sv-SE') // sv-SE 的格式刚好就是 YYYY-MM-DD，且按本地时区
+  const todaySpent = spentOnDate(expenses, dayAllocations, todayISO)
+  const allowance = resolveAllowance({
+    todayISO,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    budget: overallBudget?.amount ?? null,
+    total,
+    todaySpent,
+  })
   const myExpenseIds = myRelatedExpenseIds(expenses, splits, currentMemberId)
   const visibleExpenses = view === 'mine' ? expenses.filter((e) => myExpenseIds.has(e.id)) : expenses
   const editingExpense = expenses.find((e) => e.id === editingId)
@@ -101,26 +122,18 @@ export function LedgerTab({
         </button>
       </div>
 
-      <div className="bg-ink rounded-[20px] px-[18px] pt-[18px] pb-4 text-paper mb-4">
-        <div className="text-[11px] tracking-wider text-paper/55">{view === 'team' ? '团队已花费' : '我的花费（含分摊）'}</div>
-        <div className="flex items-baseline gap-2 mt-1.5">
-          <div className="font-serif-sc text-[30px] leading-none">
-            {formatMoney(view === 'team' ? total : myOwed, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}
-          </div>
+      {/* 团队视角用"今天还能花"——那是唯一会随每次记账变化的数字，也是记账这个动作
+          的即时回报。"我的花费"保持整趟汇总：预算是团队级的，没有个人预算可以推出
+          个人的每日额度，硬凑一个只会让人误解 */}
+      {view === 'team' ? (
+        <SpendHero state={allowance} currency={currencyLabel} />
+      ) : (
+        <div className="bg-ink rounded-[20px] px-[18px] pt-[18px] pb-4 text-paper mb-4">
+          <div className="text-[11px] tracking-wider text-paper/55">我这趟要承担</div>
+          <div className="font-serif-sc text-[27px] leading-none mt-1.5">{formatMoney(myOwed, currencyLabel)}</div>
+          <div className="mt-2 text-[11px] text-paper/50">自己付的 + 分摊别人垫付的</div>
         </div>
-        {view === 'team' && overallBudget && (
-          <div className="mt-2 text-[11px] text-paper/50">
-            {total > overallBudget.amount
-              ? `已超出总预算 ${formatMoney(total - overallBudget.amount)}`
-              : `距总预算还剩 ${formatMoney(overallBudget.amount - total)}`}
-          </div>
-        )}
-        {view === 'mine' && (
-          <div className="mt-2 text-[11px] text-paper/50">
-            不管是自己付的、还是分摊别人垫付的，这里都是你实际要承担的总额
-          </div>
-        )}
-      </div>
+      )}
 
       <div className="flex flex-col gap-2">
         {visibleExpenses.map((e) => {

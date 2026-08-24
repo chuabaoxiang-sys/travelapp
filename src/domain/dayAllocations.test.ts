@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { resolveDayShares, saveDayAllocations, deleteDayAllocations, spendByDate } from './dayAllocations'
+import { resolveDayShares, saveDayAllocations, deleteDayAllocations, spendByDate, spentOnDate } from './dayAllocations'
 import { db } from '../db/dexie'
 import type { Expense, ExpenseDayAllocation } from '../types'
 
@@ -150,5 +150,44 @@ describe('spendByDate', () => {
   it('没关联到任何一天的开销不计入任何一天', () => {
     const totals = spendByDate([expense('e1', 180, null)], [], days)
     expect(totals.size).toBe(0)
+  })
+})
+
+describe('spentOnDate（和 spendByDate 是不同口径，别混用）', () => {
+  function expense(id: string, homeAmount: number, expenseDate: string,
+                   itineraryDayId: string | null, daySpreadMode?: 'equal' | 'exact'): Expense {
+    return {
+      id, householdId: 'h1', tripId: 't1', categoryId: 'cat-food', phase: 'during_trip', description: null,
+      expenseCurrency: 'MYR', expenseAmount: homeAmount, rateBookEntryId: null, rateUsed: 1, homeAmount,
+      paidBy: 'papa', recordedBy: 'papa', expenseDate, itineraryDayId, itineraryItemId: null,
+      splitType: 'equal', daySpreadMode: daySpreadMode ?? null, createdAt: 0, updatedAt: 0,
+    }
+  }
+  const alloc = (expenseId: string, date: string, amount: number): ExpenseDayAllocation =>
+    ({ id: `${expenseId}-${date}`, householdId: 'h1', expenseId, tripId: 't1', date, amount })
+
+  // 这条是这个函数存在的全部理由：关联行程是可选的，绝大多数账目 itineraryDayId 都是
+  // null。曾经"今天已花"错用了 spendByDate，导致这类账目一律不计，额度一整天显示满的
+  it('没有关联任何行程日的开销，照样算进当天', () => {
+    expect(spentOnDate([expense('e1', 268, '2026-08-24', null)], [], '2026-08-24')).toBe(268)
+  })
+
+  it('按 expenseDate 归日，不看它关联到哪个行程日', () => {
+    // 关联的是 day-1（8/21），但 expenseDate 是 8/24 —— 应该算在 8/24
+    const e = expense('e1', 100, '2026-08-24', 'day-1')
+    expect(spentOnDate([e], [], '2026-08-24')).toBe(100)
+    expect(spentOnDate([e], [], '2026-08-21')).toBe(0)
+  })
+
+  it('跨天开销只算它分到当天的那一份，不整笔算', () => {
+    const e = expense('e1', 900, '2026-08-21', null, 'equal')
+    const as = [alloc('e1', '2026-08-21', 300), alloc('e1', '2026-08-22', 600)]
+    expect(spentOnDate([e], as, '2026-08-21')).toBe(300)
+    expect(spentOnDate([e], as, '2026-08-22')).toBe(600)
+  })
+
+  it('别的日子的开销不会漏进来', () => {
+    const es = [expense('e1', 100, '2026-08-23', null), expense('e2', 50, '2026-08-24', null)]
+    expect(spentOnDate(es, [], '2026-08-24')).toBe(50)
   })
 })

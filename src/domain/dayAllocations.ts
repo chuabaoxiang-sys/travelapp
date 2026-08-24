@@ -82,3 +82,30 @@ export function spendByDate(
   }
   return totals
 }
+
+// 「某一天实际花出去多少钱」——注意这和上面的 spendByDate 是**两个不同的问题**，
+// 不能互相替用：
+//
+//   spendByDate  按 itineraryDayId 归日，回答的是"这一天安排的那些事花了多少"，
+//                所以只算显式关联到某个行程日的开销，是行程页那个"当日花费"要的口径。
+//   spentOnDate  按 expenseDate 归日，回答的是"这一天从口袋里出去多少钱"，
+//                所有开销都算，不管有没有关联行程。
+//
+// 「今天还能花」要的是后者。用错口径会有一个很隐蔽的后果：关联行程是可选的、
+// 大多数账目都没关联，于是"今天已花"几乎永远是 0，额度一整天都显示满的。
+// 跨天开销两边都走 allocations，因为那笔钱确实是分几天消耗掉的。
+export function spentOnDate(
+  expenses: Expense[],
+  allocations: ExpenseDayAllocation[],
+  dateISO: string,
+): number {
+  let sum = 0
+  for (const e of expenses) {
+    if (e.daySpreadMode) continue // 由下面的 allocations 负责，避免重复计
+    if (e.expenseDate === dateISO) sum += e.homeAmount
+  }
+  for (const a of allocations) {
+    if (a.date === dateISO) sum += a.amount
+  }
+  return round2(sum)
+}
