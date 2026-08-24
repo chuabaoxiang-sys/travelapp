@@ -44,6 +44,7 @@ export function AddExpensePage({
   const itineraryDays = useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const itineraryItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const tripDates = trip.startDate && trip.endDate ? dateRange(trip.startDate, trip.endDate) : []
+  const todayISO = new Date().toLocaleDateString('sv-SE')
 
   const [linkOpen, setLinkOpen] = useState(!!initial?.itineraryDayId)
   const [linkDate, setLinkDate] = useState('')
@@ -105,6 +106,11 @@ export function AddExpensePage({
   // "关掉整个记账页"（跟点取消/点背景一样，本来就不带二次确认，子页多退一层
   // 不改变这个既有语义）；只有桌面 Escape 键会先退一层子页，见下面 useEscapeKey
   const [activeDetail, setActiveDetail] = useState<'split' | 'days' | null>(null)
+
+  // 阶段/日期/备注/付款人/关联行程/怎么分/花在几天——这几项绝大多数时候都是默认值就对
+  // （自己付、今天、全家平摊），折叠在"其他设置"里，只留金额+分类两个真正每次都要
+  // 决定的东西。编辑已有账目时默认展开，因为已有数据往往就是"不是默认值"才需要编辑
+  const [detailsOpen, setDetailsOpen] = useState(!!initial)
 
   // 住宿、周游券这类开销横跨好几天，整笔算在某一天会让那天的"当日花费"虚高、
   // 其他天虚低。打开"跨多天"之后逐天勾选（不要求连续），再选平均分还是每天自己填——
@@ -453,35 +459,48 @@ export function AddExpensePage({
       ? '未选择分摊对象'
       : `${payerName}垫付 · ${splitMemberIds.length}人${splitMode === 'exact' && splitMemberIds.length >= 2 ? '自定义' : '平均'}分摊`
   const daysSummary = !spreadOpen || !spreadDates.length ? '单日' : `跨${spreadDates.length}天${dayMode === 'exact' ? ' · 自定义' : ''}`
+  const foldSummary = [
+    phase === 'pre_trip' ? '出行前' : '途中',
+    expenseDate === todayISO ? '今天' : expenseDate.slice(5),
+    splitSummary,
+    spreadOpen && spreadDates.length ? daysSummary : null,
+    linkOpen && linkDate ? '已关联行程' : null,
+  ].filter(Boolean).join(' · ')
 
   return (
-    <div className="absolute inset-0 z-30 bg-paper flex flex-col">
-      <div className="flex items-center justify-between px-4 pt-safe-header pb-2.5 border-b border-line flex-shrink-0">
-        <button onClick={onClose} className="text-muted text-[12.5px]">取消</button>
-        <span className="font-serif-sc text-[13.5px] font-semibold">{initial ? '编辑这笔' : '记一笔'}</span>
-        <div className="flex items-center gap-4">
-          {initial && (
-            <button
-              onClick={() => setConfirmingDelete(true)}
-              disabled={saving || settled}
-              className="text-negative/85 disabled:opacity-40"
-              title={settled ? '这笔账已经结算过，不能删除' : '删除'}
-            >
-              <Trash2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
-            </button>
-          )}
-          <button
-            onClick={save}
-            disabled={!canSave}
-            className="text-plan text-[12.5px] font-semibold disabled:opacity-40"
-          >
-            保存
-          </button>
-        </div>
-      </div>
+    <div className="absolute inset-0 z-30 bg-ink/35" onClick={onClose}>
+      <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="relative pointer-events-auto bg-paper rounded-[26px] pt-3.5 shadow-[0_-6px_28px_rgba(31,27,22,0.22)] max-h-[90%] flex flex-col overflow-hidden"
+        >
+          <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-1 flex-shrink-0" />
+          <div className="flex items-center justify-between px-4 pb-2.5 border-b border-line flex-shrink-0">
+            <button onClick={onClose} className="text-muted text-[12.5px]">取消</button>
+            <span className="font-serif-sc text-[13.5px] font-semibold">{initial ? '编辑这笔' : '记一笔'}</span>
+            <div className="flex items-center gap-4">
+              {initial && (
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  disabled={saving || settled}
+                  className="text-negative/85 disabled:opacity-40"
+                  title={settled ? '这笔账已经结算过，不能删除' : '删除'}
+                >
+                  <Trash2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
+                </button>
+              )}
+              <button
+                onClick={save}
+                disabled={!canSave}
+                className="text-plan text-[12.5px] font-semibold disabled:opacity-40"
+              >
+                保存
+              </button>
+            </div>
+          </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 pb-safe-nav">
-        {settled && (
+          <div className="overflow-y-auto no-scrollbar px-4 py-3">
+            {settled && (
           <div className="flex items-center gap-2 rounded-xl bg-plan/8 text-plan px-3 py-2 text-[11.5px] mb-2.5">
             <Lock className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
             这笔账已经结算过，金额、汇率、怎么分、付款人都不能再改，也不能删除
@@ -555,152 +574,168 @@ export function AddExpensePage({
           })}
         </div>
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">阶段</div>
-        <div className="flex gap-1 bg-[#EDE6DA] rounded-xl p-1 w-fit">
-          {(['pre_trip', 'during_trip'] as ExpensePhase[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => { setPhase(p); setCategoryId('') }}
-              className={`rounded-lg px-3 py-1.5 text-[12.5px] ${phase === p ? 'bg-ink text-paper' : 'text-[#8A8177]'}`}
-            >
-              {p === 'pre_trip' ? '出行前' : '途中'}
-            </button>
-          ))}
-        </div>
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">其他设置</div>
+        <button
+          type="button"
+          onClick={() => setDetailsOpen((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 rounded-xl border border-dashed border-line bg-plan/[0.04] px-3.5 py-2.5 text-left"
+        >
+          <span className="text-[12px] text-[#57534E] min-w-0 truncate">{foldSummary}</span>
+          <span className="text-[11.5px] font-semibold text-plan flex-shrink-0">{detailsOpen ? '收起 ‹' : '改 ›'}</span>
+        </button>
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">日期</div>
-        <DatePicker value={expenseDate} onChange={setExpenseDate} />
+        {detailsOpen && (
+          <>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">阶段</div>
+            <div className="flex gap-1 bg-[#EDE6DA] rounded-xl p-1 w-fit">
+              {(['pre_trip', 'during_trip'] as ExpensePhase[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => { setPhase(p); setCategoryId('') }}
+                  className={`rounded-lg px-3 py-1.5 text-[12.5px] ${phase === p ? 'bg-ink text-paper' : 'text-[#8A8177]'}`}
+                >
+                  {p === 'pre_trip' ? '出行前' : '途中'}
+                </button>
+              ))}
+            </div>
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">备注</div>
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="备注（可选）"
-          className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm outline-none focus:border-plan"
-        />
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">日期</div>
+            <DatePicker value={expenseDate} onChange={setExpenseDate} />
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">付款人</div>
-        <div className="flex flex-wrap gap-1.5">
-          {members.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => setPayer(m.id)}
-              disabled={settled}
-              className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border disabled:opacity-60 ${
-                payer === m.id ? 'bg-ink text-paper border-ink' : 'bg-card border-line text-[#57534E]'
-              }`}
-            >
-              <Avatar member={m} size={20} />
-              {m.displayName}垫付
-            </button>
-          ))}
-        </div>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">备注</div>
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="备注（可选）"
+              className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm outline-none focus:border-plan"
+            />
 
-        {tripDates.length > 0 && (
-          <div className="mt-3">
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">关联行程</div>
-            {!linkOpen ? (
-              <button
-                type="button"
-                onClick={() => setLinkOpen(true)}
-                className="text-[12px] text-plan"
-              >
-                关联到行程里的某天/某个行程项（可选）
-              </button>
-            ) : (
-              <div className="bg-card border border-line rounded-xl p-2.5">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10.5px] tracking-widest uppercase text-muted">关联到行程</span>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">付款人</div>
+            <div className="flex flex-wrap gap-1.5">
+              {members.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setPayer(m.id)}
+                  disabled={settled}
+                  className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border disabled:opacity-60 ${
+                    payer === m.id ? 'bg-ink text-paper border-ink' : 'bg-card border-line text-[#57534E]'
+                  }`}
+                >
+                  <Avatar member={m} size={20} />
+                  {m.displayName}垫付
+                </button>
+              ))}
+            </div>
+
+            {tripDates.length > 0 && (
+              <div className="mt-3">
+                <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">关联行程</div>
+                {!linkOpen ? (
                   <button
                     type="button"
-                    onClick={() => { setLinkOpen(false); setLinkDate(''); setLinkItemId(null) }}
-                    className="text-[11px] text-muted"
+                    onClick={() => setLinkOpen(true)}
+                    className="text-[12px] text-plan"
                   >
-                    不关联
+                    关联到行程里的某天/某个行程项（可选）
                   </button>
-                </div>
-                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                  {tripDates.map((d) => {
-                    const num = d.slice(-2).replace(/^0/, '')
-                    const isActive = d === linkDate
-                    return (
+                ) : (
+                  <div className="bg-card border border-line rounded-xl p-2.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10.5px] tracking-widest uppercase text-muted">关联到行程</span>
                       <button
                         type="button"
-                        key={d}
-                        onClick={() => { setLinkDate(d); setLinkItemId(null) }}
-                        className={`flex-shrink-0 rounded-lg px-2.5 py-1.5 text-[11.5px] tabular border ${
-                          isActive ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-[#57534E]'
-                        }`}
+                        onClick={() => { setLinkOpen(false); setLinkDate(''); setLinkItemId(null) }}
+                        className="text-[11px] text-muted"
                       >
-                        {num}日
+                        不关联
                       </button>
-                    )
-                  })}
-                </div>
-                {linkDate && (() => {
-                  const day = itineraryDays.find((d) => d.date === linkDate)
-                  const dayItems = day ? itineraryItems.filter((it) => it.dayId === day.id) : []
-                  if (!dayItems.length) {
-                    return <div className="text-[11px] text-muted mt-1.5">这天还没有行程项，只会挂到「这一天」</div>
-                  }
-                  return (
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setLinkItemId(null)}
-                        className={`rounded-full px-2.5 py-1 text-[11px] border ${
-                          !linkItemId ? 'bg-plan text-card border-plan' : 'bg-paper border-line text-[#57534E]'
-                        }`}
-                      >
-                        只挂到这一天
-                      </button>
-                      {dayItems.map((it) => (
-                        <button
-                          type="button"
-                          key={it.id}
-                          onClick={() => setLinkItemId(it.id)}
-                          className={`rounded-full px-2.5 py-1 text-[11px] border ${
-                            linkItemId === it.id ? 'bg-plan text-card border-plan' : 'bg-paper border-line text-[#57534E]'
-                          }`}
-                        >
-                          {it.title}
-                        </button>
-                      ))}
                     </div>
-                  )
-                })()}
+                    <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                      {tripDates.map((d) => {
+                        const num = d.slice(-2).replace(/^0/, '')
+                        const isActive = d === linkDate
+                        return (
+                          <button
+                            type="button"
+                            key={d}
+                            onClick={() => { setLinkDate(d); setLinkItemId(null) }}
+                            className={`flex-shrink-0 rounded-lg px-2.5 py-1.5 text-[11.5px] tabular border ${
+                              isActive ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-[#57534E]'
+                            }`}
+                          >
+                            {num}日
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {linkDate && (() => {
+                      const day = itineraryDays.find((d) => d.date === linkDate)
+                      const dayItems = day ? itineraryItems.filter((it) => it.dayId === day.id) : []
+                      if (!dayItems.length) {
+                        return <div className="text-[11px] text-muted mt-1.5">这天还没有行程项，只会挂到「这一天」</div>
+                      }
+                      return (
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setLinkItemId(null)}
+                            className={`rounded-full px-2.5 py-1 text-[11px] border ${
+                              !linkItemId ? 'bg-plan text-card border-plan' : 'bg-paper border-line text-[#57534E]'
+                            }`}
+                          >
+                            只挂到这一天
+                          </button>
+                          {dayItems.map((it) => (
+                            <button
+                              type="button"
+                              key={it.id}
+                              onClick={() => setLinkItemId(it.id)}
+                              className={`rounded-full px-2.5 py-1 text-[11px] border ${
+                                linkItemId === it.id ? 'bg-plan text-card border-plan' : 'bg-paper border-line text-[#57534E]'
+                              }`}
+                            >
+                              {it.title}
+                            </button>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">详情</div>
-        <div className="border border-line bg-card rounded-xl overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setActiveDetail('split')}
-            disabled={settled}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 border-b border-line text-left disabled:opacity-60"
-          >
-            <span className="text-[12.5px] text-muted">怎么分</span>
-            <span className="text-[12.5px] flex items-center gap-1">
-              {splitSummary}
-              {!settled && <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />}
-            </span>
-          </button>
-          {tripDates.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setActiveDetail('days')}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 text-left"
-            >
-              <span className="text-[12.5px] text-muted">花在几天</span>
-              <span className="text-[12.5px] flex items-center gap-1">
-                {daysSummary}
-                <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />
-              </span>
-            </button>
-          )}
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">详情</div>
+            <div className="border border-line bg-card rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setActiveDetail('split')}
+                disabled={settled}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 border-b border-line text-left disabled:opacity-60"
+              >
+                <span className="text-[12.5px] text-muted">怎么分</span>
+                <span className="text-[12.5px] flex items-center gap-1">
+                  {splitSummary}
+                  {!settled && <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />}
+                </span>
+              </button>
+              {tripDates.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveDetail('days')}
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-left"
+                >
+                  <span className="text-[12.5px] text-muted">花在几天</span>
+                  <span className="text-[12.5px] flex items-center gap-1">
+                    {daysSummary}
+                    <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />
+                  </span>
+                </button>
+              )}
+            </div>
+          </>
+        )}
+          </div>
         </div>
       </div>
 

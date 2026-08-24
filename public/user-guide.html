@@ -470,27 +470,19 @@
         <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px;">
           <span class="chip-btn active">🍜 餐饮</span><span class="chip-btn">📦 杂项</span><span class="chip-btn">🛍 购物</span><span class="chip-btn">🏨 住宿</span>
         </div>
-        <div class="field-label">阶段</div>
-        <div class="toggle-row"><span>出行前</span><span class="on">途中</span></div>
-        <div class="field-label">备注</div>
-        <div class="field-box">便利店零食</div>
-        <div class="field-label">付款人</div>
-        <div style="display:flex;gap:3px;margin-bottom:4px;">
-          <span class="member-chip">爸 爸爸垫付</span>
-        </div>
-        <div class="field-label">详情</div>
-        <div class="field-box row-between"><span>怎么分</span><span class="muted">爸爸垫付・3人平均分摊 ›</span></div>
+        <div class="field-label">其他设置</div>
+        <div class="field-box row-between" style="border-style:dashed;background:rgba(76,29,149,.05);"><span class="muted" style="font-size:6px;">途中・今天・爸爸垫付・3人平均分摊</span><span class="plan-text" style="font-weight:700;">改 ›</span></div>
       </div>
     </div>
     </div>
     <div class="body-col">
       <h3 class="step-h">具体步骤</h3>
       <ol class="steps">
-        <li>底部导航正中间紫色圆按钮"记一笔"，先填<b>金额</b>和<b>币种</b>——用外币记账时，只要汇率簿里有对应汇率，会自动换算成本位币。</li>
-        <li>选一个<b>分类</b>（餐饮/住宿/交通…），选是"出行前"还是"途中"花的，选<b>日期</b>，写<b>备注</b>。</li>
-        <li>选<b>付款人</b>——谁先垫付的钱。</li>
-        <li>点"<b>怎么分</b>"，决定这笔钱是"大家分摊"（选平均或自定义金额）还是"个人开销"（不分摊给别人）。</li>
-        <li>还可以点"关联行程"，把这笔账跟具体某个行程项绑在一起，之后从行程页也能看到。</li>
+        <li>底部导航正中间紫色圆按钮"记一笔"——点开是个从下往上滑出的<b>半屏卡片</b>，不会整页盖住你原来在看的页面，点卡片外面暗掉的部分也能直接关掉。</li>
+        <li>先填<b>金额</b>，选一个<b>分类</b>（餐饮/住宿/交通…）——这两项是真正每次都要你决定的，用外币记账时，只要汇率簿里有对应汇率，会自动换算成本位币。</li>
+        <li>阶段/日期/备注/付款人/关联行程/怎么分这几项默认收在"<b>其他设置</b>"这一行摘要里（比如"途中・今天・爸爸垫付・3人平均分摊"）——多数时候本来就是对的（自己付、今天、全家平摊），不用每次都点开确认一遍。</li>
+        <li>这次不是默认情况（比如别人垫付的、要跨天摊、要挂到具体行程项），点"<b>改</b>"，卡片原地长高，展开成跟以前一样的完整表单：<b>怎么分</b>可以选"大家分摊"（平均或自定义金额）还是"个人开销"；<b>关联行程</b>能把这笔账跟具体某个行程项绑在一起。改完点"收起"卡片会缩回去，但改动都保留着。</li>
+        <li>编辑一笔已经记好的账目时，"其他设置"会自动展开——已经记好的账目往往就是有什么地方不是默认值，不该被折叠挡住。</li>
       </ol>
       <div class="tip">带小数的金额（比如509.60）现在会照实显示两位小数，不会被简化成整数——不用担心看着像存错了。</div>
     </div>
