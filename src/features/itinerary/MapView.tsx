@@ -21,9 +21,9 @@ function pinIcon(label: string, color: string) {
     html: `<div style="width:34px;height:42px;filter:drop-shadow(0 3px 5px rgba(31,20,10,.38));position:relative;">
       <svg viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;">
         <path d="M17 0C7.6 0 0 7.5 0 16.8c0 11.3 15 23.6 16.3 24.7.4.3 1 .3 1.4 0C19 40.4 34 28.1 34 16.8 34 7.5 26.4 0 17 0z" fill="${color}"/>
-        <circle cx="17" cy="16.5" r="11.5" fill="#FFFDF9" opacity="0.16"/>
+        <circle cx="17" cy="16.5" r="11.5" fill="var(--color-card)" opacity="0.16"/>
       </svg>
-      <div style="position:absolute;top:5px;left:0;right:0;text-align:center;font:700 12.5px 'Noto Serif SC',serif;color:#FFFDF9;">${label}</div>
+      <div style="position:absolute;top:5px;left:0;right:0;text-align:center;font:700 12.5px 'Noto Serif SC',serif;color:var(--color-card);">${label}</div>
     </div>`,
     iconSize: [34, 42],
     iconAnchor: [17, 42],
@@ -36,7 +36,7 @@ function arrowIcon(angleDeg: number, color: string) {
   return L.divIcon({
     className: '',
     html: `<div style="width:16px;height:16px;transform:rotate(${angleDeg}deg);">
-      <svg viewBox="0 0 16 16" width="16" height="16"><polygon points="2,3 14,8 2,13" fill="${color}" stroke="#FFFDF9" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 16 16" width="16" height="16"><polygon points="2,3 14,8 2,13" fill="${color}" stroke="var(--color-card)" stroke-width="1.2" stroke-linejoin="round"/></svg>
     </div>`,
     iconSize: [16, 16],
     iconAnchor: [8, 8],
@@ -111,7 +111,7 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
   if (!pinned.length) {
     return (
       <div className="px-5 pt-3 pb-safe-fab-clearance h-full flex flex-col items-center justify-center text-center gap-2">
-        <div className="w-[60px] h-[60px] rounded-full bg-[#EDE6DA] flex items-center justify-center font-serif-sc text-2xl text-muted">
+        <div className="w-[60px] h-[60px] rounded-full bg-segment flex items-center justify-center font-serif-sc text-2xl text-muted">
           图
         </div>
         <div className="font-serif-sc text-[15px] mt-2">还没有带地点的行程项</div>
@@ -161,7 +161,7 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
                   <Polyline
                     key={`halo-${activeDayId}`}
                     positions={positions}
-                    pathOptions={{ color: '#FBF7EE', weight: 6, opacity: 0.9, lineCap: 'round' }}
+                    pathOptions={{ color: 'var(--color-card)', weight: 6, opacity: 0.9, lineCap: 'round' }}
                     interactive={false}
                   />
                   <Polyline
@@ -192,7 +192,7 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
                   <div style={{ fontSize: 13 }}>
                     <b>Day{dayNum} · {formatTimeHM(it.time)}</b>
                     <div>{it.title}</div>
-                    {it.locationName && <div style={{ color: '#8A8177', fontSize: 11 }}>{it.locationName}</div>}
+                    {it.locationName && <div style={{ color: 'var(--color-muted)', fontSize: 11 }}>{it.locationName}</div>}
                   </div>
                 </Popup>
               </Marker>
@@ -214,13 +214,13 @@ export function MapView({ days, items }: { days: ItineraryDay[]; items: Itinerar
                   className="flex items-center gap-1.5 rounded-full pl-1.5 pr-2.5 py-1 text-[10.5px] font-semibold shadow-sm transition-colors flex-shrink-0"
                   style={
                     active
-                      ? { background: color, color: '#FFFDF9' }
-                      : { background: 'rgba(255,253,249,0.9)', color: '#1f1b16' }
+                      ? { background: color, color: 'var(--color-card)' }
+                      : { background: 'color-mix(in srgb, var(--color-card) 90%, transparent)', color: 'var(--color-ink)' }
                   }
                 >
                   <span
                     className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ background: active ? '#FFFDF9' : color }}
+                    style={{ background: active ? 'var(--color-card)' : color }}
                   />
                   {dateByDayId.get(dayId)}
                 </button>

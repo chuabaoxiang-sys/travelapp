@@ -163,10 +163,10 @@ export function LedgerTab({
           </button>
         </>
       ) : (
-        <div className="bg-ink rounded-[20px] px-[18px] pt-[18px] pb-4 text-paper mb-4">
-          <div className="text-[11px] tracking-wider text-paper/55">我这趟要承担</div>
+        <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
+          <div className="text-[11px] tracking-wider text-on-dark/55">我这趟要承担</div>
           <div className="font-serif-sc text-[27px] leading-none mt-1.5">{formatMoney(myOwed, currencyLabel)}</div>
-          <div className="mt-2 text-[11px] text-paper/50">自己付的 + 分摊别人垫付的</div>
+          <div className="mt-2 text-[11px] text-on-dark/50">自己付的 + 分摊别人垫付的</div>
         </div>
       )}
 
@@ -212,7 +212,7 @@ export function LedgerTab({
               <div className="text-right flex-shrink-0">
                 <div className="text-[15px] tabular">{formatMoney(e.homeAmount, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}</div>
                 {e.expenseCurrency !== trip.homeCurrency && (
-                  <div className="text-[10px] text-[#A79E92] tabular">{e.expenseCurrency} {e.expenseAmount}</div>
+                  <div className="text-[10px] text-muted tabular">{e.expenseCurrency} {e.expenseAmount}</div>
                 )}
               </div>
             </button>

@@ -18,9 +18,122 @@
   --color-cat-shop: #be123c;
   --color-cat-misc: #57534e;
 
+  /* 这几个之前是散落在各组件里的写死十六进制颜色，现在收进token统一管理——
+     不是新颜色，取的都是原来已经在用的数值，浅色模式下视觉上不会有任何变化。
+     统一进token的直接原因：不这样做的话，深色模式没办法通过"重新定义几个变量"
+     一次性覆盖全App，写死的颜色会在深色背景下保持原样、变得看不清 */
+  --color-soft: #57534e;       /* 比 muted 深一点的次要文字色（大量用于说明性文字） */
+  --color-handle: #d8cfc0;     /* 弹层拖拽把手、部分弱化状态的图标 */
+  --color-segment: #ede6da;    /* 分段控件（segmented control）的底色 */
+  --color-nav-inactive: #a79e92; /* 底部导航未选中态的图标/文字 */
+  --color-faint: #b8ae9e;      /* 比 muted 更淡一档——日历里"不在行程范围内"的日期这类、
+                                    存在感要压到最低的文字 */
+  --color-spend-text: #9a4a1e; /* 铺在 spend 色浅底（bg-spend/10）上的正文文字——
+                                    spend 本身对比度不够，需要单独配一个更深的同色系 */
+
+  /* "深色装饰面"和"深色文字色"是两件不同的事，之前混用同一个 --color-ink 完全是因为
+     浅色模式下两者刚好长得一样（都是纯黑近似色），深色模式下会彻底穿帮：
+     --color-ink 变亮去做正文字色是对的，但大数字卡片/分段选中态这类"不管什么模式
+     都要看起来像一块深色卡片"的地方，不能跟着变亮，所以拆成独立的
+     --color-surface-strong（这块面本身，深色模式下比页面背景略亮一点，撑出层次）
+     和 --color-on-dark（贴在这块面上面的文字/图标，固定用浅色，不跟随模式切换） */
+  --color-surface-strong: #1f1b16;
+  --color-on-dark: #f7f3ec;
+  /* 深色卡面上用的强调色（比如"设个预算"这类链接文字）——deep violet 的
+     --color-plan 在深色卡面上（不管App本身是浅色还是深色模式）对比度都不够，
+     需要一个专门配好、贴在深色面上就是可读的浅紫，同样固定不跟随模式切换 */
+  --color-plan-on-dark: #c9b8ea;
+  /* 弹层背后的暗色遮罩——用途是"压暗背景"，不是文字色，固定用不跟随模式切换的
+     深色半透明值，避免深色模式下 ink 变浅导致遮罩变成一层白雾 */
+  --color-scrim: #1f1b16;
+
   --font-serif-sc: "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
   --font-sans-sc: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
     "Noto Sans SC", "Helvetica Neue", sans-serif;
+}
+
+/* ===== 深色模式（夜行）=====
+   三态：跟随系统（没有 data-theme 属性时，交给 prefers-color-scheme 判断）、
+   手动浅色（data-theme="light"，即使系统是深色也强制浅色）、手动深色（反过来）。
+   src/lib/theme.ts 负责把用户在"更多"面板里的选择写成 <html data-theme="..."> 属性；
+   这里只负责"给定某个模式，每个token该是什么颜色"，两边职责分开。
+   颜色数值来自 claude.ai/design 的"夜行"方案定稿（https://claude.ai/code/artifact/603130cc-a730-4efa-bb1e-7b824ea3d9be），
+   分类色/语义色部分因为原方案只给了2个示例，其余按同一套配色逻辑（暗底上更亮更饱和）延伸配齐 */
+:root {
+  --dark-ink: #f2ede2;
+  --dark-paper: #15130f;
+  --dark-card: #1c1f24;
+  --dark-line: #332e26;
+  --dark-plan: #a78bfa;
+  --dark-spend: #ffb454;
+  --dark-positive: #34d399;
+  --dark-negative: #f87171;
+  --dark-muted: #9a9184;
+  --dark-soft: #c7bfae;
+  --dark-handle: #3a352c;
+  --dark-segment: #201d18;
+  --dark-nav-inactive: #756c60;
+  --dark-faint: #4a4438;
+  --dark-spend-text: #ffd199;
+  --dark-cat-transport: #4ecdc4;
+  --dark-cat-stay: #c4b5fd;
+  --dark-cat-food: #ff8a5c;
+  --dark-cat-ticket: #f2c94c;
+  --dark-cat-shop: #f472b6;
+  --dark-cat-misc: #9ca3af;
+  --dark-surface-strong: #262e3a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-ink: var(--dark-ink);
+    --color-paper: var(--dark-paper);
+    --color-card: var(--dark-card);
+    --color-line: var(--dark-line);
+    --color-plan: var(--dark-plan);
+    --color-spend: var(--dark-spend);
+    --color-positive: var(--dark-positive);
+    --color-negative: var(--dark-negative);
+    --color-muted: var(--dark-muted);
+    --color-soft: var(--dark-soft);
+    --color-handle: var(--dark-handle);
+    --color-segment: var(--dark-segment);
+    --color-nav-inactive: var(--dark-nav-inactive);
+    --color-faint: var(--dark-faint);
+    --color-spend-text: var(--dark-spend-text);
+    --color-cat-transport: var(--dark-cat-transport);
+    --color-cat-stay: var(--dark-cat-stay);
+    --color-cat-food: var(--dark-cat-food);
+    --color-cat-ticket: var(--dark-cat-ticket);
+    --color-cat-shop: var(--dark-cat-shop);
+    --color-cat-misc: var(--dark-cat-misc);
+    --color-surface-strong: var(--dark-surface-strong);
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-ink: var(--dark-ink);
+  --color-paper: var(--dark-paper);
+  --color-card: var(--dark-card);
+  --color-line: var(--dark-line);
+  --color-plan: var(--dark-plan);
+  --color-spend: var(--dark-spend);
+  --color-positive: var(--dark-positive);
+  --color-negative: var(--dark-negative);
+  --color-muted: var(--dark-muted);
+  --color-soft: var(--dark-soft);
+  --color-handle: var(--dark-handle);
+  --color-segment: var(--dark-segment);
+  --color-nav-inactive: var(--dark-nav-inactive);
+  --color-faint: var(--dark-faint);
+  --color-spend-text: var(--dark-spend-text);
+  --color-cat-transport: var(--dark-cat-transport);
+  --color-cat-stay: var(--dark-cat-stay);
+  --color-cat-food: var(--dark-cat-food);
+  --color-cat-ticket: var(--dark-cat-ticket);
+  --color-cat-shop: var(--dark-cat-shop);
+  --color-cat-misc: var(--dark-cat-misc);
+  --color-surface-strong: var(--dark-surface-strong);
 }
 
 html,

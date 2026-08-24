@@ -8,7 +8,7 @@ export function CenteredModal({ onClose, children }: { onClose: () => void; chil
   useEscapeKey(true, onClose)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={onClose}>
-      <div className="absolute inset-0 bg-ink/45" />
+      <div className="absolute inset-0 bg-scrim/45" />
       <div onClick={(e) => e.stopPropagation()} className="relative bg-card rounded-2xl p-5 w-full max-w-[300px] shadow-2xl">
         {children}
       </div>

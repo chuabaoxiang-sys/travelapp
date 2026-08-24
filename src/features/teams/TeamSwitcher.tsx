@@ -81,9 +81,9 @@ function TeamSwitchSheet({ teams, onClose }: { teams: MyHousehold[]; onClose: ()
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-end">
-      <div className="flex-1 bg-ink/40" onClick={switching ? undefined : onClose} />
+      <div className="flex-1 bg-scrim/40" onClick={switching ? undefined : onClose} />
       <div className="bg-paper rounded-t-[22px] px-4 pt-2.5 pb-6 shadow-[0_-10px_40px_rgba(31,27,22,0.2)]">
-        <div className="w-[34px] h-[3px] rounded-full bg-[#D8CFC0] mx-auto mb-3" />
+        <div className="w-[34px] h-[3px] rounded-full bg-handle mx-auto mb-3" />
 
         <div className="flex items-center justify-between mb-1">
           <span className="text-[12.5px] font-semibold text-ink">切换团队</span>
@@ -107,7 +107,7 @@ function TeamSwitchSheet({ teams, onClose }: { teams: MyHousehold[]; onClose: ()
             </div>
 
             {!!pending && (
-              <div className="flex gap-1.5 items-start rounded-xl border border-spend/30 bg-spend/10 px-2.5 py-2 mb-2.5 text-[11px] leading-relaxed text-[#9a4a1e]">
+              <div className="flex gap-1.5 items-start rounded-xl border border-spend/30 bg-spend/10 px-2.5 py-2 mb-2.5 text-[11px] leading-relaxed text-spend-text">
                 <AlertCircle className="w-[13px] h-[13px] mt-[2px] flex-shrink-0" strokeWidth={2.2} />
                 <span>
                   还有 <span className="font-semibold">{pending} 条</span>记录没同步上去。等它们同步完再切，不然这几条会丢。

@@ -1,15 +1,22 @@
 import { useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, Link2, RefreshCw, BookOpen, ListChecks } from 'lucide-react'
+import { X, Link2, RefreshCw, BookOpen, ListChecks, MoonStar } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import { effectiveShareScope } from '../../domain/share'
 import { formatAppVersion } from '../../lib/appVersion'
+import { useThemePreference, type ThemePreference } from '../../lib/theme'
 import { db } from '../../db/dexie'
 import { STUCK_THRESHOLD } from '../../components/SyncDetailSheet'
 import type { Trip } from '../../types'
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'light', label: '浅色' },
+  { value: 'dark', label: '深色' },
+  { value: 'system', label: '跟随系统' },
+]
 
 type ExportKind = 'excel' | 'json' | 'csv'
 
@@ -75,6 +82,7 @@ export function TripMoreSheet({
   // 隔一段生成文件的 await 就会被判定"用户手势已过期"，报 NotAllowedError
   const [readyFile, setReadyFile] = useState<{ kind: ExportKind; file: File } | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [themePref, setThemePref] = useThemePreference()
 
   useEscapeKey(true, onClose)
 
@@ -139,13 +147,13 @@ export function TripMoreSheet({
   }
 
   return (
-    <div className="absolute inset-0 z-30 bg-ink/35" onClick={onClose}>
+    <div className="absolute inset-0 z-30 bg-scrim/35" onClick={onClose}>
       <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
         <div
           onClick={(e) => e.stopPropagation()}
           className="pointer-events-auto bg-paper rounded-[26px] px-5 pt-3.5 pb-7 shadow-[0_-6px_28px_rgba(31,27,22,0.22)] max-h-[88%] overflow-y-auto no-scrollbar"
         >
-        <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-3.5" />
+        <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-3.5" />
 
         <div className="flex justify-between items-center mb-1">
           <span className="text-sm font-semibold">更多</span>
@@ -154,7 +162,29 @@ export function TripMoreSheet({
           </button>
         </div>
 
-        <div className="text-[10px] font-bold text-muted tracking-wide mt-3.5 mb-1.5">导出与分享</div>
+        <div className="text-[10px] font-bold text-muted tracking-wide mt-3.5 mb-1.5">外观</div>
+
+        <div className="flex items-center gap-3 py-1.5">
+          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+            <MoonStar className="w-[15px] h-[15px]" strokeWidth={1.8} />
+          </span>
+          <div className="text-[13px] font-medium flex-1 min-w-0">深色模式</div>
+          <div className="flex gap-1 bg-segment rounded-[10px] p-[3px] flex-shrink-0">
+            {THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setThemePref(opt.value)}
+                className={`rounded-lg px-2.5 py-1.5 text-[11px] whitespace-nowrap ${
+                  themePref === opt.value ? 'bg-ink text-paper font-medium' : 'text-soft'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="text-[10px] font-bold text-muted tracking-wide mt-3.5 mb-1.5 border-t border-line pt-3.5">导出与分享</div>
 
         <div className="flex items-center gap-3 py-1.5">
           <div className="flex-1 min-w-0">

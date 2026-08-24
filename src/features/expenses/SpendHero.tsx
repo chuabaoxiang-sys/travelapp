@@ -1,18 +1,19 @@
 import { formatMoney } from '../../lib/money'
 import type { AllowanceState } from '../../domain/dailyAllowance'
 
-// 记账页顶部那张深墨大卡——全APP唯一一个"每记一笔就会变"的大数字。
-// 五种状态的判定逻辑在 domain/dailyAllowance.ts（纯函数，有单元测试），
-// 这里只负责把状态画出来。
+// 记账页顶部那张深色大卡（--color-surface-strong，不管App本身是浅色还是深色
+// 模式都保持深色，是专门配出来的"深色装饰面"，不是跟随模式变化的背景）——
+// 全APP唯一一个"每记一笔就会变"的大数字。五种状态的判定逻辑在
+// domain/dailyAllowance.ts（纯函数，有单元测试），这里只负责把状态画出来。
 //
 // 关于配色：设计稿里超支态用过一个更亮的红，但那是调色板里没有的新颜色，
-// 而 negative(#B91C1C) 在深墨底上暗到几乎读不出来。所以超支态的数字继续用
+// 而 negative 在这张深色卡面上暗到几乎读不出来。所以超支态的数字继续用
 // spend 橙（它本来就是"花销强调色"），"超了"这件事靠标题文案和填满的进度条表达，
 // 不额外引入新颜色。
 
 function bar(pct: number) {
   return (
-    <div className="mt-2.5 h-1 rounded-full bg-paper/15 overflow-hidden">
+    <div className="mt-2.5 h-1 rounded-full bg-on-dark/15 overflow-hidden">
       <div className="h-full rounded-full bg-spend" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
     </div>
   )
@@ -75,15 +76,15 @@ export function SpendHero({
   }
 
   return (
-    <div className="bg-ink rounded-[20px] px-[18px] pt-[18px] pb-4 text-paper mb-4">
-      <div className="text-[11px] tracking-wider text-paper/55">{label}</div>
+    <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
+      <div className="text-[11px] tracking-wider text-on-dark/55">{label}</div>
       <div className={`font-serif-sc leading-none mt-1.5 ${big ? 'text-[32px] text-spend' : 'text-[27px]'}`}>
         {value}
       </div>
-      <div className="mt-2 text-[11px] text-paper/50">{sub}</div>
+      <div className="mt-2 text-[11px] text-on-dark/50">{sub}</div>
       {progress !== null && bar(progress)}
       {cta && onSetBudget && (
-        <button onClick={onSetBudget} className="mt-2.5 text-[11px] text-[#C9B8EA]">
+        <button onClick={onSetBudget} className="mt-2.5 text-[11px] text-plan-on-dark">
           设个预算，就能看到每天还能花多少 ›
         </button>
       )}

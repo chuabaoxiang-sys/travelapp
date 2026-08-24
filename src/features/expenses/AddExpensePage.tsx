@@ -441,7 +441,7 @@ export function AddExpensePage({
 
   if (saved) {
     return (
-      <div className="absolute inset-0 z-30 flex items-center justify-center bg-ink/35">
+      <div className="absolute inset-0 z-30 flex items-center justify-center bg-scrim/35">
         <div className="pop-in bg-card rounded-3xl px-7 py-6 flex flex-col items-center gap-2 shadow-2xl">
           <Check className="w-9 h-9 text-positive" strokeWidth={2.2} />
           <div className="text-[13.5px] text-ink">已记下</div>
@@ -468,13 +468,13 @@ export function AddExpensePage({
   ].filter(Boolean).join(' · ')
 
   return (
-    <div className="absolute inset-0 z-30 bg-ink/35" onClick={onClose}>
+    <div className="absolute inset-0 z-30 bg-scrim/35" onClick={onClose}>
       <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
         <div
           onClick={(e) => e.stopPropagation()}
           className="relative pointer-events-auto bg-paper rounded-[26px] pt-3.5 shadow-[0_-6px_28px_rgba(31,27,22,0.22)] max-h-[90%] flex flex-col overflow-hidden"
         >
-          <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-1 flex-shrink-0" />
+          <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-1 flex-shrink-0" />
           <div className="flex items-center justify-between px-4 pb-2.5 border-b border-line flex-shrink-0">
             <button onClick={onClose} className="text-muted text-[12.5px]">取消</button>
             <span className="font-serif-sc text-[13.5px] font-semibold">{initial ? '编辑这笔' : '记一笔'}</span>
@@ -558,8 +558,8 @@ export function AddExpensePage({
                 className="flex items-center gap-1.5 rounded-[11px] pl-1.5 pr-3 py-1.5 text-[12.5px] border"
                 style={
                   selected
-                    ? { borderColor: color, background: `color-mix(in srgb, ${color} 11%, #FFFDF9)`, color, fontWeight: 600 }
-                    : { background: '#FFFDF9', borderColor: '#E8E0D4', color: '#57534E' }
+                    ? { borderColor: color, background: `color-mix(in srgb, ${color} 11%, var(--color-card))`, color, fontWeight: 600 }
+                    : { background: 'var(--color-card)', borderColor: 'var(--color-line)', color: 'var(--color-soft)' }
                 }
               >
                 <span
@@ -580,19 +580,19 @@ export function AddExpensePage({
           onClick={() => setDetailsOpen((v) => !v)}
           className="w-full flex items-center justify-between gap-2 rounded-xl border border-dashed border-line bg-plan/[0.04] px-3.5 py-2.5 text-left"
         >
-          <span className="text-[12px] text-[#57534E] min-w-0 truncate">{foldSummary}</span>
+          <span className="text-[12px] text-soft min-w-0 truncate">{foldSummary}</span>
           <span className="text-[11.5px] font-semibold text-plan flex-shrink-0">{detailsOpen ? '收起 ‹' : '改 ›'}</span>
         </button>
 
         {detailsOpen && (
           <>
             <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">阶段</div>
-            <div className="flex gap-1 bg-[#EDE6DA] rounded-xl p-1 w-fit">
+            <div className="flex gap-1 bg-segment rounded-xl p-1 w-fit">
               {(['pre_trip', 'during_trip'] as ExpensePhase[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => { setPhase(p); setCategoryId('') }}
-                  className={`rounded-lg px-3 py-1.5 text-[12.5px] ${phase === p ? 'bg-ink text-paper' : 'text-[#8A8177]'}`}
+                  className={`rounded-lg px-3 py-1.5 text-[12.5px] ${phase === p ? 'bg-ink text-paper' : 'text-muted'}`}
                 >
                   {p === 'pre_trip' ? '出行前' : '途中'}
                 </button>
@@ -618,7 +618,7 @@ export function AddExpensePage({
                   onClick={() => setPayer(m.id)}
                   disabled={settled}
                   className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border disabled:opacity-60 ${
-                    payer === m.id ? 'bg-ink text-paper border-ink' : 'bg-card border-line text-[#57534E]'
+                    payer === m.id ? 'bg-ink text-paper border-ink' : 'bg-card border-line text-soft'
                   }`}
                 >
                   <Avatar member={m} size={20} />
@@ -660,7 +660,7 @@ export function AddExpensePage({
                             key={d}
                             onClick={() => { setLinkDate(d); setLinkItemId(null) }}
                             className={`flex-shrink-0 rounded-lg px-2.5 py-1.5 text-[11.5px] tabular border ${
-                              isActive ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-[#57534E]'
+                              isActive ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-soft'
                             }`}
                           >
                             {num}日
@@ -680,7 +680,7 @@ export function AddExpensePage({
                             type="button"
                             onClick={() => setLinkItemId(null)}
                             className={`rounded-full px-2.5 py-1 text-[11px] border ${
-                              !linkItemId ? 'bg-plan text-card border-plan' : 'bg-paper border-line text-[#57534E]'
+                              !linkItemId ? 'bg-plan text-card border-plan' : 'bg-paper border-line text-soft'
                             }`}
                           >
                             只挂到这一天
@@ -691,7 +691,7 @@ export function AddExpensePage({
                               key={it.id}
                               onClick={() => setLinkItemId(it.id)}
                               className={`rounded-full px-2.5 py-1 text-[11px] border ${
-                                linkItemId === it.id ? 'bg-plan text-card border-plan' : 'bg-paper border-line text-[#57534E]'
+                                linkItemId === it.id ? 'bg-plan text-card border-plan' : 'bg-paper border-line text-soft'
                               }`}
                             >
                               {it.title}
@@ -716,7 +716,7 @@ export function AddExpensePage({
                 <span className="text-[12.5px] text-muted">怎么分</span>
                 <span className="text-[12.5px] flex items-center gap-1">
                   {splitSummary}
-                  {!settled && <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />}
+                  {!settled && <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={1.8} />}
                 </span>
               </button>
               {tripDates.length > 1 && (
@@ -728,7 +728,7 @@ export function AddExpensePage({
                   <span className="text-[12.5px] text-muted">花在几天</span>
                   <span className="text-[12.5px] flex items-center gap-1">
                     {daysSummary}
-                    <ChevronRight className="w-3.5 h-3.5 text-[#bbb1a0]" strokeWidth={1.8} />
+                    <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={1.8} />
                   </span>
                 </button>
               )}
@@ -796,7 +796,7 @@ export function AddExpensePage({
                           setSplitMemberIds((prev) => (checked ? prev.filter((id) => id !== m.id) : [...prev, m.id]))
                         }
                         className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border ${
-                          checked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-[#57534E]'
+                          checked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-soft'
                         }`}
                       >
                         <Avatar member={m} size={20} />
@@ -915,7 +915,7 @@ export function AddExpensePage({
                         key={d}
                         onClick={() => toggleSpreadDate(d)}
                         className={`flex-shrink-0 rounded-lg px-2.5 py-1.5 text-[11.5px] tabular border ${
-                          picked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-[#57534E]'
+                          picked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-soft'
                         }`}
                       >
                         {num}日

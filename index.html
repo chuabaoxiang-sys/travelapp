@@ -10,6 +10,15 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="旅记 · 家庭旅行行程与账目记录" />
     <title>旅记 · TripJournal</title>
+    <script>
+      // 在任何CSS生效之前先把主题定下来，不然会先闪一下默认主题再跳到用户实际选的
+      // 那个（深色模式下尤其明显）。跟 src/lib/theme.ts 用同一个 localStorage key、
+      // 同一套取值规则，这里必须是内联同步脚本，用 import 引入模块反而会晚一步
+      try {
+        var t = localStorage.getItem('trip-journal:theme')
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

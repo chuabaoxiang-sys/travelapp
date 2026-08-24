@@ -73,12 +73,12 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
 
   return (
     <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full flex flex-col gap-3.5">
-      <div className="bg-ink rounded-[20px] px-[18px] pt-[18px] pb-4 text-paper">
-        <div className="text-[11px] tracking-wider text-paper/55">距离出发</div>
+      <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
+        <div className="text-[11px] tracking-wider text-on-dark/55">距离出发</div>
         <div className="font-serif-sc text-[30px] leading-none mt-1.5">
           {daysLeft == null ? '还没定日期' : daysLeft <= 0 ? '就是今天' : `${daysLeft} 天`}
         </div>
-        <div className="mt-2 text-[11px] text-paper/50">
+        <div className="mt-2 text-[11px] text-on-dark/50">
           {trip.name}
           {trip.startDate && ` · ${trip.startDate} 出发`}
         </div>

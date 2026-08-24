@@ -9,9 +9,9 @@ import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { FeedbackCategory, Feedback } from '../../types'
 
 const CATEGORIES: { value: FeedbackCategory; label: string; color: string }[] = [
-  { value: 'bug', label: '问题反馈', color: '#B91C1C' },
-  { value: 'suggestion', label: '功能建议', color: '#4C1D95' },
-  { value: 'other', label: '其他', color: '#57534E' },
+  { value: 'bug', label: '问题反馈', color: 'var(--color-negative)' },
+  { value: 'suggestion', label: '功能建议', color: 'var(--color-plan)' },
+  { value: 'other', label: '其他', color: 'var(--color-soft)' },
 ]
 
 function categoryMeta(value: FeedbackCategory) {
@@ -68,13 +68,13 @@ export function FeedbackSheet({
   }
 
   return (
-    <div className="absolute inset-0 z-30 bg-ink/35" onClick={onClose}>
+    <div className="absolute inset-0 z-30 bg-scrim/35" onClick={onClose}>
       <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
         <div
           onClick={(e) => e.stopPropagation()}
           className="pointer-events-auto bg-paper rounded-[26px] px-5 pt-3.5 pb-7 shadow-[0_-6px_28px_rgba(31,27,22,0.22)] max-h-[88%] overflow-y-auto no-scrollbar"
         >
-        <div className="w-[38px] h-1 rounded-full bg-[#D8CFC0] mx-auto mb-3.5" />
+        <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-3.5" />
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm font-semibold">反馈</span>
           <button onClick={onClose} className="text-muted" title="关闭">
@@ -92,8 +92,8 @@ export function FeedbackSheet({
               className="flex-1 rounded-[11px] py-2 text-[12.5px] border"
               style={
                 category === c.value
-                  ? { borderColor: c.color, background: `color-mix(in srgb, ${c.color} 11%, #FFFDF9)`, color: c.color, fontWeight: 600 }
-                  : { background: '#FFFDF9', borderColor: '#E8E0D4', color: '#57534E' }
+                  ? { borderColor: c.color, background: `color-mix(in srgb, ${c.color} 11%, var(--color-card))`, color: c.color, fontWeight: 600 }
+                  : { background: 'var(--color-card)', borderColor: 'var(--color-line)', color: 'var(--color-soft)' }
               }
             >
               {c.label}
@@ -136,8 +136,8 @@ export function FeedbackSheet({
                               className="flex-1 rounded-lg py-1.5 text-[11.5px] border"
                               style={
                                 editCategory === c.value
-                                  ? { borderColor: c.color, background: `color-mix(in srgb, ${c.color} 11%, #FFFDF9)`, color: c.color, fontWeight: 600 }
-                                  : { background: '#FFFDF9', borderColor: '#E8E0D4', color: '#57534E' }
+                                  ? { borderColor: c.color, background: `color-mix(in srgb, ${c.color} 11%, var(--color-card))`, color: c.color, fontWeight: 600 }
+                                  : { background: 'var(--color-card)', borderColor: 'var(--color-line)', color: 'var(--color-soft)' }
                               }
                             >
                               {c.label}

@@ -57,7 +57,7 @@ function ManualSettleModal({
             key={m.id}
             onClick={() => onFromChange(m.id)}
             className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3 py-1 text-[12px] border ${
-              from === m.id ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-[#57534E]'
+              from === m.id ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-soft'
             }`}
           >
             <Avatar member={m} size={18} />
@@ -72,7 +72,7 @@ function ManualSettleModal({
             key={m.id}
             onClick={() => onToChange(m.id)}
             className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3 py-1 text-[12px] border ${
-              to === m.id ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-[#57534E]'
+              to === m.id ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-soft'
             }`}
           >
             <Avatar member={m} size={18} />
@@ -334,7 +334,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   if (!hasAnyMoney) {
     return (
       <div className="px-5 pt-16 pb-safe-fab-clearance h-full flex flex-col items-center text-center gap-2">
-        <div className="w-[60px] h-[60px] rounded-full bg-[#EDE6DA] flex items-center justify-center font-serif-sc text-2xl text-muted">分</div>
+        <div className="w-[60px] h-[60px] rounded-full bg-segment flex items-center justify-center font-serif-sc text-2xl text-muted">分</div>
         <div className="font-serif-sc text-[15px] mt-2">还没有可以结算的账目</div>
         <div className="text-[12.5px] text-muted max-w-[220px]">记账时勾选"分摊给"多个人，这里就会自动算出谁该收谁的钱。</div>
         <button onClick={openManualSettle} className="flex items-center gap-1 text-plan text-[12.5px] font-semibold mt-2">
@@ -656,7 +656,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                   </span>
                   <span
                     className="text-[13px] font-medium tabular"
-                    style={{ color: settled ? '#8A8071' : b.net >= 0 ? '#0F766E' : '#B91C1C' }}
+                    style={{ color: settled ? 'var(--color-muted)' : b.net >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}
                   >
                     {settled ? '已结清' : b.net >= 0 ? `应收 ${formatMoney(b.net)}` : `应付 ${formatMoney(-b.net)}`}
                   </span>
@@ -666,7 +666,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                     className="h-full rounded-full"
                     style={{
                       width: `${Math.min(100, Math.round((Math.abs(b.net) / Math.max(1, Math.max(b.paid, b.owed))) * 100))}%`,
-                      background: settled ? '#8A8071' : b.net >= 0 ? '#0F766E' : '#B91C1C',
+                      background: settled ? 'var(--color-muted)' : b.net >= 0 ? 'var(--color-positive)' : 'var(--color-negative)',
                     }}
                   />
                 </div>

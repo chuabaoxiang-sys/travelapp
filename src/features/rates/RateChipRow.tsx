@@ -193,8 +193,8 @@ export function RateChipRow({
                   isSelected
                     ? 'bg-plan/10 border-plan text-plan font-semibold'
                     : exhausted
-                      ? 'bg-card border-spend text-[#57534E]'
-                      : 'bg-card border-line text-[#57534E]'
+                      ? 'bg-card border-spend text-soft'
+                      : 'bg-card border-line text-soft'
                 }`}
               >
                 <span>{e.label} {e.rate}</span>
@@ -302,8 +302,8 @@ export function RateChipRow({
                     isSelected
                       ? 'bg-plan/10 border-plan text-plan font-semibold'
                       : exhausted
-                        ? 'bg-card border-spend text-[#57534E]'
-                        : 'bg-card border-line text-[#57534E]'
+                        ? 'bg-card border-spend text-soft'
+                        : 'bg-card border-line text-soft'
                   }`}
                 >
                   <span>{e.label} {e.rate}</span>

@@ -65,7 +65,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
           <div className="ring-wrap flex justify-center py-2">
             <div
               className="w-[160px] h-[160px] rounded-full flex items-center justify-center"
-              style={{ background: `conic-gradient(${overallOver ? '#B91C1C' : '#4C1D95'} ${Math.min(100, overallPct) * 3.6}deg, #E4DCCF 0)` }}
+              style={{ background: `conic-gradient(${overallOver ? 'var(--color-negative)' : 'var(--color-plan)'} ${Math.min(100, overallPct) * 3.6}deg, var(--color-line) 0)` }}
             >
               <div className="w-[124px] h-[124px] rounded-full bg-paper flex flex-col items-center justify-center">
                 <div className="text-[10.5px] tracking-widest text-muted">已用预算</div>
@@ -143,8 +143,8 @@ export function BudgetTab({ trip }: { trip: Trip }) {
                   className="flex items-center gap-1.5 rounded-[11px] pl-1.5 pr-3 py-1.5 text-[12.5px] border"
                   style={
                     selected
-                      ? { borderColor: color, background: `color-mix(in srgb, ${color} 11%, #FFFDF9)`, color, fontWeight: 600 }
-                      : { background: '#FFFDF9', borderColor: '#E8E0D4', color: '#57534E' }
+                      ? { borderColor: color, background: `color-mix(in srgb, ${color} 11%, var(--color-card))`, color, fontWeight: 600 }
+                      : { background: 'var(--color-card)', borderColor: 'var(--color-line)', color: 'var(--color-soft)' }
                   }
                 >
                   <span
@@ -196,7 +196,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
             <div className="mt-1.5 h-1.5 rounded-full bg-line overflow-hidden">
               <div
                 className="h-full rounded-full"
-                style={{ width: `${Math.min(100, r.pct)}%`, background: r.over ? '#B91C1C' : categoryColor(r.category) }}
+                style={{ width: `${Math.min(100, r.pct)}%`, background: r.over ? 'var(--color-negative)' : categoryColor(r.category) }}
               />
             </div>
           </div>

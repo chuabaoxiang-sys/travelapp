@@ -99,7 +99,7 @@ export function CalendarView({
                     ? 'bg-plan text-card'
                     : inTrip
                       ? 'bg-plan/10 text-plan'
-                      : 'text-[#C9C2B4]'
+                      : 'text-faint'
                 }`}
               >
                 <span>{d}</span>

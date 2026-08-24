@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 
 // 图标路径来自设计稿《底部导航图标.dc.html》(claude.ai/design 项目 504930bf-8bee-40ef-8a96-d7c3e5f39ae7)
-// 规范：24×24 viewBox，stroke-width 1.6，圆头圆角；选中态图标 #4C1D95，未选中 #A79E92。
+// 规范：24×24 viewBox，stroke-width 1.6，圆头圆角；选中态图标 --color-plan，未选中 --color-nav-inactive。
 // "概览"和"更多"是这次重构新加的两个tab，设计稿里没有对应图标，照着同一套规范新画：
 // 概览用"眼睛"（一眼看完这趟的意思），更多沿用顶部已经在用的三点样式，保持用户已经
 // 认得的符号，不额外发明一个新图形
@@ -15,7 +15,7 @@ const ICON_PATHS: Record<Exclude<TabKey, 'more'>, { d: string; d2: string }> = {
 export type TabKey = 'overview' | 'itinerary' | 'ledger' | 'more'
 
 function TabIcon({ tab, active }: { tab: TabKey; active: boolean }) {
-  const color = active ? '#4C1D95' : '#A79E92'
+  const color = active ? 'var(--color-plan)' : 'var(--color-nav-inactive)'
   const common = { viewBox: '0 0 24 24', style: { width: 23, height: 23, display: 'block' as const } }
   if (tab === 'more') {
     return (
@@ -86,13 +86,13 @@ export function BottomNav({
           )}
           {decorate?.[t.key]}
         </span>
-        <span className={`text-[10.5px] tracking-wide ${isActive ? 'text-ink' : 'text-[#A79E92]'}`}>{t.label}</span>
+        <span className={`text-[10.5px] tracking-wide ${isActive ? 'text-ink' : 'text-nav-inactive'}`}>{t.label}</span>
       </button>
     )
   }
 
   return (
-    <div className="absolute left-0 right-0 bottom-0 z-10 bg-paper/[.92] backdrop-blur-[18px] border-t border-[#E4DCCF] pt-[9px] pb-safe-nav px-3 flex flex-col items-center">
+    <div className="absolute left-0 right-0 bottom-0 z-10 bg-paper/[.92] backdrop-blur-[18px] border-t border-line pt-[9px] pb-safe-nav px-3 flex flex-col items-center">
       <div className="flex w-full items-end">
         {left.map(renderTab)}
         <div className="flex-shrink-0 w-11 flex justify-center">

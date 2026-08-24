@@ -235,12 +235,12 @@ export function ItineraryTab({
   return (
     <div className="h-full flex flex-col relative">
       <div className="px-5 pt-3 pb-1 flex-shrink-0 flex items-center justify-between">
-        <div className="flex gap-1 bg-[#EDE6DA] rounded-xl p-1 w-fit">
+        <div className="flex gap-1 bg-segment rounded-xl p-1 w-fit">
           {([['timeline', '时间线'], ['calendar', '日历'], ['map', '地图']] as [ViewMode, string][]).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setViewMode(key)}
-              className={`rounded-lg px-3 py-1.5 text-[12.5px] ${viewMode === key ? 'bg-ink text-paper' : 'text-[#8A8177]'}`}
+              className={`rounded-lg px-3 py-1.5 text-[12.5px] ${viewMode === key ? 'bg-ink text-paper' : 'text-muted'}`}
             >
               {label}
             </button>
@@ -304,7 +304,7 @@ export function ItineraryTab({
                       data-date={d}
                       onClick={() => { setSelected(d); setFormState(null); setSuggestionsDismissed(false) }}
                       className={`flex-shrink-0 rounded-2xl px-3.5 py-2 text-center border font-serif-sc ${
-                        isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-[#57534E] border-line'
+                        isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-soft border-line'
                       }`}
                     >
                       <div className="text-[10px] opacity-70">{dow}</div>
@@ -318,7 +318,7 @@ export function ItineraryTab({
               )}
               {scrollState.right && (
                 <div className="pointer-events-none absolute right-0 top-0.5 bottom-1 w-8 bg-gradient-to-l from-paper to-transparent flex items-center justify-end">
-                  <span className="text-[#B8AE9E] text-xs mr-0.5">›</span>
+                  <span className="text-faint text-xs mr-0.5">›</span>
                 </div>
               )}
             </div>
@@ -341,7 +341,7 @@ export function ItineraryTab({
                         data-date={d}
                         onClick={() => { setSelected(d); setFormState(null); setSuggestionsDismissed(false) }}
                         className={`flex-shrink-0 w-8 h-8 rounded-lg text-center font-serif-sc text-[13px] font-semibold flex items-center justify-center border ${
-                          isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-[#57534E] border-line'
+                          isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-soft border-line'
                         }`}
                       >
                         {num}
@@ -527,7 +527,7 @@ export function ItineraryTab({
               !formState && (
                 <button
                   onClick={() => setFormState('new')}
-                  className="mt-2 w-full rounded-xl border border-dashed border-line text-[#57534E] text-sm py-2.5 flex items-center justify-center gap-1.5"
+                  className="mt-2 w-full rounded-xl border border-dashed border-line text-soft text-sm py-2.5 flex items-center justify-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" strokeWidth={2} />
                   添加行程项
