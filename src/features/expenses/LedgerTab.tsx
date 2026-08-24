@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { ChevronRight } from 'lucide-react'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
@@ -16,6 +17,8 @@ import { SpendHero } from './SpendHero'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { DiscoveryDot } from '../../components/DiscoveryDot'
 import { markHintSeen } from '../../domain/discoveryHints'
+import { BudgetSheet } from '../budget/BudgetSheet'
+import { SplitTab } from '../split/SplitTab'
 
 export function LedgerTab({
   trip,
@@ -47,9 +50,11 @@ export function LedgerTab({
   const myOwed = balances.find((b) => b.memberId === currentMemberId)?.owed ?? 0
   const [editingId, setEditingId] = useState<string | null>(null)
   const [rateBookOpen, setRateBookOpen] = useState(false)
-  // "团队/我的"切换同时控制顶部数字和下面的账目列表——两个各自独立控制会出现
-  // "团队总额+只看我的列表"这种自相矛盾的组合，不如合成一个视角切换更直观
-  const [view, setView] = useState<'team' | 'mine'>('team')
+  const [budgetOpen, setBudgetOpen] = useState(false)
+  // 三段视角：全部（团队）/我的花费/结算——预算和分账不再是各自独立的tab，
+  // 并进了账目页当中的两个分段，"预算"进一步降级成"全部"视角里的一个次级入口
+  // （见下面的"管理预算"），因为它本来就是"花了多少"的参照系，不该跟账目分开看
+  const [view, setView] = useState<'team' | 'mine' | 'settle'>('team')
 
   // 编辑账目现在是全屏页而不是带X的弹层，安卓硬件返回键是唯一预期的退出方式——
   // 之前这个入口完全没接返回键（只有TripShell里"＋"新增那条接了），弹层时代还有
@@ -57,6 +62,7 @@ export function LedgerTab({
   useBackDismiss(!!editingId, () => setEditingId(null))
   // 汇率簿同理——之前完全没接返回键，安卓上打开汇率簿按返回键会直接退出整个APP
   useBackDismiss(rateBookOpen, () => setRateBookOpen(false))
+  useBackDismiss(budgetOpen, () => setBudgetOpen(false))
 
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
@@ -92,41 +98,70 @@ export function LedgerTab({
   }
 
   return (
-    <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full relative">
-      <div className="flex items-center justify-between mb-1">
-        <span className="font-serif-sc text-sm font-semibold">记账 · 共 {visibleExpenses.length} 笔</span>
-        <button
-          onClick={() => { setRateBookOpen(true); markHintSeen(currentMemberId, 'rateBook') }}
-          className="relative w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-[14px] text-plan"
-          title="汇率簿"
-        >
-          簿
-          <DiscoveryDot memberId={currentMemberId} hintKey="rateBook" />
-        </button>
+    <div className="h-full flex flex-col relative">
+      <div className="px-5 pt-3 flex-shrink-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className="font-serif-sc text-sm font-semibold">账目</span>
+          <button
+            onClick={() => { setRateBookOpen(true); markHintSeen(currentMemberId, 'rateBook') }}
+            className="relative w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-[14px] text-plan"
+            title="汇率簿"
+          >
+            簿
+            <DiscoveryDot memberId={currentMemberId} hintKey="rateBook" />
+          </button>
+        </div>
+
+        <div className="flex border border-line rounded-xl overflow-hidden my-1.5">
+          <button
+            type="button"
+            onClick={() => setView('team')}
+            className={`flex-1 py-1.5 text-[12px] ${view === 'team' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+          >
+            全部
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('mine')}
+            className={`flex-1 py-1.5 text-[12px] ${view === 'mine' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+          >
+            我的
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('settle')}
+            className={`flex-1 py-1.5 text-[12px] ${view === 'settle' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+          >
+            结算
+          </button>
+        </div>
       </div>
 
-      <div className="flex border border-line rounded-xl overflow-hidden my-1.5">
-        <button
-          type="button"
-          onClick={() => setView('team')}
-          className={`flex-1 py-1.5 text-[12px] ${view === 'team' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
-        >
-          团队视角
-        </button>
-        <button
-          type="button"
-          onClick={() => setView('mine')}
-          className={`flex-1 py-1.5 text-[12px] ${view === 'mine' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
-        >
-          我的花费
-        </button>
-      </div>
-
-      {/* 团队视角用"今天还能花"——那是唯一会随每次记账变化的数字，也是记账这个动作
-          的即时回报。"我的花费"保持整趟汇总：预算是团队级的，没有个人预算可以推出
+      {/* "结算"是分账的全部内容原样搬过来——SplitTab自己管滚动/内边距，
+          跟"全部/我的"那份列表分开渲染，不共用滚动容器 */}
+      {view === 'settle' ? (
+        <div className="flex-1 relative overflow-hidden">
+          <SplitTab trip={trip} currentMemberId={currentMemberId} />
+        </div>
+      ) : (
+      <div className="px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar flex-1">
+      {/* 全部视角用"今天还能花"——那是唯一会随每次记账变化的数字，也是记账这个动作
+          的即时回报。"我的"保持整趟汇总：预算是团队级的，没有个人预算可以推出
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
-        <SpendHero state={allowance} currency={currencyLabel} />
+        <>
+          <SpendHero state={allowance} currency={currencyLabel} />
+          {/* 预算不再是独立tab，降级成这里的一个次级入口——它本来就是"花了多少"
+              的参照系，跟账目列表放在一起看才有意义，改总预算/加分类预算的表单
+              逻辑完全没动，只是换了个容器（见 BudgetSheet） */}
+          <button
+            onClick={() => setBudgetOpen(true)}
+            className="w-full flex items-center justify-between rounded-2xl border border-line bg-card px-3.5 py-2.5 mb-4 text-left"
+          >
+            <span className="text-[13px] text-plan">管理预算</span>
+            <ChevronRight className="w-4 h-4 text-muted" strokeWidth={1.8} />
+          </button>
+        </>
       ) : (
         <div className="bg-ink rounded-[20px] px-[18px] pt-[18px] pb-4 text-paper mb-4">
           <div className="text-[11px] tracking-wider text-paper/55">我这趟要承担</div>
@@ -189,6 +224,8 @@ export function LedgerTab({
           </div>
         )}
       </div>
+      </div>
+      )}
 
       {editingExpense && (
         <AddExpensePage
@@ -202,6 +239,8 @@ export function LedgerTab({
       {rateBookOpen && (
         <RateBookScreen trip={trip} currentMemberId={currentMemberId} onClose={() => setRateBookOpen(false)} />
       )}
+
+      {budgetOpen && <BudgetSheet trip={trip} onClose={() => setBudgetOpen(false)} />}
     </div>
   )
 }

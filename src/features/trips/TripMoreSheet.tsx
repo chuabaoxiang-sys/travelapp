@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, Link2, RefreshCw, Users, BookOpen, ListChecks, Sparkles } from 'lucide-react'
+import { X, Link2, RefreshCw, BookOpen, ListChecks } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
@@ -53,16 +53,12 @@ export function TripMoreSheet({
   onClose,
   onOpenFeedback,
   onOpenShareSettings,
-  onOpenActivity,
-  onOpenRetrospective,
   onOpenSyncDetail,
 }: {
   trip: Trip
   onClose: () => void
   onOpenFeedback: () => void
   onOpenShareSettings: () => void
-  onOpenActivity: () => void
-  onOpenRetrospective: () => void
   onOpenSyncDetail: () => void
 }) {
   const pendingOutbox = useLiveQuery(() => db.outbox.where('status').equals('pending').toArray()) ?? []
@@ -213,29 +209,11 @@ export function TripMoreSheet({
 
         <div className="text-[10px] font-bold text-muted tracking-wide mt-4 mb-1.5">更多</div>
 
-        <button onClick={onOpenRetrospective} className="w-full flex items-center gap-2.5 py-2 text-left">
-          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
-            <Sparkles className="w-[15px] h-[15px]" strokeWidth={1.8} />
-          </span>
-          <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-medium">旅程回顾</div>
-            <div className="text-[9.5px] text-muted mt-0.5">这趟花了多少、花在哪、去了几个地方</div>
-          </div>
-          <span className="text-[10.5px] text-plan flex-shrink-0">看看 ›</span>
-        </button>
+        {/* "旅程回顾"和"行程动态"这两项搬进了「概览」tab——"回家后"形态就是旅程回顾的
+            内容，"旅途中"形态里"家里刚才"是行程动态的精简版（带"查看全部"回到完整列表）。
+            两份数据只留一个入口，不然改一处容易忘改另一处 */}
 
-        <button onClick={onOpenActivity} className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left">
-          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
-            <Users className="w-[15px] h-[15px]" strokeWidth={1.8} />
-          </span>
-          <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-medium">行程动态</div>
-            <div className="text-[9.5px] text-muted mt-0.5">看家里谁记了账、加了什么安排</div>
-          </div>
-          <span className="text-[10.5px] text-plan flex-shrink-0">去看看 ›</span>
-        </button>
-
-        <button onClick={onOpenSyncDetail} className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left">
+        <button onClick={onOpenSyncDetail} className="w-full flex items-center gap-2.5 py-2 text-left">
           <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
             <ListChecks className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>

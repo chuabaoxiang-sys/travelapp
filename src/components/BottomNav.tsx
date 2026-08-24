@@ -1,24 +1,34 @@
+import type { ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 
 // 图标路径来自设计稿《底部导航图标.dc.html》(claude.ai/design 项目 504930bf-8bee-40ef-8a96-d7c3e5f39ae7)
-// 规范：24×24 viewBox，stroke-width 1.6，圆头圆角；选中态图标 #4C1D95，未选中 #A79E92
-const ICON_PATHS: Record<TabKey, { d: string; d2: string }> = {
+// 规范：24×24 viewBox，stroke-width 1.6，圆头圆角；选中态图标 #4C1D95，未选中 #A79E92。
+// "概览"和"更多"是这次重构新加的两个tab，设计稿里没有对应图标，照着同一套规范新画：
+// 概览用"眼睛"（一眼看完这趟的意思），更多沿用顶部已经在用的三点样式，保持用户已经
+// 认得的符号，不额外发明一个新图形
+const ICON_PATHS: Record<Exclude<TabKey, 'more'>, { d: string; d2: string }> = {
+  overview: { d: 'M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z', d2: 'M12 14.3a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6z' },
   itinerary: { d: 'M4 6.5 9.5 4.5 14.5 6.5 20 4.5v13L14.5 19.5 9.5 17.5 4 19.5z', d2: 'M9.5 4.5v13M14.5 6.5v13' },
   ledger: { d: 'M6 3.5h9.5L19 7v13.5H6z', d2: 'M9 9.5h7M9 13h7M9 16.5h4' },
-  budget: { d: 'M12 3.5a8.5 8.5 0 1 0 8.5 8.5', d2: 'M12 12V3.5a8.5 8.5 0 0 1 8.5 8.5z' },
-  split: {
-    d: 'M8.5 8.5a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5M3.5 20.5c0-3 2.2-5 5-5s5 2 5 5',
-    d2: 'M16.5 10.5h5m-2.5-2.5v5M17 20.5c0-2.3 1.4-4 3.5-4.4',
-  },
 }
 
-export type TabKey = 'itinerary' | 'ledger' | 'budget' | 'split'
+export type TabKey = 'overview' | 'itinerary' | 'ledger' | 'more'
 
 function TabIcon({ tab, active }: { tab: TabKey; active: boolean }) {
-  const { d, d2 } = ICON_PATHS[tab]
   const color = active ? '#4C1D95' : '#A79E92'
+  const common = { viewBox: '0 0 24 24', style: { width: 23, height: 23, display: 'block' as const } }
+  if (tab === 'more') {
+    return (
+      <svg {...common} fill="none">
+        <circle cx="5" cy="12" r="1.4" fill={color} stroke="none" />
+        <circle cx="12" cy="12" r="1.4" fill={color} stroke="none" />
+        <circle cx="19" cy="12" r="1.4" fill={color} stroke="none" />
+      </svg>
+    )
+  }
+  const { d, d2 } = ICON_PATHS[tab]
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ width: 23, height: 23, display: 'block' }}>
+    <svg {...common} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d={d} />
       <path d={d2} />
     </svg>
@@ -26,62 +36,78 @@ function TabIcon({ tab, active }: { tab: TabKey; active: boolean }) {
 }
 
 const TABS: { key: TabKey; label: string }[] = [
+  { key: 'overview', label: '概览' },
   { key: 'itinerary', label: '行程' },
-  { key: 'ledger', label: '记账' },
-  { key: 'budget', label: '预算' },
-  { key: 'split', label: '分账' },
+  { key: 'ledger', label: '账目' },
+  { key: 'more', label: '更多' },
 ]
 
 export function BottomNav({
   active,
   onChange,
   badges,
+  onAddExpense,
+  showFab = true,
+  decorate,
 }: {
   active: TabKey
   onChange: (k: TabKey) => void
   // 每个tab上"别人新写了几条"的未读数。故意做成可选：不传就完全是原来的样子
   badges?: Partial<Record<TabKey, number>>
+  onAddExpense: () => void
+  // 行程表单展开时腾出这个位置，跟之前独立悬浮的Fab是同一条隐藏逻辑，只是现在
+  // Fab挪进了导航栏内部，由外面统一控制显隐而不是整个不渲染
+  showFab?: boolean
+  // 挂在某个tab图标右上角的自定义装饰，目前只有"更多"用来放首次使用的发现提示红点——
+  // 那个红点要读当前成员id才能判断"看没看过"，BottomNav本身不该知道这件事，
+  // 由调用方把渲染好的节点传进来最省事
+  decorate?: Partial<Record<TabKey, ReactNode>>
 }) {
+  // "记一笔"插在"行程"和"账目"中间——五格视觉上分成两半，中间那颗是唯一的
+  // 强调色圆钮，而不是第五个平权的tab。用 slice 在数组中间插入渲染，而不是给
+  // TABS 数组本身加一项，是因为它的语义是"动作"不是"页面"，selected态、路由都不适用
+  const left = TABS.slice(0, 2)
+  const right = TABS.slice(2)
+
+  function renderTab(t: (typeof TABS)[number]) {
+    const isActive = active === t.key
+    const unseen = badges?.[t.key] ?? 0
+    return (
+      <button key={t.key} onClick={() => onChange(t.key)} className="flex-1 flex flex-col items-center gap-1 py-0.5">
+        <span className="relative">
+          <TabIcon tab={t.key} active={isActive} />
+          {/* 只显示一个小圆点，不显示具体数字——数字会让人以为"必须逐条处理完"，
+              而这里想传达的只是"有人动过，去看一眼" */}
+          {unseen > 0 && (
+            <span
+              className="absolute -top-0.5 -right-1 w-[7px] h-[7px] rounded-full bg-spend ring-2 ring-paper"
+              aria-label={`有 ${unseen} 条新记录`}
+            />
+          )}
+          {decorate?.[t.key]}
+        </span>
+        <span className={`text-[10.5px] tracking-wide ${isActive ? 'text-ink' : 'text-[#A79E92]'}`}>{t.label}</span>
+      </button>
+    )
+  }
+
   return (
     <div className="absolute left-0 right-0 bottom-0 z-10 bg-paper/[.92] backdrop-blur-[18px] border-t border-[#E4DCCF] pt-[9px] pb-safe-nav px-3 flex flex-col items-center">
-      <div className="flex w-full">
-        {TABS.map((t) => {
-          const isActive = active === t.key
-          const unseen = badges?.[t.key] ?? 0
-          return (
+      <div className="flex w-full items-end">
+        {left.map(renderTab)}
+        <div className="flex-shrink-0 w-11 flex justify-center">
+          {showFab && (
             <button
-              key={t.key}
-              onClick={() => onChange(t.key)}
-              className="flex-1 flex flex-col items-center gap-1 py-0.5"
+              onClick={onAddExpense}
+              title="记一笔"
+              className="w-[46px] h-[46px] rounded-full bg-plan text-card flex items-center justify-center -mt-[22px] shadow-[0_8px_18px_rgba(76,29,149,0.35)] transition-transform active:scale-95"
             >
-              <span className="relative">
-                <TabIcon tab={t.key} active={isActive} />
-                {/* 只显示一个小圆点，不显示具体数字——数字会让人以为"必须逐条处理完"，
-                    而这里想传达的只是"有人动过，去看一眼" */}
-                {unseen > 0 && (
-                  <span
-                    className="absolute -top-0.5 -right-1 w-[7px] h-[7px] rounded-full bg-spend ring-2 ring-paper"
-                    aria-label={`有 ${unseen} 条新记录`}
-                  />
-                )}
-              </span>
-              <span className={`text-[10.5px] tracking-wide ${isActive ? 'text-ink' : 'text-[#A79E92]'}`}>{t.label}</span>
+              <Plus className="w-6 h-6" strokeWidth={2} />
             </button>
-          )
-        })}
+          )}
+        </div>
+        {right.map(renderTab)}
       </div>
     </div>
-  )
-}
-
-export function Fab({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      title="记一笔"
-      className="absolute right-5 bottom-safe-fab w-[54px] h-[54px] rounded-full bg-plan text-card flex items-center justify-center z-20 shadow-[0_8px_20px_rgba(76,29,149,0.35)] transition-transform active:scale-95"
-    >
-      <Plus className="w-7 h-7" strokeWidth={2} />
-    </button>
   )
 }

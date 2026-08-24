@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronDown } from 'lucide-react'
 import { db } from '../../db/dexie'
-import { BottomNav, Fab, type TabKey } from '../../components/BottomNav'
+import { BottomNav, type TabKey } from '../../components/BottomNav'
+import { OverviewTab } from './OverviewTab'
 import { ItineraryTab } from '../itinerary/ItineraryTab'
 import { LedgerTab } from '../expenses/LedgerTab'
-import { BudgetTab } from '../budget/BudgetTab'
-import { SplitTab } from '../split/SplitTab'
 import { AddExpensePage } from '../expenses/AddExpensePage'
 import { SyncStatusBadge } from '../../components/SyncStatusBadge'
 import { TripMoreSheet } from './TripMoreSheet'
@@ -19,8 +18,6 @@ import { InviteCodeSheet } from '../members/InviteCodeSheet'
 import { ShareStatusBadge } from './ShareStatusBadge'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { useLastSeen, countUnseen } from './useLastSeen'
-import { ActivityFeed } from '../activity/ActivityFeed'
-import { RetrospectiveSheet } from './RetrospectiveSheet'
 import { SyncDetailSheet } from '../../components/SyncDetailSheet'
 
 const NOT_FOUND = Symbol('trip-not-found')
@@ -41,20 +38,32 @@ export function TripShell({
   // 不存在的行程（换设备、行程被删、本地数据被重置……），APP会永远卡在空白页，
   // 没有任何提示，也不会自动跳回选行程界面
   const tripResult = useLiveQuery(async () => (await db.trips.get(tripId)) ?? NOT_FOUND, [tripId])
-  const [tab, setTab] = useState<TabKey>('itinerary')
+  // "概览"取代"行程"成为默认首页——四个功能tab时代默认停在"行程"，但概览才是
+  // 回答"我现在该看什么"的地方，行程/账目都是从这里再点进去的具体功能
+  const [tab, setTab] = useState<TabKey>('overview')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [shareSettingsOpen, setShareSettingsOpen] = useState(false)
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false)
-  const [activityOpen, setActivityOpen] = useState(false)
-  const [retroOpen, setRetroOpen] = useState(false)
   const [syncDetailOpen, setSyncDetailOpen] = useState(false)
   const [itineraryFormOpen, setItineraryFormOpen] = useState(false)
 
   useEffect(() => {
     if (tripResult === NOT_FOUND) onSwitchTrip()
   }, [tripResult, onSwitchTrip])
+
+  // "更多"从顶部的图标按钮搬进了底部导航，点击时不再走 setTab（'more' 不是一个
+  // 会渲染内容的tab，是一个开弹层的动作，跟"记一笔"是同一类东西）——不然
+  // BottomNav 的 active 高亮会跳到一个没有对应内容区域的tab上
+  function handleNavChange(key: TabKey) {
+    if (key === 'more') {
+      setMoreOpen(true)
+      markHintSeen(currentMemberId, 'moreSheet')
+      return
+    }
+    setTab(key)
+  }
 
   // 安卓装成PWA后没有浏览器返回按钮，系统返回键是唯一的"退一步"手势。不接这个的话
   // 弹层开着按返回会直接退出整个APP
@@ -63,23 +72,20 @@ export function TripShell({
   // 同时打开那个"的切换里必然出bug：关闭方的清理函数调 history.back() 回收历史，
   // 但 back() 是异步的，等它真正触发 popstate 时，接住的已经是刚打开的那个弹层，
   // 它会以为用户按了返回键、立刻把自己关掉。表现就是"从更多面板点分享设置/提交
-  // 反馈/行程动态完全没反应"（真机反馈过）。合成一个之后，弹层之间切换时这个
+  // 反馈完全没反应"（真机反馈过）。合成一个之后，弹层之间切换时这个
   // hook 的 active 一直是 true，不发生卸载+装载，那个竞态从根上就不存在了
-  const anySheetOpen =
-    sheetOpen || moreOpen || feedbackOpen || shareSettingsOpen || inviteCodeOpen || activityOpen || retroOpen || syncDetailOpen
+  const anySheetOpen = sheetOpen || moreOpen || feedbackOpen || shareSettingsOpen || inviteCodeOpen || syncDetailOpen
   function closeAllSheets() {
     setSheetOpen(false)
     setMoreOpen(false)
     setFeedbackOpen(false)
     setShareSettingsOpen(false)
     setInviteCodeOpen(false)
-    setActivityOpen(false)
-    setRetroOpen(false)
     setSyncDetailOpen(false)
   }
   useBackDismiss(anySheetOpen, closeAllSheets)
 
-  // 未读提示：家里别人记的账，进"记账"tab之前先在tab上点个红点。只有账目能做到这件事，
+  // 未读提示：家里别人记的账，进"账目"tab之前先在tab上点个红点。只有账目能做到这件事，
   // 因为只有 expense 存了作者（recordedBy）；行程项和结算记录还没有作者字段
   const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(tripId).toArray(), [tripId]) ?? []
   const { seenAt: ledgerSeenAt, markSeen: markLedgerSeen } = useLastSeen(tripId, 'ledger')
@@ -130,33 +136,26 @@ export function TripShell({
               <ChevronDown className="w-3 h-3" strokeWidth={1.8} />
             </span>
           </button>
-          <button
-            onClick={() => { setMoreOpen(true); markHintSeen(currentMemberId, 'moreSheet') }}
-            className="relative w-[46px] rounded-[13px] border border-line bg-card flex items-center justify-center text-ink flex-shrink-0"
-            title="更多"
-          >
-            <svg viewBox="0 0 24 24" className="w-[19px] h-[19px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />
-              <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
-              <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none" />
-            </svg>
-            <DiscoveryDot memberId={currentMemberId} hintKey="moreSheet" />
-          </button>
         </div>
 
         <div className="flex-1 relative overflow-hidden">
+          {tab === 'overview' && <OverviewTab trip={trip} currentMemberId={currentMemberId} />}
           {tab === 'itinerary' && (
             <ItineraryTab trip={trip} currentMemberId={currentMemberId} onFormOpenChange={setItineraryFormOpen} />
           )}
           {tab === 'ledger' && (
             <LedgerTab trip={trip} currentMemberId={currentMemberId} highlightSince={ledgerHighlightSince} />
           )}
-          {tab === 'budget' && <BudgetTab trip={trip} />}
-          {tab === 'split' && <SplitTab trip={trip} currentMemberId={currentMemberId} />}
         </div>
 
-        {!(tab === 'itinerary' && itineraryFormOpen) && <Fab onClick={() => setSheetOpen(true)} />}
-        <BottomNav active={tab} onChange={setTab} badges={{ ledger: unseenLedger }} />
+        <BottomNav
+          active={tab}
+          onChange={handleNavChange}
+          badges={{ ledger: unseenLedger }}
+          onAddExpense={() => setSheetOpen(true)}
+          showFab={!(tab === 'itinerary' && itineraryFormOpen)}
+          decorate={{ more: <DiscoveryDot memberId={currentMemberId} hintKey="moreSheet" /> }}
+        />
 
         {sheetOpen && (
           <AddExpensePage trip={trip} currentMemberId={currentMemberId} onClose={() => setSheetOpen(false)} />
@@ -168,15 +167,10 @@ export function TripShell({
             onClose={() => setMoreOpen(false)}
             onOpenFeedback={() => { setMoreOpen(false); setFeedbackOpen(true) }}
             onOpenShareSettings={() => { setMoreOpen(false); setShareSettingsOpen(true) }}
-            onOpenActivity={() => { setMoreOpen(false); setActivityOpen(true) }}
-            onOpenRetrospective={() => { setMoreOpen(false); setRetroOpen(true) }}
             onOpenSyncDetail={() => { setMoreOpen(false); setSyncDetailOpen(true) }}
           />
         )}
 
-        {activityOpen && <ActivityFeed trip={trip} onClose={() => setActivityOpen(false)} />}
-
-        {retroOpen && <RetrospectiveSheet trip={trip} onClose={() => setRetroOpen(false)} />}
         {syncDetailOpen && <SyncDetailSheet onClose={() => setSyncDetailOpen(false)} />}
 
         {feedbackOpen && (
