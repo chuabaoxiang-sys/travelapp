@@ -12,6 +12,8 @@
 // 自动收紧。这样它永远回答的是"以现在的情况看，今天能花多少"，是可行动的；固定平均
 // 值过了头两天就和现实脱节了。
 
+import { daysInclusive } from '../lib/dates'
+
 export type AllowanceState =
   // 正常：今天还能花多少
   | { kind: 'daily-remaining'; remaining: number; allowance: number; todaySpent: number; daysLeft: number }
@@ -31,14 +33,6 @@ export interface AllowanceInput {
   budget: number | null // 整趟总预算，没设就是 null
   total: number // 这趟已花（本位币）
   todaySpent: number // 今天已花（本位币）
-}
-
-// 含头含尾数天数。两个日期都是 'YYYY-MM-DD'，直接按 UTC 解析避免本地时区把日期偏掉一天
-function daysInclusive(fromISO: string, toISO: string): number {
-  const from = Date.parse(`${fromISO}T00:00:00Z`)
-  const to = Date.parse(`${toISO}T00:00:00Z`)
-  if (Number.isNaN(from) || Number.isNaN(to)) return 0
-  return Math.floor((to - from) / 86_400_000) + 1
 }
 
 function round2(n: number) {
