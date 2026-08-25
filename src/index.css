@@ -246,10 +246,19 @@ button:not(:disabled):active {
   animation: sheet-in 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* 进度条宽度变化跟着走一段，不再是数值一变就瞬间跳到新宽度——用原生CSS
+   transition就够了，不用像SpendHero大数字那样另外写缓动循环 */
+.bar-fill {
+  transition: width 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* 有人明确要求减少动效时，全部退化成瞬间完成——动效是锦上添花，不能成为障碍 */
 @media (prefers-reduced-motion: reduce) {
   .sheet-enter {
     animation: none;
+  }
+  .bar-fill {
+    transition: none;
   }
   button:not(:disabled) {
     transition: none;

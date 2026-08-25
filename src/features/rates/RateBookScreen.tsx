@@ -251,7 +251,7 @@ export function RateBookScreen({
                           </div>
                           <div className="h-1.5 rounded-full bg-line overflow-hidden mt-1">
                             <div
-                              className="h-full rounded-full"
+                              className="bar-fill h-full rounded-full"
                               style={{ width: `${Math.min(100, pct)}%`, background: over ? 'var(--color-negative)' : 'var(--color-positive)' }}
                             />
                           </div>

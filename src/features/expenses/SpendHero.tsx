@@ -15,7 +15,7 @@ import type { AllowanceState } from '../../domain/dailyAllowance'
 function bar(pct: number) {
   return (
     <div className="mt-2.5 h-1 rounded-full bg-on-dark/15 overflow-hidden">
-      <div className="h-full rounded-full bg-spend" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+      <div className="bar-fill h-full rounded-full bg-spend" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
     </div>
   )
 }

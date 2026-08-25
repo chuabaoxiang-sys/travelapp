@@ -12,7 +12,7 @@ function Bar({ pct, color }: { pct: number; color: string }) {
   return (
     <div className="h-1.5 rounded-full bg-line overflow-hidden">
       {/* 下限 2% 是为了让金额很小的分类也留下一道可见的痕迹，而不是一条看不见的线 */}
-      <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(2, pct))}%`, background: color }} />
+      <div className="bar-fill h-full rounded-full" style={{ width: `${Math.min(100, Math.max(2, pct))}%`, background: color }} />
     </div>
   )
 }

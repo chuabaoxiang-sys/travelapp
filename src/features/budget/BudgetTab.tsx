@@ -195,7 +195,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
             </div>
             <div className="mt-1.5 h-1.5 rounded-full bg-line overflow-hidden">
               <div
-                className="h-full rounded-full"
+                className="bar-fill h-full rounded-full"
                 style={{ width: `${Math.min(100, r.pct)}%`, background: r.over ? 'var(--color-negative)' : categoryColor(r.category) }}
               />
             </div>

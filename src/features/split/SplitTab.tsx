@@ -666,7 +666,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-line overflow-hidden">
                   <div
-                    className="h-full rounded-full"
+                    className="bar-fill h-full rounded-full"
                     style={{
                       width: `${Math.min(100, Math.round((Math.abs(b.net) / Math.max(1, Math.max(b.paid, b.owed))) * 100))}%`,
                       background: settled ? 'var(--color-muted)' : b.net >= 0 ? 'var(--color-positive)' : 'var(--color-negative)',
