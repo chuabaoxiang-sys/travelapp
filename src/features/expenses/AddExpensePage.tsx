@@ -735,8 +735,13 @@ export function AddExpensePage({
           </div>
     </BottomSheet>
 
+      {/* "怎么分"/"花在几天"细节子面板是BottomSheet的兄弟节点，不是它的子内容——
+          BottomSheet自己的遮罩层z-30是显式值，子面板必须盖过它（z-40）才行，
+          z-10不够：以前子面板是包在没设z-index的wrapper div里面的兄弟，
+          "auto"层级下随便一个正数z-index都能盖过去；现在改成BottomSheet
+          自己的独立z-30遮罩，子面板要盖过它得比它的显式值更高 */}
       {activeDetail === 'split' && (
-        <div className="absolute inset-0 z-10 bg-paper flex flex-col">
+        <div className="absolute inset-0 z-40 bg-paper flex flex-col">
           <div className="flex items-center gap-3 px-4 pt-safe-header pb-2.5 border-b border-line flex-shrink-0">
             <button onClick={() => setActiveDetail(null)} className="flex items-center gap-0.5 text-muted text-[12.5px]">
               <ChevronLeft className="w-4 h-4" strokeWidth={2} />
@@ -869,7 +874,7 @@ export function AddExpensePage({
       )}
 
       {activeDetail === 'days' && (
-        <div className="absolute inset-0 z-10 bg-paper flex flex-col">
+        <div className="absolute inset-0 z-40 bg-paper flex flex-col">
           <div className="flex items-center gap-3 px-4 pt-safe-header pb-2.5 border-b border-line flex-shrink-0">
             <button onClick={() => setActiveDetail(null)} className="flex items-center gap-0.5 text-muted text-[12.5px]">
               <ChevronLeft className="w-4 h-4" strokeWidth={2} />
