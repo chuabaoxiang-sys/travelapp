@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Check, Copy, RefreshCw, Eye } from 'lucide-react'
 import { setShareScope, setShareTemplate, regenerateShareToken, buildShareUrl, effectiveShareScope } from '../../domain/share'
+import { BottomSheet } from '../../components/BottomSheet'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import { TEMPLATE_REGISTRY, UPCOMING_TEMPLATES } from '../share/templates/registry'
@@ -98,12 +99,8 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
   const canGetLink = sharing && !!trip.publicShareToken && !!trip.publicShareTemplate
 
   return (
-    <div className="absolute inset-0 z-30 bg-scrim/35" onClick={onClose}>
-      <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="pointer-events-auto bg-paper rounded-[26px] px-5 pt-3.5 pb-7 shadow-[0_-6px_28px_rgba(31,27,22,0.22)] max-h-[88%] overflow-y-auto no-scrollbar"
-        >
+    <>
+    <BottomSheet onClose={onClose} cardClassName="px-5 pt-3.5 pb-7 max-h-[88%] overflow-y-auto no-scrollbar">
         <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-3.5" />
         <div className="flex justify-between items-center mb-1">
           <span className="text-sm font-semibold">分享设置</span>
@@ -211,8 +208,7 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
             )}
           </>
         )}
-        </div>
-      </div>
+    </BottomSheet>
 
       {pendingScope && (
         <ConfirmDialog
@@ -234,6 +230,6 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
           onCancel={() => setConfirmingRegenerate(false)}
         />
       )}
-    </div>
+    </>
   )
 }

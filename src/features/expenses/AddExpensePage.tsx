@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Check, Lock } from 'luci
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { DatePicker } from '../../components/DatePicker'
+import { BottomSheet } from '../../components/BottomSheet'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { dateRange } from '../../lib/dates'
 import { RateChipRow, type RateSelection } from '../rates/RateChipRow'
@@ -468,12 +469,8 @@ export function AddExpensePage({
   ].filter(Boolean).join(' · ')
 
   return (
-    <div className="absolute inset-0 z-30 bg-scrim/35" onClick={onClose}>
-      <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="relative pointer-events-auto bg-paper rounded-[26px] pt-3.5 shadow-[0_-6px_28px_rgba(31,27,22,0.22)] max-h-[90%] flex flex-col overflow-hidden"
-        >
+    <>
+    <BottomSheet onClose={onClose} cardClassName="relative pt-3.5 max-h-[90%] flex flex-col overflow-hidden">
           <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-1 flex-shrink-0" />
           <div className="flex items-center justify-between px-4 pb-2.5 border-b border-line flex-shrink-0">
             <button onClick={onClose} className="text-muted text-[12.5px]">取消</button>
@@ -736,8 +733,7 @@ export function AddExpensePage({
           </>
         )}
           </div>
-        </div>
-      </div>
+    </BottomSheet>
 
       {activeDetail === 'split' && (
         <div className="absolute inset-0 z-10 bg-paper flex flex-col">
@@ -990,6 +986,6 @@ export function AddExpensePage({
           onCancel={() => setConfirmingDelete(false)}
         />
       )}
-    </div>
+    </>
   )
 }

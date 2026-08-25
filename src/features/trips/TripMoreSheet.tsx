@@ -9,6 +9,7 @@ import { effectiveShareScope } from '../../domain/share'
 import { formatAppVersion } from '../../lib/appVersion'
 import { useThemePreference, type ThemePreference } from '../../lib/theme'
 import { db } from '../../db/dexie'
+import { BottomSheet } from '../../components/BottomSheet'
 import { STUCK_THRESHOLD } from '../../components/SyncDetailSheet'
 import type { Trip } from '../../types'
 
@@ -147,12 +148,7 @@ export function TripMoreSheet({
   }
 
   return (
-    <div className="absolute inset-0 z-30 bg-scrim/35" onClick={onClose}>
-      <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="pointer-events-auto bg-paper rounded-[26px] px-5 pt-3.5 pb-7 shadow-[0_-6px_28px_rgba(31,27,22,0.22)] max-h-[88%] overflow-y-auto no-scrollbar"
-        >
+    <BottomSheet onClose={onClose} cardClassName="px-5 pt-3.5 pb-7 max-h-[88%] overflow-y-auto no-scrollbar">
         <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-3.5" />
 
         <div className="flex justify-between items-center mb-1">
@@ -297,8 +293,6 @@ export function TripMoreSheet({
           </div>
           <span className="text-[10.5px] text-plan flex-shrink-0">{refreshing ? '刷新中…' : '点击刷新'}</span>
         </button>
-        </div>
-      </div>
-    </div>
+    </BottomSheet>
   )
 }

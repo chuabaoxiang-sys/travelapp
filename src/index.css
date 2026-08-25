@@ -230,8 +230,27 @@ button:not(:disabled):active {
   animation: pop-in 0.28s ease-out;
 }
 
+/* 底部弹层开启动效。之前是React挂载瞬间直接出现，没有任何过渡，开合生硬。
+   34%冲到位、34%~72%原地停住、最后一点几乎看不见的回弹确认"到位了"——
+   光是滑上去感觉不出"到位"，专门停一下才有这个感觉。这一轮只做"打开"，
+   "关闭"还是维持直接消失：要做关闭动效得把每个调用方的开关布尔状态改成
+   三态（开/关闭中/已关闭），改动面更大，先看这一半的效果再决定 */
+@keyframes sheet-in {
+  0% { opacity: 0; transform: translateY(20px) scale(0.965); }
+  34% { opacity: 1; transform: translateY(0) scale(1); }
+  72% { opacity: 1; transform: translateY(0) scale(1); }
+  86% { opacity: 1; transform: translateY(-3px) scale(1.004); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.sheet-enter {
+  animation: sheet-in 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* 有人明确要求减少动效时，全部退化成瞬间完成——动效是锦上添花，不能成为障碍 */
 @media (prefers-reduced-motion: reduce) {
+  .sheet-enter {
+    animation: none;
+  }
   button:not(:disabled) {
     transition: none;
   }

@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import type { Trip } from '../../types'
 import { Avatar } from '../../components/Avatar'
+import { BottomSheet } from '../../components/BottomSheet'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import { useActivityEntries, ACTIVITY_KIND_LABEL, ACTIVITY_KIND_CLASS, relativeTime } from './useActivityEntries'
 
@@ -23,12 +24,7 @@ export function ActivityFeed({ trip, onClose }: { trip: Trip; onClose: () => voi
   const now = Date.now()
 
   return (
-    <div className="absolute inset-0 z-30 bg-scrim/35" onClick={onClose}>
-      <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="pointer-events-auto bg-paper rounded-[26px] px-5 pt-3.5 pb-7 shadow-[0_-6px_28px_rgba(31,27,22,0.22)] max-h-[88%] overflow-y-auto no-scrollbar"
-        >
+    <BottomSheet onClose={onClose} cardClassName="px-5 pt-3.5 pb-7 max-h-[88%] overflow-y-auto no-scrollbar">
         <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-3.5" />
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-serif-sc text-[15px] font-semibold">行程动态</h2>
@@ -63,8 +59,6 @@ export function ActivityFeed({ trip, onClose }: { trip: Trip; onClose: () => voi
             })}
           </div>
         )}
-        </div>
-      </div>
-    </div>
+    </BottomSheet>
   )
 }
