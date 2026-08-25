@@ -54,5 +54,5 @@
 
 - 生产 Supabase：`pivhpufmgmcazztlshfw`；测试 Supabase：`jwngufyqkdgwawsirdsl`。**两个是完全独立的项目，任何后台设置都不会互相同步。**
 - 线上地址：`https://travelapp-kappa-wheat.vercel.app`，推 `main` 自动部署。
-- 迁移 SQL 一律由用户自己贴进 Supabase SQL Editor 执行，`service_role` 密钥**绝不出现在任何运行中的代码里**。
+- **2026-08-26 起**：用户已经接上 Supabase MCP，迁移 SQL 改成由 Claude 通过 MCP 直接跑（测试项目跑完确认无误，再跑生产项目），不用再手动贴进 SQL Editor。`supabase-migration-safety` skill 里"不要用连接工具走捷径"那条已经过期，跑迁移时用 MCP 执行，其余步骤（先测试后生产、备份、拆分bulk-UPDATE+DDL等）照旧。`service_role` 密钥依然**不出现在应用运行时代码里**——这条不受影响，只是迁移执行方式变了。
 - 安全区（刘海/home 条）只能真机验证——浏览器里 `env(safe-area-inset-*)` 永远是 0。

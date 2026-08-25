@@ -40,6 +40,10 @@ export interface Trip {
   // 目的地国家（ISO 3166-1 alpha-2 小写代码），可选、可多选——用来把这趟行程的地点搜索
   // 限制在对应国家范围内，避免搜出同名但相隔千里的地方。老行程没有这个字段时按空数组处理
   destinationCountries?: string[]
+  // 本位币之外，这趟行程预计会用到的外币（ISO 4217 大写代码）——记一笔时
+  // 金额旁边的币种chip从这个列表+本位币生成，不用每次手动打字。老行程没有
+  // 这个字段时按空数组处理，跟 destinationCountries 是同一个套路
+  currencies?: string[]
   createdAt: number
   updatedAt: number
 }

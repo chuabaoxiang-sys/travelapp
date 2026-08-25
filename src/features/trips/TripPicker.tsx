@@ -7,6 +7,7 @@ import { computeTripStatus } from '../../domain/trips'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CountryPicker } from '../../components/CountryPicker'
+import { CurrencyPicker } from '../../components/CurrencyPicker'
 import { countryByCode } from '../../lib/countries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
 import { TeamSwitcher } from '../teams/TeamSwitcher'
@@ -174,6 +175,7 @@ function TripForm({
   const [startDate, setStartDate] = useState(initial?.startDate ?? '')
   const [endDate, setEndDate] = useState(initial?.endDate ?? '')
   const [destinationCountries, setDestinationCountries] = useState<string[]>(initial?.destinationCountries ?? [])
+  const [currencies, setCurrencies] = useState<string[]>(initial?.currencies ?? [])
 
   async function save() {
     if (!name.trim()) return
@@ -183,6 +185,7 @@ function TripForm({
         startDate: startDate || null,
         endDate: endDate || null,
         destinationCountries,
+        currencies,
         updatedAt: Date.now(),
       })
       onDone(initial.id)
@@ -203,6 +206,7 @@ function TripForm({
         publicShareToken: null,
         publicShareTemplate: null,
         destinationCountries,
+        currencies,
         createdAt: now,
         updatedAt: now,
       }
@@ -228,6 +232,7 @@ function TripForm({
         <div className="flex-1"><DatePicker value={endDate ?? ''} onChange={setEndDate} placeholder="返程日期" /></div>
       </div>
       <CountryPicker value={destinationCountries} onChange={setDestinationCountries} />
+      <CurrencyPicker homeCurrency={initial?.homeCurrency ?? 'MYR'} value={currencies} onChange={setCurrencies} />
       <div className="flex gap-2 mt-1">
         {onDelete && (
           <button onClick={onDelete} className="rounded-xl border border-negative/30 text-negative px-3 py-2" title="删除">

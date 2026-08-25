@@ -69,6 +69,11 @@ export function AddExpensePage({
   const [categoryId, setCategoryId] = useState<string>(initial?.categoryId ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [currency, setCurrency] = useState(initial?.expenseCurrency ?? trip.homeCurrency)
+  // 币种chip从"本位币+行程设置里选好的会用到的货币"生成，不用每次手动打字。
+  // 老账目/没被行程货币列表覆盖的币种（比如编辑一笔当初手动输入的冷门币种）
+  // 不在这份chip列表里时，直接展开手动输入框，而不是让chip显示一个选不中的状态
+  const chipCurrencies = Array.from(new Set([trip.homeCurrency, ...(trip.currencies ?? [])]))
+  const [manualCurrencyOpen, setManualCurrencyOpen] = useState(!chipCurrencies.includes(currency))
   const [amount, setAmount] = useState(initial ? String(initial.expenseAmount) : '')
   const [rateSelection, setRateSelection] = useState<RateSelection>(
     initial?.rateBookEntryId ? { mode: 'existing', entryId: initial.rateBookEntryId, rate: initial.rateUsed } : { mode: 'none' },
@@ -501,7 +506,7 @@ export function AddExpensePage({
             这笔账已经结算过，金额、汇率、怎么分、付款人都不能再改，也不能删除
           </div>
         )}
-        <div className="grid grid-cols-[1fr_84px] gap-2 rounded-2xl border-[1.5px] border-plan bg-card px-3.5 py-2.5">
+        <div className="rounded-2xl border-[1.5px] border-plan bg-card px-3.5 py-2.5">
           <input
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -509,15 +514,43 @@ export function AddExpensePage({
             placeholder="金额"
             autoFocus={!initial}
             disabled={settled}
-            className="text-[26px] font-serif-sc tabular outline-none min-w-0 bg-transparent disabled:opacity-60"
+            className="w-full text-[26px] font-serif-sc tabular outline-none bg-transparent disabled:opacity-60"
           />
-          <input
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-            placeholder="币种"
-            disabled={settled}
-            className="rounded-lg border border-line bg-paper px-2 text-sm text-center uppercase outline-none focus:border-plan min-w-0 self-center disabled:opacity-60"
-          />
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {chipCurrencies.map((code) => (
+              <button
+                key={code}
+                type="button"
+                disabled={settled}
+                onClick={() => { setCurrency(code); setManualCurrencyOpen(false) }}
+                className={`rounded-full px-3 py-1 text-[12.5px] font-medium border disabled:opacity-60 ${
+                  !manualCurrencyOpen && currency === code ? 'bg-plan text-card border-plan' : 'border-line text-soft'
+                }`}
+              >
+                {code}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={settled}
+              onClick={() => setManualCurrencyOpen(true)}
+              className={`rounded-full px-3 py-1 text-[12.5px] border disabled:opacity-60 ${
+                manualCurrencyOpen ? 'bg-plan text-card border-plan' : 'border-line text-muted'
+              }`}
+            >
+              其他
+            </button>
+          </div>
+          {manualCurrencyOpen && (
+            <input
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+              placeholder="币种代码，比如 KRW"
+              disabled={settled}
+              autoFocus
+              className="mt-1.5 w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm uppercase outline-none focus:border-plan disabled:opacity-60"
+            />
+          )}
         </div>
 
         {isForeign && (
