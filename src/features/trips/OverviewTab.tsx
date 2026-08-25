@@ -62,9 +62,14 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
   const wishlistUsage = useLiveQuery(() => usageByWishlistEntry()) ?? new Map()
 
   const daysLeft = trip.startDate ? daysUntil(todayISO, trip.startDate) : null
-  const needsBooking = items.filter((it) => it.bookingStatus === 'needed')
   const sortedDays = [...itineraryDays].sort((a, b) => a.date.localeCompare(b.date))
   const dayIndexOf = (dayId: string) => sortedDays.findIndex((d) => d.id === dayId) + 1
+  // 按第几天排序，同一天再按时间排——不然"还没订"这个列表跟着items查询原始
+  // 顺序走（大致是创建顺序），第13天排在第3天前面，看着很乱，跟"离出发还有
+  // 几天"这种时间线视角完全对不上
+  const needsBooking = items
+    .filter((it) => it.bookingStatus === 'needed')
+    .sort((a, b) => dayIndexOf(a.dayId) - dayIndexOf(b.dayId) || (a.time ?? '').localeCompare(b.time ?? ''))
 
   const totalDays = trip.startDate && trip.endDate ? daysInclusive(trip.startDate, trip.endDate) : 0
   const daysWithItems = new Set(items.map((it) => it.dayId)).size
