@@ -39,6 +39,21 @@ function round2(n: number) {
   return Math.round(n * 100) / 100
 }
 
+// 这个状态当前该显示的原始数字——SpendHero用来给自己的数字滚动动效取值，
+// LedgerTab也要用（"全部/我的"切换时，两张卡的大数字接到同一个
+// useAnimatedNumber上，数字才能连续滚过去），放domain层而不是SpendHero.tsx
+// 里，纯粹是为了不在同一个文件里既导出组件又导出函数（会破坏Fast Refresh，
+// 这个项目之前categoryVisuals.tsx拆分就是同一个原因）
+export function heroRawValue(state: AllowanceState): number {
+  switch (state.kind) {
+    case 'daily-remaining': return state.remaining
+    case 'daily-over': return state.over
+    case 'budget-over': return state.over
+    case 'no-budget': return state.todaySpent
+    case 'outside-trip': return state.total
+  }
+}
+
 export function resolveAllowance(input: AllowanceInput): AllowanceState {
   const { todayISO, startDate, endDate, budget, total, todaySpent } = input
 

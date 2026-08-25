@@ -12,7 +12,7 @@ import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 import { spentOnDate } from '../../domain/dayAllocations'
-import { resolveAllowance } from '../../domain/dailyAllowance'
+import { resolveAllowance, heroRawValue } from '../../domain/dailyAllowance'
 import { SpendHero } from './SpendHero'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
@@ -49,7 +49,6 @@ export function LedgerTab({
   // 正好就是"我的花费"这个数字，不用另外算一遍
   const balances = useLiveQuery(() => computeBalances(trip.id), [trip.id]) ?? []
   const myOwed = balances.find((b) => b.memberId === currentMemberId)?.owed ?? 0
-  const animatedMyOwed = useAnimatedNumber(myOwed)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [rateBookOpen, setRateBookOpen] = useState(false)
   const [budgetOpen, setBudgetOpen] = useState(false)
@@ -85,6 +84,11 @@ export function LedgerTab({
     total,
     todaySpent,
   })
+  // "全部/我的"切两张卡时，用户要看到数字本身也连续滚过去（哪怕两边含义不同），
+  // 不只是卡片淡入——所以两张卡的大数字接到同一个useAnimatedNumber上，只是
+  // "目标值"跟着view切换，起点永远是当前视觉上正显示的那个数
+  const activeHeroValue = view === 'mine' ? myOwed : heroRawValue(allowance)
+  const animatedActiveHeroValue = useAnimatedNumber(activeHeroValue)
   const myExpenseIds = myRelatedExpenseIds(expenses, splits, currentMemberId)
   const visibleExpenses = view === 'mine' ? expenses.filter((e) => myExpenseIds.has(e.id)) : expenses
   const editingExpense = expenses.find((e) => e.id === editingId)
@@ -152,7 +156,7 @@ export function LedgerTab({
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
         <div key="team" className="card-swap">
-          <SpendHero state={allowance} currency={currencyLabel} />
+          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} />
           {/* 预算不再是独立tab，降级成这里的一个次级入口——它本来就是"花了多少"
               的参照系，跟账目列表放在一起看才有意义，改总预算/加分类预算的表单
               逻辑完全没动，只是换了个容器（见 BudgetSheet） */}
@@ -167,7 +171,7 @@ export function LedgerTab({
       ) : (
         <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
           <div className="text-[11px] tracking-wider text-on-dark/55">我这趟要承担</div>
-          <div className="font-serif-sc text-[27px] leading-none mt-1.5">{formatMoney(animatedMyOwed, currencyLabel)}</div>
+          <div className="font-serif-sc text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
           <div className="mt-2 text-[11px] text-on-dark/50">自己付的 + 分摊别人垫付的</div>
         </div>
       )}
