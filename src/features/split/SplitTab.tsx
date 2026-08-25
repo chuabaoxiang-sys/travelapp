@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, CircleCheck, Pencil, Trash2, Check, Plus, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, CircleCheck, Pencil, Trash2, Check, Plus, ChevronDown } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { computeBalances, simplifyDebts, openExpenseDebts, closedExpenseDebts, prepaymentBalances, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
 import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../../domain/settlements'
@@ -540,7 +540,10 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                 onClick={() => setShowClosed((v) => !v)}
                 className="w-full flex items-center justify-center gap-1 pt-2.5 mt-2 border-t border-dashed border-line text-plan text-[10.5px] font-semibold"
               >
-                {showClosed ? <ChevronUp className="w-3 h-3" strokeWidth={2.2} /> : <ChevronDown className="w-3 h-3" strokeWidth={2.2} />}
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform duration-200 ${showClosed ? 'rotate-180' : ''}`}
+                  strokeWidth={2.2}
+                />
                 {showClosed ? '收起已结清' : `查看已结清（${closedDebts.length}）`}
               </button>
               {showClosed && (
