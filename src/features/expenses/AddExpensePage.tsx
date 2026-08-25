@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Check, Lock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Lock } from 'lucide-react'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { DatePicker } from '../../components/DatePicker'
 import { BottomSheet } from '../../components/BottomSheet'
+import { SuccessToast } from '../../components/SuccessToast'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { dateRange } from '../../lib/dates'
 import { RateChipRow, type RateSelection } from '../rates/RateChipRow'
@@ -443,10 +444,7 @@ export function AddExpensePage({
   if (saved) {
     return (
       <div className="absolute inset-0 z-30 flex items-center justify-center bg-scrim/35">
-        <div className="pop-in bg-card rounded-3xl px-7 py-6 flex flex-col items-center gap-2 shadow-2xl">
-          <Check className="w-9 h-9 text-positive" strokeWidth={2.2} />
-          <div className="text-[13.5px] text-ink">已记下</div>
-        </div>
+        <SuccessToast label="已记下" />
       </div>
     )
   }

@@ -10,6 +10,7 @@ import { Avatar } from '../../components/Avatar'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
+import { SuccessToast } from '../../components/SuccessToast'
 import type { Trip, Settlement, Member } from '../../types'
 
 function debtKey(d: OpenExpenseDebt) {
@@ -182,6 +183,14 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   const [editNote, setEditNote] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
+  // 结算确认成功的短暂提示——之前这3个确认按钮点了直接关表单，没有任何
+  // "成功了"的信号，跟记一笔保存那边不一致
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  function flashSuccess(label: string) {
+    setSuccessMsg(label)
+    setTimeout(() => setSuccessMsg(null), 1400)
+  }
+
   // 手动记一笔结算——不依赖"已有欠款"或"具体账目"，用来记预付款这类场景：
   // 有人提前给了一大笔钱，之后会持续用来抵消他名下的开销，但这笔钱产生的
   // 时候，"结算建议"和"按笔结算"这两个入口都还没有东西可以让他结算
@@ -216,6 +225,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
       isPrepayment: true,
     })
     setManualSettleOpen(false)
+    flashSuccess('已记录')
   }
 
   function memberOf(id: string) {
@@ -282,6 +292,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
     }
     setSelectedDebtKeys(new Set())
     setItemSettleOpen(false)
+    flashSuccess('已结清')
   }
 
   const transfers = simplifyDebts(balances)
@@ -315,6 +326,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
       createdBy: currentMemberId,
     })
     setOpenKey(null)
+    flashSuccess('已结清')
   }
 
   function startEdit(s: Settlement) {
@@ -357,6 +369,11 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
             onCancel={() => setManualSettleOpen(false)}
             onConfirm={confirmManualSettle}
           />
+        )}
+        {successMsg && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <SuccessToast label={successMsg} />
+          </div>
         )}
       </div>
     )
@@ -760,6 +777,12 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
           onCancel={() => setManualSettleOpen(false)}
           onConfirm={confirmManualSettle}
         />
+      )}
+
+      {successMsg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <SuccessToast label={successMsg} />
+        </div>
       )}
     </div>
   )
