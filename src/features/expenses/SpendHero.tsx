@@ -1,4 +1,5 @@
 import { formatMoney } from '../../lib/money'
+import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import type { AllowanceState } from '../../domain/dailyAllowance'
 
 // 记账页顶部那张深色大卡（--color-surface-strong，不管App本身是浅色还是深色
@@ -31,7 +32,7 @@ export function SpendHero({
   const money = (n: number) => formatMoney(n, currency)
 
   let label: string
-  let value: string
+  let rawValue: number
   let sub: string
   let big = true // 大数字用 spend 橙；退化状态用纸色，因为它只是陈述事实，不是可行动的额度
   let progress: number | null = null
@@ -40,32 +41,32 @@ export function SpendHero({
   switch (state.kind) {
     case 'daily-remaining':
       label = '今天还能花'
-      value = money(state.remaining)
+      rawValue = state.remaining
       sub = `今日额度 ${money(state.allowance)} · 已花 ${money(state.todaySpent)}`
       progress = state.allowance > 0 ? (state.todaySpent / state.allowance) * 100 : 0
       break
     case 'daily-over':
       label = '今天超了'
-      value = money(state.over)
+      rawValue = state.over
       sub = `今天已花 ${money(state.todaySpent)} · 额度 ${money(state.allowance)}`
       progress = 100
       break
     case 'budget-over':
       label = '已超总预算'
-      value = money(state.over)
+      rawValue = state.over
       sub = `这趟已花 ${money(state.total)} · 预算 ${money(state.budget)}`
       progress = 100
       break
     case 'no-budget':
       label = '今天已花'
-      value = money(state.todaySpent)
+      rawValue = state.todaySpent
       sub = `这趟共 ${money(state.total)}`
       big = false
       cta = true
       break
     case 'outside-trip':
       label = '这趟已花'
-      value = money(state.total)
+      rawValue = state.total
       sub = state.budget != null
         ? `预算 ${money(state.budget)} · 还剩 ${money(Math.max(0, state.budget - state.total))}`
         : '还没设预算'
@@ -74,6 +75,10 @@ export function SpendHero({
       cta = state.budget == null
       break
   }
+
+  // 全app唯一一个"每记一笔就会变"的大数字，值得用滚动动效——别的formatMoney
+  // 调用（sub行、进度条百分比）保持瞬间更新，不是全局规则
+  const value = money(useAnimatedNumber(rawValue))
 
   return (
     <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
