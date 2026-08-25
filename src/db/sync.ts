@@ -107,6 +107,28 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
   return { pushed, failed }
 }
 
+// 哪些本地行该当成"远端已删除"清掉——单独抽成纯函数，不用连supabase就能测。
+//
+// expenseSplits是唯一的例外：它不逐行进outbox，pushOutbox按expenseId分组整批推送
+// （见0009_atomic_expense_split_push.sql），所以它的outbox条目recordId存的是
+// expenseId，不是每一行分摊记录自己的id——如果直接拿"这一行的id在不在pendingIds
+// 里"来判断，永远查不到（比较的根本不是同一种id），保护形同虚设。真实后果：
+// 刚记完一笔分摊、推送还没落地remote时，如果这时候恰好跑到pullAll（比如两次
+// 自动同步之间的间隔撞上了），remote这时还查不到这几行，会被当成"远端已删除"
+// 直接清掉本地——这正是"默认保存后分摊变成0"这个bug的根因，而且不是偶发：
+// 只要保存和同步时机凑在一起就必然触发，跟输入的具体内容无关
+export function computeIdsToDelete(
+  tableName: string,
+  localRows: { id: string; expenseId?: string }[],
+  remoteIds: Set<string>,
+  pendingIds: Set<string>,
+): string[] {
+  const isPending = tableName === 'expenseSplits'
+    ? (r: { id: string; expenseId?: string }) => pendingIds.has(r.expenseId ?? '')
+    : (r: { id: string }) => pendingIds.has(r.id)
+  return localRows.filter((r) => !remoteIds.has(r.id) && !isPending(r)).map((r) => r.id)
+}
+
 // 返回"这一轮真的有多少行发生了变化"，给UI用来提示"刚拿到新东西"。
 // 注意不能直接用 toPut.length 当这个数字——每一轮都会把远端所有行原样 bulkPut 回本地，
 // 所以 toPut 基本恒等于全表行数，拿它当"有新数据"会导致每轮都误报。这里只数真正
@@ -157,10 +179,9 @@ export async function pullAll(): Promise<number> {
     }
 
     // 远端已经没有、本地也没有待推送记录的行，说明是别的设备删除的，本地也跟着删掉
+    // （expenseSplits这张表的判断逻辑见computeIdsToDelete的注释）
     const remoteIds = new Set(data.map((r: any) => r.id))
-    const idsToDelete = localRows
-      .map((r: any) => r.id)
-      .filter((id: string) => !remoteIds.has(id) && !pendingIds.has(id))
+    const idsToDelete = computeIdsToDelete(tableName, localRows, remoteIds, pendingIds)
     if (idsToDelete.length) {
       await withoutOutboxTracking(() => table.bulkDelete(idsToDelete))
       changed += idsToDelete.length
