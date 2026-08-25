@@ -265,6 +265,18 @@ button:not(:disabled):active {
   to { stroke-dashoffset: 0; }
 }
 
+/* 记账页"全部/我的"切换时，顶部大卡整块换成另一张（数字含义都变了，不是
+   同一个指标在增减，所以不用数字滚动去接——那样容易让人误以为是同一笔钱
+   在变化）。轻一点的淡入+轻微上浮，跟"底部抽屉"那种郑重的开启感区分开，
+   毕竟这只是切一个页签，不是打开一个新的操作面 */
+.card-swap {
+  animation: card-swap-in 220ms ease-out;
+}
+@keyframes card-swap-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* 有人明确要求减少动效时，全部退化成瞬间完成——动效是锦上添花，不能成为障碍 */
 @media (prefers-reduced-motion: reduce) {
   .sheet-enter {
@@ -276,6 +288,9 @@ button:not(:disabled):active {
   }
   .bar-fill {
     transition: none;
+  }
+  .card-swap {
+    animation: none;
   }
   button:not(:disabled) {
     transition: none;

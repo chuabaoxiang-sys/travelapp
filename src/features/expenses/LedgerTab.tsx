@@ -14,6 +14,7 @@ import { Avatar } from '../../components/Avatar'
 import { spentOnDate } from '../../domain/dayAllocations'
 import { resolveAllowance } from '../../domain/dailyAllowance'
 import { SpendHero } from './SpendHero'
+import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { DiscoveryDot } from '../../components/DiscoveryDot'
 import { markHintSeen } from '../../domain/discoveryHints'
@@ -48,6 +49,7 @@ export function LedgerTab({
   // 正好就是"我的花费"这个数字，不用另外算一遍
   const balances = useLiveQuery(() => computeBalances(trip.id), [trip.id]) ?? []
   const myOwed = balances.find((b) => b.memberId === currentMemberId)?.owed ?? 0
+  const animatedMyOwed = useAnimatedNumber(myOwed)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [rateBookOpen, setRateBookOpen] = useState(false)
   const [budgetOpen, setBudgetOpen] = useState(false)
@@ -149,7 +151,7 @@ export function LedgerTab({
           的即时回报。"我的"保持整趟汇总：预算是团队级的，没有个人预算可以推出
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
-        <>
+        <div key="team" className="card-swap">
           <SpendHero state={allowance} currency={currencyLabel} />
           {/* 预算不再是独立tab，降级成这里的一个次级入口——它本来就是"花了多少"
               的参照系，跟账目列表放在一起看才有意义，改总预算/加分类预算的表单
@@ -161,11 +163,11 @@ export function LedgerTab({
             <span className="text-[13px] text-plan">管理预算</span>
             <ChevronRight className="w-4 h-4 text-muted" strokeWidth={1.8} />
           </button>
-        </>
+        </div>
       ) : (
-        <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
+        <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
           <div className="text-[11px] tracking-wider text-on-dark/55">我这趟要承担</div>
-          <div className="font-serif-sc text-[27px] leading-none mt-1.5">{formatMoney(myOwed, currencyLabel)}</div>
+          <div className="font-serif-sc text-[27px] leading-none mt-1.5">{formatMoney(animatedMyOwed, currencyLabel)}</div>
           <div className="mt-2 text-[11px] text-on-dark/50">自己付的 + 分摊别人垫付的</div>
         </div>
       )}
