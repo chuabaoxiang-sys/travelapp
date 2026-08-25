@@ -11,7 +11,11 @@ import { buildMapsUrl, formatRouteLeg, isLegLinkable } from '../lib/routeLegs'
 export function RouteLegHint({ leg }: { leg: RouteLeg | undefined }) {
   if (!leg) return null
 
-  const className = 'text-[11px] text-muted pl-2 -my-0.5 flex items-center gap-1'
+  // w-fit：这一行是itinerary列表那个flex-col容器里的一个子项，容器没设align-items，
+  // 默认stretch会让它拉伸到整行宽——可点的<a>版本因此会把整行空白也变成可点区域，
+  // 点哪都跳去Google Maps，容易误触。加w-fit让容器只跟内容一样宽，点击区域收回到
+  // 文字+图标本身
+  const className = 'text-[11px] text-muted pl-2 -my-0.5 flex items-center gap-1 w-fit'
 
   if (!isLegLinkable(leg)) {
     const text = formatRouteLeg(leg)
