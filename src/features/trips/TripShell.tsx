@@ -48,6 +48,9 @@ export function TripShell({
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false)
   const [syncDetailOpen, setSyncDetailOpen] = useState(false)
   const [itineraryFormOpen, setItineraryFormOpen] = useState(false)
+  // FAB在"行程"tab上被接成"添加行程项"而不是"记一笔"——它没法直接调用ItineraryTab
+  // 内部的setFormState，靠这个自增计数器当信号，ItineraryTab自己的effect监听变化
+  const [itineraryAddSignal, setItineraryAddSignal] = useState(0)
 
   useEffect(() => {
     if (tripResult === NOT_FOUND) onSwitchTrip()
@@ -141,7 +144,12 @@ export function TripShell({
         <div className="flex-1 relative overflow-hidden">
           {tab === 'overview' && <OverviewTab trip={trip} currentMemberId={currentMemberId} />}
           {tab === 'itinerary' && (
-            <ItineraryTab trip={trip} currentMemberId={currentMemberId} onFormOpenChange={setItineraryFormOpen} />
+            <ItineraryTab
+              trip={trip}
+              currentMemberId={currentMemberId}
+              onFormOpenChange={setItineraryFormOpen}
+              addSignal={itineraryAddSignal}
+            />
           )}
           {tab === 'ledger' && (
             <LedgerTab trip={trip} currentMemberId={currentMemberId} highlightSince={ledgerHighlightSince} />
@@ -152,7 +160,7 @@ export function TripShell({
           active={tab}
           onChange={handleNavChange}
           badges={{ ledger: unseenLedger }}
-          onAddExpense={() => setSheetOpen(true)}
+          onAddExpense={() => (tab === 'itinerary' ? setItineraryAddSignal((s) => s + 1) : setSheetOpen(true))}
           showFab={!(tab === 'itinerary' && itineraryFormOpen)}
           decorate={{ more: <DiscoveryDot memberId={currentMemberId} hintKey="moreSheet" /> }}
         />

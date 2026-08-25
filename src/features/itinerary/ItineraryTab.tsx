@@ -32,10 +32,15 @@ export function ItineraryTab({
   trip,
   currentMemberId,
   onFormOpenChange,
+  addSignal,
 }: {
   trip: Trip
   currentMemberId: string
   onFormOpenChange?: (open: boolean) => void
+  // 底部导航FAB在这个tab上被TripShell接成"添加行程项"，它没法直接调用这里的
+  // setFormState——每次点击这个数字就+1，下面的effect监听变化来触发，比透出
+  // 一个ref/imperative handle更简单，跟其他地方"信号量"式的父子通信是一个套路
+  addSignal?: number
 }) {
   const days = trip.startDate && trip.endDate ? dateRange(trip.startDate, trip.endDate) : []
   const [viewMode, setViewMode] = useState<ViewMode>('timeline')
@@ -122,6 +127,19 @@ export function ItineraryTab({
     return () => onFormOpenChange?.(false)
   }, [formState, onFormOpenChange])
 
+  // FAB点了"添加行程项"：不管当前在日历/地图视图还是时间线，"+"在这个tab上
+  // 永远是同一个意思，所以先切回时间线（保留已选中的日期），再打开新增表单。
+  // 用ref存"上一次处理过的信号值"而不是直接把addSignal放依赖数组里跑一次性逻辑——
+  // 这个effect本来就该每次signal变化都跑，标准写法；首次挂载时signal是初始值
+  // (0/undefined)，不应该触发，用ref记录"已经处理到哪一版"来跳过首次挂载这次
+  const handledAddSignalRef = useRef(addSignal)
+  useEffect(() => {
+    if (addSignal === undefined || addSignal === handledAddSignalRef.current) return
+    handledAddSignalRef.current = addSignal
+    setViewMode('timeline')
+    setFormState('new')
+  }, [addSignal])
+
   // 行程比较多的时候，这个筛选能一眼看出"这趟行程还有哪几项没订"。只影响时间线
   // 这里的显示，不影响日历/地图视图，也不影响还没建过的那几天能不能选
   const [onlyNeeded, setOnlyNeeded] = useState(false)
@@ -182,6 +200,15 @@ export function ItineraryTab({
 
   async function ensureDay(date: string) {
     return ensureItineraryDay(trip.id, date)
+  }
+
+  // 切换"当前日期"的统一入口——时间线的完整/精简日期条、日历视图点日期，
+  // 三处都要走同一套：换了天，编辑到一半的表单没意义了，"附近想去的地点"提示
+  // 也该按新的一天重新判断，不能带着上一天的关闭状态
+  function selectDate(d: string) {
+    setSelected(d)
+    setFormState(null)
+    setSuggestionsDismissed(false)
   }
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -278,7 +305,9 @@ export function ItineraryTab({
             items={allItems}
             expenses={expenses}
             dayAllocations={dayAllocations}
-            onJumpToTimeline={(date) => { setSelected(date); setViewMode('timeline') }}
+            selected={selected}
+            onSelect={selectDate}
+            onJumpToTimeline={() => setViewMode('timeline')}
           />
         )}
         {viewMode === 'map' && <MapView days={itineraryDays} items={allItems} />}
@@ -302,7 +331,7 @@ export function ItineraryTab({
                     <button
                       key={d}
                       data-date={d}
-                      onClick={() => { setSelected(d); setFormState(null); setSuggestionsDismissed(false) }}
+                      onClick={() => selectDate(d)}
                       className={`flex-shrink-0 rounded-2xl px-3.5 py-2 text-center border font-serif-sc ${
                         isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-soft border-line'
                       }`}
@@ -339,7 +368,7 @@ export function ItineraryTab({
                       <button
                         key={d}
                         data-date={d}
-                        onClick={() => { setSelected(d); setFormState(null); setSuggestionsDismissed(false) }}
+                        onClick={() => selectDate(d)}
                         className={`flex-shrink-0 w-8 h-8 rounded-lg text-center font-serif-sc text-[13px] font-semibold flex items-center justify-center border ${
                           isActive ? 'bg-ink text-paper border-ink' : 'bg-card text-soft border-line'
                         }`}
@@ -483,7 +512,7 @@ export function ItineraryTab({
                 )
               })}
               {!items.length && formState !== 'new' && (
-                <div className="text-[13px] text-muted py-4 text-center">这天还没有安排，点下面添加一项</div>
+                <div className="text-[13px] text-muted py-4 text-center">这天还没有安排，点右下角"+"添加一项</div>
               )}
               {!!items.length && onlyNeeded && !items.some((it) => it.bookingStatus === 'needed' || formState === it.id) && (
                 <div className="text-[13px] text-muted py-4 text-center">这天没有待预约的行程项</div>
@@ -523,17 +552,7 @@ export function ItineraryTab({
                   setFormState((cur) => (cur === 'new' ? null : cur))
                 }}
               />
-            ) : (
-              !formState && (
-                <button
-                  onClick={() => setFormState('new')}
-                  className="mt-2 w-full rounded-xl border border-dashed border-line text-soft text-sm py-2.5 flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" strokeWidth={2} />
-                  添加行程项
-                </button>
-              )
-            )}
+            ) : null}
           </div>
         )}
       </div>
