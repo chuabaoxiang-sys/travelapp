@@ -58,13 +58,16 @@
    src/lib/theme.ts 负责把用户在"更多"面板里的选择写成 <html data-theme="..."> 属性；
    这里只负责"给定某个模式，每个token该是什么颜色"，两边职责分开。
    颜色数值来自 claude.ai/design 的"夜行"方案定稿（https://claude.ai/code/artifact/603130cc-a730-4efa-bb1e-7b824ea3d9be），
-   分类色/语义色部分因为原方案只给了2个示例，其余按同一套配色逻辑（暗底上更亮更饱和）延伸配齐 */
+   分类色/语义色部分因为原方案只给了2个示例，其余按同一套配色逻辑（暗底上更亮更饱和）延伸配齐。
+   2026-08-26：用了一段时间后反馈"看久了眼睛很累"，排查发现 --dark-card 偏冷灰蓝、
+   跟偏暖色调的 --dark-paper/--dark-line 撞色，--dark-plan 又偏亮偏艳——这两个token
+   是几乎每张卡片、每个强调按钮都在用的，调低饱和度/亮度、把card的色相纠正回暖色调 */
 :root {
   --dark-ink: #f2ede2;
   --dark-paper: #15130f;
-  --dark-card: #1c1f24;
+  --dark-card: #221d17;
   --dark-line: #332e26;
-  --dark-plan: #a78bfa;
+  --dark-plan: #8c7cc4;
   --dark-spend: #ffb454;
   --dark-positive: #34d399;
   --dark-negative: #f87171;
