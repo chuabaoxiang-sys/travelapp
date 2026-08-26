@@ -714,11 +714,17 @@ const ItemForm = forwardRef<ItemFormHandle, {
     initial && date !== currentDate ? `已换到${date}` : null,
   ].filter(Boolean).join(' · ')
 
+  // 三栏都给flex-1，标题不管左右两边按钮宽度差多少都能真正居中——"删除"
+  // 图标只在编辑时出现，"取消"和"删除+保存"两组宽度经常不一样，直接
+  // justify-between的话中间的标题会肉眼可见地偏向窄的那一边（AddExpensePage
+  // 的记一笔头栏原本就有这个问题，这里顺手一起改了）
   const header = (
-    <div className="flex items-center justify-between px-4 pb-2.5 border-b border-line flex-shrink-0">
-      <button onClick={onCancel} className="text-muted text-[12.5px]">取消</button>
-      <span className="font-serif-sc text-[13.5px] font-semibold">{initial ? '编辑行程项' : '新增行程项'}</span>
-      <div className="flex items-center gap-4">
+    <div className="flex items-center px-4 pb-2.5 border-b border-line flex-shrink-0">
+      <div className="flex-1">
+        <button onClick={onCancel} className="text-muted text-[12.5px]">取消</button>
+      </div>
+      <span className="font-serif-sc text-[13.5px] font-semibold flex-shrink-0">{initial ? '编辑行程项' : '新增行程项'}</span>
+      <div className="flex-1 flex items-center justify-end gap-4">
         {onDelete && (
           <button onClick={onDelete} className="text-negative/85" title="删除">
             <Trash2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
@@ -866,7 +872,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
   }
 
   return (
-    <div ref={formRef} className="mt-2 bg-card border border-plan/40 rounded-2xl overflow-hidden flex flex-col">
+    <div ref={formRef} className="mt-2 bg-card border border-plan/40 rounded-2xl overflow-hidden flex flex-col pt-2.5">
       {header}
       <div className="px-3.5 py-2.5 flex flex-col gap-2">
         {body}

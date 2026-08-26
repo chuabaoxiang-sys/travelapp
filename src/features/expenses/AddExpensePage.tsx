@@ -475,10 +475,17 @@ export function AddExpensePage({
     <>
     <BottomSheet onClose={onClose} cardClassName="relative pt-3.5 max-h-[90%] flex flex-col overflow-hidden">
           <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-1 flex-shrink-0" />
-          <div className="flex items-center justify-between px-4 pb-2.5 border-b border-line flex-shrink-0">
-            <button onClick={onClose} className="text-muted text-[12.5px]">取消</button>
-            <span className="font-serif-sc text-[13.5px] font-semibold">{initial ? '编辑这笔' : '记一笔'}</span>
-            <div className="flex items-center gap-4">
+          {/* 三栏都给flex-1，标题栏不管左右两边按钮宽度差多少都能真正居中——
+          之前左右两个div各自撑多宽就占多宽（justify-between只保证两侧贴边、
+          中间等距，两侧不等宽时中间的标题会偏向窄的那一边），"删除"图标
+          只在编辑时出现，让"取消"和"删除+保存"两组宽度经常对不上，标题
+          肉眼可见地偏了 */}
+          <div className="flex items-center px-4 pb-2.5 border-b border-line flex-shrink-0">
+            <div className="flex-1">
+              <button onClick={onClose} className="text-muted text-[12.5px]">取消</button>
+            </div>
+            <span className="font-serif-sc text-[13.5px] font-semibold flex-shrink-0">{initial ? '编辑这笔' : '记一笔'}</span>
+            <div className="flex-1 flex items-center justify-end gap-4">
               {initial && (
                 <button
                   onClick={() => setConfirmingDelete(true)}
