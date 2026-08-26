@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { X, Link2, RefreshCw, BookOpen, ListChecks, MoonStar } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
-import { buildExcelFile, buildJsonFile, buildCsvFile } from '../../domain/exportRenderers'
 import { shareReadyFile, downloadFile } from '../../lib/share'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import { effectiveShareScope } from '../../domain/share'
@@ -120,6 +119,9 @@ export function TripMoreSheet({
     setBusy(kind)
     try {
       const bundle = await assembleExportBundle(trip.id)
+      // buildExcelFile 依赖的 xlsx 库源码7MB+，绝大多数用户从来不点导出——
+      // 动态import让它只在真的点了导出按钮时才下载，不拖累主包体积
+      const { buildExcelFile, buildJsonFile, buildCsvFile } = await import('../../domain/exportRenderers')
       const file =
         kind === 'excel' ? buildExcelFile(bundle) : kind === 'json' ? buildJsonFile(bundle) : buildCsvFile(bundle)
       if (!navigator.share) {

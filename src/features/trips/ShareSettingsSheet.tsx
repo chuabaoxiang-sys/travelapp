@@ -4,7 +4,7 @@ import { setShareScope, setShareTemplate, regenerateShareToken, buildShareUrl, e
 import { BottomSheet } from '../../components/BottomSheet'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
-import { TEMPLATE_REGISTRY, UPCOMING_TEMPLATES } from '../share/templates/registry'
+import { TEMPLATE_PICKER_LIST, UPCOMING_TEMPLATES } from '../share/templates/pickerList'
 import type { Trip, PublicShareScope } from '../../types'
 
 const SCOPE_OPTIONS: { value: PublicShareScope; label: string }[] = [
@@ -135,7 +135,7 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
           <>
             <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">选一套分享页模板</div>
             <div className="grid grid-cols-2 gap-2 mb-4">
-              {TEMPLATE_REGISTRY.map((t) => {
+              {TEMPLATE_PICKER_LIST.map((t) => {
                 const active = trip.publicShareTemplate === t.id
                 const Thumb = t.thumbnail
                 return (

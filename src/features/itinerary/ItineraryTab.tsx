@@ -1,4 +1,4 @@
-import { Fragment, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { Fragment, Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2, X, Check, Plus, Filter, Bookmark } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
@@ -15,7 +15,9 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { LocationPicker, type LocationValue } from '../../components/LocationPicker'
 import { CalendarView } from './CalendarView'
-import { MapView } from './MapView'
+// leaflet/react-leaflet源码近4MB，只有切到"地图"这个视图才用得到——懒加载，
+// 不切地图的用户完全不用下载这部分代码
+const MapView = lazy(() => import('./MapView').then((m) => ({ default: m.MapView })))
 import { dateRange, formatTimeHM } from '../../lib/dates'
 import { useDayRouteLegs } from '../../lib/routeLegs'
 import { RouteLegHint } from '../../components/RouteLegHint'
@@ -310,7 +312,11 @@ export function ItineraryTab({
             onJumpToTimeline={() => setViewMode('timeline')}
           />
         )}
-        {viewMode === 'map' && <MapView days={itineraryDays} items={allItems} />}
+        {viewMode === 'map' && (
+          <Suspense fallback={<div className="px-5 pt-6 text-sm text-muted">地图加载中…</div>}>
+            <MapView days={itineraryDays} items={allItems} />
+          </Suspense>
+        )}
         {viewMode === 'timeline' && (
           <div ref={timelineScrollRef} className="px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full">
             {/* 完整日期条——正常展开时的样子，不做任何形变/收起动画，原样滚走。

@@ -5,7 +5,7 @@ import { registerSW } from 'virtual:pwa-register'
 import 'leaflet/dist/leaflet.css'
 import './index.css'
 import App from './App.tsx'
-import { SharePage } from './features/share/SharePage.tsx'
+import { LazySharePage } from './features/share/LazySharePage.tsx'
 
 // 新版本部署后，service worker 会自动跳过等待+立刻接管所有已打开的页面
 // （vite.config.ts 里 workbox.skipWaiting + clientsClaim），但"已经打开的这个
@@ -49,7 +49,7 @@ createRoot(document.getElementById('root')!).render(
         只读页面。其他所有路径都走原来的App，行为不变（内部仍然是状态切换，不是路由） */}
     <BrowserRouter>
       <Routes>
-        <Route path="/share/:token" element={<SharePage />} />
+        <Route path="/share/:token" element={<LazySharePage />} />
         <Route path="*" element={<App />} />
       </Routes>
     </BrowserRouter>
