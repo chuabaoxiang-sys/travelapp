@@ -84,7 +84,7 @@ export function SpendHero({
   return (
     <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
       <div className="text-[11px] tracking-wider text-on-dark/55">{label}</div>
-      <div className={`font-serif-sc leading-none mt-1.5 ${big ? 'text-[32px] text-spend' : 'text-[27px]'}`}>
+      <div className={`font-bold tracking-tight tabular leading-none mt-1.5 ${big ? 'text-[32px] text-spend' : 'text-[27px]'}`}>
         {value}
       </div>
       <div className="mt-2 text-[11px] text-on-dark/50">{sub}</div>

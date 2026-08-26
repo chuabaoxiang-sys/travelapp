@@ -171,7 +171,7 @@ export function LedgerTab({
       ) : (
         <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
           <div className="text-[11px] tracking-wider text-on-dark/55">我这趟要承担</div>
-          <div className="font-serif-sc text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
+          <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
           <div className="mt-2 text-[11px] text-on-dark/50">自己付的 + 分摊别人垫付的</div>
         </div>
       )}

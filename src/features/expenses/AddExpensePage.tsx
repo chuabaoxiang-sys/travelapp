@@ -16,7 +16,7 @@ import { saveRateAllocations, deleteRateAllocations } from '../../domain/rateAll
 import { isExpenseSettled } from '../../domain/settlements'
 import { categoryColor } from '../../lib/categoryColors'
 import { round2 } from '../../lib/money'
-import { CategoryIcon } from '../../components/CategoryBadge'
+import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { Trip, ExpensePhase, Expense, SplitType, ExpenseSplit, DaySpreadMode, ExpenseDayAllocation, ExpenseRateAllocation } from '../../types'
@@ -514,7 +514,7 @@ export function AddExpensePage({
             placeholder="金额"
             autoFocus={!initial}
             disabled={settled}
-            className="w-full text-[26px] font-serif-sc tabular outline-none bg-transparent disabled:opacity-60"
+            className="w-full text-[26px] font-bold tracking-tight tabular outline-none bg-transparent disabled:opacity-60"
           />
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {chipCurrencies.map((code) => (
@@ -590,12 +590,7 @@ export function AddExpensePage({
                     : { background: 'var(--color-card)', borderColor: 'var(--color-line)', color: 'var(--color-soft)' }
                 }
               >
-                <span
-                  className="text-card flex items-center justify-center flex-shrink-0"
-                  style={{ background: color, width: 24, height: 24, borderRadius: 7 }}
-                >
-                  <CategoryIcon category={c} size={13} />
-                </span>
+                <CategoryBadge category={c} barHeight={18} iconSize={13} />
                 {c.name}
               </button>
             )

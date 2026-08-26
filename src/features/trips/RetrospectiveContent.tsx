@@ -48,7 +48,7 @@ export function RetrospectiveContent({ trip }: { trip: Trip }) {
       {/* 主卡：整趟总花费 */}
       <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
         <div className="text-[11px] tracking-wider text-on-dark/55">{trip.name}</div>
-        <div className="font-serif-sc text-[32px] leading-none mt-1.5">{money(data.total)}</div>
+        <div className="font-bold tracking-tight tabular text-[32px] leading-none mt-1.5">{money(data.total)}</div>
         <div className="mt-2.5 text-[11px] text-on-dark/50 leading-relaxed">
           {data.dayCount > 0 && `${data.dayCount} 天 · `}
           {data.memberCount > 0 && `${data.memberCount} 人 · 人均 ${money(data.perPerson)}`}

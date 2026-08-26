@@ -6,7 +6,7 @@ import { getOverallBudget, getCategoryBudgets, upsertBudget, deleteBudget, sumSp
 import { formatMoney } from '../../lib/money'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { categoryColor } from '../../lib/categoryColors'
-import { CategoryIcon } from '../../components/CategoryBadge'
+import { CategoryBadge } from '../../components/CategoryBadge'
 import type { Trip } from '../../types'
 
 export function BudgetTab({ trip }: { trip: Trip }) {
@@ -69,7 +69,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
             >
               <div className="w-[124px] h-[124px] rounded-full bg-paper flex flex-col items-center justify-center">
                 <div className="text-[10.5px] tracking-widest text-muted">已用预算</div>
-                <div className="font-serif-sc text-[24px] mt-0.5">{overallPct}%</div>
+                <div className="font-bold tracking-tight tabular text-[24px] mt-0.5">{overallPct}%</div>
                 <div className="text-[11px] text-muted mt-0.5">
                   {overallOver ? `超支 ${formatMoney(totalSpend - overallBudget.amount)}` : `还剩 ${formatMoney(overallBudget.amount - totalSpend)}`}
                 </div>
@@ -147,12 +147,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
                       : { background: 'var(--color-card)', borderColor: 'var(--color-line)', color: 'var(--color-soft)' }
                   }
                 >
-                  <span
-                    className="text-card flex items-center justify-center flex-shrink-0"
-                    style={{ background: color, width: 24, height: 24, borderRadius: 7 }}
-                  >
-                    <CategoryIcon category={c} size={13} />
-                  </span>
+                  <CategoryBadge category={c} barHeight={18} iconSize={13} />
                   {c.name}
                 </button>
               )
