@@ -1,10 +1,15 @@
 import { useEffect, type ReactNode } from 'react'
 
-// 8个底部弹层之前各自复制了一份"遮罩+浮动卡片"外壳，抽成共用组件，顺便
-// 统一接上开启动效（见 index.css 的 .sheet-enter）。cardClassName 留给
-// 调用方控制卡片内部的padding/滚动/flex布局——这部分两种弹层长得不一样
-// （大多数是整卡片overflow-y-auto，BudgetSheet/AddExpensePage是flex-col
-// 内部单独滚动，为了留出固定底部按钮），没有统一成一种形状的必要
+// 8个底部弹层之前各自复制了一份"遮罩+浮动卡片"外壳，抽成共用组件。
+// cardClassName 留给调用方控制卡片内部的padding/滚动/flex布局——这部分
+// 两种弹层长得不一样（大多数是整卡片overflow-y-auto，BudgetSheet/
+// AddExpensePage是flex-col内部单独滚动，为了留出固定底部按钮），没有
+// 统一成一种形状的必要
+//
+// 曾经加过一版开启动效（.sheet-enter，2026-08-25），后来发现所有弹层弹出
+// 时都有真机卡顿，will-change和"关掉导航栏模糊"两轮排查都没能确认解决，
+// 关闭动效又会牵出返回键那条路径动效对不上的新问题——干脆把开启动效也
+// 撤掉，弹层恢复瞬间出现/消失，不再为了动效去猜卡顿病因
 
 // 底部导航栏(BottomNav)自带backdrop-blur，且不会因为弹层开着就卸载——
 // 弹层从下往上滑正好经过导航栏那片区域，安卓上backdrop-filter实时合成的
@@ -41,7 +46,7 @@ export function BottomSheet({
       <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
         <div
           onClick={(e) => e.stopPropagation()}
-          className={`sheet-enter pointer-events-auto bg-paper rounded-[26px] shadow-[0_-6px_28px_rgba(31,27,22,0.22)] ${cardClassName}`}
+          className={`pointer-events-auto bg-paper rounded-[26px] shadow-[0_-6px_28px_rgba(31,27,22,0.22)] ${cardClassName}`}
         >
           {children}
         </div>

@@ -233,32 +233,15 @@ button:not(:disabled):active {
   animation: pop-in 0.28s ease-out;
 }
 
-/* 底部弹层开启动效。之前是React挂载瞬间直接出现，没有任何过渡，开合生硬。
-   34%冲到位、34%~72%原地停住、最后一点几乎看不见的回弹确认"到位了"——
-   光是滑上去感觉不出"到位"，专门停一下才有这个感觉。这一轮只做"打开"，
-   "关闭"还是维持直接消失：要做关闭动效得把每个调用方的开关布尔状态改成
-   三态（开/关闭中/已关闭），改动面更大，先看这一半的效果再决定 */
-@keyframes sheet-in {
-  0% { opacity: 0; transform: translateY(20px) scale(0.965); }
-  34% { opacity: 1; transform: translateY(0) scale(1); }
-  72% { opacity: 1; transform: translateY(0) scale(1); }
-  86% { opacity: 1; transform: translateY(-3px) scale(1.004); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-.sheet-enter {
-  /* 卡片带圆角+阴影，如果浏览器没提前把它提升成独立合成层，动画每一帧都要
-     重新栅格化整张卡片（含阴影），移动端容易感觉"弹出瞬间卡一下"。
-     will-change提前声明要做transform/opacity动画，让浏览器提前建好层——
-     元素本身随弹层关闭一起卸载，不需要额外清理 */
-  will-change: transform, opacity;
-  animation: sheet-in 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+/* 底部弹层曾经有一版开启动效（.sheet-enter，2026-08-25），后来发现所有
+   弹层弹出时都有真机卡顿，will-change和"关掉导航栏模糊"两轮排查都没能
+   确认解决，关闭动效又会牵出返回键那条路径动效对不上的新问题——干脆
+   撤掉开启动效，弹层恢复瞬间出现/消失（2026-08-26） */
 
-/* 底部导航栏的backdrop-blur怀疑是"弹层弹出时卡顿"的真正病因（安卓上
-   backdrop-filter的实时合成开销很大，而导航栏在弹层开着时并不会卸载，
-   开启动效的420ms正好经过导航栏那片区域）。BottomSheet.tsx挂载时会给
-   <html>加sheet-open这个class——弹层的遮罩本来就把导航栏那片区域整体
-   调暗了，关掉模糊在视觉上看不出区别，但能省掉这块最贵的计算 */
+/* 底部导航栏的backdrop-blur在安卓上实时合成开销很大，而导航栏在弹层
+   开着时并不会卸载。BottomSheet.tsx挂载时会给<html>加sheet-open这个
+   class——弹层的遮罩本来就把导航栏那片区域整体调暗了，关掉模糊在视觉上
+   看不出区别，但能省掉这块开销，跟弹层动不动效无关，继续保留 */
 html.sheet-open .nav-blur {
   backdrop-filter: none;
 }
@@ -296,9 +279,6 @@ html.sheet-open .nav-blur {
 
 /* 有人明确要求减少动效时，全部退化成瞬间完成——动效是锦上添花，不能成为障碍 */
 @media (prefers-reduced-motion: reduce) {
-  .sheet-enter {
-    animation: none;
-  }
   .drawn-check path {
     animation: none;
     stroke-dashoffset: 0;
