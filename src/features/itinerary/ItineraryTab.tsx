@@ -1,6 +1,6 @@
 import { Fragment, Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, X, Check, Plus, Filter, Bookmark } from 'lucide-react'
+import { Trash2, X, Plus, Filter, Bookmark } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { sortItineraryItems, hasLinkedDaySpreadExpense, resolveDayForItemMove } from '../../domain/itinerary'
@@ -13,6 +13,7 @@ import { TimePicker } from '../../components/TimePicker'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
+import { BottomSheet } from '../../components/BottomSheet'
 import { LocationPicker, type LocationValue } from '../../components/LocationPicker'
 import { CalendarView } from './CalendarView'
 // leaflet/react-leaflet源码近4MB，只有切到"地图"这个视图才用得到——懒加载，
@@ -517,51 +518,56 @@ export function ItineraryTab({
                   </Fragment>
                 )
               })}
-              {!items.length && formState !== 'new' && (
+              {!items.length && (
                 <div className="text-[13px] text-muted py-4 text-center">这天还没有安排，点右下角"+"添加一项</div>
               )}
               {!!items.length && onlyNeeded && !items.some((it) => it.bookingStatus === 'needed' || formState === it.id) && (
                 <div className="text-[13px] text-muted py-4 text-center">这天没有待预约的行程项</div>
               )}
             </div>
-
-            {formState === 'new' ? (
-              <ItemForm
-                ref={itemFormRef}
-                currentDate={selected}
-                countryCodes={trip.destinationCountries}
-                onCancel={() => setFormState(null)}
-                onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId) => {
-                  const day = await ensureDay(selected)
-                  const householdId = await getCurrentHouseholdId()
-                  if (!householdId) return
-                  const id = crypto.randomUUID()
-                  const now = Date.now()
-                  await db.itineraryItems.add({
-                    id,
-                    householdId,
-                    createdBy: currentMemberId,
-                    dayId: day.id,
-                    tripId: trip.id,
-                    orderIndex: items.length,
-                    time: time || null,
-                    title,
-                    locationName: location.name || null,
-                    lat: location.lat,
-                    lng: location.lng,
-                    notes: notes || null,
-                    bookingStatus,
-                    sourceWishlistId,
-                    createdAt: now,
-                    updatedAt: now,
-                  })
-                  setFormState((cur) => (cur === 'new' ? null : cur))
-                }}
-              />
-            ) : null}
           </div>
         )}
       </div>
+
+      {/* 新增用底部弹层（跟"记一笔"同一个视觉），不是原地展开——新增没有"原来在
+      列表哪个位置"这回事，不需要占用列表本身的空间，"+"这个动作在哪个tab点
+      都应该弹出同一种卡片。编辑保留原地展开，见下面items.map里formState===it.id
+      那个分支：那种情况需要看清"我改的是哪一条、旁边几点" */}
+      {formState === 'new' && (
+        <ItemForm
+          ref={itemFormRef}
+          sheet
+          currentDate={selected}
+          countryCodes={trip.destinationCountries}
+          onCancel={() => setFormState(null)}
+          onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId) => {
+            const day = await ensureDay(selected)
+            const householdId = await getCurrentHouseholdId()
+            if (!householdId) return
+            const id = crypto.randomUUID()
+            const now = Date.now()
+            await db.itineraryItems.add({
+              id,
+              householdId,
+              createdBy: currentMemberId,
+              dayId: day.id,
+              tripId: trip.id,
+              orderIndex: items.length,
+              time: time || null,
+              title,
+              locationName: location.name || null,
+              lat: location.lat,
+              lng: location.lng,
+              notes: notes || null,
+              bookingStatus,
+              sourceWishlistId,
+              createdAt: now,
+              updatedAt: now,
+            })
+            setFormState((cur) => (cur === 'new' ? null : cur))
+          }}
+        />
+      )}
 
       {pendingDeleteId && (
         <ConfirmDialog
@@ -594,6 +600,10 @@ export function ItineraryTab({
 const ItemForm = forwardRef<ItemFormHandle, {
   initial?: ItineraryItem
   currentDate: string
+  // true=新增，渲染成底部弹层（跟"记一笔"同一个视觉）；不传=编辑，原地替换
+  // 那张行程项卡片——两种场景UI结构差不多（都是"固定顶栏+可折叠其他设置"），
+  // 但外层容器不同：弹层需要自己的滚动区域+遮罩，原地展开跟随页面滚动就行
+  sheet?: boolean
   onSave: (
     title: string,
     time: string,
@@ -609,6 +619,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
 }>(function ItemForm({
   initial,
   currentDate,
+  sheet,
   onSave,
   onCancel,
   onDelete,
@@ -631,6 +642,10 @@ const ItemForm = forwardRef<ItemFormHandle, {
   // 这一项是不是从"想去的地点"一键选出来的——纯追溯用途。手动改地点（重新搜索/
   // 贴地图链接）之后就不再对应那条来源了，要跟着清空，不然徽章会挂着错的来源
   const [sourceWishlistId, setSourceWishlistId] = useState<string | null>(initial?.sourceWishlistId ?? null)
+  // "其他设置"（换日期/从想去的地点选/备注/预约状态）折叠——这几项编辑时
+  // 常常要看/改，新增时大多数情况用不到，跟AddExpensePage的detailsOpen是
+  // 同一个套路：编辑默认展开，新增默认收起
+  const [detailsOpen, setDetailsOpen] = useState(!!initial)
   const [wishlistPickerOpen, setWishlistPickerOpen] = useState(false)
   const [wishlistFilter, setWishlistFilter] = useState('')
   const wishlistPlaces = useLiveQuery(() => listWishlistPlaces()) ?? []
@@ -650,10 +665,11 @@ const ItemForm = forwardRef<ItemFormHandle, {
 
   const formRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    // 表单展开的位置就是点击"添加行程项"/某个行程项时所在的位置，展开后
-    // 内容变高，很容易有一部分（尤其是保存按钮）落在屏幕外面，需要手动滑动才看得到
+    if (sheet) return // 弹层自己是固定覆盖层，没有"滚动到可见"这回事
+    // 表单展开的位置就是点击某个行程项时所在的位置，展开后内容变高，
+    // 很容易有一部分落在屏幕外面，需要手动滑动才看得到
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [])
+  }, [sheet])
 
   // 点表单外面/按手机返回键，都用同一套判断：填了标题就当作点了"✓"保存，
   // 标题还是空的就当作取消（新建时点开又反悔不填，直接放弃更符合直觉）
@@ -669,20 +685,59 @@ const ItemForm = forwardRef<ItemFormHandle, {
   const finishEditingRef = useRef(finishEditing)
   finishEditingRef.current = finishEditing
   useEffect(() => {
+    // 弹层模式不需要这一套：BottomSheet自己的遮罩点击已经是明确的"关闭"手势
+    // （效果等同直接取消，不是这里的"填了就当保存"），再叠加一层文档级监听
+    // 反而会在点顶栏的取消/保存按钮时抢在按钮自己的click之前误触发
+    if (sheet) return
     function handleOutsidePointerDown(e: PointerEvent) {
       if (formRef.current?.contains(e.target as Node)) return
       finishEditingRef.current()
     }
     document.addEventListener('pointerdown', handleOutsidePointerDown)
     return () => document.removeEventListener('pointerdown', handleOutsidePointerDown)
-  }, [])
+  }, [sheet])
 
   // 返回键的处理注册在父组件ItineraryTab里（它本来就常驻，不会随表单开关而挂载/
   // 卸载），这里只是把"该怎么收尾"这个动作暴露出去给父组件调用
   useImperativeHandle(ref, () => ({ finishEditing }))
 
-  return (
-    <div ref={formRef} className="mt-2 bg-card border border-plan/40 rounded-2xl p-3 flex flex-col gap-2">
+  const canSave = !!title.trim()
+  function handleSave() {
+    if (canSave) onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId, date)
+  }
+  const bookingLabel = bookingStatus === 'needed' ? '待预约' : bookingStatus === 'booked' ? '已预约' : '无需预约'
+  // 折叠状态的一行摘要，跟AddExpensePage的"其他设置"摘要是同一个思路——
+  // 收起时也要能看出里面大概是什么，不是纯粹的"改›"占位符
+  const foldSummary = [
+    bookingLabel,
+    notes.trim() ? '备注已填' : null,
+    initial && date !== currentDate ? `已换到${date}` : null,
+  ].filter(Boolean).join(' · ')
+
+  const header = (
+    <div className="flex items-center justify-between px-4 pb-2.5 border-b border-line flex-shrink-0">
+      <button onClick={onCancel} className="text-muted text-[12.5px]">取消</button>
+      <span className="font-serif-sc text-[13.5px] font-semibold">{initial ? '编辑行程项' : '新增行程项'}</span>
+      <div className="flex items-center gap-4">
+        {onDelete && (
+          <button onClick={onDelete} className="text-negative/85" title="删除">
+            <Trash2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
+          </button>
+        )}
+        <button onClick={handleSave} disabled={!canSave} className="text-plan text-[12.5px] font-semibold disabled:opacity-40">
+          保存
+        </button>
+      </div>
+    </div>
+  )
+
+  const body = (
+    <>
+      {sheet && (
+        <div className="text-[11px] text-muted mb-1">
+          {currentDate} · {DOW[new Date(currentDate + 'T00:00:00').getDay()]}
+        </div>
+      )}
       <div className="flex gap-2">
         <TimePicker value={time} onChange={setTime} />
         <input
@@ -690,111 +745,133 @@ const ItemForm = forwardRef<ItemFormHandle, {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="做什么，例如「环球影城」"
           autoComplete="off"
+          autoFocus={!initial}
           className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
         />
       </div>
-      {initial && (
-        <div>
-          <div className="text-[10px] tracking-widest uppercase text-muted mb-1">日期</div>
-          <DatePicker value={date} onChange={setDate} />
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={() => setWishlistPickerOpen(true)}
-        className="flex items-center gap-1 text-[11.5px] text-plan font-semibold border border-dashed border-plan/40 rounded-lg px-2.5 py-1.5 w-fit"
-      >
-        <Bookmark className="w-3 h-3" strokeWidth={2.2} />
-        从想去的地点里选一个
-      </button>
       <LocationPicker
         value={location}
         onChange={(v) => { setLocation(v); setSourceWishlistId(null) }}
         countryCodes={countryCodes}
       />
-      <div>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="备注（可选）"
-          rows={2}
-          autoComplete="off"
-          className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan leading-relaxed"
-        />
-        <div className="text-[10px] text-muted mt-1">拖右下角可以拉高；换行或加"1. 2. 3."就能分点</div>
-      </div>
-      <div>
-        <div className="text-[10px] tracking-widest uppercase text-muted mb-1">预约状态</div>
-        <div className="flex border border-line rounded-lg overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setBookingStatus(null)}
-            className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === null ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
-          >
-            无需预约
-          </button>
-          <button
-            type="button"
-            onClick={() => setBookingStatus('needed')}
-            className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === 'needed' ? 'bg-spend text-card font-medium' : 'text-muted'}`}
-          >
-            待预约
-          </button>
-          <button
-            type="button"
-            onClick={() => setBookingStatus('booked')}
-            className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === 'booked' ? 'bg-positive text-card font-medium' : 'text-muted'}`}
-          >
-            已预约
-          </button>
-        </div>
-      </div>
-      <div className="flex gap-2 mt-1">
-        {onDelete && (
-          <button onClick={onDelete} className="rounded-lg border border-negative/30 text-negative px-3 py-1.5" title="删除">
-            <Trash2 className="w-4 h-4" strokeWidth={1.8} />
-          </button>
-        )}
-        <button onClick={onCancel} className="flex-1 rounded-lg border border-line py-1.5 text-muted flex items-center justify-center" title="取消">
-          <X className="w-4 h-4" strokeWidth={1.8} />
-        </button>
-        <button
-          onClick={() => title.trim() && onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId, date)}
-          className="flex-1 rounded-lg bg-plan text-card py-1.5 flex items-center justify-center"
-          title="保存"
-        >
-          <Check className="w-4 h-4" strokeWidth={2} />
-        </button>
-      </div>
 
-      {wishlistPickerOpen && (
-        <CenteredModal onClose={() => setWishlistPickerOpen(false)}>
-          <div className="font-serif-sc text-[15px] text-ink mb-3">从想去的地点里选</div>
-          <input
-            autoFocus
-            value={wishlistFilter}
-            onChange={(e) => setWishlistFilter(e.target.value)}
-            placeholder="筛选…"
-            className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-plan mb-2"
-          />
-          <div className="flex flex-col gap-1.5 max-h-[240px] overflow-y-auto no-scrollbar">
-            {filteredWishlistPlaces.length === 0 && (
-              <div className="text-[12px] text-muted text-center py-4">没有匹配的地点</div>
-            )}
-            {filteredWishlistPlaces.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => pickFromWishlist(p)}
-                className="text-left rounded-xl border border-line bg-paper px-3 py-2 hover:border-plan"
-              >
-                <div className="text-[12.5px] font-semibold text-ink">{p.name}</div>
-                {p.notes && <div className="text-[10px] text-muted mt-0.5 truncate">{p.notes}</div>}
-              </button>
-            ))}
+      <div className="text-[10.5px] tracking-widest uppercase text-muted mt-1 mb-1">其他设置</div>
+      <button
+        type="button"
+        onClick={() => setDetailsOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 rounded-xl border border-dashed border-line bg-plan/[0.04] px-3.5 py-2.5 text-left"
+      >
+        <span className="text-[12px] text-soft min-w-0 truncate">{foldSummary}</span>
+        <span className="text-[11.5px] font-semibold text-plan flex-shrink-0">{detailsOpen ? '收起 ‹' : '改 ›'}</span>
+      </button>
+
+      {detailsOpen && (
+        <>
+          {initial && (
+            <div>
+              <div className="text-[10px] tracking-widest uppercase text-muted mb-1">日期</div>
+              <DatePicker value={date} onChange={setDate} />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setWishlistPickerOpen(true)}
+            className="flex items-center gap-1 text-[11.5px] text-plan font-semibold border border-dashed border-plan/40 rounded-lg px-2.5 py-1.5 w-fit"
+          >
+            <Bookmark className="w-3 h-3" strokeWidth={2.2} />
+            从想去的地点里选一个
+          </button>
+          <div>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="备注（可选）"
+              rows={2}
+              autoComplete="off"
+              className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan leading-relaxed"
+            />
+            <div className="text-[10px] text-muted mt-1">拖右下角可以拉高；换行或加"1. 2. 3."就能分点</div>
           </div>
-        </CenteredModal>
+          <div>
+            <div className="text-[10px] tracking-widest uppercase text-muted mb-1">预约状态</div>
+            <div className="flex border border-line rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setBookingStatus(null)}
+                className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === null ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+              >
+                无需预约
+              </button>
+              <button
+                type="button"
+                onClick={() => setBookingStatus('needed')}
+                className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === 'needed' ? 'bg-spend text-card font-medium' : 'text-muted'}`}
+              >
+                待预约
+              </button>
+              <button
+                type="button"
+                onClick={() => setBookingStatus('booked')}
+                className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === 'booked' ? 'bg-positive text-card font-medium' : 'text-muted'}`}
+              >
+                已预约
+              </button>
+            </div>
+          </div>
+        </>
       )}
+    </>
+  )
+
+  const wishlistModal = wishlistPickerOpen && (
+    <CenteredModal onClose={() => setWishlistPickerOpen(false)}>
+      <div className="font-serif-sc text-[15px] text-ink mb-3">从想去的地点里选</div>
+      <input
+        autoFocus
+        value={wishlistFilter}
+        onChange={(e) => setWishlistFilter(e.target.value)}
+        placeholder="筛选…"
+        className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-plan mb-2"
+      />
+      <div className="flex flex-col gap-1.5 max-h-[240px] overflow-y-auto no-scrollbar">
+        {filteredWishlistPlaces.length === 0 && (
+          <div className="text-[12px] text-muted text-center py-4">没有匹配的地点</div>
+        )}
+        {filteredWishlistPlaces.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => pickFromWishlist(p)}
+            className="text-left rounded-xl border border-line bg-paper px-3 py-2 hover:border-plan"
+          >
+            <div className="text-[12.5px] font-semibold text-ink">{p.name}</div>
+            {p.notes && <div className="text-[10px] text-muted mt-0.5 truncate">{p.notes}</div>}
+          </button>
+        ))}
+      </div>
+    </CenteredModal>
+  )
+
+  if (sheet) {
+    return (
+      <BottomSheet onClose={onCancel} cardClassName="relative pt-3.5 max-h-[90%] flex flex-col overflow-hidden">
+        <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-1 flex-shrink-0" />
+        {header}
+        <div ref={formRef} className="overflow-y-auto no-scrollbar px-4 py-3 flex flex-col gap-2">
+          {body}
+        </div>
+        {wishlistModal}
+      </BottomSheet>
+    )
+  }
+
+  return (
+    <div ref={formRef} className="mt-2 bg-card border border-plan/40 rounded-2xl overflow-hidden flex flex-col">
+      {header}
+      <div className="px-3.5 py-2.5 flex flex-col gap-2">
+        {body}
+      </div>
+      {wishlistModal}
     </div>
   )
 })
