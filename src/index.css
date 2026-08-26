@@ -246,6 +246,11 @@ button:not(:disabled):active {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 .sheet-enter {
+  /* 卡片带圆角+阴影，如果浏览器没提前把它提升成独立合成层，动画每一帧都要
+     重新栅格化整张卡片（含阴影），移动端容易感觉"弹出瞬间卡一下"。
+     will-change提前声明要做transform/opacity动画，让浏览器提前建好层——
+     元素本身随弹层关闭一起卸载，不需要额外清理 */
+  will-change: transform, opacity;
   animation: sheet-in 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
