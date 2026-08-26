@@ -105,8 +105,8 @@ export function LedgerTab({
 
   return (
     <div className="h-full flex flex-col relative">
-      <div className="px-5 pt-3 flex-shrink-0">
-        <div className="flex items-center justify-between mb-1">
+      <div className="px-5 pt-3 pb-3.5 flex-shrink-0 flex flex-col gap-3.5">
+        <div className="flex items-center justify-between">
           <span className="font-serif-sc text-sm font-semibold">账目</span>
           <button
             onClick={() => { setRateBookOpen(true); markHintSeen(currentMemberId, 'rateBook') }}
@@ -118,7 +118,7 @@ export function LedgerTab({
           </button>
         </div>
 
-        <div className="flex border border-line rounded-xl overflow-hidden my-1.5">
+        <div className="flex border border-line rounded-xl overflow-hidden">
           <button
             type="button"
             onClick={() => setView('team')}
@@ -150,26 +150,26 @@ export function LedgerTab({
           <SplitTab trip={trip} currentMemberId={currentMemberId} />
         </div>
       ) : (
-      <div className="px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar flex-1">
+      <div className="px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar flex-1 flex flex-col gap-3.5">
       {/* 全部视角用"今天还能花"——那是唯一会随每次记账变化的数字，也是记账这个动作
           的即时回报。"我的"保持整趟汇总：预算是团队级的，没有个人预算可以推出
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
-        <div key="team" className="card-swap">
+        <div key="team" className="card-swap flex flex-col gap-3.5">
           <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} />
           {/* 预算不再是独立tab，降级成这里的一个次级入口——它本来就是"花了多少"
               的参照系，跟账目列表放在一起看才有意义，改总预算/加分类预算的表单
               逻辑完全没动，只是换了个容器（见 BudgetSheet） */}
           <button
             onClick={() => setBudgetOpen(true)}
-            className="w-full flex items-center justify-between rounded-2xl border border-line bg-card px-3.5 py-2.5 mb-4 text-left"
+            className="w-full flex items-center justify-between rounded-2xl border border-line bg-card px-3.5 py-2.5 text-left"
           >
             <span className="text-[13px] text-plan">管理预算</span>
             <ChevronRight className="w-4 h-4 text-muted" strokeWidth={1.8} />
           </button>
         </div>
       ) : (
-        <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
+        <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
           <div className="text-[11px] tracking-wider text-on-dark/55">我这趟要承担</div>
           <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
           <div className="mt-2 text-[11px] text-on-dark/50">自己付的 + 分摊别人垫付的</div>

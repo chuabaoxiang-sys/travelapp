@@ -82,7 +82,7 @@ export function SpendHero({
   const value = money(animatedValueOverride ?? internalAnimated)
 
   return (
-    <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark mb-4">
+    <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
       <div className="text-[11px] tracking-wider text-on-dark/55">{label}</div>
       <div className={`font-bold tracking-tight tabular leading-none mt-1.5 ${big ? 'text-[32px] text-spend' : 'text-[27px]'}`}>
         {value}
