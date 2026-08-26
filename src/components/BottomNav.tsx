@@ -92,7 +92,7 @@ export function BottomNav({
   }
 
   return (
-    <div className="absolute left-0 right-0 bottom-0 z-10 bg-paper/[.92] backdrop-blur-[18px] border-t border-line pt-[9px] pb-safe-nav px-3 flex flex-col items-center">
+    <div className="nav-blur absolute left-0 right-0 bottom-0 z-10 bg-paper/[.92] backdrop-blur-[18px] border-t border-line pt-[9px] pb-safe-nav px-3 flex flex-col items-center">
       <div className="flex w-full items-end">
         {left.map(renderTab)}
         <div className="flex-shrink-0 w-11 flex justify-center">

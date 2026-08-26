@@ -1,10 +1,27 @@
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
 // 8个底部弹层之前各自复制了一份"遮罩+浮动卡片"外壳，抽成共用组件，顺便
 // 统一接上开启动效（见 index.css 的 .sheet-enter）。cardClassName 留给
 // 调用方控制卡片内部的padding/滚动/flex布局——这部分两种弹层长得不一样
 // （大多数是整卡片overflow-y-auto，BudgetSheet/AddExpensePage是flex-col
 // 内部单独滚动，为了留出固定底部按钮），没有统一成一种形状的必要
+
+// 底部导航栏(BottomNav)自带backdrop-blur，且不会因为弹层开着就卸载——
+// 弹层从下往上滑正好经过导航栏那片区域，安卓上backdrop-filter实时合成的
+// 开销很大，被怀疑是"所有弹层弹出时都卡顿"的真正病因（比"卡片没提前建层"
+// 更吻合"will-change加了也还是卡"这个现象）。用一个模块级计数器而不是
+// 布尔值——弹层可能嵌套（比如更多面板里再弹出反馈面板），单纯的布尔值在
+// 内层关闭时会错误地把外层还开着的导航栏模糊也提前打开
+let openSheetCount = 0
+function markSheetOpen() {
+  openSheetCount += 1
+  document.documentElement.classList.add('sheet-open')
+}
+function markSheetClosed() {
+  openSheetCount = Math.max(0, openSheetCount - 1)
+  if (openSheetCount === 0) document.documentElement.classList.remove('sheet-open')
+}
+
 export function BottomSheet({
   onClose,
   children,
@@ -14,6 +31,11 @@ export function BottomSheet({
   children: ReactNode
   cardClassName?: string
 }) {
+  useEffect(() => {
+    markSheetOpen()
+    return markSheetClosed
+  }, [])
+
   return (
     <div className="absolute inset-0 z-30 bg-scrim/35" onClick={onClose}>
       <div className="absolute inset-0 flex flex-col justify-end px-2.5 pb-2.5 pointer-events-none">
