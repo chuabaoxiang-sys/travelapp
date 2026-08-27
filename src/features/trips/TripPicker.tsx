@@ -30,6 +30,10 @@ const STATUS_CLASS: Record<TripStatus, string> = {
   archived: 'bg-line text-muted',
 }
 
+// 新建行程时本位币的快捷选项——马来西亚家庭的常见目的地/常用币种，
+// 选不到的话"其他"展开手动输入，跟"记一笔"里币种选择的交互一致
+const HOME_CURRENCY_QUICK_PICKS = ['MYR', 'SGD', 'CNY', 'USD', 'THB']
+
 export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: string) => void; currentMemberId: string }) {
   const trips = useLiveQuery(() => db.trips.orderBy('createdAt').reverse().toArray()) ?? []
   // null=不显示表单；'new'=新建（表单出现在列表最下面）；具体id=正在编辑该行程
@@ -189,6 +193,8 @@ function TripForm({
   const [endDate, setEndDate] = useState(initial?.endDate ?? '')
   const [destinationCountries, setDestinationCountries] = useState<string[]>(initial?.destinationCountries ?? [])
   const [currencies, setCurrencies] = useState<string[]>(initial?.currencies ?? [])
+  const [homeCurrency, setHomeCurrency] = useState('MYR')
+  const [manualHomeCurrencyOpen, setManualHomeCurrencyOpen] = useState(false)
 
   async function save() {
     if (!name.trim()) return
@@ -211,7 +217,7 @@ function TripForm({
         id,
         householdId,
         name: name.trim(),
-        homeCurrency: 'MYR',
+        homeCurrency: homeCurrency.trim().toUpperCase() || 'MYR',
         startDate: startDate || null,
         endDate: endDate || null,
         status: startDate ? 'active' : 'planning',
@@ -245,7 +251,45 @@ function TripForm({
         <div className="flex-1"><DatePicker value={endDate ?? ''} onChange={setEndDate} placeholder="返程日期" /></div>
       </div>
       <CountryPicker value={destinationCountries} onChange={setDestinationCountries} />
-      <CurrencyPicker homeCurrency={initial?.homeCurrency ?? 'MYR'} value={currencies} onChange={setCurrencies} />
+      {!initial && (
+        <div>
+          <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">本位币</div>
+          <div className="flex flex-wrap gap-1.5">
+            {HOME_CURRENCY_QUICK_PICKS.map((code) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => { setHomeCurrency(code); setManualHomeCurrencyOpen(false) }}
+                className={`rounded-full px-3 py-1 text-[12.5px] font-medium border ${
+                  !manualHomeCurrencyOpen && homeCurrency === code ? 'bg-plan text-card border-plan' : 'border-line text-soft'
+                }`}
+              >
+                {code}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setManualHomeCurrencyOpen(true)}
+              className={`rounded-full px-3 py-1 text-[12.5px] border ${
+                manualHomeCurrencyOpen ? 'bg-plan text-card border-plan' : 'border-line text-muted'
+              }`}
+            >
+              其他
+            </button>
+          </div>
+          {manualHomeCurrencyOpen && (
+            <input
+              value={homeCurrency}
+              onChange={(e) => setHomeCurrency(e.target.value.toUpperCase())}
+              placeholder="币种代码，比如 KRW"
+              autoFocus
+              className="mt-1.5 w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm uppercase outline-none focus:border-plan"
+            />
+          )}
+          <div className="text-[10.5px] text-muted mt-1">整趟行程的花费都会折算成这个币种</div>
+        </div>
+      )}
+      <CurrencyPicker homeCurrency={initial?.homeCurrency ?? homeCurrency} value={currencies} onChange={setCurrencies} />
       <div className="flex gap-2 mt-1">
         {onDelete && (
           <button onClick={onDelete} className="rounded-xl border border-negative/30 text-negative px-3 py-2" title="删除">
