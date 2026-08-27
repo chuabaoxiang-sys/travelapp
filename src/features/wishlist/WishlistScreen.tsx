@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, X, Pencil, Trash2, Plus, Circle, CheckCircle2 } from 'lucide-react'
+import { Check, X, Pencil, Trash2, Plus, Circle, CheckCircle2, MapPin } from 'lucide-react'
 import {
   listWishlistPlaces,
   createWishlistPlace,
@@ -19,9 +19,15 @@ import type { WishlistPlace } from '../../types'
 export function WishlistScreen({
   currentMemberId,
   onClose,
+  nearbySuggestions,
+  onAddNearby,
 }: {
   currentMemberId: string
   onClose: () => void
+  // 只有从"行程"tab进来时才有——那里才知道"当前这一天"，才能算"附近"。
+  // 从行程选择页（TripPicker）进来时不传，这个入口整块不出现
+  nearbySuggestions?: WishlistPlace[]
+  onAddNearby?: (place: WishlistPlace) => void
 }) {
   const places = useLiveQuery(() => listWishlistPlaces()) ?? []
   const usageMap = useLiveQuery(() => usageByWishlistEntry()) ?? new Map<string, WishlistUsage>()
@@ -99,6 +105,37 @@ export function WishlistScreen({
         {places.length === 0 && (
           <div className="text-[13px] text-muted py-8 text-center">
             还没有收藏任何地点。刷到想去的餐厅/景点，点右上角"新增"先记下来，安排行程时随时能挑。
+          </div>
+        )}
+
+        {/* 只有从"行程"tab带着"当前这一天"进来、且这一天附近确实有还没排进去的
+            想去地点时才出现——从行程选择页进来（没有day context）不会有这个入口。
+            "加入今天"之后这条会从 nearbySuggestions 里自动消失（父组件的
+            suggestions 是活查询算出来的，加进行程即排除），不需要本地维护状态 */}
+        {!!nearbySuggestions?.length && (
+          <div className="mb-4">
+            <div className="text-[10.5px] tracking-widest uppercase text-plan font-semibold mb-1.5 flex items-center gap-1.5">
+              <MapPin className="w-3 h-3" strokeWidth={2.2} />
+              附近想去 · {nearbySuggestions.length}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {nearbySuggestions.map((s) => (
+                <div key={s.id} className="flex items-center gap-2.5 bg-plan/5 border border-dashed border-plan/35 rounded-2xl pl-3.5 pr-2 py-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[12.5px] font-medium truncate">{s.name}</div>
+                    {s.notes && <div className="text-[10.5px] text-muted truncate mt-0.5">{s.notes}</div>}
+                  </div>
+                  <button
+                    onClick={() => onAddNearby?.(s)}
+                    className="w-6 h-6 rounded-full bg-plan text-card flex items-center justify-center flex-shrink-0"
+                    title="加入今天"
+                  >
+                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted font-semibold mt-4 mb-1.5">全部想去的地点</div>
           </div>
         )}
 

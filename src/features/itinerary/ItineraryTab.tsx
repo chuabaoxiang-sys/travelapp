@@ -1,6 +1,6 @@
 import { Fragment, Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, X, Plus, Filter, Bookmark } from 'lucide-react'
+import { Trash2, Filter, Bookmark } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { sortItineraryItems, hasLinkedDaySpreadExpense, resolveDayForItemMove } from '../../domain/itinerary'
@@ -72,9 +72,6 @@ export function ItineraryTab({
     () => nearbyWishlistSuggestions(wishlistPlaces, items, allItems),
     [wishlistPlaces, items, allItems],
   )
-  // 关闭是当次会话级别的，不落库——下次重新进这趟行程还会再出现；切换到别的日期
-  // 也会重新出现，因为不同天推荐的地点本来就不一样，不该被上一天的关闭状态带偏
-  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false)
 
   async function addFromWishlist(place: WishlistPlace) {
     const day = await ensureDay(selected)
@@ -206,12 +203,10 @@ export function ItineraryTab({
   }
 
   // 切换"当前日期"的统一入口——时间线的完整/精简日期条、日历视图点日期，
-  // 三处都要走同一套：换了天，编辑到一半的表单没意义了，"附近想去的地点"提示
-  // 也该按新的一天重新判断，不能带着上一天的关闭状态
+  // 都要走同一套：换了天，编辑到一半的表单没意义了
   function selectDate(d: string) {
     setSelected(d)
     setFormState(null)
-    setSuggestionsDismissed(false)
   }
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -283,7 +278,15 @@ export function ItineraryTab({
             title="想去的地点"
           >
             <Bookmark className="w-[15px] h-[15px]" strokeWidth={1.8} />
-            <DiscoveryDot memberId={currentMemberId} hintKey="wishlist" />
+            {/* 附近有想去的地点时，用数字角标顶替发现红点——角标本身已经是"有件
+                具体的事" 的提示，两个同时出现在同一个角落会互相打架 */}
+            {suggestions.length > 0 ? (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-spend text-card text-[9.5px] font-bold flex items-center justify-center leading-none border-[1.5px] border-paper">
+                {suggestions.length}
+              </span>
+            ) : (
+              <DiscoveryDot memberId={currentMemberId} hintKey="wishlist" />
+            )}
           </button>
           {viewMode === 'timeline' && (
             <button
@@ -298,7 +301,14 @@ export function ItineraryTab({
           )}
         </div>
       </div>
-      {wishlistOpen && <WishlistScreen currentMemberId={currentMemberId} onClose={() => setWishlistOpen(false)} />}
+      {wishlistOpen && (
+        <WishlistScreen
+          currentMemberId={currentMemberId}
+          onClose={() => setWishlistOpen(false)}
+          nearbySuggestions={suggestions}
+          onAddNearby={addFromWishlist}
+        />
+      )}
 
       <div className="flex-1 overflow-hidden">
         {viewMode === 'calendar' && (
@@ -384,37 +394,6 @@ export function ItineraryTab({
                       </button>
                     )
                   })}
-                </div>
-              </div>
-            )}
-
-            {!suggestionsDismissed && suggestions.length > 0 && (
-              <div className="rounded-2xl border border-plan/25 bg-plan/5 px-3 py-2.5 mb-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-[12px] font-semibold text-plan flex items-center gap-1.5">
-                    <Bookmark className="w-3.5 h-3.5" strokeWidth={2.2} />
-                    你标记过 {suggestions.length} 个附近想去的地点
-                  </div>
-                  <button onClick={() => setSuggestionsDismissed(true)} className="text-muted" title="关闭">
-                    <X className="w-3.5 h-3.5" strokeWidth={2} />
-                  </button>
-                </div>
-                <div className="flex gap-1.5 overflow-x-auto no-scrollbar mt-2 pb-0.5">
-                  {suggestions.map((s) => (
-                    <div key={s.id} className="flex-shrink-0 flex items-center gap-1.5 bg-card border border-line rounded-2xl pl-3 pr-1.5 py-1.5 text-[11px] max-w-[160px]">
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium">{s.name}</div>
-                        {s.notes && <div className="truncate text-[9.5px] text-muted mt-0.5">{s.notes}</div>}
-                      </div>
-                      <button
-                        onClick={() => addFromWishlist(s)}
-                        className="w-5 h-5 rounded-full bg-plan text-card flex items-center justify-center flex-shrink-0"
-                        title="加入今天"
-                      >
-                        <Plus className="w-3 h-3" strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
