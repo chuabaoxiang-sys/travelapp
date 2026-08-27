@@ -32,8 +32,10 @@ export function LedgerTab({
   // 多出来的东西"一眼能认出来，而不是混在列表里跟三天前那条长得一样
   highlightSince?: number
 }) {
+  // 排序刻意不用Dexie的sortBy——要按"行程日期"分组、组内再按记账时间排，
+  // 这是个两层排序键，不如查回来直接用JS一次排完
   const expenses = useLiveQuery(
-    () => db.expenses.where('tripId').equals(trip.id).reverse().sortBy('createdAt'),
+    () => db.expenses.where('tripId').equals(trip.id).toArray(),
     [trip.id],
   ) ?? []
   const expenseIds = expenses.map((e) => e.id)
@@ -92,6 +94,19 @@ export function LedgerTab({
   const myExpenseIds = myRelatedExpenseIds(expenses, splits, currentMemberId)
   const visibleExpenses = view === 'mine' ? expenses.filter((e) => myExpenseIds.has(e.id)) : expenses
   const editingExpense = expenses.find((e) => e.id === editingId)
+
+  // 按行程日期分组——之前拍平按记账先后排，多天行程账目一多，"回看第3天花了
+  // 什么"得整段划过去肉眼找。组内保留原来"最近记的排前面"的顺序
+  const sortedVisibleExpenses = [...visibleExpenses].sort((a, b) => {
+    if (a.expenseDate !== b.expenseDate) return a.expenseDate < b.expenseDate ? -1 : 1
+    return b.createdAt - a.createdAt
+  })
+  const expensesByDay: { date: string; items: typeof sortedVisibleExpenses }[] = []
+  for (const e of sortedVisibleExpenses) {
+    const lastGroup = expensesByDay[expensesByDay.length - 1]
+    if (lastGroup && lastGroup.date === e.expenseDate) lastGroup.items.push(e)
+    else expensesByDay.push({ date: e.expenseDate, items: [e] })
+  }
 
   function categoryOf(id: string) {
     return categories.find((c) => c.id === id)
@@ -177,51 +192,62 @@ export function LedgerTab({
       )}
 
       <div className="flex flex-col gap-2">
-        {visibleExpenses.map((e) => {
-          const cat = categoryOf(e.categoryId)
-          const payer = memberOf(e.paidBy)
-          const recorder = memberOf(e.recordedBy)
-          const isPersonal = e.splitType === 'none'
-          const myShare = myShareOf(e.id, splits, currentMemberId)
-          const isNew = !!highlightSince && e.createdAt > highlightSince && e.recordedBy !== currentMemberId
+        {expensesByDay.map(({ date, items }) => {
+          const daySubtotal = items.reduce((a, e) => a + e.homeAmount, 0)
           return (
-            <button
-              key={e.id}
-              onClick={() => setEditingId(e.id)}
-              className={`text-left flex items-center gap-3 bg-card rounded-2xl px-3.5 py-2.5 border transition-colors hover:border-plan/50 ${
-                isNew ? 'border-spend/70 bg-spend/[.04]' : 'border-line'
-              }`}
-            >
-              <CategoryBadge category={cat} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13.5px] font-medium truncate">{e.description || cat?.name}</div>
-                <div className="text-[11px] text-muted mt-0.5 truncate">{e.expenseDate} · {cat?.name}</div>
-                <div className="flex items-center gap-1.5 mt-1 min-w-0">
-                  <Avatar member={payer} size={16} />
-                  <span className="text-[11px] text-muted truncate">
-                    {isPersonal ? payer?.displayName : `${payer?.displayName}垫付 · ${splitCountOf(e.id)}人分摊`}
-                  </span>
-                  {isPersonal && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-line text-muted flex-shrink-0">个人开销</span>}
-                </div>
-                {/* 谁记的这笔账。只在"记的人 ≠ 付钱的人"时才显示——两者相同是最常见的
-                    情况，那时候多这一行纯属噪音。这个字段一直都在存，只是以前从来没
-                    显示过，所以"这笔是家里别人帮我记的"完全看不出来 */}
-                {recorder && e.recordedBy !== e.paidBy && (
-                  <div className="text-[10.5px] text-muted/80 mt-0.5 truncate">由 {recorder.displayName} 记录</div>
-                )}
-                {view === 'mine' && !isPersonal && (
-                  <div className="text-[11px] text-plan mt-0.5">
-                    你的份额 {myShare != null ? formatMoney(myShare, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency) : '—（你垫付，不分摊给自己）'}
-                  </div>
-                )}
+            <div key={date} className="flex flex-col gap-2">
+              <div className="flex items-baseline justify-between">
+                <span className="font-serif-sc text-[13px]">{date}</span>
+                <span className="text-[11px] text-muted tabular">当日 {formatMoney(daySubtotal, currencyLabel)}</span>
               </div>
-              <div className="text-right flex-shrink-0">
-                <div className="text-[15px] tabular">{formatMoney(e.homeAmount, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}</div>
-                {e.expenseCurrency !== trip.homeCurrency && (
-                  <div className="text-[10px] text-muted tabular">{e.expenseCurrency} {e.expenseAmount}</div>
-                )}
-              </div>
-            </button>
+              {items.map((e) => {
+                const cat = categoryOf(e.categoryId)
+                const payer = memberOf(e.paidBy)
+                const recorder = memberOf(e.recordedBy)
+                const isPersonal = e.splitType === 'none'
+                const myShare = myShareOf(e.id, splits, currentMemberId)
+                const isNew = !!highlightSince && e.createdAt > highlightSince && e.recordedBy !== currentMemberId
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => setEditingId(e.id)}
+                    className={`text-left flex items-center gap-3 bg-card rounded-2xl px-3.5 py-2.5 border transition-colors hover:border-plan/50 ${
+                      isNew ? 'border-spend/70 bg-spend/[.04]' : 'border-line'
+                    }`}
+                  >
+                    <CategoryBadge category={cat} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13.5px] font-medium truncate">{e.description || cat?.name}</div>
+                      <div className="text-[11px] text-muted mt-0.5 truncate">{cat?.name}</div>
+                      <div className="flex items-center gap-1.5 mt-1 min-w-0">
+                        <Avatar member={payer} size={16} />
+                        <span className="text-[11px] text-muted truncate">
+                          {isPersonal ? payer?.displayName : `${payer?.displayName}垫付 · ${splitCountOf(e.id)}人分摊`}
+                        </span>
+                        {isPersonal && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-line text-muted flex-shrink-0">个人开销</span>}
+                      </div>
+                      {/* 谁记的这笔账。只在"记的人 ≠ 付钱的人"时才显示——两者相同是最常见的
+                          情况，那时候多这一行纯属噪音。这个字段一直都在存，只是以前从来没
+                          显示过，所以"这笔是家里别人帮我记的"完全看不出来 */}
+                      {recorder && e.recordedBy !== e.paidBy && (
+                        <div className="text-[10.5px] text-muted/80 mt-0.5 truncate">由 {recorder.displayName} 记录</div>
+                      )}
+                      {view === 'mine' && !isPersonal && (
+                        <div className="text-[11px] text-plan mt-0.5">
+                          你的份额 {myShare != null ? formatMoney(myShare, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency) : '—（你垫付，不分摊给自己）'}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-[15px] tabular">{formatMoney(e.homeAmount, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}</div>
+                      {e.expenseCurrency !== trip.homeCurrency && (
+                        <div className="text-[10px] text-muted tabular">{e.expenseCurrency} {e.expenseAmount}</div>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           )
         })}
         {!visibleExpenses.length && (
