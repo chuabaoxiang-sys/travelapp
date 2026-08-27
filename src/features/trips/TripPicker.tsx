@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Pencil, Trash2, X, Check, Plus, Bookmark } from 'lucide-react'
+import { Pencil, Trash2, X, Check, Plus, Bookmark, BookOpen } from 'lucide-react'
 import { db, deleteTripCascade } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { computeTripStatus } from '../../domain/trips'
@@ -133,13 +133,26 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
           />
         ) : (
           !formState && (
-            <button
-              onClick={() => setFormState('new')}
-              className="mt-3 w-full rounded-2xl border border-dashed border-plan/60 text-card bg-plan py-3 text-sm font-medium flex items-center justify-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" strokeWidth={2} />
-              新建行程
-            </button>
+            <>
+              <button
+                onClick={() => setFormState('new')}
+                className="mt-3 w-full rounded-2xl border border-dashed border-plan/60 text-card bg-plan py-3 text-sm font-medium flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" strokeWidth={2} />
+                新建行程
+              </button>
+              {!trips.length && (
+                <a
+                  href="/user-guide.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3.5 w-full flex items-center justify-center gap-1.5 text-[12px] text-plan-on-dark"
+                >
+                  <BookOpen className="w-[13px] h-[13px]" strokeWidth={1.8} />
+                  第一次用？先看使用指南
+                </a>
+              )}
+            </>
           )
         )}
       </div>
