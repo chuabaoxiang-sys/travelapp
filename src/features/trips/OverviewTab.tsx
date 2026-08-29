@@ -64,6 +64,9 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
   const daysLeft = trip.startDate ? daysUntil(todayISO, trip.startDate) : null
   const sortedDays = [...itineraryDays].sort((a, b) => a.date.localeCompare(b.date))
   const dayIndexOf = (dayId: string) => sortedDays.findIndex((d) => d.id === dayId) + 1
+  // "还没订"这几张卡片给的是"月-日"而不是"第N天"——第几天要在脑子里对着
+  // 出发日期换算才知道具体是哪天，日期直接就是使用者平时想事情用的那个格式
+  const dateOfDay = (dayId: string) => sortedDays.find((d) => d.id === dayId)?.date.slice(5)
   // 按第几天排序，同一天再按时间排——不然"还没订"这个列表跟着items查询原始
   // 顺序走（大致是创建顺序），第13天排在第3天前面，看着很乱，跟"离出发还有
   // 几天"这种时间线视角完全对不上
@@ -98,7 +101,7 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
                 <div className="flex items-center gap-2.5">
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium truncate">{it.title}</div>
-                    <div className="text-[10.5px] text-muted mt-0.5">第{dayIndexOf(it.dayId) || '?'}天</div>
+                    <div className="text-[10.5px] text-muted mt-0.5">{dateOfDay(it.dayId) ?? '日期未知'}</div>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-spend/15 text-spend flex-shrink-0">待预约</span>
                 </div>
