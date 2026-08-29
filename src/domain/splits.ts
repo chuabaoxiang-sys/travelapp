@@ -21,6 +21,12 @@ export function resolveSplitShares(
   payerId: string,
   customAmounts?: Record<string, number>,
 ): { memberId: string; shareAmount: number }[] {
+  // 防线二——正常调用方（比如AddExpensePage）传进来的名单不该有重复，但这里
+  // 还是去重一遍：这是"一笔费用该拆成几份"这道计算本身的入口，任何调用方哪怕
+  // 不小心传了重复id，也不该在这里被放大成重复的分摊行（真实事故：本地数据
+  // 曾经因为同步时序问题出现过同一个人的重复split行，编辑页不去重就直接把
+  // 这份重复名单传了进来，越保存越错）
+  memberIds = [...new Set(memberIds)]
   // 分摊名单里恰好剩1人时，这笔钱要记成"那个人"欠的——哪怕那个人不是付款人本人
   // （比如"BX垫付，只勾KN" = BX帮KN全额垫付，欠款人是KN）。不能跟"没人勾选"
   // （真正的个人开销，memberIds为空）混为一谈一律记回付款人名下，那样会把

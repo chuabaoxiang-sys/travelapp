@@ -60,6 +60,15 @@ describe('resolveSplitShares', () => {
     const shares = resolveSplitShares(100, 'exact', ['kn'], 'bx', { kn: 999 })
     expect(shares).toEqual([{ memberId: 'kn', shareAmount: 100 }])
   })
+
+  it('真实事故回归用例：memberIds里混进了重复id（本地数据因同步时序问题重复过）时，' +
+    '按去重后的实际人数分摊，不会把总额多摊出几份', () => {
+    const shares = resolveSplitShares(300, 'equal', ['a', 'a', 'a', 'b', 'b', 'b'], 'a')
+    expect(shares).toEqual([
+      { memberId: 'a', shareAmount: 150 },
+      { memberId: 'b', shareAmount: 150 },
+    ])
+  })
 })
 
 describe('simplifyDebts', () => {

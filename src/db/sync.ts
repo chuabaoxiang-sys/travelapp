@@ -162,6 +162,14 @@ export async function pullAll(): Promise<number> {
         localRow.tripId = dayToTrip.get(localRow.dayId) ?? localRow.tripId
       }
 
+      // expenseSplits 的 outbox recordId 存的是 expenseId，不是分摊行自己的id（见
+      // domain/splits.ts 的 saveExpenseSplits）——这笔账目的分摊改动本地还没推上去时，
+      // 这一轮拉取就不把云端这笔账目的分摊行接回本地：本地那份还没成功推上去的改动
+      // 优先，等它自己推成功、outbox条目变成synced后，下一轮再正常拉取云端最新状态。
+      // 真实事故：这正是"同一个人分摊记录变成2-3份"的根因——两台设备一个在改、
+      // 一个同时拉到了旧版本，两份不同id但同一个人的分摊行都留在了本地
+      if (tableName === 'expenseSplits' && pendingIds.has(localRow.expenseId)) continue
+
       const existing = localById.get(localRow.id)
       if (config.hasUpdatedAt) {
         // 本地有还没推上去的更新改动，这一轮先不覆盖——等那条推成功后下一轮自然就一致了

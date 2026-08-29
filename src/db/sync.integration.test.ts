@@ -161,6 +161,24 @@ describe('pushOutbox / pullAll / runSync（真实mock网络层）', () => {
     expect(remaining.map((r) => r.id).sort()).toEqual(['split-x', 'split-y'])
   })
 
+  it('08-27事故回归：这笔账目的分摊改动本地还"待同步"时，pullAll不能把云端返回的' +
+    '（可能是另一台设备还没看到这次改动前的旧版本）分摊行接回本地——不然会跟本地这份' +
+    '还没推上去的改动一起留在本地，变成同一个人有2条分摊记录，撞上数据库那道唯一性约束', async () => {
+    await db.expenseSplits.add(splitRow({ id: 'split-local', expenseId: 'exp-99', memberId: 'm1', shareAmount: 100 }))
+    await db.outbox.add(outboxEntry({ id: 'ob-1', recordId: 'exp-99', payload: { expenseId: 'exp-99' } }))
+    // 远端这次查询返回的是"另一台设备眼里、这次本地改动之前"的旧版本——
+    // id跟本地这条不一样，代表的是同一个人（member_id相同）但内容不同的一行
+    mock.setSelect('expense_split', {
+      data: [{ id: 'split-remote-stale', household_id: 'h1', expense_id: 'exp-99', member_id: 'm1', share_amount: 999 }],
+      error: null,
+    })
+
+    await pullAll()
+
+    const remaining = await db.expenseSplits.where('expenseId').equals('exp-99').toArray()
+    expect(remaining.map((r) => r.id)).toEqual(['split-local'])
+  })
+
   it('08-23事故回归：runSync()重叠调用时，第二次会被syncInFlight直接挡掉，' +
     '不会真的把14张表再拉一遍', async () => {
     // 全部表返回空，模拟"这一轮没有任何变化"，pushOutbox 也没有待推送——

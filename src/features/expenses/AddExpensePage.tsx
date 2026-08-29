@@ -183,7 +183,12 @@ export function AddExpensePage({
     if (splitInitialized.current) return
     if (initial) {
       if (!existingSplits.length) return
-      setSplitMemberIds(existingSplits.map((s) => s.memberId))
+      // 去重——正常情况下一笔费用同一个人只会有一条分摊记录（数据库也有唯一性
+      // 约束保证），但本地这张表本身没有这道约束，同步时序不巧的话可能留下
+      // 同一个人的重复行；这里直接映射不去重的话，编辑页会照单全收显示成好几行，
+      // 保存时又把重复原样写回去，越编越错。用Set保证进这个表单的名单一定是
+      // 去重过的，从这个入口先把口子堵上
+      setSplitMemberIds([...new Set(existingSplits.map((s) => s.memberId))])
       splitInitialized.current = true
     } else {
       if (!members.length) return
