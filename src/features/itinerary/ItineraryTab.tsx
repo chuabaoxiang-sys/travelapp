@@ -325,7 +325,7 @@ export function ItineraryTab({
         )}
         {viewMode === 'map' && (
           <Suspense fallback={<div className="px-5 pt-6 text-sm text-muted">地图加载中…</div>}>
-            <MapView days={itineraryDays} items={allItems} />
+            <MapView days={itineraryDays} items={allItems} selectedDate={selected} />
           </Suspense>
         )}
         {viewMode === 'timeline' && (

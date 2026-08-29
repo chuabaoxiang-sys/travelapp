@@ -45,22 +45,39 @@ function arrowIcon(angleDeg: number, color: string) {
 
 // 选中某一天时，把地图缩放/移动到刚好框住那天的所有点——不然默认视角还停在
 // 第一天的位置，选中的那天如果离得远（比如跨城市的一日游），线会拉到屏幕外看不全
+//
+// 两处都显式关掉动画（animate:false），这是这次真机复现出来的真正病因：
+// Leaflet默认会把这种跨度较大的缩放变化做成动画过渡，但只要这次过渡卡住
+// 没有真正完成（用生产构建反复实测出来的，不是猜的——getZoom()/getCenter()
+// 在调用fitBounds/setView之后、甚至过了500ms之后，读出来的还是动画开始前的
+// 旧值，图钉自然还留在按旧视角算出来的老位置），地图看起来就是"卡住了、
+// 没跳到新一天"。改成瞬间跳转，不指望这个过渡动画一定能顺利播完
+//
+// 切换日期前先关掉还开着的地点弹窗——不然Leaflet弹窗自带的"自动挪动地图
+// 让弹窗保持可见"会跟这里的挪动抢地图控制权
 function FitBounds({ positions, boundsKey }: { positions: [number, number][]; boundsKey: string }) {
   const map = useMap()
   useEffect(() => {
+    map.closePopup()
     if (!positions.length) return
     if (positions.length === 1) {
-      map.setView(positions[0], 14)
+      map.setView(positions[0], 14, { animate: false })
     } else {
-      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40] })
+      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40], animate: false })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boundsKey])
   return null
 }
 
-export function MapView({ days, items }: { days: ItineraryDay[]; items: ItineraryItem[] }) {
-  const [activeDayId, setActiveDayId] = useState<string | null>(null)
+export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; items: ItineraryItem[]; selectedDate?: string }) {
+  // 从时间线切过来时，直接以时间线正看着的那天开局，不要每次都从"什么都没选"
+  // 重新来——地图有自己的一套日期chip可以再改选，这里只管初始值。MapView在
+  // 切出"地图"这个视图时会整个卸载，回来时重新走这个初始化，不需要额外的
+  // useEffect去同步selectedDate变化
+  const [activeDayId, setActiveDayId] = useState<string | null>(
+    () => days.find((d) => d.date === selectedDate)?.id ?? null,
+  )
 
   // items 是 Dexie 查询的原始顺序，不代表实际时间顺序——图钉编号和连线走向
   // 都要按时间排，不排序的话同一天的点会按插入顺序连线，跟真实行程顺序对不上
