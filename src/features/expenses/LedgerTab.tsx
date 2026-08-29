@@ -45,6 +45,10 @@ export function LedgerTab({
   ) ?? []
   const categories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
   const members = useLiveQuery(() => db.members.toArray()) ?? []
+  // 关联行程项的名字——没写备注、又关联了具体某个行程项（比如"Toya Sun Palace"）
+  // 的账目，标题不该退到分类名（"住宿现付"），那样好几笔同分类账目会长得一模
+  // 一样，只能靠金额分辨；关联行程项本身就是比分类名更具体的名字
+  const itineraryItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const overallBudget = useLiveQuery(() => getOverallBudget(trip.id), [trip.id])
   // computeBalances 里的"应分摊(owed)"本来就是"这个人对这趟行程要负责多少钱"——
   // 不管是分摊来的还是自己的个人开销，一笔账只要有他的 expense_split 行就会算进去，
@@ -113,6 +117,9 @@ export function LedgerTab({
   }
   function memberOf(id: string) {
     return members.find((m) => m.id === id)
+  }
+  function itineraryItemOf(id: string) {
+    return itineraryItems.find((it) => it.id === id)
   }
   function splitCountOf(expenseId: string) {
     return splits.filter((s) => s.expenseId === expenseId).length
@@ -204,6 +211,7 @@ export function LedgerTab({
                 const cat = categoryOf(e.categoryId)
                 const payer = memberOf(e.paidBy)
                 const recorder = memberOf(e.recordedBy)
+                const linkedItem = e.itineraryItemId ? itineraryItemOf(e.itineraryItemId) : undefined
                 const isPersonal = e.splitType === 'none'
                 const myShare = myShareOf(e.id, splits, currentMemberId)
                 const isNew = !!highlightSince && e.createdAt > highlightSince && e.recordedBy !== currentMemberId
@@ -217,7 +225,10 @@ export function LedgerTab({
                   >
                     <CategoryBadge category={cat} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13.5px] font-medium truncate">{e.description || cat?.name}</div>
+                      {/* 没写备注时，先看有没有关联到具体某个行程项——那个名字比分类名
+                          （"住宿现付"）具体得多，好几笔同分类账目才不会长得一模一样，
+                          真的什么都没有才退到分类名兜底 */}
+                      <div className="text-[13.5px] font-medium truncate">{e.description || linkedItem?.title || cat?.name}</div>
                       <div className="text-[11px] text-muted mt-0.5 truncate">{cat?.name}</div>
                       <div className="flex items-center gap-1.5 mt-1 min-w-0">
                         <Avatar member={payer} size={16} />
