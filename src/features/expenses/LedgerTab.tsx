@@ -172,7 +172,11 @@ export function LedgerTab({
           <SplitTab trip={trip} currentMemberId={currentMemberId} />
         </div>
       ) : (
-      <div className="px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar flex-1 flex flex-col gap-3.5">
+      <div className="px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar flex-1 min-h-0 flex flex-col gap-3.5">
+      {/* min-h-0：这个滚动容器自己也是flex-col，套了"按天分组"那层嵌套之后，
+          Safari会让它按内容撑高而不是卡在flex-1分到的那块空间——真机上表现
+          就是划不动，Chrome这边测不出来。加这个限制强制它老实待在分到的
+          空间里，不管里面嵌套几层都能正常滚动 */}
       {/* 全部视角用"今天还能花"——那是唯一会随每次记账变化的数字，也是记账这个动作
           的即时回报。"我的"保持整趟汇总：预算是团队级的，没有个人预算可以推出
           个人的每日额度，硬凑一个只会让人误解 */}
