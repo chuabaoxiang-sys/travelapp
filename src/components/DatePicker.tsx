@@ -34,10 +34,17 @@ export function DatePicker({
   value,
   onChange,
   placeholder = '选择日期',
+  min,
+  max,
 }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
+  // 允许选择的日期范围（闭区间，ISO字符串），超出范围的日期在日历里直接置灰点不了，
+  // 而不是等选完了再在别处报错——目前唯一用到的地方是行程表单的出发/返程日期
+  // 互相约束对方能选的范围
+  min?: string
+  max?: string
 }) {
   const [open, setOpen] = useState(false)
   const init = value ? parseISO(value) : { y: new Date().getFullYear(), m: new Date().getMonth() + 1, d: 1 }
@@ -144,13 +151,17 @@ export function DatePicker({
               if (d === null) return <div key={i} />
               const iso = toISO(viewY, viewM, d)
               const isSelected = iso === value
+              const disabled = (!!min && iso < min) || (!!max && iso > max)
               return (
                 <button
                   type="button"
                   key={i}
+                  disabled={disabled}
                   onClick={() => { onChange(iso); setOpen(false) }}
                   className={`aspect-square rounded-lg text-[12.5px] tabular ${
-                    isSelected ? 'bg-plan text-card font-semibold' : 'text-ink hover:bg-paper'
+                    disabled
+                      ? 'text-muted/40 cursor-not-allowed'
+                      : isSelected ? 'bg-plan text-card font-semibold' : 'text-ink hover:bg-paper'
                   }`}
                 >
                   {d}
@@ -167,17 +178,20 @@ export function DatePicker({
             >
               <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                const t = new Date()
-                onChange(toISO(t.getFullYear(), t.getMonth() + 1, t.getDate()))
-                setOpen(false)
-              }}
-              className="text-[11.5px] text-plan"
-            >
-              今天
-            </button>
+            {(() => {
+              const t = new Date()
+              const todayISO = toISO(t.getFullYear(), t.getMonth() + 1, t.getDate())
+              if ((!!min && todayISO < min) || (!!max && todayISO > max)) return null
+              return (
+                <button
+                  type="button"
+                  onClick={() => { onChange(todayISO); setOpen(false) }}
+                  className="text-[11.5px] text-plan"
+                >
+                  今天
+                </button>
+              )
+            })()}
           </div>
         </div>
       )}

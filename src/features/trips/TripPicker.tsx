@@ -263,8 +263,8 @@ function TripForm({
         <div className="text-[10.5px] text-muted mt-1">例如「2026日本关西家族游」</div>
       </div>
       <div className="flex gap-2">
-        <div className="flex-1"><DatePicker value={startDate ?? ''} onChange={handleStartDateChange} placeholder="出发日期" /></div>
-        <div className="flex-1"><DatePicker value={endDate ?? ''} onChange={handleEndDateChange} placeholder="返程日期" /></div>
+        <div className="flex-1"><DatePicker value={startDate ?? ''} onChange={handleStartDateChange} placeholder="出发日期" max={endDate || undefined} /></div>
+        <div className="flex-1"><DatePicker value={endDate ?? ''} onChange={handleEndDateChange} placeholder="返程日期" min={startDate || undefined} /></div>
       </div>
       {dateError && <div className="text-[11.5px] text-negative -mt-1">{dateError}</div>}
       <CountryPicker value={destinationCountries} onChange={setDestinationCountries} />
