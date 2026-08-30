@@ -195,9 +195,25 @@ function TripForm({
   const [currencies, setCurrencies] = useState<string[]>(initial?.currencies ?? [])
   const [homeCurrency, setHomeCurrency] = useState('MYR')
   const [manualHomeCurrencyOpen, setManualHomeCurrencyOpen] = useState(false)
+  const [dateError, setDateError] = useState<string | null>(null)
+
+  // 数据库有 trip_check 约束要求 endDate >= startDate——这里提前拦一次，不让
+  // 这类数据存进本地，否则会一直卡在同步队列里报数据库层面的原始错误
+  function handleStartDateChange(value: string) {
+    setStartDate(value)
+    setDateError(null)
+  }
+  function handleEndDateChange(value: string) {
+    setEndDate(value)
+    setDateError(null)
+  }
 
   async function save() {
     if (!name.trim()) return
+    if (startDate && endDate && endDate < startDate) {
+      setDateError('返程日期不能早于出发日期')
+      return
+    }
     if (initial) {
       await db.trips.update(initial.id, {
         name: name.trim(),
@@ -247,9 +263,10 @@ function TripForm({
         <div className="text-[10.5px] text-muted mt-1">例如「2026日本关西家族游」</div>
       </div>
       <div className="flex gap-2">
-        <div className="flex-1"><DatePicker value={startDate ?? ''} onChange={setStartDate} placeholder="出发日期" /></div>
-        <div className="flex-1"><DatePicker value={endDate ?? ''} onChange={setEndDate} placeholder="返程日期" /></div>
+        <div className="flex-1"><DatePicker value={startDate ?? ''} onChange={handleStartDateChange} placeholder="出发日期" /></div>
+        <div className="flex-1"><DatePicker value={endDate ?? ''} onChange={handleEndDateChange} placeholder="返程日期" /></div>
       </div>
+      {dateError && <div className="text-[11.5px] text-negative -mt-1">{dateError}</div>}
       <CountryPicker value={destinationCountries} onChange={setDestinationCountries} />
       {!initial && (
         <div>

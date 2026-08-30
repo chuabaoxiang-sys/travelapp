@@ -58,6 +58,65 @@ function describeRecord(entry: OutboxEntry): string | null {
   }
 }
 
+// 约束名 -> 人话提示，覆盖 supabase/migrations 里全部的 CHECK 约束。命名不到的
+// 新约束不会报错，只是拿不到人话提示、退回显示原始技术报错（见 humanizeSyncError）
+const CHECK_CONSTRAINT_MESSAGES: Record<string, string> = {
+  trip_check: '返程日期不能早于出发日期',
+  trip_home_currency_check: '本位币代码格式不对，应该是3个大写字母，比如 MYR',
+  trip_name_check: '行程名称不能是空的',
+  trip_public_share_scope_check: '分享范围的值不合法',
+  trip_public_share_scope_token_check: '开启分享前需要先生成分享链接',
+  expense_expense_amount_check: '账目金额必须大于0',
+  expense_home_amount_check: '折算后的本位币金额必须大于0',
+  expense_expense_currency_check: '币种代码格式不对，应该是3个大写字母，比如 MYR',
+  expense_rate_used_check: '汇率必须大于0',
+  expense_day_spread_mode_check: '跨天分摊方式的值不合法',
+  expense_category_name_check: '分类名称不能是空的',
+  expense_day_allocation_amount_check: '跨天分摊的金额不能是负数',
+  expense_rate_allocation_foreign_amount_check: '换汇分摊的外币金额必须大于0',
+  expense_rate_allocation_home_amount_check: '换汇分摊的本位币金额不能是负数',
+  expense_rate_allocation_rate_used_check: '换汇分摊用到的汇率必须大于0',
+  expense_split_share_amount_check: '分摊金额不能是负数',
+  feedback_content_check: '反馈内容不能是空的',
+  itinerary_item_booking_status_check: '预约状态的值不合法',
+  itinerary_item_lat_check: '纬度超出了合理范围（-90到90）',
+  itinerary_item_lng_check: '经度超出了合理范围（-180到180）',
+  itinerary_item_title_check: '行程项标题不能是空的',
+  member_display_name_check: '成员名字不能是空的',
+  rate_book_entry_currency_code_check: '币种代码格式不对，应该是3个大写字母',
+  rate_book_entry_exchanged_foreign_amount_check: '实际换到的外币金额必须大于0',
+  rate_book_entry_exchanged_home_amount_check: '实际付出的本位币金额必须大于0',
+  rate_book_entry_label_check: '汇率标签不能是空的',
+  rate_book_entry_rate_check: '汇率必须大于0',
+  rate_book_entry_use_count_check: '使用次数不能是负数',
+  settlement_amount_check: '结算金额必须大于0',
+  settlement_check: '付款人和收款人不能是同一个人',
+  budget_amount_check: '预算金额必须大于0',
+  budget_alert_threshold_pct_check: '预算提醒比例必须在0到200之间',
+}
+
+// 把 db/sync.ts 里 describeError() 拼出来的原始报错（message | details | hint | code）
+// 翻成人能看懂的一句话。翻不出来时返回 null，调用方保留原来只显示原始报错的样子，
+// 不会因为遇到没见过的错误就什么提示都没有
+function humanizeSyncError(raw: string): string | null {
+  const code = raw.match(/\|\s*([A-Z0-9]{5})\s*$/)?.[1]
+
+  // P0001 是数据库函数里手写的 RAISE EXCEPTION，消息本身已经是给人看的中文，
+  // 只需要去掉拼在后面的错误码后缀
+  if (code === 'P0001') return raw.replace(/\s*\|\s*P0001\s*$/, '').trim()
+
+  // 外键约束——这条记录依赖的另一条（通常是它所属的行程）还没同步成功，
+  // 不是这条记录本身有问题，等依赖项同步好了会自动跟着重试成功
+  if (code === '23503') return '这条数据依赖的另一条记录还没同步成功，等它同步好之后这条会自动跟着重试，不用手动处理'
+
+  if (code === '23514') {
+    const constraint = raw.match(/constraint "([^"]+)"/)?.[1]
+    if (constraint) return CHECK_CONSTRAINT_MESSAGES[constraint] ?? null
+  }
+
+  return null
+}
+
 function relativeTime(at: number, now: number): string {
   const diffMin = Math.round((now - at) / 60_000)
   if (diffMin < 1) return '刚刚'
@@ -121,9 +180,15 @@ export function SyncDetailSheet({ onClose }: { onClose: () => void }) {
                     </div>
                   )}
                   {stuck && entry.lastError && (
-                    <div className="text-[10px] text-muted bg-paper rounded-md px-2 py-1.5 mt-1.5 font-mono break-all">
-                      {entry.lastError}
-                    </div>
+                    <>
+                      {(() => {
+                        const friendly = humanizeSyncError(entry.lastError)
+                        return friendly && <div className="text-[11px] text-negative mt-1.5">{friendly}</div>
+                      })()}
+                      <div className="text-[10px] text-muted bg-paper rounded-md px-2 py-1.5 mt-1.5 font-mono break-all">
+                        {entry.lastError}
+                      </div>
+                    </>
                   )}
                 </div>
               )
