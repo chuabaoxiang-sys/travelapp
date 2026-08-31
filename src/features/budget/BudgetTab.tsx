@@ -36,9 +36,10 @@ export function BudgetTab({ trip }: { trip: Trip }) {
     })
     .sort((a, b) => (b.over ? 1 : 0) - (a.over ? 1 : 0)) // 超支的排最前面，不用往下翻才发现
 
-  const categoriesWithoutBudget = categories.filter(
-    (c) => (c.phase === 'during_trip' || c.phase === 'either') && !categoryBudgets.some((b) => b.categoryId === c.id),
-  )
+  // 以前只给"途中"分类设预算，出行前的分类（机票/保险/签证）被过滤掉了——
+  // 那是"阶段"手动切换还存在时代的产物。现在阶段已经从record一笔里去掉了
+  // （AddExpensePage.tsx），分类不再区分谁能不能设预算，全部都能加
+  const categoriesWithoutBudget = categories.filter((c) => !categoryBudgets.some((b) => b.categoryId === c.id))
 
   async function saveOverall() {
     const amount = parseFloat(overallInput)

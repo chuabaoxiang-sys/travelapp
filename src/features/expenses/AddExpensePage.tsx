@@ -65,7 +65,6 @@ export function AddExpensePage({
     linkInitialized.current = true
   }, [itineraryDays, initial?.itineraryDayId])
 
-  const [phase, setPhase] = useState<ExpensePhase>(initial?.phase ?? 'during_trip')
   const [categoryId, setCategoryId] = useState<string>(initial?.categoryId ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [currency, setCurrency] = useState(initial?.expenseCurrency ?? trip.homeCurrency)
@@ -210,7 +209,11 @@ export function AddExpensePage({
     customInitialized.current = true
   }, [initial, existingSplits])
 
-  const visibleCategories = categories.filter((c) => c.phase === phase || c.phase === 'either')
+  // "阶段"这个概念本身已经从表单里去掉了——分类自己带着"该属于出行前还是
+  // 途中"的信息（category.phase），选哪个分类就自动定了这笔账目的阶段，
+  // 用户不用再单独决定一次。分类固定10个、没有自定义分类，一次性全部
+  // 显示不会太挤，也不用再靠一个藏起来的开关去筛选可选项
+  const visibleCategories = categories
   const isForeign = currency !== trip.homeCurrency
   const numAmount = parseFloat(amount) || 0
   // 拆多笔汇率时，rateUsed 是加权平均（各批本位币金额加总 / 开销外币总额），
@@ -351,6 +354,9 @@ export function AddExpensePage({
       : undefined
     const expenseId = initial?.id ?? crypto.randomUUID()
     const daySpreadMode: DaySpreadMode | null = spreadOpen && spreadDates.length ? dayMode : null
+    // 阶段不再是用户手动选的——直接从选中的分类带出来。分类是"either"（比如
+    // 杂项）时没有天然归属，落到"途中"，这是这个字段本来就有的默认值
+    const phase: ExpensePhase = categories.find((c) => c.id === categoryId)?.phase === 'pre_trip' ? 'pre_trip' : 'during_trip'
 
     if (initial) {
       await db.expenses.update(initial.id, {
@@ -469,7 +475,6 @@ export function AddExpensePage({
       : `${payerName}垫付 · ${splitMemberIds.length}人${splitMode === 'exact' && splitMemberIds.length >= 2 ? '自定义' : '平均'}分摊`
   const daysSummary = !spreadOpen || !spreadDates.length ? '单日' : `跨${spreadDates.length}天${dayMode === 'exact' ? ' · 自定义' : ''}`
   const foldSummary = [
-    phase === 'pre_trip' ? '出行前' : '途中',
     expenseDate === todayISO ? '今天' : expenseDate.slice(5),
     splitSummary,
     spreadOpen && spreadDates.length ? daysSummary : null,
@@ -621,19 +626,6 @@ export function AddExpensePage({
 
         {detailsOpen && (
           <>
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">阶段</div>
-            <div className="flex gap-1 bg-segment rounded-xl p-1 w-fit">
-              {(['pre_trip', 'during_trip'] as ExpensePhase[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => { setPhase(p); setCategoryId('') }}
-                  className={`rounded-lg px-3 py-1.5 text-[12.5px] ${phase === p ? 'bg-ink text-paper' : 'text-muted'}`}
-                >
-                  {p === 'pre_trip' ? '出行前' : '途中'}
-                </button>
-              ))}
-            </div>
-
             <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">日期</div>
             <DatePicker value={expenseDate} onChange={setExpenseDate} />
 
