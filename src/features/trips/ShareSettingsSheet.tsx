@@ -213,7 +213,7 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
       {pendingScope && (
         <ConfirmDialog
           title="确认开启分享？"
-          message={`任何拿到这个链接的人都能看到：${scopeDescription(pendingScope)}。确定要生成/更新这个分享范围吗？`}
+          message={`任何拿到这个链接的人都能看到：${scopeDescription(pendingScope)}。确定要开启吗？`}
           confirmLabel="确认"
           danger={false}
           onConfirm={confirmScopeChange}
@@ -224,7 +224,7 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
       {confirmingRegenerate && (
         <ConfirmDialog
           title="重新生成链接？"
-          message="旧链接会立刻失效，之前发出去的链接将无法再打开，需要重新分享新链接。"
+          message="旧链接会立刻失效、无法再打开，记得把新链接重新发给对方。"
           confirmLabel="重新生成"
           onConfirm={confirmRegenerate}
           onCancel={() => setConfirmingRegenerate(false)}

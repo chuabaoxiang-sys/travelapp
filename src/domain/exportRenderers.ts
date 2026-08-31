@@ -17,7 +17,7 @@ export function buildExcelFile(bundle: ExportBundle): File {
     金额: r.amount ?? '',
     币种: r.currency ?? '',
     [`折算(${bundle.homeCurrency})`]: r.homeAmount ?? '',
-    支付人: r.payerName ?? '',
+    付款人: r.payerName ?? '',
     备注: r.note ?? '',
   }))
   const detailSheet = XLSX.utils.json_to_sheet(detailData)
@@ -70,7 +70,7 @@ function csvEscape(v: unknown) {
 }
 
 export function buildCsvFile(bundle: ExportBundle): File {
-  const headers = ['日期', '类型', '标题', '地点', '分类', '金额', '币种', `折算(${bundle.homeCurrency})`, '支付人', '备注']
+  const headers = ['日期', '类型', '标题', '地点', '分类', '金额', '币种', `折算(${bundle.homeCurrency})`, '付款人', '备注']
   const lines = [headers.join(',')]
   for (const r of bundle.rows) {
     lines.push(

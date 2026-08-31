@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, Check, X, Plus } from 'lucide-react'
+import { Trash2, Check, X, Plus, AlertTriangle } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { getOverallBudget, getCategoryBudgets, upsertBudget, deleteBudget, sumSpend } from '../../domain/budgets'
 import { formatMoney } from '../../lib/money'
@@ -112,7 +112,10 @@ export function BudgetTab({ trip }: { trip: Trip }) {
           {categoryRows.filter((r) => r.over).map((r) => (
             <div key={r.budget.id} className="border-[1.5px] border-negative rounded-2xl px-3.5 py-3">
               <div className="flex items-center justify-between text-[13px] font-semibold text-negative">
-                <span>⚠ {r.category?.name ?? '未知分类'}已超出预算</span>
+                <span className="flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" strokeWidth={2} />
+                  {r.category?.name ?? '未知分类'}已超出预算
+                </span>
                 <span className="text-[11px] bg-negative/10 px-2 py-0.5 rounded-full">超支 {formatMoney(r.spend - r.budget.amount)}</span>
               </div>
             </div>
@@ -198,7 +201,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
           </div>
         ))}
         {!categoryRows.length && (
-          <div className="text-[12.5px] text-muted text-center py-4">还没有按分类设置预算，点上面"＋加分类预算"</div>
+          <div className="text-[12.5px] text-muted text-center py-4">还没有按分类设置预算，点上面"+加分类预算"</div>
         )}
       </div>
 

@@ -51,7 +51,7 @@ function ManualSettleModal({
   return (
     <CenteredModal onClose={onCancel}>
       <div className="font-serif-sc text-[15px] text-ink mb-3">记一笔结算</div>
-      <label className="text-[11px] text-muted block mb-1.5">谁付出</label>
+      <label className="text-[11px] text-muted block mb-1.5">谁付的</label>
       <div className="flex flex-wrap gap-1.5 mb-2.5">
         {members.map((m) => (
           <button
@@ -66,7 +66,7 @@ function ManualSettleModal({
           </button>
         ))}
       </div>
-      <label className="text-[11px] text-muted block mb-1.5">付给</label>
+      <label className="text-[11px] text-muted block mb-1.5">付给谁</label>
       <div className="flex flex-wrap gap-1.5 mb-2.5">
         {members.map((m) => (
           <button
@@ -602,7 +602,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         </div>
         {settlements.length === 0 ? (
           <div className="text-[11.5px] text-muted text-center py-2">
-            还没有结算记录。想提前记一笔预付款，或者跟建议金额不一样的结算，点上面"新增"。
+            还没有结算记录。想先记一笔预付款，或者金额跟建议的不一样，点上面"新增"手动记。
           </div>
         ) : (
           <>
@@ -703,7 +703,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
       {confirmDeleteId && (
         <ConfirmDialog
           title="删除这条结算记录？"
-          message="只是撤销这笔结款记录，对应的应收/应付金额会恢复，不影响其他记录。"
+          message="只是撤销这笔结算记录，对应的应收/应付金额会恢复，不影响其他记录。"
           onConfirm={() => { deleteSettlement(confirmDeleteId); setConfirmDeleteId(null) }}
           onCancel={() => setConfirmDeleteId(null)}
         />
@@ -717,7 +717,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
           <div className="text-[11px] text-muted mb-3">
             {selectedDebts.length === 1
               ? `${titleOf(selectedDebts[0])} · ${nameOf(selectedDebts[0].debtorId)} 欠 ${nameOf(selectedDebts[0].creditorId)}`
-              : '多笔一起结算时按各自还欠的全额分别记录，不支持只还一部分'}
+              : '一次选多笔的话，每一笔都会按欠款全额分别结清，不能只还一部分'}
           </div>
           <label className="text-[11px] text-muted block mb-2.5">
             金额{selectedDebts.length === 1 ? '（可部分结清）' : ''}

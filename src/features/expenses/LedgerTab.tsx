@@ -267,7 +267,7 @@ export function LedgerTab({
         })}
         {!visibleExpenses.length && (
           <div className="text-[13px] text-muted py-6 text-center">
-            {view === 'mine' ? '还没有跟你相关的账目' : '还没有记账，点右下角＋记一笔'}
+            {view === 'mine' ? '还没有跟你相关的账目' : '还没有记账，点右下角"+"记一笔'}
           </div>
         )}
       </div>

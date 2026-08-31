@@ -777,11 +777,10 @@ export function AddExpensePage({
               <ChevronLeft className="w-4 h-4" strokeWidth={2} />
               返回
             </button>
-            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">这笔怎么算</span>
+            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">怎么分</span>
           </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3">
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">这笔怎么算</div>
             <div className="flex border border-line rounded-xl overflow-hidden">
               <button
                 type="button"
@@ -886,7 +885,7 @@ export function AddExpensePage({
             ) : (
               <div className="flex items-center gap-2 mt-3 text-[12px] text-muted bg-card border border-dashed border-line rounded-xl px-3 py-2.5">
                 <Avatar member={members.find((m) => m.id === payer)} size={20} />
-                这笔算{payerName}自己的开销，不会出现在"分账"的结算里。
+                这笔算{payerName}自己的开销，不会出现在"结算"里。
               </div>
             )}
           </div>
@@ -910,7 +909,7 @@ export function AddExpensePage({
               <ChevronLeft className="w-4 h-4" strokeWidth={2} />
               返回
             </button>
-            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">花在几天里</span>
+            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">花在几天</span>
           </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3">

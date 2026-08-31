@@ -223,7 +223,7 @@ export function WishlistScreen({
       {pendingDelete && (
         <ConfirmDialog
           title={`删除「${pendingDelete.name}」？`}
-          message="已经加进行程的行程项不受影响，只是这条不再出现在这份清单里，无法恢复。"
+          message="已经排进行程的安排不受影响，只是这条从清单里消失，不能再找回来了。"
           onConfirm={confirmRemove}
           onCancel={() => setPendingDelete(null)}
         />

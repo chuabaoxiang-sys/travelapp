@@ -71,7 +71,7 @@ export function LocationPicker({
       setMapsLink({ status: 'loading' })
       resolveMapsLink(text.trim()).then((r) => {
         if (requestIdRef.current !== requestId) return
-        setMapsLink(r ? { status: 'ok', result: r } : { status: 'error', message: '解析失败，确认链接有效或稍后重试' })
+        setMapsLink(r ? { status: 'ok', result: r } : { status: 'error', message: '没解析出来，看看链接对不对，或者过会儿再试试' })
       })
       return
     }
@@ -131,13 +131,16 @@ export function LocationPicker({
           className={`w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan ${value.lat != null ? 'pr-16' : ''}`}
         />
         {value.lat != null && (
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-positive whitespace-nowrap">📍已定位</span>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-[10px] text-positive whitespace-nowrap">
+            <MapPin className="w-3 h-3" strokeWidth={2} />
+            已定位
+          </span>
         )}
       </div>
       <div className="text-[10px] text-muted mt-1">
         可搜索选点，搜不到也可以直接贴Google Maps链接定位
         {!!countryCodes?.length && (
-          <> · 搜索范围已限定：{countryCodes.map((c) => countryByCode(c)?.nameZh ?? c).join('、')}</>
+          <> · 只在这些国家里搜：{countryCodes.map((c) => countryByCode(c)?.nameZh ?? c).join('、')}</>
         )}
       </div>
 
@@ -154,7 +157,7 @@ export function LocationPicker({
               <MapPin className="w-4 h-4 text-positive flex-shrink-0" strokeWidth={1.8} />
               <div className="min-w-0">
                 <div className="text-[12.5px] font-medium truncate">{mapsLink.result.name ?? '识别到的地点'}</div>
-                <div className="text-[10.5px] text-muted">来自Google Maps链接，点击使用这个精确位置</div>
+                <div className="text-[10.5px] text-muted">来自Google Maps链接，点一下就用这个精确位置</div>
               </div>
             </button>
           )}

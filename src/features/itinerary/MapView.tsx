@@ -133,7 +133,7 @@ export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; i
         </div>
         <div className="font-serif-sc text-[15px] mt-2">还没有带地点的行程项</div>
         <div className="text-[12.5px] text-muted max-w-[220px]">
-          在"时间线"里添加行程项时，搜索并选择一个地点，这里就会出现对应的图钉。
+          在"时间线"里加行程项时，搜个地点选一下，这里就会出现对应的图钉。
         </div>
       </div>
     )
@@ -207,7 +207,7 @@ export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; i
               >
                 <Popup>
                   <div style={{ fontSize: 13 }}>
-                    <b>Day{dayNum} · {formatTimeHM(it.time)}</b>
+                    <b>第{dayNum}天 · {formatTimeHM(it.time)}</b>
                     <div>{it.title}</div>
                     {it.locationName && <div style={{ color: 'var(--color-muted)', fontSize: 11 }}>{it.locationName}</div>}
                   </div>

@@ -78,7 +78,7 @@ export function InviteCodeSheet({ onClose }: { onClose: () => void }) {
       {confirmingRegenerate && (
         <ConfirmDialog
           title="重新生成邀请码？"
-          message="旧的邀请码会立刻失效，之前发出去的邀请码将无法再使用，需要把新码重新发给对方。"
+          message="旧邀请码立刻失效，已经发出去的也不能用了，得把新码重新发给对方。"
           confirmLabel="重新生成"
           onConfirm={confirmRegenerate}
           onCancel={() => setConfirmingRegenerate(false)}

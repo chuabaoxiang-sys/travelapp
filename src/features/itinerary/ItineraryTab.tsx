@@ -252,7 +252,7 @@ export function ItineraryTab({
   if (!days.length) {
     return (
       <div className="px-5 pt-3 pb-safe-fab-clearance text-sm text-muted">
-        这趟行程还没设置起止日期，暂时无法按天规划行程——可以先去「记账」标签试试记一笔。
+        这趟行程还没设置起止日期，还不能按天排行程，先去「账目」标签试试记一笔吧。
       </div>
     )
   }
@@ -560,7 +560,7 @@ export function ItineraryTab({
       {pendingDaySpreadMove && (
         <ConfirmDialog
           title="这笔行程项关联的账目做了跨天分摊"
-          message="换到新日期后，那笔账目分摊到每一天的日期不会跟着自动调整，需要你自己去记账页确认或调整。确定要换日期吗？"
+          message="换到新日期后，那笔账目原本分摊到的那几天不会跟着自动改，需要你自己去账目页确认调整。确定要换日期吗？"
           confirmLabel="确定换"
           danger={false}
           onConfirm={async () => {

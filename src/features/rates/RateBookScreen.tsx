@@ -20,8 +20,8 @@ import type { Trip, RateBookEntry } from '../../types'
 
 const SOURCE_LABEL: Record<RateBookEntry['source'], string> = {
   manual: '手动输入',
-  api_accepted: 'API参考值',
-  api_edited: 'API参考后调整',
+  api_accepted: '参考汇率',
+  api_edited: '参考汇率（已调整）',
 }
 
 export function RateBookScreen({
@@ -174,7 +174,7 @@ export function RateBookScreen({
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-3">
         {byCurrency.size === 0 && (
           <div className="text-[13px] text-muted py-8 text-center">
-            这趟行程还没有保存过任何汇率。记外币账时，点"＋新汇率"输入一次，之后就会出现在这里。
+            这趟行程还没有保存过任何汇率。记外币账时，点金额旁边的"+"新建一个，之后就会出现在这里。
           </div>
         )}
 
@@ -335,7 +335,7 @@ export function RateBookScreen({
       {confirmDeleteId && (
         <ConfirmDialog
           title="删除这个汇率标签？"
-          message="从没有账目用过这条汇率，删除不会影响任何已保存的记录，且无法撤销。"
+          message="这条汇率还没被任何账目用过，删除不会影响任何已保存的记录，且无法撤销。"
           confirmLabel="删除"
           onConfirm={() => { deleteRateBookEntry(confirmDeleteId); setConfirmDeleteId(null) }}
           onCancel={() => setConfirmDeleteId(null)}

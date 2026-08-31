@@ -68,7 +68,7 @@ export function IdentitySwitcher({
 
   async function handleRemoveClick(m: Member) {
     if (m.id === currentMemberId) {
-      setBlockedMessage('不能对当前使用的身份操作，先切换成别的家庭成员再试')
+      setBlockedMessage('没法删除你正在用的这个身份，先切换成别人再试')
       return
     }
     const hasHistory = await memberHasHistory(m.id)

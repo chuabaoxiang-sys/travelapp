@@ -50,7 +50,7 @@ describe('buildCsvFile', () => {
     expect([bytes[0], bytes[1], bytes[2]]).toEqual([0xef, 0xbb, 0xbf])
 
     const lines = (await file.text()).split('\n')
-    expect(lines[0]).toBe('日期,类型,标题,地点,分类,金额,币种,折算(MYR),支付人,备注')
+    expect(lines[0]).toBe('日期,类型,标题,地点,分类,金额,币种,折算(MYR),付款人,备注')
     expect(lines).toHaveLength(3) // 表头 + 2条数据
   })
 

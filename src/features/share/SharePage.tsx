@@ -50,7 +50,7 @@ export function SharePage() {
   if (!template) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center text-muted text-sm px-6 text-center">
-        这个行程还没选定分享模板，请分享的人重新设置一下。
+        这个行程还没选好分享模板，请分享的人重新设置一下。
       </div>
     )
   }

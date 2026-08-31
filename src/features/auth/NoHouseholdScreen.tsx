@@ -27,7 +27,7 @@ export function NoHouseholdScreen({
       // create_household这个RPC自己会抛出面向用户的报错文案（开关未开/名字为空/
       // 未登录），但跨语言/跨环境的具体报错格式不保证稳定，这里统一显示一句通用
       // 提示，不直接把err.message糊给用户
-      setError('创建失败，功能可能还没开放，或者请稍后重试')
+      setError('创建失败，可能是这个功能还没开放，也可能是网络问题，稍后再试试')
     } finally {
       setBusy(false)
     }
@@ -39,7 +39,7 @@ export function NoHouseholdScreen({
         <div className="text-[11px] tracking-widest text-muted uppercase">旅记 · TripJournal</div>
         <h1 className="font-serif-sc text-xl mt-2 text-ink">这个邮箱还没加入团队</h1>
         <p className="text-sm text-muted mt-2 leading-relaxed">
-          这个邮箱现在还没有属于任何团队。可以换一个邮箱重新登录，或者不等被邀请，直接自己建一个新团队。
+          可以换一个邮箱重新登录，或者不等被邀请，直接自己建一个新团队。
         </p>
 
         <div className="mt-4 pt-3 border-t border-line flex flex-col gap-1">

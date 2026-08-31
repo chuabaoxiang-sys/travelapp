@@ -263,7 +263,7 @@ export function TripMoreSheet({
           </span>
           <div className="flex-1 min-w-0">
             <div className="text-[12px] font-medium">使用指南</div>
-            <div className="text-[9.5px] text-muted mt-0.5">行程、记账、分账这些功能怎么用，照真实界面讲一遍</div>
+            <div className="text-[9.5px] text-muted mt-0.5">行程、记账、结算这些功能怎么用，照真实界面讲一遍</div>
           </div>
           <span className="text-[10.5px] text-plan flex-shrink-0">去看看 ›</span>
         </a>

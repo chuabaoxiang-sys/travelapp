@@ -66,7 +66,7 @@ export function CurrencyPicker({
           placeholder="搜索货币，比如「日元」「JPY」"
           className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-plan"
         />
-        <div className="text-[10.5px] text-muted mt-1">本位币自动包含；这里选好的币种，记账时会变成一键可点的快捷选项</div>
+        <div className="text-[10.5px] text-muted mt-1">本位币会自动算进去；这里选好的币种，记账时能一键点选，不用再手动输入</div>
         {open && results.length > 0 && (
           <div className="absolute z-40 mt-1 w-full rounded-xl border border-line bg-card shadow-lg overflow-hidden max-h-[180px] overflow-y-auto no-scrollbar">
             {results.map((c) => (
