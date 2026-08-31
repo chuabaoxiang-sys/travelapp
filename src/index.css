@@ -252,6 +252,14 @@ html.sheet-open .nav-blur {
   transition: width 420ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* SpendBreakdownCard环形图的弧——跟.bar-fill同一个思路。不用CSS的
+   conic-gradient background画环，是因为background不是能被transition平滑过渡
+   的属性；SVG的stroke-dasharray/stroke-dashoffset都是可以被transition的普通
+   数值，兼容性也比background的新CSS动画特性稳（安卓WebView/旧iOS Safari都能用）*/
+.spend-ring-arc {
+  transition: stroke-dasharray 420ms cubic-bezier(0.16, 1, 0.3, 1), stroke-dashoffset 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* 成功勾号"画出来"——延迟120ms让pop-in容器自己的弹跳先到位，再开始画，
    两个动效不抢注意力 */
 .drawn-check path {
@@ -284,6 +292,9 @@ html.sheet-open .nav-blur {
     stroke-dashoffset: 0;
   }
   .bar-fill {
+    transition: none;
+  }
+  .spend-ring-arc {
     transition: none;
   }
   .card-swap {

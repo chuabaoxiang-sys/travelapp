@@ -14,6 +14,7 @@ import { Avatar } from '../../components/Avatar'
 import { spentOnDate } from '../../domain/dayAllocations'
 import { resolveAllowance, heroRawValue } from '../../domain/dailyAllowance'
 import { SpendHero } from './SpendHero'
+import { SpendBreakdownCard } from './SpendBreakdownCard'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { DiscoveryDot } from '../../components/DiscoveryDot'
@@ -183,6 +184,13 @@ export function LedgerTab({
       {view === 'team' ? (
         <div key="team" className="card-swap flex flex-col gap-3.5">
           <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} />
+          <SpendBreakdownCard
+            expenses={expenses}
+            categories={categories}
+            dayAllocations={dayAllocations}
+            todayISO={todayISO}
+            currency={currencyLabel}
+          />
           {/* 预算不再是独立tab，降级成这里的一个次级入口——它本来就是"花了多少"
               的参照系，跟账目列表放在一起看才有意义，改总预算/加分类预算的表单
               逻辑完全没动，只是换了个容器（见 BudgetSheet） */}
