@@ -166,3 +166,17 @@ export async function joinHouseholdByInviteCode(email: string, code: string): Pr
   if (error) return false
   return data === true
 }
+
+// 自助创建一个全新团队（0022）——只在 self_serve_signup_enabled() 开关打开时数据库
+// 才会真的成功，开关关闭时 RPC 会抛错，这里刻意不吞掉，把报错文案原样交给调用方
+// 展示（跟上面几个"失败就返回 false/null"的函数不一样，因为这里的报错是给已登录
+// 用户看的，不是"猜错了"这种可以用布尔值表达的情况）。
+// 数据库那边的 create_household 已经在同一个事务里调用了 set_active_household，
+// 这里不需要再调一次。
+export async function createHousehold(name: string): Promise<string> {
+  if (!supabase) throw new Error('云端服务未配置')
+  const { data, error } = await supabase.rpc('create_household', { p_name: name.trim() })
+  if (error) throw error
+  clearHouseholdCache()
+  return data as string
+}

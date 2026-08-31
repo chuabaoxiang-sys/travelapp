@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const rpcMock = vi.fn()
 vi.mock('../api/supabaseClient', () => ({ supabase: { rpc: (...args: unknown[]) => rpcMock(...args) } }))
 
-const { getHouseholdInviteCode, regenerateHouseholdInviteCode, joinHouseholdByInviteCode } = await import('./household')
+const { getHouseholdInviteCode, regenerateHouseholdInviteCode, joinHouseholdByInviteCode, createHousehold } =
+  await import('./household')
 
 // 这几个函数本身只是薄薄一层RPC调用包装——真正的邀请码生成/校验逻辑在
 // supabase/migrations 里的数据库函数，现有测试基础设施没有pgTAP、没有本地/
@@ -64,6 +65,29 @@ describe('household 邀请码客户端包装函数（真实的SQL函数逻辑无
     it('RPC报错时返回false，而不是抛出异常', async () => {
       rpcMock.mockResolvedValue({ data: null, error: { message: '出错了' } })
       expect(await joinHouseholdByInviteCode('a@b.com', 'CODE1')).toBe(false)
+    })
+  })
+
+  describe('createHousehold', () => {
+    it('团队名去掉首尾空格后再传给RPC', async () => {
+      rpcMock.mockResolvedValue({ data: 'new-household-id', error: null })
+      await createHousehold('  我的新团队  ')
+      expect(rpcMock).toHaveBeenCalledWith('create_household', { p_name: '我的新团队' })
+    })
+
+    it('成功时返回新团队id', async () => {
+      rpcMock.mockResolvedValue({ data: 'new-household-id', error: null })
+      expect(await createHousehold('新团队')).toBe('new-household-id')
+    })
+
+    // 跟上面几个"失败就吞成false/null"的函数刻意不同：开关关闭/名字为空/未登录
+    // 这几种失败，数据库那边的报错文案是要给已登录用户直接看的，所以这里要抛出去，
+    // 不能吞掉——调用方（NoHouseholdScreen）需要拿到真实的错误信息展示
+    it('RPC报错时抛出异常，而不是吞掉返回null', async () => {
+      rpcMock.mockResolvedValue({ data: null, error: { message: '自助创建团队功能尚未开放，请联系开发者' } })
+      await expect(createHousehold('新团队')).rejects.toMatchObject({
+        message: '自助创建团队功能尚未开放，请联系开发者',
+      })
     })
   })
 })
