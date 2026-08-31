@@ -3,11 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, ensureSeedData } from './db/dexie'
 import { startAutoSync } from './db/sync'
 import { supabase } from './api/supabaseClient'
-import { getCurrentHouseholdId, signOut } from './domain/household'
+import { getCurrentHouseholdId } from './domain/household'
 import { ensureLocalTestSeed } from './dev/localTestSeed'
 import { isLocalTestModeEnabled } from './dev/localTestMode'
 import { LocalTestModeBanner } from './dev/LocalTestModeBanner'
 import { EmailLogin } from './features/auth/EmailLogin'
+import { NoHouseholdScreen } from './features/auth/NoHouseholdScreen'
 import { MemberGate } from './features/members/MemberGate'
 import { useCurrentMemberId } from './features/members/useCurrentMemberId'
 import { TripPicker } from './features/trips/TripPicker'
@@ -97,21 +98,14 @@ function App() {
     content = <EmailLogin />
   } else if (authState === 'no-household') {
     content = (
-      <div className="min-h-screen bg-ink flex items-center justify-center p-6">
-        <div className="w-full max-w-sm bg-card rounded-3xl p-6 border border-line text-center">
-          <div className="text-[11px] tracking-widest text-muted uppercase">旅记 · TripJournal</div>
-          <h1 className="font-serif-sc text-xl mt-2 text-ink">这个邮箱还没被邀请</h1>
-          <p className="text-sm text-muted mt-2 leading-relaxed">
-            这个邮箱还没有加入任何团队，联系邀请你的人确认一下邮箱是否填对了。
-          </p>
-          <button
-            onClick={() => signOut().then(() => setAuthState('signed-out'))}
-            className="mt-4 text-[12.5px] text-plan"
-          >
-            换个邮箱重新登录
-          </button>
-        </div>
-      </div>
+      <NoHouseholdScreen
+        onSignOut={() => setAuthState('signed-out')}
+        onHouseholdCreated={(id) => {
+          setHouseholdId(id)
+          setAuthState('ready')
+          startAutoSync()
+        }}
+      />
     )
   } else if (!effectiveMemberId) {
     content = (
