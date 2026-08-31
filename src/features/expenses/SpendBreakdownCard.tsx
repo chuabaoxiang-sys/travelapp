@@ -1,18 +1,30 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PieChart, ChevronDown } from 'lucide-react'
 import type { Expense, ExpenseCategory, ExpenseDayAllocation } from '../../types'
 import { categoryBreakdown } from '../../domain/spendBreakdown'
 import { categoryColor } from '../../lib/categoryColors'
 import { CategoryIcon } from '../../components/CategoryBadge'
-import { formatMoney, formatAmountPlain } from '../../lib/money'
+import { formatMoney } from '../../lib/money'
 
-const RING_SIZE = 72
-const RING_STROKE = 9
+const RING_SIZE = 80
+const RING_STROKE = 10
 
 interface RingSlice {
   color: string
   pct: number
   start: number
+}
+
+// 环心专门用的格式化——不带小数，"住宿5,347.64"这种精确到分的数字留给
+// 旁边的明细列表。环本身小，实测过真实行程（RM11,078.31）会直接戳出环外；
+// 长度再动态缩一档字号，兜住金额更大的行程
+function formatRingTotal(n: number) {
+  return Math.round(n).toLocaleString('en-US')
+}
+function ringFontSize(digits: string) {
+  if (digits.length > 6) return 11
+  if (digits.length > 4) return 12.5
+  return 14
 }
 
 // 环形图的"色环"按颜色合并（比如机票/交通共用同一个分类色时会画成一段弧），
@@ -38,21 +50,55 @@ function slicesByColor(rows: { categoryId: string; total: number }[], categories
   })
 }
 
-// 用SVG画弧、只靠CSS transition让stroke-dashoffset/stroke-dasharray平滑过渡——
-// 跟.bar-fill线性进度条同一个思路（见index.css），也是同一个原因用SVG不用
-// conic-gradient背景图：background不是能被transition平滑过渡的属性。
-// 进场动效免费搭车在useLiveQuery的两段式渲染上——expenses/categories首次渲染
-// 是useLiveQuery还没解析完的空数组，真数据到位是第二次渲染，从"没有弧"到
-// "有弧"天然就会触发一次transition，不需要另外手写rAF强制动画
+// 用SVG画弧、靠stroke-dashoffset的CSS transition做扫入动效——跟.bar-fill
+// 线性进度条同一个思路（见index.css），也是同一个原因用SVG不用conic-gradient
+// 背景图：background不是能被transition平滑过渡的属性。
+//
+// 动效本来想省事，指望useLiveQuery"先给空数组、真数据到位再渲染一次"这个
+// 天然的两段式过程顺便触发transition——真机上验证发现不可靠：数据从本地
+// IndexedDB读出来的速度经常快到跟首次渲染同一帧，看不出"从无到有"这个过程，
+// 动效等于没有。改成老老实实用双重requestAnimationFrame手动触发：先把每段弧
+// 摆到"还没画出来"的初始位置，等浏览器真的画完这一帧，下一帧再改成最终位置，
+// CSS transition才有起点可以过渡
 function CategoryRing({ slices }: { slices: RingSlice[] }) {
+  const svgRef = useRef<SVGSVGElement>(null)
   const r = (RING_SIZE - RING_STROKE) / 2
   const c = RING_SIZE / 2
   const circumference = 2 * Math.PI * r
+
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const arcs = svg.querySelectorAll<SVGCircleElement>('.spend-ring-arc')
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        arcs.forEach((el) => {
+          el.style.strokeDashoffset = el.dataset.finalOffset ?? '0'
+        })
+      })
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+    // slices数组每次都是新对象，用它的"内容签名"当依赖，而不是引用本身——
+    // 不然即使数据没变，父组件重渲染也会重新触发一次没必要的扫入动画
+  }, [JSON.stringify(slices)]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`} style={{ transform: 'rotate(-90deg)' }}>
+    <svg
+      ref={svgRef}
+      width={RING_SIZE}
+      height={RING_SIZE}
+      viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+      style={{ transform: 'rotate(-90deg)' }}
+    >
       {slices.map((s, i) => {
         const sliceLen = (s.pct / 100) * circumference
-        const offset = -(s.start / 100) * circumference
+        const startOffset = (s.start / 100) * circumference
+        const finalOffset = -startOffset
+        const initialOffset = -(startOffset + sliceLen) // 往前多推一个自身长度，动画开始时几乎看不见
         return (
           <circle
             key={i}
@@ -64,7 +110,8 @@ function CategoryRing({ slices }: { slices: RingSlice[] }) {
             stroke={s.color}
             strokeWidth={RING_STROKE}
             strokeDasharray={`${sliceLen} ${circumference - sliceLen}`}
-            strokeDashoffset={offset}
+            strokeDashoffset={initialOffset}
+            data-final-offset={finalOffset}
           />
         )
       })}
@@ -137,7 +184,9 @@ export function SpendBreakdownCard({
               style={{ inset: RING_STROKE }}
             >
               <div className="text-[8px] text-faint">{currency}</div>
-              <div className="text-[13px] font-bold tabular mt-0.5">{formatAmountPlain(total)}</div>
+              <div className="font-bold tabular mt-0.5" style={{ fontSize: ringFontSize(formatRingTotal(total)) }}>
+                {formatRingTotal(total)}
+              </div>
             </div>
           </div>
           <div className="flex-1 min-w-0 flex flex-col gap-1.5">
