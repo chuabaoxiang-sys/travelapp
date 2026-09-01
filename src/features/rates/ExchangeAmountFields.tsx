@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, Check } from 'lucide-react'
 
 // 记一次真实换汇的"给出/换到"金额，任一变化时自动算好汇率（仍可手动改）。
@@ -19,6 +20,7 @@ export function ExchangeAmountFields({
   onChangeHomeAmount: (v: string) => void
   onChangeForeignAmount: (v: string) => void
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(!!(homeAmount || foreignAmount))
   const homeNum = parseFloat(homeAmount)
   const foreignNum = parseFloat(foreignAmount)
@@ -32,13 +34,13 @@ export function ExchangeAmountFields({
         className="flex items-center gap-1 text-[12px] font-semibold text-plan py-1"
       >
         <ChevronRight className={`w-3 h-3 transition-transform ${open ? 'rotate-90' : ''}`} strokeWidth={2.5} />
-        记录实际换汇金额（可选）
+        {t('exchangeFields.toggle')}
       </button>
       {open && (
         <div className="bg-paper rounded-xl p-2.5 flex flex-col gap-2 mb-2">
           <div className="flex gap-2">
             <div className="flex-1">
-              <div className="text-[10px] tracking-widest uppercase text-muted mb-1">给出（{homeCurrency}）</div>
+              <div className="text-[10px] tracking-widest uppercase text-muted mb-1">{t('exchangeFields.gave', { currency: homeCurrency })}</div>
               <input
                 value={homeAmount}
                 onChange={(e) => onChangeHomeAmount(e.target.value)}
@@ -48,7 +50,7 @@ export function ExchangeAmountFields({
               />
             </div>
             <div className="flex-1">
-              <div className="text-[10px] tracking-widest uppercase text-muted mb-1">换到（{foreignCurrency}）</div>
+              <div className="text-[10px] tracking-widest uppercase text-muted mb-1">{t('exchangeFields.got', { currency: foreignCurrency })}</div>
               <input
                 value={foreignAmount}
                 onChange={(e) => onChangeForeignAmount(e.target.value)}
@@ -61,7 +63,7 @@ export function ExchangeAmountFields({
           {hasBoth && (
             <div className="text-[11px] text-positive flex items-center gap-1">
               <Check className="w-3 h-3 flex-shrink-0" strokeWidth={2.5} />
-              汇率已按这两个金额自动算好，仍可手动改
+              {t('exchangeFields.autoComputed')}
             </div>
           )}
         </div>

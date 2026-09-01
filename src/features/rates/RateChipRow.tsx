@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { Plus, AlertTriangle, ChevronRight, ChevronLeft } from 'lucide-react'
 import { getRateBookEntries, suggestLabels, usageByEntry, deriveRateFromExchangeAmounts, type RateEntryUsage } from '../../domain/rates'
 import { fetchReferenceRate } from '../../api/fx'
@@ -36,6 +37,7 @@ export function RateChipRow({
   value: RateSelection
   onChange: (v: RateSelection) => void
 }) {
+  const { t } = useTranslation()
   const entries = useLiveQuery(() => getRateBookEntries(tripId, currency), [tripId, currency]) ?? []
   const topEntries = entries.slice(0, 4)
   const usageMap = useLiveQuery(() => usageByEntry(tripId), [tripId]) ?? new Map<string, RateEntryUsage>()
@@ -200,7 +202,7 @@ export function RateChipRow({
                 <span>{e.label} {e.rate}</span>
                 {remaining != null && (
                   <span className={`text-[9.5px] ${exhausted ? 'text-spend font-semibold' : 'text-muted'}`}>
-                    {exhausted ? '已用完' : `还剩 ${remaining.toLocaleString()}`}
+                    {exhausted ? t('rateChip.exhausted') : t('rateChip.remaining', { amount: remaining.toLocaleString() })}
                   </span>
                 )}
               </button>
@@ -209,7 +211,7 @@ export function RateChipRow({
           <button
             type="button"
             onClick={openNewForm}
-            title="新汇率"
+            title={t('rateChip.newRate')}
             className={`rounded-full px-2.5 py-1.5 border flex items-center ${
               showNewForm ? 'bg-plan/10 border-plan text-plan font-semibold' : 'border-plan text-plan'
             }`}
@@ -227,7 +229,7 @@ export function RateChipRow({
         return (
           <div className="text-[10.5px] text-spend mt-1.5 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3 flex-shrink-0" strokeWidth={2.2} />
-            这批钱已经用完了，仍会按这个汇率记账
+            {t('rateChip.exhaustedWarning')}
           </div>
         )
       })()}
@@ -235,7 +237,7 @@ export function RateChipRow({
       {!splitOpen && !showNewForm && entries.length >= 2 && (
         <button type="button" onClick={openSplit} className="flex items-center gap-1 text-[11.5px] text-plan font-semibold mt-2">
           <ChevronRight className="w-3 h-3" strokeWidth={2.5} />
-          这笔钱来自不止一笔汇率？
+          {t('rateChip.openSplit')}
         </button>
       )}
 
@@ -249,7 +251,7 @@ export function RateChipRow({
                 commitNewRate(e.target.value, newRate, prefillTouched, exchangeHome, exchangeForeign)
               }}
               list="rate-label-suggestions"
-              placeholder="标签，例如「现金汇率」"
+              placeholder={t('rateChip.labelPlaceholder')}
               className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
             />
             <datalist id="rate-label-suggestions">
@@ -265,11 +267,15 @@ export function RateChipRow({
                 commitNewRate(newLabel, e.target.value, true, exchangeHome, exchangeForeign)
               }}
               inputMode="decimal"
-              placeholder={`1 ${currency} = 多少 ${homeCurrency}`}
+              placeholder={t('rateChip.ratePlaceholder', { currency, homeCurrency })}
               className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm tabular outline-none focus:border-plan"
             />
             <div className="text-[10.5px] text-muted mt-1">
-              {fetchingRef ? '正在获取参考汇率…' : !prefillTouched && newRate ? '参考汇率（可直接改）' : ' '}
+              {fetchingRef
+                ? t('rateChip.fetchingReference')
+                : !prefillTouched && newRate
+                  ? t('rateChip.referenceEditable')
+                  : ' '}
             </div>
           </div>
           <ExchangeAmountFields
@@ -287,7 +293,7 @@ export function RateChipRow({
         <div className="mt-1">
           <button type="button" onClick={closeSplit} className="flex items-center gap-0.5 text-[11px] text-muted font-semibold mb-1.5">
             <ChevronLeft className="w-3 h-3" strokeWidth={2.5} />
-            改回单一汇率
+            {t('rateChip.backToSingle')}
           </button>
           <div className="flex flex-wrap gap-1.5">
             {topEntries.map((e) => {
@@ -309,7 +315,7 @@ export function RateChipRow({
                   <span>{e.label} {e.rate}</span>
                   {remaining != null && (
                     <span className={`text-[9.5px] ${exhausted ? 'text-spend font-semibold' : 'text-muted'}`}>
-                      {exhausted ? '已用完' : `还剩 ${remaining.toLocaleString()}`}
+                      {exhausted ? t('rateChip.exhausted') : t('rateChip.remaining', { amount: remaining.toLocaleString() })}
                     </span>
                   )}
                 </button>
@@ -328,7 +334,7 @@ export function RateChipRow({
                     <div className="min-w-0 flex-1">
                       <div className="text-[12px] font-semibold truncate">{e.label}</div>
                       <div className={`text-[10px] mt-0.5 ${exhausted ? 'text-spend font-semibold' : 'text-muted'}`}>
-                        {exhausted ? '这批钱已经用完了，仍会按这个汇率记账' : `汇率 ${e.rate}`}
+                        {exhausted ? t('rateChip.exhaustedWarning') : t('rateChip.rateValue', { rate: e.rate })}
                       </div>
                     </div>
                     <input
@@ -348,15 +354,15 @@ export function RateChipRow({
           {splitSelectedIds.length > 0 && (
             <div className={`text-[11.5px] mt-2 font-semibold ${splitValid ? 'text-positive' : 'text-negative'}`}>
               {splitValid
-                ? '刚好分完这笔钱'
+                ? t('rateChip.splitExact')
                 : splitDiff > 0
-                  ? `还剩 ${splitDiff.toLocaleString()} ${currency} 没分完`
-                  : `超出了 ${Math.abs(splitDiff).toLocaleString()} ${currency}`}
+                  ? t('rateChip.splitRemaining', { amount: splitDiff.toLocaleString(), currency })
+                  : t('rateChip.splitOver', { amount: Math.abs(splitDiff).toLocaleString(), currency })}
             </div>
           )}
           {splitValid && splitTotal > 0 && (
             <div className="text-[10.5px] text-muted mt-1">
-              加权平均汇率 ≈ {(splitHomeTotal / splitTotal).toFixed(4)}
+              {t('rateChip.weightedAverage', { rate: (splitHomeTotal / splitTotal).toFixed(4) })}
             </div>
           )}
         </div>

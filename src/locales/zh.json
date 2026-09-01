@@ -13,6 +13,94 @@
   "timePicker": {
     "placeholder": "选择时间"
   },
+  "budget": {
+    "title": "预算",
+    "close": "关闭",
+    "ringLabel": "已用预算",
+    "over": "超支 {{amount}}",
+    "left": "还剩 {{amount}}",
+    "editOverall": "改总预算",
+    "delete": "删除",
+    "save": "保存",
+    "cancel": "取消",
+    "editOverallHint": "修改整趟行程的总预算",
+    "noOverallHint": "还没设置整趟行程的总预算",
+    "overallPlaceholder": "总预算（{{currency}}）",
+    "unknownCategory": "未知分类",
+    "categoryOverBudget": "{{category}}已超出预算",
+    "categoryDetail": "分类明细",
+    "addCategoryBudget": "加分类预算",
+    "categoryAmountPlaceholder": "预算金额（{{currency}}）",
+    "noCategoryBudgets": "还没有按分类设置预算，点上面\"+加分类预算\"",
+    "deleteCategoryTitle": "删除这个分类预算？",
+    "deleteCategoryMessage": "只是不再追踪这个分类的预算，已经记的账不受影响。",
+    "deleteOverallTitle": "删除总预算？",
+    "deleteOverallMessage": "只是不再追踪整趟行程的总预算，已经记的账不受影响。"
+  },
+  "rateBook": {
+    "title": "汇率簿",
+    "add": "新增",
+    "done": "完成",
+    "empty": "这趟行程还没有保存过任何汇率。记外币账时，点金额旁边的\"+\"新建一个，之后就会出现在这里。",
+    "source": {
+      "manual": "手动输入",
+      "api_accepted": "参考汇率",
+      "api_edited": "参考汇率（已调整）"
+    },
+    "lastUsed": "最近用于 {{date}}",
+    "usedTimes": "用过 {{count}} 次",
+    "exchanged": "已换：{{homeAmount}} {{homeCurrency}} → {{foreignAmount}} {{foreignCurrency}}",
+    "usedOfExchanged": "已用 <b>{{used}}</b> / 已换 {{total}} {{currency}}",
+    "overBy": "超出 {{amount}}",
+    "remaining": "还剩 {{amount}}",
+    "cancel": "取消",
+    "save": "保存",
+    "edit": "编辑",
+    "delete": "删除",
+    "archive": "归档",
+    "restore": "恢复",
+    "saveAsNew": "另存为新标签",
+    "newLabelSuffix": "{{label}}(新)",
+    "newLabelPlaceholder": "新标签名称",
+    "collapseArchived": "收起已归档",
+    "viewArchived": "查看已归档的标签（{{count}}）",
+    "footnote": "编辑汇率只影响之后新记的账，不会改动过去已保存的记录金额；归档不会删除历史数据。",
+    "archiveConfirmTitle": "归档这个汇率标签？",
+    "archiveConfirmMessage": "归档后不会再出现在记账的快捷选项里，但过去用它记的账不受影响，随时可以恢复。",
+    "deleteConfirmTitle": "删除这个汇率标签？",
+    "deleteConfirmMessage": "这条汇率还没被任何账目用过，删除不会影响任何已保存的记录，且无法撤销。",
+    "addTitle": "新增汇率",
+    "currencyLabel": "币种",
+    "currencyPlaceholder": "例如 JPY",
+    "rateLabel": "汇率",
+    "ratePlaceholder": "0.0000",
+    "labelLabel": "标签",
+    "labelPlaceholder": "例如「机场换的」",
+    "foreignCurrencyFallback": "外币"
+  },
+  "rateChip": {
+    "exhausted": "已用完",
+    "remaining": "还剩 {{amount}}",
+    "newRate": "新汇率",
+    "exhaustedWarning": "这批钱已经用完了，仍会按这个汇率记账",
+    "openSplit": "这笔钱来自不止一笔汇率？",
+    "labelPlaceholder": "标签，例如「现金汇率」",
+    "ratePlaceholder": "1 {{currency}} = 多少 {{homeCurrency}}",
+    "fetchingReference": "正在获取参考汇率…",
+    "referenceEditable": "参考汇率（可直接改）",
+    "backToSingle": "改回单一汇率",
+    "rateValue": "汇率 {{rate}}",
+    "splitExact": "刚好分完这笔钱",
+    "splitRemaining": "还剩 {{amount}} {{currency}} 没分完",
+    "splitOver": "超出了 {{amount}} {{currency}}",
+    "weightedAverage": "加权平均汇率 ≈ {{rate}}"
+  },
+  "exchangeFields": {
+    "toggle": "记录实际换汇金额（可选）",
+    "gave": "给出（{{currency}}）",
+    "got": "换到（{{currency}}）",
+    "autoComputed": "汇率已按这两个金额自动算好，仍可手动改"
+  },
   "split": {
     "title": "费用分摊 · 按人结算",
     "unknownMember": "未知",
@@ -223,7 +311,7 @@
     "more": "更多",
     "addExpense": "记一笔",
     "addItineraryItem": "添加行程项",
-    "unseenBadge": "有 {{count}} 条新记录"
+    "unseenBadge_other": "有 {{count}} 条新记录"
   },
   "categories": {
     "insurance": "保险",
@@ -252,7 +340,7 @@
       "sublabel": "自己付的 + 分摊别人垫付的"
     },
     "dayTotalLabel": "当日",
-    "paidBySummary": "{{name}}垫付 · {{count}}人分摊",
+    "paidBySummary_other": "{{name}}垫付 · {{count}}人分摊",
     "personalBadge": "个人开销",
     "recordedBy": "由 {{name}} 记录",
     "yourShareLabel": "你的份额",
@@ -336,8 +424,8 @@
     },
     "daysSummary": {
       "single": "单日",
-      "multiEqual": "跨{{count}}天",
-      "multiExact": "跨{{count}}天 · 自定义"
+      "multiEqual_other": "跨{{count}}天",
+      "multiExact_other": "跨{{count}}天 · 自定义"
     },
     "diff": {
       "done": "刚好分完 ✓",
@@ -367,7 +455,7 @@
       "needAtLeastOne": "至少要选一天",
       "equalPerDay": "平均分到每天",
       "customPerDay": "每天自定义",
-      "equalSummary": "共 {{count}} 天，每天各 {{amount}}（除不尽的零头算在第一天）"
+      "equalSummary_other": "共 {{count}} 天，每天各 {{amount}}（除不尽的零头算在第一天）"
     }
   }
 }

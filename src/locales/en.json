@@ -13,6 +13,95 @@
   "timePicker": {
     "placeholder": "Select time"
   },
+  "budget": {
+    "title": "Budget",
+    "close": "Close",
+    "ringLabel": "Budget used",
+    "over": "{{amount}} over",
+    "left": "{{amount}} left",
+    "editOverall": "Edit total",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "editOverallHint": "Change the total budget for this trip",
+    "noOverallHint": "No total budget set for this trip yet",
+    "overallPlaceholder": "Total budget ({{currency}})",
+    "unknownCategory": "Unknown category",
+    "categoryOverBudget": "{{category}} is over budget",
+    "categoryDetail": "By category",
+    "addCategoryBudget": "Add category budget",
+    "categoryAmountPlaceholder": "Budget amount ({{currency}})",
+    "noCategoryBudgets": "No per-category budgets yet — tap \"Add category budget\" above",
+    "deleteCategoryTitle": "Delete this category budget?",
+    "deleteCategoryMessage": "This just stops tracking a budget for that category — expenses you've already logged aren't affected.",
+    "deleteOverallTitle": "Delete the total budget?",
+    "deleteOverallMessage": "This just stops tracking a total for the trip — expenses you've already logged aren't affected."
+  },
+  "rateBook": {
+    "title": "Rate book",
+    "add": "Add",
+    "done": "Done",
+    "empty": "No rates saved for this trip yet. When logging an expense in a foreign currency, tap \"+\" next to the amount to create one — it'll show up here afterwards.",
+    "source": {
+      "manual": "Entered by hand",
+      "api_accepted": "Reference rate",
+      "api_edited": "Reference rate (adjusted)"
+    },
+    "lastUsed": "Last used {{date}}",
+    "usedTimes_one": "Used {{count}} time",
+    "usedTimes_other": "Used {{count}} times",
+    "exchanged": "Exchanged: {{homeAmount}} {{homeCurrency}} → {{foreignAmount}} {{foreignCurrency}}",
+    "usedOfExchanged": "Used <b>{{used}}</b> of {{total}} {{currency}}",
+    "overBy": "{{amount}} over",
+    "remaining": "{{amount}} left",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "archive": "Archive",
+    "restore": "Restore",
+    "saveAsNew": "Save as new label",
+    "newLabelSuffix": "{{label}} (new)",
+    "newLabelPlaceholder": "New label name",
+    "collapseArchived": "Hide archived",
+    "viewArchived": "View archived labels ({{count}})",
+    "footnote": "Editing a rate only affects expenses logged from now on — it never changes amounts already saved. Archiving doesn't delete any history.",
+    "archiveConfirmTitle": "Archive this rate label?",
+    "archiveConfirmMessage": "Once archived it stops appearing as a quick option when logging expenses, but everything already logged with it is unaffected — you can restore it anytime.",
+    "deleteConfirmTitle": "Delete this rate label?",
+    "deleteConfirmMessage": "No expense has used this rate yet, so deleting it won't affect anything already saved — but it can't be undone.",
+    "addTitle": "Add a rate",
+    "currencyLabel": "Currency",
+    "currencyPlaceholder": "e.g. JPY",
+    "rateLabel": "Rate",
+    "ratePlaceholder": "0.0000",
+    "labelLabel": "Label",
+    "labelPlaceholder": "e.g. \"changed at the airport\"",
+    "foreignCurrencyFallback": "foreign"
+  },
+  "rateChip": {
+    "exhausted": "All used up",
+    "remaining": "{{amount}} left",
+    "newRate": "New rate",
+    "exhaustedWarning": "This batch is used up — expenses will still be logged at this rate",
+    "openSplit": "Did this come from more than one exchange rate?",
+    "labelPlaceholder": "Label, e.g. \"cash rate\"",
+    "ratePlaceholder": "1 {{currency}} = how much {{homeCurrency}}?",
+    "fetchingReference": "Fetching a reference rate…",
+    "referenceEditable": "Reference rate (edit it if you like)",
+    "backToSingle": "Back to a single rate",
+    "rateValue": "Rate {{rate}}",
+    "splitExact": "Splits exactly",
+    "splitRemaining": "{{amount}} {{currency}} left to split",
+    "splitOver": "{{amount}} {{currency}} over",
+    "weightedAverage": "Weighted average rate ≈ {{rate}}"
+  },
+  "exchangeFields": {
+    "toggle": "Record what you actually exchanged (optional)",
+    "gave": "Gave ({{currency}})",
+    "got": "Got ({{currency}})",
+    "autoComputed": "The rate was worked out from these two amounts — you can still change it by hand"
+  },
   "split": {
     "title": "Splitting up · who settles with who",
     "unknownMember": "Unknown",
@@ -229,7 +318,8 @@
     "more": "More",
     "addExpense": "Add expense",
     "addItineraryItem": "Add item",
-    "unseenBadge": "{{count}} new updates"
+    "unseenBadge_one": "{{count}} new update",
+    "unseenBadge_other": "{{count}} new updates"
   },
   "categories": {
     "insurance": "Insurance",
@@ -258,7 +348,8 @@
       "sublabel": "What you paid, plus your share of what others covered"
     },
     "dayTotalLabel": "Day total",
-    "paidBySummary": "{{name}} paid · split {{count}} ways",
+    "paidBySummary_one": "{{name}} paid · split {{count}} way",
+    "paidBySummary_other": "{{name}} paid · split {{count}} ways",
     "personalBadge": "Personal",
     "recordedBy": "Logged by {{name}}",
     "yourShareLabel": "Your share",
@@ -342,8 +433,10 @@
     },
     "daysSummary": {
       "single": "Single day",
-      "multiEqual": "Spread over {{count}} days",
-      "multiExact": "Spread over {{count}} days · custom"
+      "multiEqual_one": "Spread over {{count}} day",
+      "multiEqual_other": "Spread over {{count}} days",
+      "multiExact_one": "Spread over {{count}} day · custom",
+      "multiExact_other": "Spread over {{count}} days · custom"
     },
     "diff": {
       "done": "Fully split ✓",
@@ -373,7 +466,8 @@
       "needAtLeastOne": "Pick at least one day",
       "equalPerDay": "Split evenly per day",
       "customPerDay": "Custom per day",
-      "equalSummary": "{{count}} days total, {{amount}} each (any remainder goes to the first day)"
+      "equalSummary_one": "{{count}} day total, {{amount}} for it",
+      "equalSummary_other": "{{count}} days total, {{amount}} each (any remainder goes to the first day)"
     }
   }
 }

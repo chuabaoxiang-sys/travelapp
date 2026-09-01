@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { Trash2, Check, X, Plus, AlertTriangle } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { getOverallBudget, getCategoryBudgets, upsertBudget, deleteBudget, sumSpend } from '../../domain/budgets'
 import { formatMoney } from '../../lib/money'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { categoryColor } from '../../lib/categoryColors'
+import { categoryLabel } from '../../lib/categoryLabel'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import type { Trip } from '../../types'
 
 export function BudgetTab({ trip }: { trip: Trip }) {
+  const { t } = useTranslation()
   const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const categories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
   const overallBudget = useLiveQuery(() => getOverallBudget(trip.id), [trip.id])
@@ -59,7 +62,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
 
   return (
     <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full">
-      <div className="font-serif-sc text-sm font-semibold mb-2">预算</div>
+      <div className="font-serif-sc text-sm font-semibold mb-2">{t('budget.title')}</div>
 
       {overallBudget && !editingOverall ? (
         <div className="mb-4">
@@ -69,10 +72,12 @@ export function BudgetTab({ trip }: { trip: Trip }) {
               style={{ background: `conic-gradient(${overallOver ? 'var(--color-negative)' : 'var(--color-plan)'} ${Math.min(100, overallPct) * 3.6}deg, var(--color-line) 0)` }}
             >
               <div className="w-[124px] h-[124px] rounded-full bg-paper flex flex-col items-center justify-center">
-                <div className="text-[10.5px] tracking-widest text-muted">已用预算</div>
+                <div className="text-[10.5px] tracking-widest text-muted">{t('budget.ringLabel')}</div>
                 <div className="font-bold tracking-tight tabular text-[24px] mt-0.5">{overallPct}%</div>
                 <div className="text-[11px] text-muted mt-0.5">
-                  {overallOver ? `超支 ${formatMoney(totalSpend - overallBudget.amount)}` : `还剩 ${formatMoney(overallBudget.amount - totalSpend)}`}
+                  {overallOver
+                    ? t('budget.over', { amount: formatMoney(totalSpend - overallBudget.amount) })
+                    : t('budget.left', { amount: formatMoney(overallBudget.amount - totalSpend) })}
                 </div>
               </div>
             </div>
@@ -80,8 +85,8 @@ export function BudgetTab({ trip }: { trip: Trip }) {
           <div className="flex items-center justify-between text-[11.5px] text-muted px-2">
             <span>{formatMoney(totalSpend)} / {formatMoney(overallBudget.amount)}</span>
             <span className="flex items-center gap-2.5">
-              <button onClick={() => { setEditingOverall(true); setOverallInput(String(overallBudget.amount)) }} className="text-plan">改总预算</button>
-              <button onClick={() => setConfirmRemoveOverall(true)} className="text-muted" title="删除">
+              <button onClick={() => { setEditingOverall(true); setOverallInput(String(overallBudget.amount)) }} className="text-plan">{t('budget.editOverall')}</button>
+              <button onClick={() => setConfirmRemoveOverall(true)} className="text-muted" title={t('budget.delete')}>
                 <Trash2 className="w-3.5 h-3.5" strokeWidth={1.8} />
               </button>
             </span>
@@ -90,17 +95,17 @@ export function BudgetTab({ trip }: { trip: Trip }) {
       ) : (
         <div className="bg-card border border-dashed border-line rounded-2xl p-4 mb-4">
           <div className="text-[12.5px] text-muted mb-2">
-            {overallBudget ? '修改整趟行程的总预算' : '还没设置整趟行程的总预算'}
+            {overallBudget ? t('budget.editOverallHint') : t('budget.noOverallHint')}
           </div>
           <div className="flex gap-2">
             <input
               value={overallInput}
               onChange={(e) => setOverallInput(e.target.value)}
               inputMode="decimal"
-              placeholder={`总预算（${trip.homeCurrency}）`}
+              placeholder={t('budget.overallPlaceholder', { currency: trip.homeCurrency })}
               className="flex-1 rounded-xl border border-line bg-paper px-3 py-2 text-sm tabular outline-none focus:border-plan"
             />
-            <button onClick={saveOverall} className="rounded-xl bg-plan text-card px-4 flex items-center justify-center" title="保存">
+            <button onClick={saveOverall} className="rounded-xl bg-plan text-card px-4 flex items-center justify-center" title={t('budget.save')}>
               <Check className="w-4 h-4" strokeWidth={2} />
             </button>
           </div>
@@ -114,9 +119,13 @@ export function BudgetTab({ trip }: { trip: Trip }) {
               <div className="flex items-center justify-between text-[13px] font-semibold text-negative">
                 <span className="flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5" strokeWidth={2} />
-                  {r.category?.name ?? '未知分类'}已超出预算
+                  {t('budget.categoryOverBudget', {
+                    category: r.category ? categoryLabel(r.category, t) : t('budget.unknownCategory'),
+                  })}
                 </span>
-                <span className="text-[11px] bg-negative/10 px-2 py-0.5 rounded-full">超支 {formatMoney(r.spend - r.budget.amount)}</span>
+                <span className="text-[11px] bg-negative/10 px-2 py-0.5 rounded-full">
+                  {t('budget.over', { amount: formatMoney(r.spend - r.budget.amount) })}
+                </span>
               </div>
             </div>
           ))}
@@ -124,11 +133,11 @@ export function BudgetTab({ trip }: { trip: Trip }) {
       )}
 
       <div className="flex items-center justify-between mb-2">
-        <span className="font-serif-sc text-[13.5px] font-semibold">分类明细</span>
+        <span className="font-serif-sc text-[13.5px] font-semibold">{t('budget.categoryDetail')}</span>
         {categoriesWithoutBudget.length > 0 && (
           <button onClick={() => setAddingCategoryBudget(true)} className="text-[11.5px] text-plan flex items-center gap-1">
             <Plus className="w-3.5 h-3.5" strokeWidth={2} />
-            加分类预算
+            {t('budget.addCategoryBudget')}
           </button>
         )}
       </div>
@@ -152,7 +161,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
                   }
                 >
                   <CategoryBadge category={c} barHeight={18} iconSize={13} />
-                  {c.name}
+                  {categoryLabel(c, t)}
                 </button>
               )
             })}
@@ -162,15 +171,15 @@ export function BudgetTab({ trip }: { trip: Trip }) {
               value={newCategoryAmount}
               onChange={(e) => setNewCategoryAmount(e.target.value)}
               inputMode="decimal"
-              placeholder={`预算金额（${trip.homeCurrency}）`}
+              placeholder={t('budget.categoryAmountPlaceholder', { currency: trip.homeCurrency })}
               className="flex-1 rounded-xl border border-line bg-paper px-3 py-2 text-sm tabular outline-none focus:border-plan"
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setAddingCategoryBudget(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+            <button onClick={() => setAddingCategoryBudget(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title={t('budget.cancel')}>
               <X className="w-4 h-4" strokeWidth={1.8} />
             </button>
-            <button onClick={addCategoryBudget} disabled={!newCategoryId || !newCategoryAmount} className="flex-1 rounded-xl bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center" title="保存">
+            <button onClick={addCategoryBudget} disabled={!newCategoryId || !newCategoryAmount} className="flex-1 rounded-xl bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center" title={t('budget.save')}>
               <Check className="w-4 h-4" strokeWidth={2} />
             </button>
           </div>
@@ -183,11 +192,11 @@ export function BudgetTab({ trip }: { trip: Trip }) {
             <div className="flex justify-between items-baseline text-[13.5px]">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-sm" style={{ background: categoryColor(r.category) }} />
-                {r.category?.name ?? '未知分类'}
+                {r.category ? categoryLabel(r.category, t) : t('budget.unknownCategory')}
               </span>
               <span className="flex items-center gap-2">
                 <span className="tabular text-[12px]">{formatMoney(r.spend)} / {formatMoney(r.budget.amount)}</span>
-                <button onClick={() => setConfirmRemoveId(r.budget.id)} className="text-muted" title="删除">
+                <button onClick={() => setConfirmRemoveId(r.budget.id)} className="text-muted" title={t('budget.delete')}>
                   <Trash2 className="w-3 h-3" strokeWidth={1.8} />
                 </button>
               </span>
@@ -201,14 +210,14 @@ export function BudgetTab({ trip }: { trip: Trip }) {
           </div>
         ))}
         {!categoryRows.length && (
-          <div className="text-[12.5px] text-muted text-center py-4">还没有按分类设置预算，点上面"+加分类预算"</div>
+          <div className="text-[12.5px] text-muted text-center py-4">{t('budget.noCategoryBudgets')}</div>
         )}
       </div>
 
       {confirmRemoveId && (
         <ConfirmDialog
-          title="删除这个分类预算？"
-          message="只是不再追踪这个分类的预算，已经记的账不受影响。"
+          title={t('budget.deleteCategoryTitle')}
+          message={t('budget.deleteCategoryMessage')}
           onConfirm={() => { deleteBudget(confirmRemoveId); setConfirmRemoveId(null) }}
           onCancel={() => setConfirmRemoveId(null)}
         />
@@ -216,8 +225,8 @@ export function BudgetTab({ trip }: { trip: Trip }) {
 
       {confirmRemoveOverall && overallBudget && (
         <ConfirmDialog
-          title="删除总预算？"
-          message="只是不再追踪整趟行程的总预算，已经记的账不受影响。"
+          title={t('budget.deleteOverallTitle')}
+          message={t('budget.deleteOverallMessage')}
           onConfirm={() => { deleteBudget(overallBudget.id); setConfirmRemoveOverall(false) }}
           onCancel={() => setConfirmRemoveOverall(false)}
         />
