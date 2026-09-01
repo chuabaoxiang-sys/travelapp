@@ -13,6 +13,83 @@
   "timePicker": {
     "placeholder": "Select time"
   },
+  "split": {
+    "title": "Splitting up · who settles with who",
+    "unknownMember": "Unknown",
+    "untitledExpense": "Other",
+    "emptyTitle": "Nothing to settle yet",
+    "emptyHint": "Tick more than one person under \"Split with\" when logging an expense, and this page works out who owes who.",
+    "emptyPrepayCta": "Someone paid up front? Log it here",
+    "savedToast": "Logged",
+    "settledToast": "Settled",
+    "suggestion": {
+      "heading": "Suggested transfers",
+      "headingWithCount_one": "Suggested transfers · {{count}} left",
+      "headingWithCount_other": "Suggested transfers · {{count}} left",
+      "balanced": "Everything balances out — no transfers needed",
+      "goSettle": "Settle up",
+      "collapse": "Close"
+    },
+    "byItem": {
+      "heading": "Settle item by item",
+      "unsettledCount_one": "{{count}} unsettled",
+      "unsettledCount_other": "{{count}} unsettled",
+      "prepayLeft": "{{from}}→{{to}} prepayment: {{amount}} still unused",
+      "filterAll": "All",
+      "owes": "{{debtor}} owes {{creditor}}",
+      "prepaidApplied": " · {{amount}} covered by prepayment",
+      "selectedSummary_one": "{{count}} selected · {{total}}",
+      "selectedSummary_other": "{{count}} selected · {{total}}",
+      "settleSelected_one": "Settle {{count}} item",
+      "settleSelected_other": "Settle {{count}} items",
+      "collapseClosed": "Hide settled",
+      "viewClosed": "View settled ({{count}})",
+      "badgeByItem": "Settled by item",
+      "badgePrepayPlus": "+prepayment",
+      "badgePrepayOnly": "Prepayment"
+    },
+    "records": {
+      "heading": "Settlement log",
+      "add": "Add",
+      "empty": "No settlements logged yet. To record a prepayment, or an amount that differs from the suggestion, tap \"Add\" above.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "save": "Save",
+      "notePlaceholder": "Note (optional)",
+      "deleteConfirmTitle": "Delete this settlement?",
+      "deleteConfirmMessage": "This only undoes the settlement — the matching amounts owed go back to what they were, and nothing else is affected."
+    },
+    "balances": {
+      "heading": "Who paid what",
+      "settled": "Settled",
+      "receivable": "Gets back {{amount}}",
+      "payable": "Owes {{amount}}",
+      "paid": "Paid {{amount}}",
+      "expenseCount_one": "{{count}} expense",
+      "expenseCount_other": "{{count}} expenses",
+      "share": "share {{amount}}",
+      "repaid": "repaid {{amount}}",
+      "received": "received {{amount}}"
+    },
+    "form": {
+      "amountLabel": "Amount",
+      "amountLabelPartial": "Amount (part of it is fine)",
+      "dateLabel": "Date",
+      "noteLabel": "Note (optional)",
+      "notePlaceholderMethod": "e.g. cash / transfer",
+      "notePlaceholderPrepay": "e.g. prepayment, cash",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "confirmSettled": "Mark as settled",
+      "manualTitle": "Log a settlement",
+      "manualFrom": "Who paid",
+      "manualTo": "Paid to",
+      "itemSettleTitle_one": "Settle {{count}} item",
+      "itemSettleTitle_other": "Settle {{count}} items",
+      "itemSettleSingleDetail": "{{title}} · {{debtor}} owes {{creditor}}",
+      "itemSettleMultiDetail": "When you pick several at once, each one is settled in full separately — you can't pay off just part of them"
+    }
+  },
   "itinerary": {
     "viewModes": { "timeline": "Timeline", "calendar": "Calendar", "map": "Map" },
     "wishlistButton": "Places to go",

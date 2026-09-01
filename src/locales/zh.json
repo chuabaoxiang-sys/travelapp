@@ -13,6 +13,77 @@
   "timePicker": {
     "placeholder": "选择时间"
   },
+  "split": {
+    "title": "费用分摊 · 按人结算",
+    "unknownMember": "未知",
+    "untitledExpense": "其他",
+    "emptyTitle": "还没有可以结算的账目",
+    "emptyHint": "记账时勾选\"分摊给\"多个人，这里就会自动算出谁该收谁的钱。",
+    "emptyPrepayCta": "有预付款想先记一笔？",
+    "savedToast": "已记录",
+    "settledToast": "已结清",
+    "suggestion": {
+      "heading": "结算建议",
+      "headingWithCount_other": "结算建议 · 还剩 {{count}} 笔",
+      "balanced": "目前收支刚好抵消，不需要转账",
+      "goSettle": "去结算",
+      "collapse": "收起"
+    },
+    "byItem": {
+      "heading": "按笔结算",
+      "unsettledCount_other": "{{count}}笔未结清",
+      "prepayLeft": "{{from}}→{{to}} 预付款还剩 {{amount}} 未用完",
+      "filterAll": "全部",
+      "owes": "{{debtor}} 欠 {{creditor}}",
+      "prepaidApplied": " · 已用预付款抵{{amount}}",
+      "selectedSummary_other": "已选 {{count}} 笔 · 共 {{total}}",
+      "settleSelected_other": "结算选中的 {{count}} 笔",
+      "collapseClosed": "收起已结清",
+      "viewClosed": "查看已结清（{{count}}）",
+      "badgeByItem": "按笔结算",
+      "badgePrepayPlus": "+预付款",
+      "badgePrepayOnly": "预付款抵扣"
+    },
+    "records": {
+      "heading": "结算记录",
+      "add": "新增",
+      "empty": "还没有结算记录。想先记一笔预付款，或者金额跟建议的不一样，点上面\"新增\"手动记。",
+      "edit": "编辑",
+      "delete": "删除",
+      "save": "保存",
+      "notePlaceholder": "备注（可选）",
+      "deleteConfirmTitle": "删除这条结算记录？",
+      "deleteConfirmMessage": "只是撤销这笔结算记录，对应的应收/应付金额会恢复，不影响其他记录。"
+    },
+    "balances": {
+      "heading": "谁付了多少",
+      "settled": "已结清",
+      "receivable": "应收 {{amount}}",
+      "payable": "应付 {{amount}}",
+      "paid": "垫付 {{amount}}",
+      "expenseCount_other": "{{count}} 笔",
+      "share": "应分摊 {{amount}}",
+      "repaid": "已还 {{amount}}",
+      "received": "已收 {{amount}}"
+    },
+    "form": {
+      "amountLabel": "金额",
+      "amountLabelPartial": "金额（可部分结清）",
+      "dateLabel": "日期",
+      "noteLabel": "备注（可选）",
+      "notePlaceholderMethod": "例如：现金 / 转账",
+      "notePlaceholderPrepay": "例如：预付、现金",
+      "cancel": "取消",
+      "confirm": "确认",
+      "confirmSettled": "确认已结清",
+      "manualTitle": "记一笔结算",
+      "manualFrom": "谁付的",
+      "manualTo": "付给谁",
+      "itemSettleTitle_other": "结算选中的 {{count}} 笔",
+      "itemSettleSingleDetail": "{{title}} · {{debtor}} 欠 {{creditor}}",
+      "itemSettleMultiDetail": "一次选多笔的话，每一笔都会按欠款全额分别结清，不能只还一部分"
+    }
+  },
   "itinerary": {
     "viewModes": { "timeline": "时间线", "calendar": "日历", "map": "地图" },
     "wishlistButton": "想去的地点",

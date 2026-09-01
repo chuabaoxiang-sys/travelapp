@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, CircleCheck, Pencil, Trash2, Check, Plus, ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { X, CircleCheck, Pencil, Trash2, Check, Plus, ChevronDown, ArrowLeftRight } from 'lucide-react'
 import { db } from '../../db/dexie'
+import { categoryLabel } from '../../lib/categoryLabel'
 import { computeBalances, simplifyDebts, openExpenseDebts, closedExpenseDebts, prepaymentBalances, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
 import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../../domain/settlements'
 import { formatMoney } from '../../lib/money'
@@ -48,10 +50,11 @@ function ManualSettleModal({
   onCancel: () => void
   onConfirm: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <CenteredModal onClose={onCancel}>
-      <div className="font-serif-sc text-[15px] text-ink mb-3">记一笔结算</div>
-      <label className="text-[11px] text-muted block mb-1.5">谁付的</label>
+      <div className="font-serif-sc text-[15px] text-ink mb-3">{t('split.form.manualTitle')}</div>
+      <label className="text-[11px] text-muted block mb-1.5">{t('split.form.manualFrom')}</label>
       <div className="flex flex-wrap gap-1.5 mb-2.5">
         {members.map((m) => (
           <button
@@ -66,7 +69,7 @@ function ManualSettleModal({
           </button>
         ))}
       </div>
-      <label className="text-[11px] text-muted block mb-1.5">付给谁</label>
+      <label className="text-[11px] text-muted block mb-1.5">{t('split.form.manualTo')}</label>
       <div className="flex flex-wrap gap-1.5 mb-2.5">
         {members.map((m) => (
           <button
@@ -82,7 +85,7 @@ function ManualSettleModal({
         ))}
       </div>
       <label className="text-[11px] text-muted block mb-2.5">
-        金额
+        {t('split.form.amountLabel')}
         <input
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
@@ -92,32 +95,32 @@ function ManualSettleModal({
         />
       </label>
       <label className="text-[11px] text-muted block mb-2.5">
-        日期
+        {t('split.form.dateLabel')}
         <div className="mt-1">
           <DatePicker value={date} onChange={onDateChange} />
         </div>
       </label>
       <label className="text-[11px] text-muted block">
-        备注（可选）
+        {t('split.form.noteLabel')}
         <input
           value={note}
           onChange={(e) => onNoteChange(e.target.value)}
-          placeholder="例如：预付、现金"
+          placeholder={t('split.form.notePlaceholderPrepay')}
           className="block w-full mt-1 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[13px] outline-none focus:border-plan"
         />
       </label>
       <div className="flex gap-2 mt-4">
-        <button onClick={onCancel} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+        <button onClick={onCancel} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title={t('split.form.cancel')}>
           <X className="w-4 h-4" strokeWidth={1.8} />
         </button>
         <button
           onClick={onConfirm}
           disabled={!from || !to || from === to || !(parseFloat(amount) > 0)}
           className="flex-1 rounded-xl bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center gap-1.5"
-          title="确认"
+          title={t('split.form.confirm')}
         >
           <CircleCheck className="w-4 h-4" strokeWidth={1.8} />
-          <span className="text-[12.5px] font-medium">确认</span>
+          <span className="text-[12.5px] font-medium">{t('split.form.confirm')}</span>
         </button>
       </div>
     </CenteredModal>
@@ -125,6 +128,7 @@ function ManualSettleModal({
 }
 
 export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
+  const { t } = useTranslation()
   const members = useLiveQuery(() => db.members.toArray()) ?? []
   const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const settlements = useLiveQuery(() => getSettlements(trip.id), [trip.id]) ?? []
@@ -225,17 +229,20 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
       isPrepayment: true,
     })
     setManualSettleOpen(false)
-    flashSuccess('已记录')
+    flashSuccess(t('split.savedToast'))
   }
 
   function memberOf(id: string) {
     return members.find((m) => m.id === id)
   }
   function nameOf(id: string) {
-    return memberOf(id)?.displayName ?? '未知'
+    return memberOf(id)?.displayName ?? t('split.unknownMember')
   }
+  // 备注优先，其次分类名——分类名要走categoryLabel翻译（系统预设分类按id查，
+  // 用户自建分类保持原样），不能直接读.name，否则英文界面里会冒出中文分类名
   function titleOf(d: OpenExpenseDebt) {
-    return d.description || categories.find((c) => c.id === d.categoryId)?.name || '其他'
+    const cat = categories.find((c) => c.id === d.categoryId)
+    return d.description || (cat ? categoryLabel(cat, t) : '') || t('split.untitledExpense')
   }
 
   const selectedDebts = openDebts.filter((d) => selectedDebtKeys.has(debtKey(d)))
@@ -292,7 +299,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
     }
     setSelectedDebtKeys(new Set())
     setItemSettleOpen(false)
-    flashSuccess('已结清')
+    flashSuccess(t('split.settledToast'))
   }
 
   const transfers = simplifyDebts(balances)
@@ -301,32 +308,33 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   // 可以结算的账目"，看不到这笔预付款，也没地方能再管理它
   const hasAnyMoney = balances.some((b) => b.paid > 0 || b.owed > 0 || b.settledOut > 0 || b.settledIn > 0)
 
-  function openSettle(t: Transfer) {
-    const key = `${t.from}-${t.to}`
+  // 参数名用transfer不用t：t是这个组件里的翻译函数，取名t会在函数体内把它遮掉
+  function openSettle(transfer: Transfer) {
+    const key = `${transfer.from}-${transfer.to}`
     if (openKey === key) {
       setOpenKey(null)
       return
     }
     setOpenKey(key)
-    setSettleAmount(String(t.amount))
+    setSettleAmount(String(transfer.amount))
     setSettleDate(toLocalDateString(new Date()))
     setSettleNote('')
   }
 
-  async function confirmSettle(t: Transfer) {
+  async function confirmSettle(transfer: Transfer) {
     const amount = parseFloat(settleAmount)
     if (!amount) return
     await createSettlement({
       tripId: trip.id,
-      fromMemberId: t.from,
-      toMemberId: t.to,
+      fromMemberId: transfer.from,
+      toMemberId: transfer.to,
       amount,
       settledDate: settleDate,
       note: settleNote.trim() || null,
       createdBy: currentMemberId,
     })
     setOpenKey(null)
-    flashSuccess('已结清')
+    flashSuccess(t('split.settledToast'))
   }
 
   function startEdit(s: Settlement) {
@@ -346,12 +354,14 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   if (!hasAnyMoney) {
     return (
       <div className="px-5 pt-16 pb-safe-fab-clearance h-full flex flex-col items-center text-center gap-2">
-        <div className="w-[60px] h-[60px] rounded-full bg-segment flex items-center justify-center font-serif-sc text-2xl text-muted">分</div>
-        <div className="font-serif-sc text-[15px] mt-2">还没有可以结算的账目</div>
-        <div className="text-[12.5px] text-muted max-w-[220px]">记账时勾选"分摊给"多个人，这里就会自动算出谁该收谁的钱。</div>
+        <div className="w-[60px] h-[60px] rounded-full bg-segment flex items-center justify-center text-muted">
+          <ArrowLeftRight className="w-6 h-6" strokeWidth={1.8} />
+        </div>
+        <div className="font-serif-sc text-[15px] mt-2">{t('split.emptyTitle')}</div>
+        <div className="text-[12.5px] text-muted max-w-[220px]">{t('split.emptyHint')}</div>
         <button onClick={openManualSettle} className="flex items-center gap-1 text-plan text-[12.5px] font-semibold mt-2">
           <Plus className="w-3.5 h-3.5" strokeWidth={2.2} />
-          有预付款想先记一笔？
+          {t('split.emptyPrepayCta')}
         </button>
         {manualSettleOpen && (
           <ManualSettleModal
@@ -381,42 +391,46 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
 
   return (
     <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full">
-      <div className="font-serif-sc text-sm font-semibold mb-3">费用分摊 · 按人结算</div>
+      <div className="font-serif-sc text-sm font-semibold mb-3">{t('split.title')}</div>
 
       <div className="bg-card border border-line rounded-2xl p-4 mb-4">
         <div className="text-[11px] tracking-widest uppercase text-muted text-center mb-3">
-          {transfers.length > 0 ? `结算建议 · 还剩 ${transfers.length} 笔` : '结算建议'}
+          {transfers.length > 0
+            ? t('split.suggestion.headingWithCount', { count: transfers.length })
+            : t('split.suggestion.heading')}
         </div>
         {transfers.length > 0 ? (
           <div className="flex flex-col gap-3">
-            {transfers.map((t, i) => {
-              const key = `${t.from}-${t.to}`
+            {/* 循环变量刻意叫transfer不叫t——这个组件里t是翻译函数，用t当map参数
+                会把它整段遮住，块内所有t('...')都会变成"把字符串当Transfer用" */}
+            {transfers.map((transfer, i) => {
+              const key = `${transfer.from}-${transfer.to}`
               const isOpen = openKey === key
               return (
                 <div key={i} className="border border-line rounded-xl p-2.5">
                   <div className="flex items-center gap-2.5">
-                    <Avatar member={memberOf(t.from)} />
-                    <span className="text-[13px] font-medium">{nameOf(t.from)}</span>
+                    <Avatar member={memberOf(transfer.from)} />
+                    <span className="text-[13px] font-medium">{nameOf(transfer.from)}</span>
                     <span className="text-plan">→</span>
-                    <Avatar member={memberOf(t.to)} />
-                    <span className="text-[13px] font-medium">{nameOf(t.to)}</span>
-                    <span className="font-serif-sc text-[16px] tabular ml-auto">{formatMoney(t.amount)}</span>
+                    <Avatar member={memberOf(transfer.to)} />
+                    <span className="text-[13px] font-medium">{nameOf(transfer.to)}</span>
+                    <span className="font-serif-sc text-[16px] tabular ml-auto">{formatMoney(transfer.amount)}</span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => openSettle(t)}
+                    onClick={() => openSettle(transfer)}
                     className={`w-full mt-2 rounded-full py-1.5 text-[12px] font-medium ${
                       isOpen ? 'bg-line text-muted' : 'bg-plan text-card'
                     }`}
                   >
-                    {isOpen ? '收起' : '去结算'}
+                    {isOpen ? t('split.suggestion.collapse') : t('split.suggestion.goSettle')}
                   </button>
 
                   {isOpen && (
                     <div className="mt-2.5 p-3 rounded-xl bg-plan/5 border border-dashed border-plan/30 flex flex-col gap-2.5">
                       <div className="flex gap-2">
                         <label className="flex-1 text-[11px] text-muted">
-                          金额（可部分结清）
+                          {t('split.form.amountLabelPartial')}
                           <input
                             value={settleAmount}
                             onChange={(e) => setSettleAmount(e.target.value)}
@@ -425,33 +439,33 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                           />
                         </label>
                         <label className="flex-1 text-[11px] text-muted">
-                          日期
+                          {t('split.form.dateLabel')}
                           <div className="mt-1">
                             <DatePicker value={settleDate} onChange={setSettleDate} />
                           </div>
                         </label>
                       </div>
                       <label className="text-[11px] text-muted">
-                        备注（可选）
+                        {t('split.form.noteLabel')}
                         <input
                           value={settleNote}
                           onChange={(e) => setSettleNote(e.target.value)}
-                          placeholder="例如：现金 / 转账"
+                          placeholder={t('split.form.notePlaceholderMethod')}
                           className="block w-full mt-1 rounded-lg border border-line bg-card px-2.5 py-1.5 text-[13px] outline-none focus:border-plan"
                         />
                       </label>
                       <div className="flex gap-2">
-                        <button onClick={() => setOpenKey(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title="取消">
+                        <button onClick={() => setOpenKey(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title={t('split.form.cancel')}>
                           <X className="w-4 h-4" strokeWidth={1.8} />
                         </button>
                         <button
-                          onClick={() => confirmSettle(t)}
+                          onClick={() => confirmSettle(transfer)}
                           disabled={!settleAmount || !parseFloat(settleAmount)}
                           className="flex-1 rounded-lg bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center gap-1.5"
-                          title="确认已结清"
+                          title={t('split.form.confirmSettled')}
                         >
                           <CircleCheck className="w-4 h-4" strokeWidth={1.8} />
-                          <span className="text-[12.5px] font-medium">确认已结清</span>
+                          <span className="text-[12.5px] font-medium">{t('split.form.confirmSettled')}</span>
                         </button>
                       </div>
                     </div>
@@ -461,15 +475,15 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
             })}
           </div>
         ) : (
-          <div className="text-[12.5px] text-muted text-center py-1">目前收支刚好抵消，不需要转账</div>
+          <div className="text-[12.5px] text-muted text-center py-1">{t('split.suggestion.balanced')}</div>
         )}
       </div>
 
       {(openDebts.length > 0 || prepayBalances.length > 0 || closedDebts.length > 0) && (
         <div className="bg-card border border-line rounded-2xl p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[11px] tracking-widest uppercase text-muted">按笔结算</div>
-            <div className="text-[10.5px] text-muted">{visibleDebts.length}笔未结清</div>
+            <div className="text-[11px] tracking-widest uppercase text-muted">{t('split.byItem.heading')}</div>
+            <div className="text-[10.5px] text-muted">{t('split.byItem.unsettledCount', { count: visibleDebts.length })}</div>
           </div>
           {prepayBalances.map((p) => (
             <div
@@ -477,7 +491,11 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
               className="flex items-center gap-1.5 rounded-lg bg-plan/5 border border-plan/25 px-2.5 py-1.5 mb-2 text-[10.5px]"
             >
               <span>
-                {nameOf(p.fromMemberId)}→{nameOf(p.toMemberId)} 预付款还剩 <span className="text-plan font-semibold">{formatMoney(p.remaining)}</span> 未用完
+                {t('split.byItem.prepayLeft', {
+                  from: nameOf(p.fromMemberId),
+                  to: nameOf(p.toMemberId),
+                  amount: formatMoney(p.remaining),
+                })}
               </span>
             </div>
           ))}
@@ -489,7 +507,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                   effectivePairFilter === null ? 'bg-plan text-card border-plan font-medium' : 'border-line text-muted'
                 }`}
               >
-                全部
+                {t('split.byItem.filterAll')}
               </button>
               {distinctPairs.map((d) => {
                 const key = pairKey(d)
@@ -530,8 +548,12 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                   <div className="min-w-0 flex-1">
                     <div className="text-[12.5px] font-medium truncate">{titleOf(d)}</div>
                     <div className="text-[10.5px] text-muted">
-                      {nameOf(d.debtorId)} 欠 {nameOf(d.creditorId)}
-                      {d.prepaidAmount > 0.01 && <span className="text-positive"> · 已用预付款抵{formatMoney(d.prepaidAmount)}</span>}
+                      {t('split.byItem.owes', { debtor: nameOf(d.debtorId), creditor: nameOf(d.creditorId) })}
+                      {d.prepaidAmount > 0.01 && (
+                        <span className="text-positive">
+                          {t('split.byItem.prepaidApplied', { amount: formatMoney(d.prepaidAmount) })}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-[13px] font-semibold tabular flex-shrink-0">{formatMoney(d.remaining)}</div>
@@ -541,12 +563,14 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
           </div>
           {selectedDebts.length > 0 && (
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-dashed border-line">
-              <div className="text-[11.5px] text-muted">已选 {selectedDebts.length} 笔 · 共 {formatMoney(selectedTotal)}</div>
+              <div className="text-[11.5px] text-muted">
+                {t('split.byItem.selectedSummary', { count: selectedDebts.length, total: formatMoney(selectedTotal) })}
+              </div>
               <button
                 onClick={openItemSettle}
                 className="rounded-full bg-plan text-card px-4 py-1.5 text-[12px] font-medium"
               >
-                结算选中的 {selectedDebts.length} 笔
+                {t('split.byItem.settleSelected', { count: selectedDebts.length })}
               </button>
             </div>
           )}
@@ -561,7 +585,9 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                   className={`w-3 h-3 transition-transform duration-200 ${showClosed ? 'rotate-180' : ''}`}
                   strokeWidth={2.2}
                 />
-                {showClosed ? '收起已结清' : `查看已结清（${closedDebts.length}）`}
+                {showClosed
+                  ? t('split.byItem.collapseClosed')
+                  : t('split.byItem.viewClosed', { count: closedDebts.length })}
               </button>
               {showClosed && (
                 <div className="flex flex-col gap-1.5 mt-2">
@@ -572,14 +598,16 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="text-[12.5px] font-medium truncate text-muted">{titleOf(d)}</div>
-                        <div className="text-[10.5px] text-muted">{nameOf(d.debtorId)} 欠 {nameOf(d.creditorId)}</div>
+                        <div className="text-[10.5px] text-muted">
+                          {t('split.byItem.owes', { debtor: nameOf(d.debtorId), creditor: nameOf(d.creditorId) })}
+                        </div>
                       </div>
                       {d.settledAmount > 0.01 && (
-                        <span className="text-[8.5px] px-1.5 py-0.5 rounded-full bg-plan/10 text-plan font-semibold flex-shrink-0">按笔结算</span>
+                        <span className="text-[8.5px] px-1.5 py-0.5 rounded-full bg-plan/10 text-plan font-semibold flex-shrink-0">{t('split.byItem.badgeByItem')}</span>
                       )}
                       {d.prepaidAmount > 0.01 && (
                         <span className="text-[8.5px] px-1.5 py-0.5 rounded-full bg-positive/10 text-positive font-semibold flex-shrink-0">
-                          {d.settledAmount > 0.01 ? '+预付款' : '预付款抵扣'}
+                          {d.settledAmount > 0.01 ? t('split.byItem.badgePrepayPlus') : t('split.byItem.badgePrepayOnly')}
                         </span>
                       )}
                       <div className="text-[13px] font-semibold tabular text-muted flex-shrink-0">{formatMoney(d.totalShare)}</div>
@@ -594,15 +622,15 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
 
       <div className="bg-card border border-line rounded-2xl p-4 mb-4">
         <div className="flex items-center justify-between mb-1">
-          <div className="text-[11px] tracking-widest uppercase text-muted">结算记录</div>
+          <div className="text-[11px] tracking-widest uppercase text-muted">{t('split.records.heading')}</div>
           <button onClick={openManualSettle} className="flex items-center gap-1 text-plan text-[11.5px] font-semibold">
             <Plus className="w-3 h-3" strokeWidth={2.2} />
-            新增
+            {t('split.records.add')}
           </button>
         </div>
         {settlements.length === 0 ? (
           <div className="text-[11.5px] text-muted text-center py-2">
-            还没有结算记录。想先记一笔预付款，或者金额跟建议的不一样，点上面"新增"手动记。
+            {t('split.records.empty')}
           </div>
         ) : (
           <>
@@ -618,10 +646,10 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                   <div className="font-serif-sc text-[14px] tabular">{formatMoney(s.amount)}</div>
                   <div className="text-[10.5px] text-muted">{s.settledDate.slice(5).replace('-', '/')}{s.note ? ` · ${s.note}` : ''}</div>
                 </div>
-                <button onClick={() => startEdit(s)} className="w-6 h-6 rounded-lg border border-line bg-paper flex items-center justify-center text-muted flex-shrink-0" title="编辑">
+                <button onClick={() => startEdit(s)} className="w-6 h-6 rounded-lg border border-line bg-paper flex items-center justify-center text-muted flex-shrink-0" title={t('split.records.edit')}>
                   <Pencil className="w-3 h-3" strokeWidth={1.8} />
                 </button>
-                <button onClick={() => setConfirmDeleteId(s.id)} className="w-6 h-6 rounded-lg border border-line bg-paper flex items-center justify-center text-muted flex-shrink-0" title="删除">
+                <button onClick={() => setConfirmDeleteId(s.id)} className="w-6 h-6 rounded-lg border border-line bg-paper flex items-center justify-center text-muted flex-shrink-0" title={t('split.records.delete')}>
                   <Trash2 className="w-3 h-3" strokeWidth={1.8} />
                 </button>
               </div>
@@ -642,14 +670,14 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                   <input
                     value={editNote}
                     onChange={(e) => setEditNote(e.target.value)}
-                    placeholder="备注（可选）"
+                    placeholder={t('split.records.notePlaceholder')}
                     className="rounded-lg border border-line bg-card px-2.5 py-1.5 text-[13px] outline-none focus:border-plan"
                   />
                   <div className="flex gap-2">
-                    <button onClick={() => setEditingId(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title="取消">
+                    <button onClick={() => setEditingId(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title={t('split.form.cancel')}>
                       <X className="w-4 h-4" strokeWidth={1.8} />
                     </button>
-                    <button onClick={saveEdit} disabled={!editAmount || !parseFloat(editAmount)} className="flex-1 rounded-lg bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center" title="保存">
+                    <button onClick={saveEdit} disabled={!editAmount || !parseFloat(editAmount)} className="flex-1 rounded-lg bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center" title={t('split.records.save')}>
                       <Check className="w-4 h-4" strokeWidth={2} />
                     </button>
                   </div>
@@ -661,7 +689,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         )}
       </div>
 
-      <div className="font-serif-sc text-[13.5px] font-semibold mb-2">谁付了多少</div>
+      <div className="font-serif-sc text-[13.5px] font-semibold mb-2">{t('split.balances.heading')}</div>
       <div className="flex flex-col gap-2">
         {balances
           .sort((a, b) => b.net - a.net)
@@ -678,7 +706,11 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                     className="text-[13px] font-medium tabular"
                     style={{ color: settled ? 'var(--color-muted)' : b.net >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}
                   >
-                    {settled ? '已结清' : b.net >= 0 ? `应收 ${formatMoney(b.net)}` : `应付 ${formatMoney(-b.net)}`}
+                    {settled
+                      ? t('split.balances.settled')
+                      : b.net >= 0
+                        ? t('split.balances.receivable', { amount: formatMoney(b.net) })
+                        : t('split.balances.payable', { amount: formatMoney(-b.net) })}
                   </span>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-line overflow-hidden">
@@ -690,10 +722,17 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                     }}
                   />
                 </div>
+                {/* 拼成数组再join，而不是把" · 已还X"这种带分隔符的片段直接塞进JSX——
+                    每一段各自是一条完整的翻译key，分隔符只由这里统一负责，
+                    英文里段与段的措辞不用为了迁就分隔符而妥协 */}
                 <div className="mt-1.5 text-[11px] text-muted">
-                  垫付 {formatMoney(b.paid)} · {b.expenseCount} 笔 · 应分摊 {formatMoney(b.owed)}
-                  {b.settledOut > 0 && ` · 已还 ${formatMoney(b.settledOut)}`}
-                  {b.settledIn > 0 && ` · 已收 ${formatMoney(b.settledIn)}`}
+                  {[
+                    t('split.balances.paid', { amount: formatMoney(b.paid) }),
+                    t('split.balances.expenseCount', { count: b.expenseCount }),
+                    t('split.balances.share', { amount: formatMoney(b.owed) }),
+                    b.settledOut > 0 ? t('split.balances.repaid', { amount: formatMoney(b.settledOut) }) : null,
+                    b.settledIn > 0 ? t('split.balances.received', { amount: formatMoney(b.settledIn) }) : null,
+                  ].filter(Boolean).join(' · ')}
                 </div>
               </div>
             )
@@ -702,8 +741,8 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
 
       {confirmDeleteId && (
         <ConfirmDialog
-          title="删除这条结算记录？"
-          message="只是撤销这笔结算记录，对应的应收/应付金额会恢复，不影响其他记录。"
+          title={t('split.records.deleteConfirmTitle')}
+          message={t('split.records.deleteConfirmMessage')}
           onConfirm={() => { deleteSettlement(confirmDeleteId); setConfirmDeleteId(null) }}
           onCancel={() => setConfirmDeleteId(null)}
         />
@@ -712,15 +751,19 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
       {itemSettleOpen && (
         <CenteredModal onClose={() => setItemSettleOpen(false)}>
           <div className="font-serif-sc text-[15px] text-ink mb-1">
-            结算选中的 {selectedDebts.length} 笔
+            {t('split.form.itemSettleTitle', { count: selectedDebts.length })}
           </div>
           <div className="text-[11px] text-muted mb-3">
             {selectedDebts.length === 1
-              ? `${titleOf(selectedDebts[0])} · ${nameOf(selectedDebts[0].debtorId)} 欠 ${nameOf(selectedDebts[0].creditorId)}`
-              : '一次选多笔的话，每一笔都会按欠款全额分别结清，不能只还一部分'}
+              ? t('split.form.itemSettleSingleDetail', {
+                  title: titleOf(selectedDebts[0]),
+                  debtor: nameOf(selectedDebts[0].debtorId),
+                  creditor: nameOf(selectedDebts[0].creditorId),
+                })
+              : t('split.form.itemSettleMultiDetail')}
           </div>
           <label className="text-[11px] text-muted block mb-2.5">
-            金额{selectedDebts.length === 1 ? '（可部分结清）' : ''}
+            {selectedDebts.length === 1 ? t('split.form.amountLabelPartial') : t('split.form.amountLabel')}
             <input
               value={itemSettleAmount}
               onChange={(e) => setItemSettleAmount(e.target.value)}
@@ -730,32 +773,32 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
             />
           </label>
           <label className="text-[11px] text-muted block mb-2.5">
-            日期
+            {t('split.form.dateLabel')}
             <div className="mt-1">
               <DatePicker value={itemSettleDate} onChange={setItemSettleDate} />
             </div>
           </label>
           <label className="text-[11px] text-muted block">
-            备注（可选）
+            {t('split.form.noteLabel')}
             <input
               value={itemSettleNote}
               onChange={(e) => setItemSettleNote(e.target.value)}
-              placeholder="例如：现金 / 转账"
+              placeholder={t('split.form.notePlaceholderMethod')}
               className="block w-full mt-1 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[13px] outline-none focus:border-plan"
             />
           </label>
           <div className="flex gap-2 mt-4">
-            <button onClick={() => setItemSettleOpen(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+            <button onClick={() => setItemSettleOpen(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title={t('split.form.cancel')}>
               <X className="w-4 h-4" strokeWidth={1.8} />
             </button>
             <button
               onClick={confirmSettleItems}
               disabled={selectedDebts.length === 1 && !(parseFloat(itemSettleAmount) > 0)}
               className="flex-1 rounded-xl bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center gap-1.5"
-              title="确认已结清"
+              title={t('split.form.confirmSettled')}
             >
               <CircleCheck className="w-4 h-4" strokeWidth={1.8} />
-              <span className="text-[12.5px] font-medium">确认已结清</span>
+              <span className="text-[12.5px] font-medium">{t('split.form.confirmSettled')}</span>
             </button>
           </div>
         </CenteredModal>
