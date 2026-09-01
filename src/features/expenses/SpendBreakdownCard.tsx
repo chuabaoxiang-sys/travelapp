@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PieChart, ChevronDown } from 'lucide-react'
 import type { Expense, ExpenseCategory, ExpenseDayAllocation } from '../../types'
 import { categoryBreakdown } from '../../domain/spendBreakdown'
 import { categoryColor } from '../../lib/categoryColors'
+import { categoryLabel } from '../../lib/categoryLabel'
 import { CategoryIcon } from '../../components/CategoryBadge'
 import { formatMoney } from '../../lib/money'
 
@@ -132,6 +134,7 @@ export function SpendBreakdownCard({
   todayISO: string
   currency: string
 }) {
+  const { t } = useTranslation()
   const [mode, setMode] = useState<'trip' | 'today'>('trip')
   const [expanded, setExpanded] = useState(false)
 
@@ -158,7 +161,7 @@ export function SpendBreakdownCard({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5 text-[13px] font-medium">
           <PieChart className="w-3.5 h-3.5 text-muted" strokeWidth={2} />
-          这趟花在哪
+          {t('ledger.breakdown.title')}
         </div>
         <div className="flex bg-segment rounded-lg p-0.5">
           {(['trip', 'today'] as const).map((m) => (
@@ -167,14 +170,14 @@ export function SpendBreakdownCard({
               onClick={() => setMode(m)}
               className={`rounded-md px-2.5 py-1 text-[11px] ${mode === m ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
             >
-              {m === 'trip' ? '全程' : '今天'}
+              {t(`ledger.breakdown.${m}`)}
             </button>
           ))}
         </div>
       </div>
 
       {!rows.length ? (
-        <div className="text-[12px] text-muted py-4 text-center">今天还没有记账</div>
+        <div className="text-[12px] text-muted py-4 text-center">{t('ledger.breakdown.emptyToday')}</div>
       ) : (
         <div className="flex items-center gap-4">
           <div className="relative flex-shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
@@ -193,7 +196,7 @@ export function SpendBreakdownCard({
             {topRows.map((r) => (
               <div key={r.categoryId} className="flex items-center gap-1.5 text-[11.5px]">
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: categoryColor(r.category) }} />
-                <span className="flex-1 min-w-0 truncate text-ink">{r.category?.name}</span>
+                <span className="flex-1 min-w-0 truncate text-ink">{categoryLabel(r.category, t)}</span>
                 <span className="text-muted tabular flex-shrink-0">{formatMoney(r.total, currency)}</span>
               </div>
             ))}
@@ -206,7 +209,7 @@ export function SpendBreakdownCard({
           onClick={() => setExpanded(!expanded)}
           className="w-full flex items-center justify-center gap-1 text-[11px] text-muted mt-2.5 pt-2 border-t border-line"
         >
-          {expanded ? '收起' : `查看全部 ${withMeta.length} 个分类`}
+          {expanded ? t('ledger.breakdown.collapse') : t('ledger.breakdown.viewAll', { count: withMeta.length })}
           <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} strokeWidth={2} />
         </button>
       )}
@@ -218,7 +221,7 @@ export function SpendBreakdownCard({
               <div className="flex items-center justify-between text-[11.5px] mb-1">
                 <span className="flex items-center gap-1.5" style={{ color: categoryColor(r.category) }}>
                   <CategoryIcon category={r.category} size={12} />
-                  <span className="text-ink">{r.category?.name}</span>
+                  <span className="text-ink">{categoryLabel(r.category, t)}</span>
                 </span>
                 <span className="text-muted tabular">
                   {formatMoney(r.total, currency)} · {r.pct.toFixed(1)}%

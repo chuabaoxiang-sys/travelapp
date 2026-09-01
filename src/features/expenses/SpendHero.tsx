@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { heroRawValue, type AllowanceState } from '../../domain/dailyAllowance'
@@ -34,6 +35,7 @@ export function SpendHero({
   // OverviewTab）不用额外接线也能正常滚
   animatedValueOverride?: number
 }) {
+  const { t } = useTranslation()
   const money = (n: number) => formatMoney(n, currency)
 
   let label: string
@@ -44,31 +46,31 @@ export function SpendHero({
 
   switch (state.kind) {
     case 'daily-remaining':
-      label = '今天还能花'
-      sub = `今日额度 ${money(state.allowance)} · 已花 ${money(state.todaySpent)}`
+      label = t('spendHero.dailyRemaining.label')
+      sub = t('spendHero.dailyRemaining.sub', { allowance: money(state.allowance), spent: money(state.todaySpent) })
       progress = state.allowance > 0 ? (state.todaySpent / state.allowance) * 100 : 0
       break
     case 'daily-over':
-      label = '今天超了'
-      sub = `今天已花 ${money(state.todaySpent)} · 额度 ${money(state.allowance)}`
+      label = t('spendHero.dailyOver.label')
+      sub = t('spendHero.dailyOver.sub', { spent: money(state.todaySpent), allowance: money(state.allowance) })
       progress = 100
       break
     case 'budget-over':
-      label = '已超总预算'
-      sub = `这趟已花 ${money(state.total)} · 预算 ${money(state.budget)}`
+      label = t('spendHero.budgetOver.label')
+      sub = t('spendHero.budgetOver.sub', { total: money(state.total), budget: money(state.budget) })
       progress = 100
       break
     case 'no-budget':
-      label = '今天已花'
-      sub = `这趟共 ${money(state.total)}`
+      label = t('spendHero.noBudget.label')
+      sub = t('spendHero.noBudget.sub', { total: money(state.total) })
       big = false
       cta = true
       break
     case 'outside-trip':
-      label = '这趟已花'
+      label = t('spendHero.outsideTrip.label')
       sub = state.budget != null
-        ? `预算 ${money(state.budget)} · 还剩 ${money(Math.max(0, state.budget - state.total))}`
-        : '还没设预算'
+        ? t('spendHero.outsideTrip.subWithBudget', { budget: money(state.budget), remaining: money(Math.max(0, state.budget - state.total)) })
+        : t('spendHero.outsideTrip.subNoBudget')
       big = false
       progress = state.budget != null && state.budget > 0 ? (state.total / state.budget) * 100 : null
       cta = state.budget == null
@@ -91,7 +93,7 @@ export function SpendHero({
       {progress !== null && bar(progress)}
       {cta && onSetBudget && (
         <button onClick={onSetBudget} className="mt-2.5 text-[11px] text-plan-on-dark">
-          设个预算，就能看到每天还能花多少 ›
+          {t('spendHero.setBudgetCta')}
         </button>
       )}
     </div>

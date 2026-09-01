@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 
 // 图标路径来自设计稿《底部导航图标.dc.html》(claude.ai/design 项目 504930bf-8bee-40ef-8a96-d7c3e5f39ae7)
@@ -35,12 +36,7 @@ function TabIcon({ tab, active }: { tab: TabKey; active: boolean }) {
   )
 }
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'overview', label: '概览' },
-  { key: 'itinerary', label: '行程' },
-  { key: 'ledger', label: '账目' },
-  { key: 'more', label: '更多' },
-]
+const TAB_KEYS: TabKey[] = ['overview', 'itinerary', 'ledger', 'more']
 
 export function BottomNav({
   active,
@@ -63,30 +59,32 @@ export function BottomNav({
   // 由调用方把渲染好的节点传进来最省事
   decorate?: Partial<Record<TabKey, ReactNode>>
 }) {
+  const { t } = useTranslation()
+
   // "记一笔"插在"行程"和"账目"中间——五格视觉上分成两半，中间那颗是唯一的
   // 强调色圆钮，而不是第五个平权的tab。用 slice 在数组中间插入渲染，而不是给
-  // TABS 数组本身加一项，是因为它的语义是"动作"不是"页面"，selected态、路由都不适用
-  const left = TABS.slice(0, 2)
-  const right = TABS.slice(2)
+  // TAB_KEYS 数组本身加一项，是因为它的语义是"动作"不是"页面"，selected态、路由都不适用
+  const left = TAB_KEYS.slice(0, 2)
+  const right = TAB_KEYS.slice(2)
 
-  function renderTab(t: (typeof TABS)[number]) {
-    const isActive = active === t.key
-    const unseen = badges?.[t.key] ?? 0
+  function renderTab(key: TabKey) {
+    const isActive = active === key
+    const unseen = badges?.[key] ?? 0
     return (
-      <button key={t.key} onClick={() => onChange(t.key)} className="flex-1 flex flex-col items-center gap-1 py-0.5">
+      <button key={key} onClick={() => onChange(key)} className="flex-1 flex flex-col items-center gap-1 py-0.5">
         <span className="relative">
-          <TabIcon tab={t.key} active={isActive} />
+          <TabIcon tab={key} active={isActive} />
           {/* 只显示一个小圆点，不显示具体数字——数字会让人以为"必须逐条处理完"，
               而这里想传达的只是"有人动过，去看一眼" */}
           {unseen > 0 && (
             <span
               className="absolute -top-0.5 -right-1 w-[7px] h-[7px] rounded-full bg-spend ring-2 ring-paper"
-              aria-label={`有 ${unseen} 条新记录`}
+              aria-label={t('nav.unseenBadge', { count: unseen })}
             />
           )}
-          {decorate?.[t.key]}
+          {decorate?.[key]}
         </span>
-        <span className={`text-[10.5px] tracking-wide ${isActive ? 'text-ink' : 'text-nav-inactive'}`}>{t.label}</span>
+        <span className={`text-[10.5px] tracking-wide ${isActive ? 'text-ink' : 'text-nav-inactive'}`}>{t(`nav.${key}`)}</span>
       </button>
     )
   }
@@ -101,7 +99,7 @@ export function BottomNav({
               onClick={onAddExpense}
               // 行程tab上这颗按钮的动作被TripShell换成了"添加行程项"（同一个"+"，
               // 不新增按钮），title跟着换一下，长按/悬停时读到的文字才对得上
-              title={active === 'itinerary' ? '添加行程项' : '记一笔'}
+              title={active === 'itinerary' ? t('nav.addItineraryItem') : t('nav.addExpense')}
               className="w-[46px] h-[46px] rounded-full bg-plan text-card flex items-center justify-center -mt-[22px] shadow-[0_8px_18px_rgba(76,29,149,0.35)] transition-transform active:scale-95"
             >
               <Plus className="w-6 h-6" strokeWidth={2} />

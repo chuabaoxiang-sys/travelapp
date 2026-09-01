@@ -1,13 +1,14 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
+import zh from '../locales/zh.json'
+import en from '../locales/en.json'
 
-// Phase 0：只搭基础设施，还没把任何文案抽成翻译key——两个语言桶先留空对象，
-// i18next能正常识别zh/en、changeLanguage不会报错，但界面显示暂时不受影响。
-// 真正的文案会在后续phase里逐个功能区搬进来
+// Phase 1起，文案按功能区分批从locales/*.json搬进来——还没搬到的字符串
+// 暂时还是内联在组件里的中文字面量，不影响没搬到的部分正常显示
 i18n.use(initReactI18next).init({
   resources: {
-    zh: { translation: {} },
-    en: { translation: {} },
+    zh: { translation: zh },
+    en: { translation: en },
   },
   lng: 'zh',
   fallbackLng: 'zh',

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Lock } from 'lucide-react'
+import { categoryLabel } from '../../lib/categoryLabel'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { DatePicker } from '../../components/DatePicker'
@@ -41,6 +43,7 @@ export function AddExpensePage({
   initial?: Expense
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const categories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
   const allMembers = useLiveQuery(() => db.members.toArray()) ?? []
   const itineraryDays = useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
@@ -460,25 +463,27 @@ export function AddExpensePage({
   if (saved) {
     return (
       <div className="absolute inset-0 z-30 flex items-center justify-center bg-scrim/35">
-        <SuccessToast label="已记下" />
+        <SuccessToast label={t('addExpense.saved')} />
       </div>
     )
   }
 
   const canSave = !saving && !!numAmount && !!categoryId && rateReady && rateSplitValid && customValid && daysValid
 
-  const payerName = members.find((m) => m.id === payer)?.displayName ?? '付款人'
+  const payerName = members.find((m) => m.id === payer)?.displayName ?? t('addExpense.payerFallback')
   const splitSummary = mode === 'personal'
-    ? `${payerName}的个人开销`
+    ? t('addExpense.splitSummary.personal', { name: payerName })
     : splitMemberIds.length === 0
-      ? '未选择分摊对象'
-      : `${payerName}垫付 · ${splitMemberIds.length}人${splitMode === 'exact' && splitMemberIds.length >= 2 ? '自定义' : '平均'}分摊`
-  const daysSummary = !spreadOpen || !spreadDates.length ? '单日' : `跨${spreadDates.length}天${dayMode === 'exact' ? ' · 自定义' : ''}`
+      ? t('addExpense.splitSummary.noOne')
+      : t(`addExpense.splitSummary.${splitMode === 'exact' && splitMemberIds.length >= 2 ? 'sharedExact' : 'sharedEqual'}`, { name: payerName, count: splitMemberIds.length })
+  const daysSummary = !spreadOpen || !spreadDates.length
+    ? t('addExpense.daysSummary.single')
+    : t(`addExpense.daysSummary.${dayMode === 'exact' ? 'multiExact' : 'multiEqual'}`, { count: spreadDates.length })
   const foldSummary = [
-    expenseDate === todayISO ? '今天' : expenseDate.slice(5),
+    expenseDate === todayISO ? t('addExpense.today') : expenseDate.slice(5),
     splitSummary,
     spreadOpen && spreadDates.length ? daysSummary : null,
-    linkOpen && linkDate ? '已关联行程' : null,
+    linkOpen && linkDate ? t('addExpense.linkedToItinerary') : null,
   ].filter(Boolean).join(' · ')
 
   return (
@@ -492,16 +497,16 @@ export function AddExpensePage({
           肉眼可见地偏了 */}
           <div className="flex items-center px-4 pb-2.5 border-b border-line flex-shrink-0">
             <div className="flex-1">
-              <button onClick={onClose} className="text-muted text-[12.5px]">取消</button>
+              <button onClick={onClose} className="text-muted text-[12.5px]">{t('addExpense.cancel')}</button>
             </div>
-            <span className="font-serif-sc text-[13.5px] font-semibold flex-shrink-0">{initial ? '编辑这笔' : '记一笔'}</span>
+            <span className="font-serif-sc text-[13.5px] font-semibold flex-shrink-0">{initial ? t('addExpense.editTitle') : t('addExpense.title')}</span>
             <div className="flex-1 flex items-center justify-end gap-4">
               {initial && (
                 <button
                   onClick={() => setConfirmingDelete(true)}
                   disabled={saving || settled}
                   className="text-negative/85 disabled:opacity-40"
-                  title={settled ? '这笔账已经结算过，不能删除' : '删除'}
+                  title={settled ? t('addExpense.deleteDisabledTitle') : t('addExpense.delete')}
                 >
                   <Trash2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
                 </button>
@@ -511,7 +516,7 @@ export function AddExpensePage({
                 disabled={!canSave}
                 className="text-plan text-[12.5px] font-semibold disabled:opacity-40"
               >
-                保存
+                {t('addExpense.save')}
               </button>
             </div>
           </div>
@@ -520,7 +525,7 @@ export function AddExpensePage({
             {settled && (
           <div className="flex items-center gap-2 rounded-xl bg-plan/8 text-plan px-3 py-2 text-[11.5px] mb-2.5">
             <Lock className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={1.8} />
-            这笔账已经结算过，金额、汇率、怎么分、付款人都不能再改，也不能删除
+            {t('addExpense.settledBanner')}
           </div>
         )}
         <div className="rounded-2xl border-[1.5px] border-plan bg-card px-3.5 py-2.5">
@@ -528,7 +533,7 @@ export function AddExpensePage({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             inputMode="decimal"
-            placeholder="金额"
+            placeholder={t('addExpense.amountPlaceholder')}
             autoFocus={!initial}
             disabled={settled}
             className="w-full text-[26px] font-bold tracking-tight tabular outline-none bg-transparent disabled:opacity-60"
@@ -555,14 +560,14 @@ export function AddExpensePage({
                 manualCurrencyOpen ? 'bg-plan text-card border-plan' : 'border-line text-muted'
               }`}
             >
-              其他
+              {t('addExpense.otherCurrency')}
             </button>
           </div>
           {manualCurrencyOpen && (
             <input
               value={currency}
               onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-              placeholder="币种代码，比如 KRW"
+              placeholder={t('addExpense.manualCurrencyPlaceholder')}
               disabled={settled}
               autoFocus
               className="mt-1.5 w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm uppercase outline-none focus:border-plan disabled:opacity-60"
@@ -573,7 +578,7 @@ export function AddExpensePage({
         {isForeign && (
           <div className={`mt-2 ${settled ? 'pointer-events-none opacity-60' : ''}`}>
             <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">
-              选择汇率（{currency} → {trip.homeCurrency}）
+              {t('addExpense.chooseRate', { from: currency, to: trip.homeCurrency })}
             </div>
             <RateChipRow
               tripId={trip.id}
@@ -585,13 +590,13 @@ export function AddExpensePage({
             />
             {(rateSelection.mode !== 'split' || rateSplitValid) && (
               <div className="text-[11px] text-muted mt-1.5">
-                {numRate > 0 ? <>≈ {trip.homeCurrency} {homeAmount.toFixed(2)}</> : '请选择或新增一个汇率'}
+                {numRate > 0 ? t('addExpense.rateApprox', { currency: trip.homeCurrency, amount: homeAmount.toFixed(2) }) : t('addExpense.rateMissing')}
               </div>
             )}
           </div>
         )}
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">分类</div>
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.categoryLabel')}</div>
         <div className="flex flex-wrap gap-1.5">
           {visibleCategories.map((c) => {
             const color = categoryColor(c)
@@ -608,36 +613,36 @@ export function AddExpensePage({
                 }
               >
                 <CategoryBadge category={c} barHeight={18} iconSize={13} />
-                {c.name}
+                {categoryLabel(c, t)}
               </button>
             )
           })}
         </div>
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">其他设置</div>
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.otherSettings')}</div>
         <button
           type="button"
           onClick={() => setDetailsOpen((v) => !v)}
           className="w-full flex items-center justify-between gap-2 rounded-xl border border-dashed border-line bg-plan/[0.04] px-3.5 py-2.5 text-left"
         >
           <span className="text-[12px] text-soft min-w-0 truncate">{foldSummary}</span>
-          <span className="text-[11.5px] font-semibold text-plan flex-shrink-0">{detailsOpen ? '收起 ‹' : '改 ›'}</span>
+          <span className="text-[11.5px] font-semibold text-plan flex-shrink-0">{detailsOpen ? t('addExpense.collapse') : t('addExpense.expand')}</span>
         </button>
 
         {detailsOpen && (
           <>
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">日期</div>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.dateLabel')}</div>
             <DatePicker value={expenseDate} onChange={setExpenseDate} />
 
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">备注</div>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.noteLabel')}</div>
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="备注（可选）"
+              placeholder={t('addExpense.notePlaceholder')}
               className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm outline-none focus:border-plan"
             />
 
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">付款人</div>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.payerLabel')}</div>
             <div className="flex flex-wrap gap-1.5">
               {members.map((m) => (
                 <button
@@ -649,32 +654,32 @@ export function AddExpensePage({
                   }`}
                 >
                   <Avatar member={m} size={20} />
-                  {m.displayName}垫付
+                  {t('addExpense.payerChip', { name: m.displayName })}
                 </button>
               ))}
             </div>
 
             {tripDates.length > 0 && (
               <div className="mt-3">
-                <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">关联行程</div>
+                <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">{t('addExpense.linkTripLabel')}</div>
                 {!linkOpen ? (
                   <button
                     type="button"
                     onClick={() => setLinkOpen(true)}
                     className="text-[12px] text-plan"
                   >
-                    关联到行程里的某天/某个行程项（可选）
+                    {t('addExpense.linkTripPrompt')}
                   </button>
                 ) : (
                   <div className="bg-card border border-line rounded-xl p-2.5">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10.5px] tracking-widest uppercase text-muted">关联到行程</span>
+                      <span className="text-[10.5px] tracking-widest uppercase text-muted">{t('addExpense.linkTripHeader')}</span>
                       <button
                         type="button"
                         onClick={() => { setLinkOpen(false); setLinkDate(''); setLinkItemId(null) }}
                         className="text-[11px] text-muted"
                       >
-                        不关联
+                        {t('addExpense.unlink')}
                       </button>
                     </div>
                     <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
@@ -690,7 +695,7 @@ export function AddExpensePage({
                               isActive ? 'bg-ink text-paper border-ink' : 'bg-paper border-line text-soft'
                             }`}
                           >
-                            {num}日
+                            {t('addExpense.dayOfMonth', { day: num })}
                           </button>
                         )
                       })}
@@ -699,7 +704,7 @@ export function AddExpensePage({
                       const day = itineraryDays.find((d) => d.date === linkDate)
                       const dayItems = day ? itineraryItems.filter((it) => it.dayId === day.id) : []
                       if (!dayItems.length) {
-                        return <div className="text-[11px] text-muted mt-1.5">这天还没有行程项，只会挂到「这一天」</div>
+                        return <div className="text-[11px] text-muted mt-1.5">{t('addExpense.noItemsThatDay')}</div>
                       }
                       return (
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -710,7 +715,7 @@ export function AddExpensePage({
                               !linkItemId ? 'bg-plan text-card border-plan' : 'bg-paper border-line text-soft'
                             }`}
                           >
-                            只挂到这一天
+                            {t('addExpense.onlyThisDay')}
                           </button>
                           {dayItems.map((it) => (
                             <button
@@ -732,7 +737,7 @@ export function AddExpensePage({
               </div>
             )}
 
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">详情</div>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.detailsLabel')}</div>
             <div className="border border-line bg-card rounded-xl overflow-hidden">
               <button
                 type="button"
@@ -740,7 +745,7 @@ export function AddExpensePage({
                 disabled={settled}
                 className="w-full flex items-center justify-between px-3.5 py-2.5 border-b border-line text-left disabled:opacity-60"
               >
-                <span className="text-[12.5px] text-muted">怎么分</span>
+                <span className="text-[12.5px] text-muted">{t('addExpense.splitRow')}</span>
                 <span className="text-[12.5px] flex items-center gap-1">
                   {splitSummary}
                   {!settled && <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={1.8} />}
@@ -752,7 +757,7 @@ export function AddExpensePage({
                   onClick={() => setActiveDetail('days')}
                   className="w-full flex items-center justify-between px-3.5 py-2.5 text-left"
                 >
-                  <span className="text-[12.5px] text-muted">花在几天</span>
+                  <span className="text-[12.5px] text-muted">{t('addExpense.daysRow')}</span>
                   <span className="text-[12.5px] flex items-center gap-1">
                     {daysSummary}
                     <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={1.8} />
@@ -775,9 +780,9 @@ export function AddExpensePage({
           <div className="flex items-center gap-3 px-4 pt-safe-header pb-2.5 border-b border-line flex-shrink-0">
             <button onClick={() => setActiveDetail(null)} className="flex items-center gap-0.5 text-muted text-[12.5px]">
               <ChevronLeft className="w-4 h-4" strokeWidth={2} />
-              返回
+              {t('addExpense.splitPage.back')}
             </button>
-            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">怎么分</span>
+            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">{t('addExpense.splitPage.title')}</span>
           </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3">
@@ -787,14 +792,14 @@ export function AddExpensePage({
                 onClick={() => { setMode('share'); setSplitMemberIds(members.map((m) => m.id)) }}
                 className={`flex-1 py-2 text-[12.5px] ${mode === 'share' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
               >
-                大家分摊
+                {t('addExpense.splitPage.share')}
               </button>
               <button
                 type="button"
                 onClick={() => { setMode('personal'); setSplitMemberIds([]) }}
                 className={`flex-1 py-2 text-[12.5px] ${mode === 'personal' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
               >
-                个人开销
+                {t('addExpense.splitPage.personal')}
               </button>
             </div>
 
@@ -802,14 +807,17 @@ export function AddExpensePage({
               <>
                 <div className="flex items-center justify-between mt-3 mb-1">
                   <span className="text-[10.5px] tracking-widest uppercase text-muted">
-                    分摊给{splitMemberIds.length >= 2 && splitMode === 'equal' ? `（各 ${homeAmount ? (homeAmount / splitMemberIds.length).toFixed(2) : '0.00'}）` : ''}
+                    {t('addExpense.splitPage.splitAmongLabel')}
+                    {splitMemberIds.length >= 2 && splitMode === 'equal'
+                      ? t('addExpense.splitPage.splitAmongEqualEach', { amount: homeAmount ? (homeAmount / splitMemberIds.length).toFixed(2) : '0.00' })
+                      : ''}
                   </span>
                   {splitMemberIds.length !== members.length && (
                     <button
                       type="button"
                       onClick={() => setSplitMemberIds(members.map((m) => m.id))}
                       className="text-plan"
-                      title="全选"
+                      title={t('addExpense.splitPage.selectAll')}
                     >
                       <CheckCheck className="w-[15px] h-[15px]" strokeWidth={1.8} />
                     </button>
@@ -836,7 +844,7 @@ export function AddExpensePage({
                   })}
                 </div>
                 {splitMemberIds.length === 1 && (
-                  <div className="text-[11px] text-muted mt-1">只勾了一个人 = 算这个人自己的，不分摊</div>
+                  <div className="text-[11px] text-muted mt-1">{t('addExpense.splitPage.onlyOneWarning')}</div>
                 )}
 
                 {splitMemberIds.length >= 2 && (
@@ -847,14 +855,14 @@ export function AddExpensePage({
                         onClick={() => setSplitMode('equal')}
                         className={`flex-1 py-1.5 text-[12px] ${splitMode === 'equal' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
                       >
-                        平均分摊
+                        {t('addExpense.splitPage.equalSplit')}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setSplitMode('exact'); seedEqualCustomAmounts(splitMemberIds) }}
                         className={`flex-1 py-1.5 text-[12px] ${splitMode === 'exact' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
                       >
-                        自定义金额
+                        {t('addExpense.splitPage.exactSplit')}
                       </button>
                     </div>
 
@@ -885,7 +893,7 @@ export function AddExpensePage({
             ) : (
               <div className="flex items-center gap-2 mt-3 text-[12px] text-muted bg-card border border-dashed border-line rounded-xl px-3 py-2.5">
                 <Avatar member={members.find((m) => m.id === payer)} size={20} />
-                这笔算{payerName}自己的开销，不会出现在"结算"里。
+                {t('addExpense.splitPage.personalNote', { name: payerName })}
               </div>
             )}
           </div>
@@ -893,10 +901,10 @@ export function AddExpensePage({
           {usingExactSplit && (
             <div className={`flex-shrink-0 px-4 py-2.5 border-t border-line text-[12px] ${customValid ? 'text-positive' : 'text-negative'}`}>
               {Math.abs(customDiff) < 0.01
-                ? '刚好分完 ✓'
+                ? t('addExpense.diff.done')
                 : customDiff > 0
-                  ? `还剩 ${customDiff.toFixed(2)} 没分完`
-                  : `超出了 ${Math.abs(customDiff).toFixed(2)}`}
+                  ? t('addExpense.diff.remaining', { amount: customDiff.toFixed(2) })
+                  : t('addExpense.diff.over', { amount: Math.abs(customDiff).toFixed(2) })}
             </div>
           )}
         </div>
@@ -907,9 +915,9 @@ export function AddExpensePage({
           <div className="flex items-center gap-3 px-4 pt-safe-header pb-2.5 border-b border-line flex-shrink-0">
             <button onClick={() => setActiveDetail(null)} className="flex items-center gap-0.5 text-muted text-[12.5px]">
               <ChevronLeft className="w-4 h-4" strokeWidth={2} />
-              返回
+              {t('addExpense.daysPage.back')}
             </button>
-            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">花在几天</span>
+            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">{t('addExpense.daysPage.title')}</span>
           </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3">
@@ -919,22 +927,22 @@ export function AddExpensePage({
                 onClick={() => { setSpreadOpen(false); spreadDatesRef.current = []; setSpreadDates([]); setDayAmounts({}) }}
                 className={`flex-1 py-2 text-[12.5px] ${!spreadOpen ? 'bg-plan text-card font-medium' : 'text-muted'}`}
               >
-                单日
+                {t('addExpense.daysPage.single')}
               </button>
               <button
                 type="button"
                 onClick={() => setSpreadOpen(true)}
                 className={`flex-1 py-2 text-[12.5px] ${spreadOpen ? 'bg-plan text-card font-medium' : 'text-muted'}`}
               >
-                跨多天
+                {t('addExpense.daysPage.multi')}
               </button>
             </div>
 
             {!spreadOpen ? (
-              <div className="text-[11px] text-muted mt-1">整笔算在这一天的「当日花费」里</div>
+              <div className="text-[11px] text-muted mt-1">{t('addExpense.daysPage.singleNote')}</div>
             ) : (
               <>
-                <div className="text-[10.5px] tracking-widest uppercase text-muted mt-2.5 mb-1">摊到哪几天（可点选，不用连续）</div>
+                <div className="text-[10.5px] tracking-widest uppercase text-muted mt-2.5 mb-1">{t('addExpense.daysPage.pickDaysLabel')}</div>
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
                   {tripDates.map((d) => {
                     const num = d.slice(-2).replace(/^0/, '')
@@ -948,14 +956,14 @@ export function AddExpensePage({
                           picked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-soft'
                         }`}
                       >
-                        {num}日
+                        {t('addExpense.dayOfMonth', { day: num })}
                       </button>
                     )
                   })}
                 </div>
 
                 {!spreadDates.length ? (
-                  <div className="text-[11px] text-negative mt-1">至少要选一天</div>
+                  <div className="text-[11px] text-negative mt-1">{t('addExpense.daysPage.needAtLeastOne')}</div>
                 ) : (
                   <>
                     <div className="flex border border-line rounded-xl overflow-hidden mt-2">
@@ -964,20 +972,20 @@ export function AddExpensePage({
                         onClick={() => setDayMode('equal')}
                         className={`flex-1 py-1.5 text-[12px] ${dayMode === 'equal' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
                       >
-                        平均分到每天
+                        {t('addExpense.daysPage.equalPerDay')}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setDayMode('exact'); seedEqualDayAmounts(spreadDates) }}
                         className={`flex-1 py-1.5 text-[12px] ${dayMode === 'exact' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
                       >
-                        每天自定义
+                        {t('addExpense.daysPage.customPerDay')}
                       </button>
                     </div>
 
                     {dayMode === 'equal' ? (
                       <div className="text-[11px] text-muted mt-1.5">
-                        共 {spreadDates.length} 天，每天各 {evenDayShare.toFixed(2)}（除不尽的零头算在第一天）
+                        {t('addExpense.daysPage.equalSummary', { count: spreadDates.length, amount: evenDayShare.toFixed(2) })}
                       </div>
                     ) : (
                       <div className="mt-2 flex flex-col gap-1.5">
@@ -1004,10 +1012,10 @@ export function AddExpensePage({
           {usingExactDays && (
             <div className={`flex-shrink-0 px-4 py-2.5 border-t border-line text-[12px] ${Math.abs(dayDiff) < 0.01 ? 'text-positive' : 'text-negative'}`}>
               {Math.abs(dayDiff) < 0.01
-                ? '刚好分完 ✓'
+                ? t('addExpense.diff.done')
                 : dayDiff > 0
-                  ? `还剩 ${dayDiff.toFixed(2)} 没分完`
-                  : `超出了 ${Math.abs(dayDiff).toFixed(2)}`}
+                  ? t('addExpense.diff.remaining', { amount: dayDiff.toFixed(2) })
+                  : t('addExpense.diff.over', { amount: Math.abs(dayDiff).toFixed(2) })}
             </div>
           )}
         </div>
@@ -1015,7 +1023,7 @@ export function AddExpensePage({
 
       {confirmingDelete && (
         <ConfirmDialog
-          title="删除这笔记录？"
+          title={t('addExpense.deleteConfirmTitle')}
           onConfirm={remove}
           onCancel={() => setConfirmingDelete(false)}
         />

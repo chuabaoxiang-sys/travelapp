@@ -1,0 +1,156 @@
+{
+  "nav": {
+    "overview": "概览",
+    "itinerary": "行程",
+    "ledger": "账目",
+    "more": "更多",
+    "addExpense": "记一笔",
+    "addItineraryItem": "添加行程项",
+    "unseenBadge": "有 {{count}} 条新记录"
+  },
+  "categories": {
+    "insurance": "保险",
+    "flight": "机票",
+    "visa": "签证",
+    "stayPrepaid": "酒店预付",
+    "food": "餐饮",
+    "transport": "交通",
+    "shopping": "购物",
+    "ticket": "门票",
+    "stayOnsite": "住宿现付",
+    "misc": "杂项"
+  },
+  "ledger": {
+    "title": "账目",
+    "rateBookButton": "簿",
+    "rateBookTitle": "汇率簿",
+    "tabs": {
+      "all": "全部",
+      "mine": "我的",
+      "settle": "结算"
+    },
+    "manageBudget": "管理预算",
+    "mineHero": {
+      "label": "我这趟要承担",
+      "sublabel": "自己付的 + 分摊别人垫付的"
+    },
+    "dayTotalLabel": "当日",
+    "paidBySummary": "{{name}}垫付 · {{count}}人分摊",
+    "personalBadge": "个人开销",
+    "recordedBy": "由 {{name}} 记录",
+    "yourShareLabel": "你的份额",
+    "yourShareNotApplicable": "—（你垫付，不分摊给自己）",
+    "emptyMine": "还没有跟你相关的账目",
+    "emptyAll": "还没有记账，点右下角\"+\"记一笔",
+    "breakdown": {
+      "title": "这趟花在哪",
+      "trip": "全程",
+      "today": "今天",
+      "emptyToday": "今天还没有记账",
+      "collapse": "收起",
+      "viewAll": "查看全部 {{count}} 个分类"
+    }
+  },
+  "spendHero": {
+    "dailyRemaining": { "label": "今天还能花", "sub": "今日额度 {{allowance}} · 已花 {{spent}}" },
+    "dailyOver": { "label": "今天超了", "sub": "今天已花 {{spent}} · 额度 {{allowance}}" },
+    "budgetOver": { "label": "已超总预算", "sub": "这趟已花 {{total}} · 预算 {{budget}}" },
+    "noBudget": { "label": "今天已花", "sub": "这趟共 {{total}}" },
+    "outsideTrip": {
+      "label": "这趟已花",
+      "subWithBudget": "预算 {{budget}} · 还剩 {{remaining}}",
+      "subNoBudget": "还没设预算"
+    },
+    "setBudgetCta": "设个预算，就能看到每天还能花多少 ›"
+  },
+  "tripHeader": {
+    "switch": "切换",
+    "dateUnset": "日期未定",
+    "sharing": "分享中",
+    "sharingTitle": "分享中，点击管理",
+    "shareSettingsTitle": "分享设置",
+    "syncPending": "{{count}}条待同步",
+    "syncJustUpdated": "刚更新",
+    "syncSynced": "已同步"
+  },
+  "addExpense": {
+    "title": "记一笔",
+    "editTitle": "编辑这笔",
+    "saved": "已记下",
+    "cancel": "取消",
+    "save": "保存",
+    "delete": "删除",
+    "deleteDisabledTitle": "这笔账已经结算过，不能删除",
+    "deleteConfirmTitle": "删除这笔记录？",
+    "settledBanner": "这笔账已经结算过，金额、汇率、怎么分、付款人都不能再改，也不能删除",
+    "amountPlaceholder": "金额",
+    "otherCurrency": "其他",
+    "manualCurrencyPlaceholder": "币种代码，比如 KRW",
+    "chooseRate": "选择汇率（{{from}} → {{to}}）",
+    "rateApprox": "≈ {{currency}} {{amount}}",
+    "rateMissing": "请选择或新增一个汇率",
+    "categoryLabel": "分类",
+    "otherSettings": "其他设置",
+    "collapse": "收起 ‹",
+    "expand": "改 ›",
+    "dateLabel": "日期",
+    "today": "今天",
+    "noteLabel": "备注",
+    "notePlaceholder": "备注（可选）",
+    "payerLabel": "付款人",
+    "payerFallback": "付款人",
+    "payerChip": "{{name}}垫付",
+    "linkTripLabel": "关联行程",
+    "linkTripPrompt": "关联到行程里的某天/某个行程项（可选）",
+    "linkTripHeader": "关联到行程",
+    "unlink": "不关联",
+    "dayOfMonth": "{{day}}日",
+    "noItemsThatDay": "这天还没有行程项，只会挂到「这一天」",
+    "onlyThisDay": "只挂到这一天",
+    "detailsLabel": "详情",
+    "splitRow": "怎么分",
+    "daysRow": "花在几天",
+    "linkedToItinerary": "已关联行程",
+    "splitSummary": {
+      "personal": "{{name}}的个人开销",
+      "noOne": "未选择分摊对象",
+      "sharedEqual": "{{name}}垫付 · {{count}}人平均分摊",
+      "sharedExact": "{{name}}垫付 · {{count}}人自定义分摊"
+    },
+    "daysSummary": {
+      "single": "单日",
+      "multiEqual": "跨{{count}}天",
+      "multiExact": "跨{{count}}天 · 自定义"
+    },
+    "diff": {
+      "done": "刚好分完 ✓",
+      "remaining": "还剩 {{amount}} 没分完",
+      "over": "超出了 {{amount}}"
+    },
+    "splitPage": {
+      "back": "返回",
+      "title": "怎么分",
+      "share": "大家分摊",
+      "personal": "个人开销",
+      "splitAmongLabel": "分摊给",
+      "splitAmongEqualEach": "（各 {{amount}}）",
+      "selectAll": "全选",
+      "onlyOneWarning": "只勾了一个人 = 算这个人自己的，不分摊",
+      "equalSplit": "平均分摊",
+      "exactSplit": "自定义金额",
+      "personalNote": "这笔算{{name}}自己的开销，不会出现在\"结算\"里。"
+    },
+    "daysPage": {
+      "back": "返回",
+      "title": "花在几天",
+      "single": "单日",
+      "multi": "跨多天",
+      "singleNote": "整笔算在这一天的「当日花费」里",
+      "pickDaysLabel": "摊到哪几天（可点选，不用连续）",
+      "needAtLeastOne": "至少要选一天",
+      "equalPerDay": "平均分到每天",
+      "customPerDay": "每天自定义",
+      "equalSummary": "共 {{count}} 天，每天各 {{amount}}（除不尽的零头算在第一天）"
+    }
+  }
+}

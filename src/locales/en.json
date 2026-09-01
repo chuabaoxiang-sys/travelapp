@@ -1,0 +1,156 @@
+{
+  "nav": {
+    "overview": "Overview",
+    "itinerary": "Itinerary",
+    "ledger": "Ledger",
+    "more": "More",
+    "addExpense": "Add expense",
+    "addItineraryItem": "Add item",
+    "unseenBadge": "{{count}} new updates"
+  },
+  "categories": {
+    "insurance": "Insurance",
+    "flight": "Flights",
+    "visa": "Visa",
+    "stayPrepaid": "Prepaid stay",
+    "food": "Food",
+    "transport": "Transport",
+    "shopping": "Shopping",
+    "ticket": "Tickets",
+    "stayOnsite": "Onsite stay",
+    "misc": "Misc"
+  },
+  "ledger": {
+    "title": "Ledger",
+    "rateBookButton": "Rates",
+    "rateBookTitle": "Rate book",
+    "tabs": {
+      "all": "All",
+      "mine": "Mine",
+      "settle": "Settle"
+    },
+    "manageBudget": "Manage budget",
+    "mineHero": {
+      "label": "My share this trip",
+      "sublabel": "What you paid, plus your share of what others covered"
+    },
+    "dayTotalLabel": "Day total",
+    "paidBySummary": "{{name}} paid · split {{count}} ways",
+    "personalBadge": "Personal",
+    "recordedBy": "Logged by {{name}}",
+    "yourShareLabel": "Your share",
+    "yourShareNotApplicable": "— you paid, not split to yourself",
+    "emptyMine": "Nothing here involves you yet",
+    "emptyAll": "No expenses yet — tap \"+\" to add one",
+    "breakdown": {
+      "title": "Where it went",
+      "trip": "Trip",
+      "today": "Today",
+      "emptyToday": "Nothing logged today yet",
+      "collapse": "Collapse",
+      "viewAll": "View all {{count}} categories"
+    }
+  },
+  "spendHero": {
+    "dailyRemaining": { "label": "Left for today", "sub": "Today's allowance {{allowance}} · spent {{spent}}" },
+    "dailyOver": { "label": "Over for today", "sub": "Spent {{spent}} today · allowance {{allowance}}" },
+    "budgetOver": { "label": "Over total budget", "sub": "Spent {{total}} so far · budget {{budget}}" },
+    "noBudget": { "label": "Spent today", "sub": "{{total}} total so far" },
+    "outsideTrip": {
+      "label": "Spent so far",
+      "subWithBudget": "Budget {{budget}} · {{remaining}} left",
+      "subNoBudget": "No budget set yet"
+    },
+    "setBudgetCta": "Set a budget to see your daily allowance ›"
+  },
+  "tripHeader": {
+    "switch": "Switch",
+    "dateUnset": "No dates yet",
+    "sharing": "Shared",
+    "sharingTitle": "Shared — tap to manage",
+    "shareSettingsTitle": "Share settings",
+    "syncPending": "{{count}} pending",
+    "syncJustUpdated": "Just updated",
+    "syncSynced": "Synced"
+  },
+  "addExpense": {
+    "title": "Add expense",
+    "editTitle": "Edit expense",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "deleteDisabledTitle": "This expense has already been settled — it can't be deleted",
+    "deleteConfirmTitle": "Delete this expense?",
+    "settledBanner": "This expense has already been settled — the amount, rate, split, and payer can no longer be changed, and it can't be deleted",
+    "amountPlaceholder": "Amount",
+    "otherCurrency": "Other",
+    "manualCurrencyPlaceholder": "Currency code, e.g. KRW",
+    "chooseRate": "Choose a rate ({{from}} → {{to}})",
+    "rateApprox": "≈ {{currency}} {{amount}}",
+    "rateMissing": "Pick or add a rate",
+    "categoryLabel": "Category",
+    "otherSettings": "Other settings",
+    "collapse": "Hide ‹",
+    "expand": "Edit ›",
+    "dateLabel": "Date",
+    "today": "Today",
+    "noteLabel": "Note",
+    "notePlaceholder": "Note (optional)",
+    "payerLabel": "Paid by",
+    "payerFallback": "Payer",
+    "payerChip": "{{name}} paid",
+    "linkTripLabel": "Link to itinerary",
+    "linkTripPrompt": "Link to a day or item in the itinerary (optional)",
+    "linkTripHeader": "Link to itinerary",
+    "unlink": "Don't link",
+    "dayOfMonth": "Day {{day}}",
+    "noItemsThatDay": "No itinerary items on this day yet — this will just link to the day itself",
+    "onlyThisDay": "Just this day",
+    "detailsLabel": "Details",
+    "splitRow": "Split",
+    "daysRow": "Spread across days",
+    "linkedToItinerary": "Linked to itinerary",
+    "splitSummary": {
+      "personal": "{{name}}'s personal expense",
+      "noOne": "No one selected to split with",
+      "sharedEqual": "{{name}} paid · split evenly among {{count}}",
+      "sharedExact": "{{name}} paid · custom split among {{count}}"
+    },
+    "daysSummary": {
+      "single": "Single day",
+      "multiEqual": "Spread over {{count}} days",
+      "multiExact": "Spread over {{count}} days · custom"
+    },
+    "diff": {
+      "done": "Fully split ✓",
+      "remaining": "{{amount}} left to split",
+      "over": "{{amount}} over"
+    },
+    "splitPage": {
+      "back": "Back",
+      "title": "Split",
+      "share": "Split with others",
+      "personal": "Personal",
+      "splitAmongLabel": "Split with",
+      "splitAmongEqualEach": " ({{amount}} each)",
+      "selectAll": "Select all",
+      "onlyOneWarning": "Only one person checked — this counts as their own expense, not a split",
+      "equalSplit": "Split evenly",
+      "exactSplit": "Custom amounts",
+      "personalNote": "This counts as {{name}}'s own expense — it won't show up in Settle."
+    },
+    "daysPage": {
+      "back": "Back",
+      "title": "Spread across days",
+      "single": "Single day",
+      "multi": "Multiple days",
+      "singleNote": "The whole amount counts toward that day's total",
+      "pickDaysLabel": "Which days? (tap to pick, no need to be consecutive)",
+      "needAtLeastOne": "Pick at least one day",
+      "equalPerDay": "Split evenly per day",
+      "customPerDay": "Custom per day",
+      "equalSummary": "{{count}} days total, {{amount}} each (any remainder goes to the first day)"
+    }
+  }
+}

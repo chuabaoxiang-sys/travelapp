@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { db } from '../db/dexie'
 import { onPulledChanges } from '../db/sync'
 
@@ -11,6 +12,7 @@ import { onPulledChanges } from '../db/sync'
 const JUST_UPDATED_MS = 3500
 
 export function SyncStatusBadge({ onOpenDetail }: { onOpenDetail: () => void }) {
+  const { t } = useTranslation()
   const pendingCount = useLiveQuery(() => db.outbox.where('status').equals('pending').count()) ?? 0
   const [justUpdated, setJustUpdated] = useState(false)
 
@@ -32,7 +34,7 @@ export function SyncStatusBadge({ onOpenDetail }: { onOpenDetail: () => void }) 
         onClick={onOpenDetail}
         className="inline-flex items-center gap-1.5 rounded-full bg-spend/10 text-spend px-2.5 py-0.5 text-[10px]"
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-current" /> {pendingCount}条待同步
+        <span className="w-1.5 h-1.5 rounded-full bg-current" /> {t('tripHeader.syncPending', { count: pendingCount })}
       </button>
     )
   }
@@ -44,7 +46,7 @@ export function SyncStatusBadge({ onOpenDetail }: { onOpenDetail: () => void }) 
         onClick={onOpenDetail}
         className="inline-flex items-center gap-1.5 rounded-full bg-plan/10 text-plan px-2.5 py-0.5 text-[10px]"
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-current" /> 刚更新
+        <span className="w-1.5 h-1.5 rounded-full bg-current" /> {t('tripHeader.syncJustUpdated')}
       </button>
     )
   }
@@ -55,7 +57,7 @@ export function SyncStatusBadge({ onOpenDetail }: { onOpenDetail: () => void }) 
       onClick={onOpenDetail}
       className="inline-flex items-center gap-1.5 rounded-full bg-positive/10 text-positive px-2.5 py-0.5 text-[10px]"
     >
-      <span className="w-1.5 h-1.5 rounded-full bg-current" /> 已同步
+      <span className="w-1.5 h-1.5 rounded-full bg-current" /> {t('tripHeader.syncSynced')}
     </button>
   )
 }

@@ -1,9 +1,13 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
+import { categoryLabel } from '../../lib/categoryLabel'
+import { formatDateChipDow, formatDateChipDate } from '../../lib/dateChip'
+import type { ResolvedLocale } from '../../lib/locale'
 import { AddExpensePage } from './AddExpensePage'
 import { RateBookScreen } from '../rates/RateBookScreen'
 import { getOverallBudget } from '../../domain/budgets'
@@ -22,8 +26,6 @@ import { markHintSeen } from '../../domain/discoveryHints'
 import { BudgetSheet } from '../budget/BudgetSheet'
 import { SplitTab } from '../split/SplitTab'
 
-const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-
 export function LedgerTab({
   trip,
   currentMemberId,
@@ -35,6 +37,8 @@ export function LedgerTab({
   // 多出来的东西"一眼能认出来，而不是混在列表里跟三天前那条长得一样
   highlightSince?: number
 }) {
+  const { t, i18n } = useTranslation()
+  const locale: ResolvedLocale = i18n.language === 'en' ? 'en' : 'zh'
   // 排序刻意不用Dexie的sortBy——要按"行程日期"分组、组内再按记账时间排，
   // 这是个两层排序键，不如查回来直接用JS一次排完
   const expenses = useLiveQuery(
@@ -146,13 +150,13 @@ export function LedgerTab({
     <div className="h-full flex flex-col relative">
       <div className="px-5 pt-3 pb-3.5 flex-shrink-0 flex flex-col gap-3.5">
         <div className="flex items-center justify-between">
-          <span className="font-serif-sc text-sm font-semibold">账目</span>
+          <span className="font-serif-sc text-sm font-semibold">{t('ledger.title')}</span>
           <button
             onClick={() => { setRateBookOpen(true); markHintSeen(currentMemberId, 'rateBook') }}
             className="relative w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-[14px] text-plan"
-            title="汇率簿"
+            title={t('ledger.rateBookTitle')}
           >
-            簿
+            {t('ledger.rateBookButton')}
             <DiscoveryDot memberId={currentMemberId} hintKey="rateBook" />
           </button>
         </div>
@@ -163,21 +167,21 @@ export function LedgerTab({
             onClick={() => setView('team')}
             className={`flex-1 py-1.5 text-[12px] ${view === 'team' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
           >
-            全部
+            {t('ledger.tabs.all')}
           </button>
           <button
             type="button"
             onClick={() => setView('mine')}
             className={`flex-1 py-1.5 text-[12px] ${view === 'mine' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
           >
-            我的
+            {t('ledger.tabs.mine')}
           </button>
           <button
             type="button"
             onClick={() => setView('settle')}
             className={`flex-1 py-1.5 text-[12px] ${view === 'settle' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
           >
-            结算
+            {t('ledger.tabs.settle')}
           </button>
         </div>
       </div>
@@ -217,15 +221,15 @@ export function LedgerTab({
             onClick={() => setBudgetOpen(true)}
             className="w-full flex items-center justify-between rounded-2xl border border-line bg-card px-3.5 py-2.5 text-left"
           >
-            <span className="text-[13px] text-plan">管理预算</span>
+            <span className="text-[13px] text-plan">{t('ledger.manageBudget')}</span>
             <ChevronRight className="w-4 h-4 text-muted" strokeWidth={1.8} />
           </button>
         </div>
       ) : (
         <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
-          <div className="text-[11px] tracking-wider text-on-dark/55">我这趟要承担</div>
+          <div className="text-[11px] tracking-wider text-on-dark/55">{t('ledger.mineHero.label')}</div>
           <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
-          <div className="mt-2 text-[11px] text-on-dark/50">自己付的 + 分摊别人垫付的</div>
+          <div className="mt-2 text-[11px] text-on-dark/50">{t('ledger.mineHero.sublabel')}</div>
         </div>
       )}
 
@@ -239,8 +243,8 @@ export function LedgerTab({
         // 显式给个min-content撑住高度就绕开了这条规则
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-5 px-5 min-h-min">
           {expensesByDay.map(({ date }) => {
-            const dow = DOW[new Date(date + 'T00:00:00').getDay()]
-            const md = `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
+            const dow = formatDateChipDow(date, locale)
+            const md = formatDateChipDate(date, locale)
             const outsideTrip = !!trip.startDate && !!trip.endDate && (date < trip.startDate || date > trip.endDate)
             return (
               <button
@@ -272,7 +276,7 @@ export function LedgerTab({
             >
               <div className="flex items-baseline justify-between">
                 <span className="font-serif-sc text-[13px]">{date}</span>
-                <span className="text-[11px] text-muted tabular">当日 {formatMoney(daySubtotal, currencyLabel)}</span>
+                <span className="text-[11px] text-muted tabular">{t('ledger.dayTotalLabel')} {formatMoney(daySubtotal, currencyLabel)}</span>
               </div>
               {items.map((e) => {
                 const cat = categoryOf(e.categoryId)
@@ -295,24 +299,24 @@ export function LedgerTab({
                       {/* 没写备注时，先看有没有关联到具体某个行程项——那个名字比分类名
                           （"住宿现付"）具体得多，好几笔同分类账目才不会长得一模一样，
                           真的什么都没有才退到分类名兜底 */}
-                      <div className="text-[13.5px] font-medium truncate">{e.description || linkedItem?.title || cat?.name}</div>
-                      <div className="text-[11px] text-muted mt-0.5 truncate">{cat?.name}</div>
+                      <div className="text-[13.5px] font-medium truncate">{e.description || linkedItem?.title || categoryLabel(cat, t)}</div>
+                      <div className="text-[11px] text-muted mt-0.5 truncate">{categoryLabel(cat, t)}</div>
                       <div className="flex items-center gap-1.5 mt-1 min-w-0">
                         <Avatar member={payer} size={16} />
                         <span className="text-[11px] text-muted truncate">
-                          {isPersonal ? payer?.displayName : `${payer?.displayName}垫付 · ${splitCountOf(e.id)}人分摊`}
+                          {isPersonal ? payer?.displayName : t('ledger.paidBySummary', { name: payer?.displayName, count: splitCountOf(e.id) })}
                         </span>
-                        {isPersonal && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-line text-muted flex-shrink-0">个人开销</span>}
+                        {isPersonal && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-line text-muted flex-shrink-0">{t('ledger.personalBadge')}</span>}
                       </div>
                       {/* 谁记的这笔账。只在"记的人 ≠ 付钱的人"时才显示——两者相同是最常见的
                           情况，那时候多这一行纯属噪音。这个字段一直都在存，只是以前从来没
                           显示过，所以"这笔是家里别人帮我记的"完全看不出来 */}
                       {recorder && e.recordedBy !== e.paidBy && (
-                        <div className="text-[10.5px] text-muted/80 mt-0.5 truncate">由 {recorder.displayName} 记录</div>
+                        <div className="text-[10.5px] text-muted/80 mt-0.5 truncate">{t('ledger.recordedBy', { name: recorder.displayName })}</div>
                       )}
                       {view === 'mine' && !isPersonal && (
                         <div className="text-[11px] text-plan mt-0.5">
-                          你的份额 {myShare != null ? formatMoney(myShare, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency) : '—（你垫付，不分摊给自己）'}
+                          {t('ledger.yourShareLabel')} {myShare != null ? formatMoney(myShare, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency) : t('ledger.yourShareNotApplicable')}
                         </div>
                       )}
                     </div>
@@ -330,7 +334,7 @@ export function LedgerTab({
         })}
         {!visibleExpenses.length && (
           <div className="text-[13px] text-muted py-6 text-center">
-            {view === 'mine' ? '还没有跟你相关的账目' : '还没有记账，点右下角"+"记一笔'}
+            {view === 'mine' ? t('ledger.emptyMine') : t('ledger.emptyAll')}
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { BottomNav, type TabKey } from '../../components/BottomNav'
@@ -37,6 +38,7 @@ export function TripShell({
   // 用 NOT_FOUND 这个哨兵值把两者区分开——不然本地存的当前行程ID一旦指向一个已经
   // 不存在的行程（换设备、行程被删、本地数据被重置……），APP会永远卡在空白页，
   // 没有任何提示，也不会自动跳回选行程界面
+  const { t } = useTranslation()
   const tripResult = useLiveQuery(async () => (await db.trips.get(tripId)) ?? NOT_FOUND, [tripId])
   // "概览"取代"行程"成为默认首页——四个功能tab时代默认停在"行程"，但概览才是
   // 回答"我现在该看什么"的地方，行程/账目都是从这里再点进去的具体功能
@@ -131,11 +133,11 @@ export function TripShell({
             <div className="text-left min-w-0 flex-1">
               <div className="font-serif-sc text-[13.5px] font-semibold truncate">{trip.name}</div>
               <div className="text-[10.5px] text-muted mt-0.5 truncate">
-                {trip.startDate ?? '日期未定'} {trip.endDate ? `– ${trip.endDate}` : ''} · {trip.homeCurrency}
+                {trip.startDate ?? t('tripHeader.dateUnset')} {trip.endDate ? `– ${trip.endDate}` : ''} · {trip.homeCurrency}
               </div>
             </div>
             <span className="text-muted text-xs flex-shrink-0 whitespace-nowrap pl-2 flex items-center gap-0.5">
-              切换
+              {t('tripHeader.switch')}
               <ChevronDown className="w-3 h-3" strokeWidth={1.8} />
             </span>
           </button>
