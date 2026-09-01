@@ -18,6 +18,7 @@ export async function createMember(displayName: string): Promise<string> {
     displayName: name,
     colorTag: SWATCHES[activeCount % SWATCHES.length],
     isActive: true,
+    preferredLocale: null,
     createdAt: Date.now(),
   })
   return id

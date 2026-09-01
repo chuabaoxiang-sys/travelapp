@@ -77,6 +77,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       display_name: m.displayName,
       color_tag: m.colorTag,
       is_active: m.isActive,
+      preferred_locale: m.preferredLocale ?? null,
       created_at: iso(m.createdAt),
     }),
     fromRemote: (r) => ({
@@ -85,6 +86,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       displayName: r.display_name,
       colorTag: r.color_tag,
       isActive: r.is_active,
+      preferredLocale: r.preferred_locale ?? null,
       createdAt: ms(r.created_at),
     }),
   },

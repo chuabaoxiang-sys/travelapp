@@ -30,11 +30,11 @@ export async function ensureLocalTestSeed() {
   }
 
   const members: Member[] = [
-    { id: 'seed-member-dad', householdId, displayName: '爸爸', colorTag: 'blue', isActive: true, createdAt: now },
-    { id: 'seed-member-mom', householdId, displayName: '妈妈', colorTag: 'pink', isActive: true, createdAt: now },
-    { id: 'seed-member-kid', householdId, displayName: '大宝', colorTag: 'yellow', isActive: true, createdAt: now },
+    { id: 'seed-member-dad', householdId, displayName: '爸爸', colorTag: 'blue', isActive: true, preferredLocale: null, createdAt: now },
+    { id: 'seed-member-mom', householdId, displayName: '妈妈', colorTag: 'pink', isActive: true, preferredLocale: null, createdAt: now },
+    { id: 'seed-member-kid', householdId, displayName: '大宝', colorTag: 'yellow', isActive: true, preferredLocale: null, createdAt: now },
     // 已停用的成员——测试"停用成员不出现在选人名单里，但历史记账仍显示他"这条规则
-    { id: 'seed-member-retired', householdId, displayName: '表哥（已退出）', colorTag: 'green', isActive: false, createdAt: now },
+    { id: 'seed-member-retired', householdId, displayName: '表哥（已退出）', colorTag: 'green', isActive: false, preferredLocale: null, createdAt: now },
   ]
 
   // 行程一：当前进行中的完整行程——多天、多类别花费、汇率簿、预算、已开启分享

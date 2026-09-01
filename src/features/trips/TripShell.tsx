@@ -172,6 +172,7 @@ export function TripShell({
         {moreOpen && (
           <TripMoreSheet
             trip={trip}
+            currentMemberId={currentMemberId}
             onClose={() => setMoreOpen(false)}
             onOpenFeedback={() => { setMoreOpen(false); setFeedbackOpen(true) }}
             onOpenShareSettings={() => { setMoreOpen(false); setShareSettingsOpen(true) }}

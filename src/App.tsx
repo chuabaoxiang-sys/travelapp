@@ -15,6 +15,8 @@ import { TripPicker } from './features/trips/TripPicker'
 import { TripShell } from './features/trips/TripShell'
 import { InstallPrompt } from './components/InstallPrompt'
 import { readPerTeam, writePerTeam, removePerTeam } from './lib/perTeamStorage'
+import { LocaleProvider } from './lib/LocaleProvider'
+import './lib/i18n'
 
 const CURRENT_TRIP_KEY = 'trip-journal:current-trip-id'
 
@@ -145,10 +147,10 @@ function App() {
   }
 
   return (
-    <>
+    <LocaleProvider memberId={effectiveMemberId}>
       {import.meta.env.DEV && isLocalTestModeEnabled() && <LocalTestModeBanner />}
       {content}
-    </>
+    </LocaleProvider>
   )
 }
 

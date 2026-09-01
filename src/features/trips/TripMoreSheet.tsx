@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, Link2, RefreshCw, BookOpen, ListChecks, MoonStar } from 'lucide-react'
+import { X, Link2, RefreshCw, BookOpen, ListChecks, MoonStar, Languages } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { shareReadyFile, downloadFile } from '../../lib/share'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import { effectiveShareScope } from '../../domain/share'
 import { formatAppVersion } from '../../lib/appVersion'
 import { useThemePreference, type ThemePreference } from '../../lib/theme'
+import { useLocalePreference, type LocalePreference } from '../../lib/locale'
 import { db } from '../../db/dexie'
 import { BottomSheet } from '../../components/BottomSheet'
 import { STUCK_THRESHOLD } from '../../components/SyncDetailSheet'
@@ -16,6 +17,12 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'light', label: '浅色' },
   { value: 'dark', label: '深色' },
   { value: 'system', label: '跟随系统' },
+]
+
+const LOCALE_OPTIONS: { value: LocalePreference; label: string }[] = [
+  { value: null, label: '跟随系统' },
+  { value: 'zh', label: '中文' },
+  { value: 'en', label: 'English' },
 ]
 
 type ExportKind = 'excel' | 'json' | 'csv'
@@ -57,12 +64,14 @@ const EXPORT_OPTIONS: { kind: ExportKind; label: string; desc: string; icon: Rea
 
 export function TripMoreSheet({
   trip,
+  currentMemberId,
   onClose,
   onOpenFeedback,
   onOpenShareSettings,
   onOpenSyncDetail,
 }: {
   trip: Trip
+  currentMemberId: string
   onClose: () => void
   onOpenFeedback: () => void
   onOpenShareSettings: () => void
@@ -83,6 +92,7 @@ export function TripMoreSheet({
   const [readyFile, setReadyFile] = useState<{ kind: ExportKind; file: File } | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [themePref, setThemePref] = useThemePreference()
+  const [localePref, , setLocalePref] = useLocalePreference(currentMemberId)
 
   useEscapeKey(true, onClose)
 
@@ -174,6 +184,26 @@ export function TripMoreSheet({
                 onClick={() => setThemePref(opt.value)}
                 className={`rounded-lg px-2.5 py-1.5 text-[11px] whitespace-nowrap ${
                   themePref === opt.value ? 'bg-ink text-paper font-medium' : 'text-soft'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 py-1.5">
+          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+            <Languages className="w-[15px] h-[15px]" strokeWidth={1.8} />
+          </span>
+          <div className="text-[13px] font-medium flex-1 min-w-0">语言</div>
+          <div className="flex gap-1 bg-segment rounded-[10px] p-[3px] flex-shrink-0">
+            {LOCALE_OPTIONS.map((opt) => (
+              <button
+                key={opt.label}
+                onClick={() => setLocalePref(opt.value)}
+                className={`rounded-lg px-2.5 py-1.5 text-[11px] whitespace-nowrap ${
+                  localePref === opt.value ? 'bg-ink text-paper font-medium' : 'text-soft'
                 }`}
               >
                 {opt.label}

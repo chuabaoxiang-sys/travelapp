@@ -85,6 +85,9 @@ export interface Member {
   displayName: string
   colorTag: string | null
   isActive: boolean
+  // null＝跟随设备/浏览器语言实时判断，不是存了具体检测结果——语义上等价
+  // theme.ts里ThemePreference的'system'
+  preferredLocale: 'zh' | 'en' | null
   createdAt: number
 }
 
