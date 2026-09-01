@@ -102,7 +102,7 @@ Both were discovered from real devices and both look like app bugs when they're 
 
 - Don't suggest any "list all teams / all members" tooling. Team invisibility is deliberate (see `0004_household_isolation.sql`'s header).
 - Don't put credentials of any kind in writing.
-- Don't invite one email into a second team while it's still in another. As of now that breaks: `current_household_id()` does `limit 1` with no `order by`, `src/domain/household.ts` makes the same unordered pick independently, the two can disagree, and writes then get rejected by RLS. There's also no team-switcher UI. Remove them from the old team first (see the `remove-team-member` skill), or have them use a second email.
+- Don't assume one email can only be in one team. That was true until 2026-08-21 and is no longer: `0017` made the team choice deterministic, `0018` added an active-team pointer, and the app has a switcher (`src/features/teams/TeamSwitcher.tsx`) that appears on the trip-picker screen once you belong to two or more. Adding an already-invited email to a second team is fine — they'll simply get a switcher row. What still isn't built is self-serve *creation* of a team, which is why Step 2 is manual SQL.
 
 ## Related
 
