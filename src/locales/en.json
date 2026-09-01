@@ -1,4 +1,92 @@
 {
+  "common": {
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "datePicker": {
+    "placeholder": "Select date",
+    "clear": "Clear",
+    "today": "Today",
+    "dow": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  },
+  "timePicker": {
+    "placeholder": "Select time"
+  },
+  "memberGate": {
+    "brand": "TripJournal",
+    "title": "Who are you?",
+    "subtitle": "Pick your name — expenses you log will be attributed to this identity (no password needed for now)",
+    "addPlaceholder": "Add a new family member",
+    "addButton": "Add"
+  },
+  "identitySwitcher": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "restore": "Restore",
+    "namePlaceholder": "Name",
+    "addMember": "Add family member",
+    "inviteMember": "Invite someone to join",
+    "collapseInactive": "Hide deactivated",
+    "inactiveCount": "Deactivated members ({{count}})",
+    "cannotRemoveTitle": "Can't do that",
+    "cannotRemoveCurrentMessage": "You can't remove the identity you're currently using — switch to someone else first",
+    "gotIt": "Got it",
+    "deactivateTitle": "Deactivate {{name}}?",
+    "deleteTitle": "Delete {{name}}?",
+    "deactivateMessage": "This person already has expenses, splits, or settlements on record, so they can't be permanently deleted — that would break the history. Deactivating instead removes them from the identity/expense pickers, but leaves every past record untouched; you can restore them anytime from \"Deactivated members\".",
+    "deleteMessage": "This person has no expenses or settlements yet — deleting them can't be undone.",
+    "deactivateConfirm": "Deactivate",
+    "deleteConfirm": "Delete"
+  },
+  "inviteCode": {
+    "title": "Invite a member",
+    "close": "Close",
+    "description": "Send this invite code to the family or friend you want to add — they enter their email and this code on the login screen to join your team themselves, no manual setup needed on our end.",
+    "loading": "Loading…",
+    "loadError": "Couldn't load the invite code — try again shortly",
+    "codeLabel": "Team invite code",
+    "copy": "Copy invite code",
+    "copied": "Copied",
+    "regenerateTitle": "Regenerate invite code (the old one stops working)",
+    "regenerateConfirmTitle": "Regenerate the invite code?",
+    "regenerateConfirmMessage": "The old code stops working immediately, even copies you already sent out — you'll need to send everyone the new one.",
+    "regenerateConfirm": "Regenerate",
+    "shareMessage": "You're invited to join \"TripJournal\" — the tool our family uses to track trips and expenses.\nOpen {{origin}}\nTap \"有邀请码？点这里输入\" (Have an invite code?), then enter your email + this code to join:\n\n{{code}}\n\n(Step-by-step guide: {{origin}}/join-guide.html)"
+  },
+  "wishlist": {
+    "title": "Places to go",
+    "add": "Add",
+    "done": "Done",
+    "empty": "No saved places yet. Found a restaurant or spot you like? Tap \"Add\" in the top right to save it — pick it later when planning your itinerary.",
+    "nearbyLabel": "Nearby · {{count}}",
+    "addToToday": "Add to today",
+    "allPlaces": "All saved places",
+    "visited": "Visited",
+    "notVisited": "Not yet",
+    "notesPlaceholder": "Notes (optional)",
+    "usedInTrips": "Already in your itinerary · {{trips}}",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "deleteConfirmTitle": "Delete {{name}}?",
+    "deleteConfirmMessage": "Anything already added to your itinerary stays put — this just removes it from the list, and can't be undone.",
+    "addTitle": "Add a place"
+  },
+  "locationPicker": {
+    "placeholder": "Location",
+    "located": "Located",
+    "hint": "Search to pick a spot, or paste a Google Maps link if search can't find it",
+    "countryFilterHint": " · Searching only: {{countries}}",
+    "resolving": "Resolving link…",
+    "resolveError": "Couldn't resolve that — check the link, or try again shortly",
+    "detectedPlaceFallback": "Detected location",
+    "fromMapsLink": "From your Google Maps link — tap to use this exact spot",
+    "searching": "Searching…"
+  },
   "nav": {
     "overview": "Overview",
     "itinerary": "Itinerary",

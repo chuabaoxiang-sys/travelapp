@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Clock } from 'lucide-react'
 import { useEscapeKey } from '../hooks/useEscapeKey'
 
@@ -12,12 +13,13 @@ for (let h = 0; h < 24; h++) {
 export function TimePicker({
   value,
   onChange,
-  placeholder = '选择时间',
+  placeholder,
 }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -49,7 +51,7 @@ export function TimePicker({
         onClick={() => setOpen((o) => !o)}
         className="w-[110px] rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan flex items-center justify-between tabular"
       >
-        <span className={value ? 'text-ink' : 'text-muted'}>{value || placeholder}</span>
+        <span className={value ? 'text-ink' : 'text-muted'}>{value || (placeholder ?? t('timePicker.placeholder'))}</span>
         <Clock className="w-3 h-3 text-muted flex-shrink-0" strokeWidth={1.8} />
       </button>
 

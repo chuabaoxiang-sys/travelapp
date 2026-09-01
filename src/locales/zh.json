@@ -1,4 +1,92 @@
 {
+  "common": {
+    "cancel": "取消",
+    "delete": "删除"
+  },
+  "datePicker": {
+    "placeholder": "选择日期",
+    "clear": "清除",
+    "today": "今天",
+    "dow": ["一", "二", "三", "四", "五", "六", "日"],
+    "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]
+  },
+  "timePicker": {
+    "placeholder": "选择时间"
+  },
+  "memberGate": {
+    "brand": "旅记 · TripJournal",
+    "title": "你是谁？",
+    "subtitle": "选择你的名字，之后记的账都会算在这个身份下（暂不需要密码）",
+    "addPlaceholder": "添加新家庭成员",
+    "addButton": "添加"
+  },
+  "identitySwitcher": {
+    "save": "保存",
+    "cancel": "取消",
+    "edit": "编辑",
+    "delete": "删除",
+    "restore": "恢复",
+    "namePlaceholder": "姓名",
+    "addMember": "添加家庭成员",
+    "inviteMember": "邀请新成员加入团队",
+    "collapseInactive": "收起已停用",
+    "inactiveCount": "已停用的成员（{{count}}）",
+    "cannotRemoveTitle": "没法这样操作",
+    "cannotRemoveCurrentMessage": "没法删除你正在用的这个身份，先切换成别人再试",
+    "gotIt": "知道了",
+    "deactivateTitle": "停用「{{name}}」？",
+    "deleteTitle": "删除「{{name}}」？",
+    "deactivateMessage": "这个人已经有记账/分摊/结算记录，不能真的删除（会破坏历史账目）。改为停用：不会再出现在选身份/记账名单里，但过去的记录完全不受影响，随时可以在\"已停用的成员\"里恢复。",
+    "deleteMessage": "这个人还没有任何记账/结算记录，删除后无法恢复。",
+    "deactivateConfirm": "停用",
+    "deleteConfirm": "删除"
+  },
+  "inviteCode": {
+    "title": "邀请新成员",
+    "close": "关闭",
+    "description": "把下面这串邀请码发给想邀请的家人朋友，对方在登录页输入自己的邮箱 + 这串码，就能自己加入你的团队，不用再找我们手动开通。",
+    "loading": "加载中…",
+    "loadError": "拿不到邀请码，请稍后重试",
+    "codeLabel": "团队邀请码",
+    "copy": "复制邀请码",
+    "copied": "已复制",
+    "regenerateTitle": "重新生成邀请码（旧码会失效）",
+    "regenerateConfirmTitle": "重新生成邀请码？",
+    "regenerateConfirmMessage": "旧邀请码立刻失效，已经发出去的也不能用了，得把新码重新发给对方。",
+    "regenerateConfirm": "重新生成",
+    "shareMessage": "邀请你加入\"旅记\"——我们家用来记行程和账目的小工具\n打开 {{origin}}\n点\"有邀请码？点这里输入\"，填你的邮箱 + 下面这串邀请码就能加入：\n\n{{code}}\n\n（一步步图文教程：{{origin}}/join-guide.html）"
+  },
+  "wishlist": {
+    "title": "想去的地点",
+    "add": "新增",
+    "done": "完成",
+    "empty": "还没有收藏任何地点。刷到想去的餐厅/景点，点右上角\"新增\"先记下来，安排行程时随时能挑。",
+    "nearbyLabel": "附近想去 · {{count}}",
+    "addToToday": "加入今天",
+    "allPlaces": "全部想去的地点",
+    "visited": "已去过",
+    "notVisited": "还没去",
+    "notesPlaceholder": "备注（可选）",
+    "usedInTrips": "已排入行程 · {{trips}}",
+    "edit": "编辑",
+    "delete": "删除",
+    "cancel": "取消",
+    "save": "保存",
+    "deleteConfirmTitle": "删除「{{name}}」？",
+    "deleteConfirmMessage": "已经排进行程的安排不受影响，只是这条从清单里消失，不能再找回来了。",
+    "addTitle": "新增想去的地点"
+  },
+  "locationPicker": {
+    "placeholder": "地点",
+    "located": "已定位",
+    "hint": "可搜索选点，搜不到也可以直接贴Google Maps链接定位",
+    "countryFilterHint": " · 只在这些国家里搜：{{countries}}",
+    "resolving": "解析链接中…",
+    "resolveError": "没解析出来，看看链接对不对，或者过会儿再试试",
+    "detectedPlaceFallback": "识别到的地点",
+    "fromMapsLink": "来自Google Maps链接，点一下就用这个精确位置",
+    "searching": "搜索中…"
+  },
   "nav": {
     "overview": "概览",
     "itinerary": "行程",

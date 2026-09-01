@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MapPin } from 'lucide-react'
 import { searchPlaces, looksLikeGoogleMapsUrl, resolveMapsLink, type GeocodeResult, type ResolvedMapsLink } from '../api/geocoding'
 import { countryByCode } from '../lib/countries'
@@ -19,6 +20,7 @@ export function LocationPicker({
   onChange: (v: LocationValue) => void
   countryCodes?: string[]
 }) {
+  const { t, i18n } = useTranslation()
   const [query, setQuery] = useState(value.name)
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [open, setOpen] = useState(false)
@@ -71,7 +73,7 @@ export function LocationPicker({
       setMapsLink({ status: 'loading' })
       resolveMapsLink(text.trim()).then((r) => {
         if (requestIdRef.current !== requestId) return
-        setMapsLink(r ? { status: 'ok', result: r } : { status: 'error', message: '没解析出来，看看链接对不对，或者过会儿再试试' })
+        setMapsLink(r ? { status: 'ok', result: r } : { status: 'error', message: t('locationPicker.resolveError') })
       })
       return
     }
@@ -126,27 +128,31 @@ export function LocationPicker({
           value={query}
           onChange={(e) => handleType(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
-          placeholder="地点"
+          placeholder={t('locationPicker.placeholder')}
           autoComplete="off"
           className={`w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan ${value.lat != null ? 'pr-16' : ''}`}
         />
         {value.lat != null && (
           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-[10px] text-positive whitespace-nowrap">
             <MapPin className="w-3 h-3" strokeWidth={2} />
-            已定位
+            {t('locationPicker.located')}
           </span>
         )}
       </div>
       <div className="text-[10px] text-muted mt-1">
-        可搜索选点，搜不到也可以直接贴Google Maps链接定位
+        {t('locationPicker.hint')}
         {!!countryCodes?.length && (
-          <> · 只在这些国家里搜：{countryCodes.map((c) => countryByCode(c)?.nameZh ?? c).join('、')}</>
+          t('locationPicker.countryFilterHint', {
+            countries: countryCodes
+              .map((c) => (i18n.language === 'en' ? countryByCode(c)?.nameEn : countryByCode(c)?.nameZh) ?? c)
+              .join(i18n.language === 'en' ? ', ' : '、'),
+          })
         )}
       </div>
 
       {mapsLink && (
         <div className="mt-1.5 rounded-xl border border-line bg-card overflow-hidden">
-          {mapsLink.status === 'loading' && <div className="px-3 py-2 text-xs text-muted">解析链接中…</div>}
+          {mapsLink.status === 'loading' && <div className="px-3 py-2 text-xs text-muted">{t('locationPicker.resolving')}</div>}
           {mapsLink.status === 'error' && <div className="px-3 py-2 text-xs text-negative">{mapsLink.message}</div>}
           {mapsLink.status === 'ok' && (
             <button
@@ -156,8 +162,8 @@ export function LocationPicker({
             >
               <MapPin className="w-4 h-4 text-positive flex-shrink-0" strokeWidth={1.8} />
               <div className="min-w-0">
-                <div className="text-[12.5px] font-medium truncate">{mapsLink.result.name ?? '识别到的地点'}</div>
-                <div className="text-[10.5px] text-muted">来自Google Maps链接，点一下就用这个精确位置</div>
+                <div className="text-[12.5px] font-medium truncate">{mapsLink.result.name ?? t('locationPicker.detectedPlaceFallback')}</div>
+                <div className="text-[10.5px] text-muted">{t('locationPicker.fromMapsLink')}</div>
               </div>
             </button>
           )}
@@ -166,7 +172,7 @@ export function LocationPicker({
 
       {open && (loading || results.length > 0) && (
         <div className="absolute z-40 mt-1 w-full rounded-xl border border-line bg-card shadow-lg overflow-hidden max-h-[180px] overflow-y-auto no-scrollbar">
-          {loading && <div className="px-3 py-2 text-xs text-muted">搜索中…</div>}
+          {loading && <div className="px-3 py-2 text-xs text-muted">{t('locationPicker.searching')}</div>}
           {!loading && results.map((r, i) => (
             <button
               key={i}

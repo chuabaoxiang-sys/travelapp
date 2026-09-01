@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { db } from '../../db/dexie'
 import { Avatar } from '../../components/Avatar'
 import { createMember } from '../../domain/members'
 
 export function MemberGate({ onPicked }: { onPicked: (id: string) => void }) {
+  const { t } = useTranslation()
   const allMembers = useLiveQuery(() => db.members.toArray()) ?? []
   const list = allMembers.filter((m) => m.isActive)
   const [newName, setNewName] = useState('')
@@ -19,9 +21,9 @@ export function MemberGate({ onPicked }: { onPicked: (id: string) => void }) {
   return (
     <div className="min-h-screen bg-ink flex items-center justify-center p-6">
       <div className="w-full max-w-sm bg-card rounded-3xl p-6 border border-line">
-        <div className="text-[11px] tracking-widest text-muted uppercase">旅记 · TripJournal</div>
-        <h1 className="font-serif-sc text-2xl mt-2 text-ink">你是谁？</h1>
-        <p className="text-sm text-muted mt-1">选择你的名字，之后记的账都会算在这个身份下（暂不需要密码）</p>
+        <div className="text-[11px] tracking-widest text-muted uppercase">{t('memberGate.brand')}</div>
+        <h1 className="font-serif-sc text-2xl mt-2 text-ink">{t('memberGate.title')}</h1>
+        <p className="text-sm text-muted mt-1">{t('memberGate.subtitle')}</p>
 
         <div className="mt-5 flex flex-col gap-2">
           {list.map((m) => (
@@ -41,14 +43,14 @@ export function MemberGate({ onPicked }: { onPicked: (id: string) => void }) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addMember()}
-            placeholder="添加新家庭成员"
+            placeholder={t('memberGate.addPlaceholder')}
             className="flex-1 rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-plan"
           />
           <button
             onClick={addMember}
             className="rounded-xl bg-plan text-card px-4 py-2 text-sm font-medium"
           >
-            添加
+            {t('memberGate.addButton')}
           </button>
         </div>
       </div>

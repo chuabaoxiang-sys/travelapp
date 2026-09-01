@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { Check, X, Pencil, Trash2, Plus, Circle, CheckCircle2, MapPin } from 'lucide-react'
 import {
   listWishlistPlaces,
@@ -29,6 +30,7 @@ export function WishlistScreen({
   nearbySuggestions?: WishlistPlace[]
   onAddNearby?: (place: WishlistPlace) => void
 }) {
+  const { t } = useTranslation()
   const places = useLiveQuery(() => listWishlistPlaces()) ?? []
   const usageMap = useLiveQuery(() => usageByWishlistEntry()) ?? new Map<string, WishlistUsage>()
 
@@ -89,13 +91,13 @@ export function WishlistScreen({
   return (
     <div className="absolute inset-0 z-30 bg-paper flex flex-col">
       <div className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0 border-b border-line">
-        <span className="font-serif-sc text-[15px] font-semibold">想去的地点</span>
+        <span className="font-serif-sc text-[15px] font-semibold">{t('wishlist.title')}</span>
         <div className="flex items-center gap-3.5">
           <button onClick={openAddModal} className="flex items-center gap-1 text-plan text-[12.5px] font-semibold">
             <Plus className="w-3.5 h-3.5" strokeWidth={2.2} />
-            新增
+            {t('wishlist.add')}
           </button>
-          <button onClick={onClose} className="text-plan" title="完成">
+          <button onClick={onClose} className="text-plan" title={t('wishlist.done')}>
             <Check className="w-[17px] h-[17px]" strokeWidth={2} />
           </button>
         </div>
@@ -104,7 +106,7 @@ export function WishlistScreen({
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-3">
         {places.length === 0 && (
           <div className="text-[13px] text-muted py-8 text-center">
-            还没有收藏任何地点。刷到想去的餐厅/景点，点右上角"新增"先记下来，安排行程时随时能挑。
+            {t('wishlist.empty')}
           </div>
         )}
 
@@ -116,7 +118,7 @@ export function WishlistScreen({
           <div className="mb-4">
             <div className="text-[10.5px] tracking-widest uppercase text-plan font-semibold mb-1.5 flex items-center gap-1.5">
               <MapPin className="w-3 h-3" strokeWidth={2.2} />
-              附近想去 · {nearbySuggestions.length}
+              {t('wishlist.nearbyLabel', { count: nearbySuggestions.length })}
             </div>
             <div className="flex flex-col gap-1.5">
               {nearbySuggestions.map((s) => (
@@ -128,14 +130,14 @@ export function WishlistScreen({
                   <button
                     onClick={() => onAddNearby?.(s)}
                     className="w-6 h-6 rounded-full bg-plan text-card flex items-center justify-center flex-shrink-0"
-                    title="加入今天"
+                    title={t('wishlist.addToToday')}
                   >
                     <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
                   </button>
                 </div>
               ))}
             </div>
-            <div className="text-[10.5px] tracking-widest uppercase text-muted font-semibold mt-4 mb-1.5">全部想去的地点</div>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted font-semibold mt-4 mb-1.5">{t('wishlist.allPlaces')}</div>
           </div>
         )}
 
@@ -169,7 +171,7 @@ export function WishlistScreen({
                       ) : (
                         <Circle className="w-3 h-3" strokeWidth={2} />
                       )}
-                      {p.visited ? '已去过' : '还没去'}
+                      {p.visited ? t('wishlist.visited') : t('wishlist.notVisited')}
                     </button>
                   )}
                 </div>
@@ -179,7 +181,7 @@ export function WishlistScreen({
                     <textarea
                       value={editNotes}
                       onChange={(e) => setEditNotes(e.target.value)}
-                      placeholder="备注（可选）"
+                      placeholder={t('wishlist.notesPlaceholder')}
                       rows={2}
                       className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
                     />
@@ -189,26 +191,26 @@ export function WishlistScreen({
                 {editingId !== p.id && usage && usage.tripNames.length > 0 && (
                   <div className="text-[10.5px] text-plan mt-2 pt-2 border-t border-dashed border-line flex items-center gap-1.5">
                     <Check className="w-3 h-3 flex-shrink-0" strokeWidth={2.5} />
-                    已排入行程 · {usage.tripNames.join('、')}
+                    {t('wishlist.usedInTrips', { trips: usage.tripNames.join('、') })}
                   </div>
                 )}
 
                 <div className="flex gap-2 mt-2.5">
                   {editingId === p.id ? (
                     <>
-                      <button onClick={() => setEditingId(null)} className="text-muted px-2 py-1" title="取消">
+                      <button onClick={() => setEditingId(null)} className="text-muted px-2 py-1" title={t('wishlist.cancel')}>
                         <X className="w-3.5 h-3.5" strokeWidth={1.8} />
                       </button>
-                      <button onClick={() => saveEdit(p)} className="bg-plan text-card rounded-md px-2.5 py-1 ml-auto" title="保存">
+                      <button onClick={() => saveEdit(p)} className="bg-plan text-card rounded-md px-2.5 py-1 ml-auto" title={t('wishlist.save')}>
                         <Check className="w-3.5 h-3.5" strokeWidth={2} />
                       </button>
                     </>
                   ) : (
                     <>
-                      <button onClick={() => startEdit(p)} className="text-plan px-2 py-1 border border-dashed border-plan/50 rounded-md" title="编辑">
+                      <button onClick={() => startEdit(p)} className="text-plan px-2 py-1 border border-dashed border-plan/50 rounded-md" title={t('wishlist.edit')}>
                         <Pencil className="w-3.5 h-3.5" strokeWidth={1.8} />
                       </button>
-                      <button onClick={() => setPendingDelete(p)} className="text-negative px-2 py-1 border border-dashed border-negative/40 rounded-md" title="删除">
+                      <button onClick={() => setPendingDelete(p)} className="text-negative px-2 py-1 border border-dashed border-negative/40 rounded-md" title={t('wishlist.delete')}>
                         <Trash2 className="w-3.5 h-3.5" strokeWidth={1.8} />
                       </button>
                     </>
@@ -222,8 +224,8 @@ export function WishlistScreen({
 
       {pendingDelete && (
         <ConfirmDialog
-          title={`删除「${pendingDelete.name}」？`}
-          message="已经排进行程的安排不受影响，只是这条从清单里消失，不能再找回来了。"
+          title={t('wishlist.deleteConfirmTitle', { name: pendingDelete.name })}
+          message={t('wishlist.deleteConfirmMessage')}
           onConfirm={confirmRemove}
           onCancel={() => setPendingDelete(null)}
         />
@@ -231,20 +233,20 @@ export function WishlistScreen({
 
       {addOpen && (
         <CenteredModal onClose={() => setAddOpen(false)}>
-          <div className="font-serif-sc text-[15px] text-ink mb-3">新增想去的地点</div>
+          <div className="font-serif-sc text-[15px] text-ink mb-3">{t('wishlist.addTitle')}</div>
           <LocationPicker value={addLocation} onChange={setAddLocation} />
           <textarea
             value={addNotes}
             onChange={(e) => setAddNotes(e.target.value)}
-            placeholder="备注（可选）"
+            placeholder={t('wishlist.notesPlaceholder')}
             rows={2}
             className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan mt-2"
           />
           <div className="flex gap-2 mt-4">
-            <button onClick={() => setAddOpen(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title="取消">
+            <button onClick={() => setAddOpen(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title={t('wishlist.cancel')}>
               <X className="w-4 h-4" strokeWidth={1.8} />
             </button>
-            <button onClick={confirmAdd} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title="保存">
+            <button onClick={confirmAdd} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title={t('wishlist.save')}>
               <Check className="w-4 h-4" strokeWidth={2} />
             </button>
           </div>

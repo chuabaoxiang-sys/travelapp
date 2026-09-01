@@ -1,9 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEscapeKey } from '../hooks/useEscapeKey'
-
-const DOW = ['一', '二', '三', '四', '五', '六', '日']
-const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
 function parseISO(v: string) {
   const [y, m, d] = v.split('-').map(Number)
@@ -24,16 +22,22 @@ function mondayOffset(y: number, m: number) {
   return (dow + 6) % 7
 }
 
-function formatDisplay(v: string) {
+// 中文习惯"年月日"数字直接拼，英文习惯"月 日, 年"、月份要用缩写名——两种语言
+// 全文的日期语序本来就不一样，不是简单换个分隔符能解决的，分开两条格式化路径
+function formatDisplay(v: string, locale: string, months: string[]) {
   if (!v) return ''
   const { y, m, d } = parseISO(v)
-  return `${y}年${m}月${d}日`
+  return locale === 'zh' ? `${y}年${m}月${d}日` : `${months[m - 1]} ${d}, ${y}`
+}
+
+function monthYearLabel(y: number, m: number, locale: string, months: string[]) {
+  return locale === 'zh' ? `${y}年 ${months[m - 1]}` : `${months[m - 1]} ${y}`
 }
 
 export function DatePicker({
   value,
   onChange,
-  placeholder = '选择日期',
+  placeholder,
   min,
   max,
 }: {
@@ -46,6 +50,9 @@ export function DatePicker({
   min?: string
   max?: string
 }) {
+  const { t, i18n } = useTranslation()
+  const dow = t('datePicker.dow', { returnObjects: true }) as string[]
+  const months = t('datePicker.months', { returnObjects: true }) as string[]
   const [open, setOpen] = useState(false)
   const init = value ? parseISO(value) : { y: new Date().getFullYear(), m: new Date().getMonth() + 1, d: 1 }
   const [viewY, setViewY] = useState(init.y)
@@ -120,7 +127,7 @@ export function DatePicker({
         onClick={() => setOpen((o) => !o)}
         className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-left outline-none focus:border-plan flex items-center justify-between gap-1.5"
       >
-        <span className={`min-w-0 truncate ${value ? 'text-ink tabular' : 'text-muted'}`}>{value ? formatDisplay(value) : placeholder}</span>
+        <span className={`min-w-0 truncate ${value ? 'text-ink tabular' : 'text-muted'}`}>{value ? formatDisplay(value, i18n.language, months) : (placeholder ?? t('datePicker.placeholder'))}</span>
         <Calendar className="w-3.5 h-3.5 text-muted flex-shrink-0" strokeWidth={1.8} />
       </button>
 
@@ -136,13 +143,13 @@ export function DatePicker({
             <button type="button" onClick={() => shiftMonth(-1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">
               <ChevronLeft className="w-4 h-4" strokeWidth={1.8} />
             </button>
-            <span className="font-serif-sc text-sm font-semibold">{viewY}年 {MONTH_NAMES[viewM - 1]}</span>
+            <span className="font-serif-sc text-sm font-semibold">{monthYearLabel(viewY, viewM, i18n.language, months)}</span>
             <button type="button" onClick={() => shiftMonth(1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">
               <ChevronRight className="w-4 h-4" strokeWidth={1.8} />
             </button>
           </div>
           <div className="grid grid-cols-7 gap-1 mb-1">
-            {DOW.map((d) => (
+            {dow.map((d) => (
               <div key={d} className="text-center text-[10px] text-muted">{d}</div>
             ))}
           </div>
@@ -174,13 +181,13 @@ export function DatePicker({
               type="button"
               onClick={() => { onChange(''); setOpen(false) }}
               className="text-muted"
-              title="清除"
+              title={t('datePicker.clear')}
             >
               <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
             </button>
             {(() => {
-              const t = new Date()
-              const todayISO = toISO(t.getFullYear(), t.getMonth() + 1, t.getDate())
+              const now = new Date()
+              const todayISO = toISO(now.getFullYear(), now.getMonth() + 1, now.getDate())
               if ((!!min && todayISO < min) || (!!max && todayISO > max)) return null
               return (
                 <button
@@ -188,7 +195,7 @@ export function DatePicker({
                   onClick={() => { onChange(todayISO); setOpen(false) }}
                   className="text-[11.5px] text-plan"
                 >
-                  今天
+                  {t('datePicker.today')}
                 </button>
               )
             })()}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { UserPlus, Check, Pencil, Trash2, Archive, ArchiveRestore, X, KeyRound } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { Avatar } from '../../components/Avatar'
@@ -19,6 +20,7 @@ export function IdentitySwitcher({
   onSelectMember: (id: string) => void
   onOpenInviteCode: () => void
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -68,7 +70,7 @@ export function IdentitySwitcher({
 
   async function handleRemoveClick(m: Member) {
     if (m.id === currentMemberId) {
-      setBlockedMessage('没法删除你正在用的这个身份，先切换成别人再试')
+      setBlockedMessage(t('identitySwitcher.cannotRemoveCurrentMessage'))
       return
     }
     const hasHistory = await memberHasHistory(m.id)
@@ -109,10 +111,10 @@ export function IdentitySwitcher({
                     autoFocus
                     className="flex-1 min-w-0 rounded-lg border border-plan bg-paper px-2 py-1 text-[12.5px] outline-none"
                   />
-                  <button onClick={saveEdit} className="text-plan flex-shrink-0" title="保存">
+                  <button onClick={saveEdit} className="text-plan flex-shrink-0" title={t('identitySwitcher.save')}>
                     <Check className="w-3.5 h-3.5" strokeWidth={2} />
                   </button>
-                  <button onClick={() => setEditingId(null)} className="text-muted flex-shrink-0" title="取消">
+                  <button onClick={() => setEditingId(null)} className="text-muted flex-shrink-0" title={t('identitySwitcher.cancel')}>
                     <X className="w-3.5 h-3.5" strokeWidth={1.8} />
                   </button>
                 </div>
@@ -126,10 +128,10 @@ export function IdentitySwitcher({
                     <span className="truncate flex-1">{m.displayName}</span>
                     {m.id === currentMemberId && <Check className="w-3.5 h-3.5 text-plan flex-shrink-0" strokeWidth={2} />}
                   </button>
-                  <button onClick={() => startEdit(m)} className="text-muted p-1.5 flex-shrink-0" title="编辑">
+                  <button onClick={() => startEdit(m)} className="text-muted p-1.5 flex-shrink-0" title={t('identitySwitcher.edit')}>
                     <Pencil className="w-3 h-3" strokeWidth={1.8} />
                   </button>
-                  <button onClick={() => handleRemoveClick(m)} className="text-muted p-1.5 flex-shrink-0" title="删除">
+                  <button onClick={() => handleRemoveClick(m)} className="text-muted p-1.5 flex-shrink-0" title={t('identitySwitcher.delete')}>
                     <Trash2 className="w-3 h-3" strokeWidth={1.8} />
                   </button>
                 </div>
@@ -142,11 +144,11 @@ export function IdentitySwitcher({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-                  placeholder="姓名"
+                  placeholder={t('identitySwitcher.namePlaceholder')}
                   autoFocus
                   className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2 py-1 text-[12.5px] outline-none focus:border-plan"
                 />
-                <button onClick={handleAdd} className="rounded-lg bg-plan text-card px-2.5 flex-shrink-0" title="添加">
+                <button onClick={handleAdd} className="rounded-lg bg-plan text-card px-2.5 flex-shrink-0" title={t('identitySwitcher.addMember')}>
                   <Check className="w-3.5 h-3.5" strokeWidth={2} />
                 </button>
               </div>
@@ -156,7 +158,7 @@ export function IdentitySwitcher({
                 className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] text-plan"
               >
                 <UserPlus className="w-[14px] h-[14px]" strokeWidth={1.8} />
-                添加家庭成员
+                {t('identitySwitcher.addMember')}
               </button>
             )}
 
@@ -165,7 +167,7 @@ export function IdentitySwitcher({
               className="w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] text-muted border-t border-line"
             >
               <KeyRound className="w-[14px] h-[14px]" strokeWidth={1.8} />
-              邀请新成员加入团队
+              {t('identitySwitcher.inviteMember')}
             </button>
 
             {inactive.length > 0 && (
@@ -175,14 +177,14 @@ export function IdentitySwitcher({
                   className="w-full flex items-center gap-2 px-3 py-2 text-left text-[11.5px] text-muted border-t border-line"
                 >
                   <Archive className="w-3 h-3" strokeWidth={1.8} />
-                  {showInactive ? '收起已停用' : `已停用的成员（${inactive.length}）`}
+                  {showInactive ? t('identitySwitcher.collapseInactive') : t('identitySwitcher.inactiveCount', { count: inactive.length })}
                 </button>
                 {showInactive &&
                   inactive.map((m) => (
                     <div key={m.id} className="w-full flex items-center gap-2 pl-3 pr-2 py-1.5 opacity-60">
                       <Avatar member={m} size={20} />
                       <span className="truncate flex-1 text-[12.5px]">{m.displayName}</span>
-                      <button onClick={() => reactivateMember(m.id)} className="text-plan flex-shrink-0" title="恢复">
+                      <button onClick={() => reactivateMember(m.id)} className="text-plan flex-shrink-0" title={t('identitySwitcher.restore')}>
                         <ArchiveRestore className="w-3 h-3" strokeWidth={1.8} />
                       </button>
                     </div>
@@ -195,9 +197,9 @@ export function IdentitySwitcher({
 
       {blockedMessage && (
         <ConfirmDialog
-          title="没法这样操作"
+          title={t('identitySwitcher.cannotRemoveTitle')}
           message={blockedMessage}
-          confirmLabel="知道了"
+          confirmLabel={t('identitySwitcher.gotIt')}
           danger={false}
           onConfirm={() => setBlockedMessage(null)}
           onCancel={() => setBlockedMessage(null)}
@@ -206,13 +208,9 @@ export function IdentitySwitcher({
 
       {pendingRemove && (
         <ConfirmDialog
-          title={pendingRemove.hasHistory ? `停用「${pendingRemove.member.displayName}」？` : `删除「${pendingRemove.member.displayName}」？`}
-          message={
-            pendingRemove.hasHistory
-              ? '这个人已经有记账/分摊/结算记录，不能真的删除（会破坏历史账目）。改为停用：不会再出现在选身份/记账名单里，但过去的记录完全不受影响，随时可以在"已停用的成员"里恢复。'
-              : '这个人还没有任何记账/结算记录，删除后无法恢复。'
-          }
-          confirmLabel={pendingRemove.hasHistory ? '停用' : '删除'}
+          title={t(pendingRemove.hasHistory ? 'identitySwitcher.deactivateTitle' : 'identitySwitcher.deleteTitle', { name: pendingRemove.member.displayName })}
+          message={t(pendingRemove.hasHistory ? 'identitySwitcher.deactivateMessage' : 'identitySwitcher.deleteMessage')}
+          confirmLabel={t(pendingRemove.hasHistory ? 'identitySwitcher.deactivateConfirm' : 'identitySwitcher.deleteConfirm')}
           danger={!pendingRemove.hasHistory}
           onConfirm={confirmRemove}
           onCancel={() => setPendingRemove(null)}
