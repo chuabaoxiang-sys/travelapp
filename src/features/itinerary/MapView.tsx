@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MapContainer, TileLayer, Marker, Polyline, Popup, ZoomControl, useMap } from 'react-leaflet'
+import { Map as MapIcon } from 'lucide-react'
 import L from 'leaflet'
 import type { ItineraryDay, ItineraryItem } from '../../types'
 import { formatTimeHM } from '../../lib/dates'
@@ -71,6 +73,7 @@ function FitBounds({ positions, boundsKey }: { positions: [number, number][]; bo
 }
 
 export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; items: ItineraryItem[]; selectedDate?: string }) {
+  const { t } = useTranslation()
   // 从时间线切过来时，直接以时间线正看着的那天开局，不要每次都从"什么都没选"
   // 重新来——地图有自己的一套日期chip可以再改选，这里只管初始值。MapView在
   // 切出"地图"这个视图时会整个卸载，回来时重新走这个初始化，不需要额外的
@@ -128,12 +131,12 @@ export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; i
   if (!pinned.length) {
     return (
       <div className="px-5 pt-3 pb-safe-fab-clearance h-full flex flex-col items-center justify-center text-center gap-2">
-        <div className="w-[60px] h-[60px] rounded-full bg-segment flex items-center justify-center font-serif-sc text-2xl text-muted">
-          图
+        <div className="w-[60px] h-[60px] rounded-full bg-segment flex items-center justify-center text-muted">
+          <MapIcon className="w-6 h-6" strokeWidth={1.8} />
         </div>
-        <div className="font-serif-sc text-[15px] mt-2">还没有带地点的行程项</div>
+        <div className="font-serif-sc text-[15px] mt-2">{t('mapView.emptyTitle')}</div>
         <div className="text-[12.5px] text-muted max-w-[220px]">
-          在"时间线"里加行程项时，搜个地点选一下，这里就会出现对应的图钉。
+          {t('mapView.emptyHint')}
         </div>
       </div>
     )
@@ -207,7 +210,7 @@ export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; i
               >
                 <Popup>
                   <div style={{ fontSize: 13 }}>
-                    <b>第{dayNum}天 · {formatTimeHM(it.time)}</b>
+                    <b>{t('mapView.dayLabel', { day: dayNum })} · {formatTimeHM(it.time)}</b>
                     <div>{it.title}</div>
                     {it.locationName && <div style={{ color: 'var(--color-muted)', fontSize: 11 }}>{it.locationName}</div>}
                   </div>
@@ -246,7 +249,7 @@ export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; i
         </div>
       </div>
       <div className="px-4 py-2 text-[10.5px] text-muted text-center flex-shrink-0 bg-paper">
-        © OpenStreetMap contributors · 点上面的日期看那天的路线
+        © OpenStreetMap contributors · {t('mapView.attributionHint')}
       </div>
     </div>
   )

@@ -13,6 +13,64 @@
   "timePicker": {
     "placeholder": "选择时间"
   },
+  "itinerary": {
+    "viewModes": { "timeline": "时间线", "calendar": "日历", "map": "地图" },
+    "wishlistButton": "想去的地点",
+    "filterButton": "只看待预约",
+    "noDatesYet": "这趟行程还没设置起止日期，还不能按天排行程，先去「账目」标签试试记一笔吧。",
+    "dayTotalLabel": "当日花费",
+    "emptyDay": "这天还没有安排，点右下角\"+\"添加一项",
+    "emptyFiltered": "这天没有待预约的行程项",
+    "toggleBookingTitle": "点一下切换预约状态",
+    "deleteTitle": "删除",
+    "deleteConfirmTitle": "删除这个行程项？",
+    "deleteConfirmMessage": "关联的费用记录不会被删除，但会解除关联。",
+    "moveConfirmTitle": "这笔行程项关联的账目做了跨天分摊",
+    "moveConfirmMessage": "换到新日期后，那笔账目原本分摊到的那几天不会跟着自动改，需要你自己去账目页确认调整。确定要换日期吗？",
+    "moveConfirmButton": "确定换",
+    "mapLoading": "地图加载中…"
+  },
+  "itemForm": {
+    "editTitle": "编辑行程项",
+    "newTitle": "新增行程项",
+    "save": "保存",
+    "titlePlaceholder": "做什么，例如「环球影城」",
+    "otherSettings": "其他设置",
+    "collapse": "收起 ‹",
+    "expand": "改 ›",
+    "dateLabel": "日期",
+    "pickFromWishlist": "从想去的地点里选一个",
+    "notesPlaceholder": "备注（可选）",
+    "notesHint": "拖右下角可以拉高；换行或加\"1. 2. 3.\"就能分点",
+    "bookingLabel": "预约状态",
+    "bookingNone": "无需预约",
+    "bookingNeeded": "待预约",
+    "bookingBooked": "已预约",
+    "foldSummaryMoved": "已换到{{date}}",
+    "foldSummaryNotes": "备注已填",
+    "wishlistPickerTitle": "从想去的地点里选",
+    "wishlistFilterPlaceholder": "筛选…",
+    "wishlistNoMatches": "没有匹配的地点"
+  },
+  "calendarView": {
+    "jumpToTimeline": "在时间线中编辑 ›",
+    "jumpToTimelineAdd": "去时间线添加 ›",
+    "emptyDay": "这天还没有安排的行程项"
+  },
+  "mapView": {
+    "emptyTitle": "还没有带地点的行程项",
+    "emptyHint": "在\"时间线\"里加行程项时，搜个地点选一下，这里就会出现对应的图钉。",
+    "dayLabel": "第{{day}}天",
+    "attributionHint": "点上面的日期看那天的路线"
+  },
+  "routeLeg": {
+    "unknownLocation": "位置未知",
+    "distanceKm": "{{km}}公里",
+    "distanceM": "{{m}}米",
+    "farAway": "相距{{distance}}",
+    "walkTime": "步行{{minutes}}分钟 · {{distance}}",
+    "viewRouteTitle": "在地图中查看路线"
+  },
   "memberGate": {
     "brand": "旅记 · TripJournal",
     "title": "你是谁？",

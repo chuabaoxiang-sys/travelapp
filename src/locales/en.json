@@ -13,6 +13,64 @@
   "timePicker": {
     "placeholder": "Select time"
   },
+  "itinerary": {
+    "viewModes": { "timeline": "Timeline", "calendar": "Calendar", "map": "Map" },
+    "wishlistButton": "Places to go",
+    "filterButton": "Needs booking only",
+    "noDatesYet": "This trip doesn't have start/end dates yet, so it can't be planned day by day — try logging an expense on the Ledger tab first.",
+    "dayTotalLabel": "Spent today",
+    "emptyDay": "Nothing planned for this day yet — tap \"+\" to add something",
+    "emptyFiltered": "Nothing here needs booking",
+    "toggleBookingTitle": "Tap to switch booking status",
+    "deleteTitle": "Delete",
+    "deleteConfirmTitle": "Delete this itinerary item?",
+    "deleteConfirmMessage": "Any linked expense stays — it just gets unlinked.",
+    "moveConfirmTitle": "This item's linked expense is spread across days",
+    "moveConfirmMessage": "Moving it to a new date won't automatically update which days that expense is spread across — you'll need to adjust that yourself on the Ledger tab. Move it anyway?",
+    "moveConfirmButton": "Move it",
+    "mapLoading": "Loading map…"
+  },
+  "itemForm": {
+    "editTitle": "Edit item",
+    "newTitle": "Add item",
+    "save": "Save",
+    "titlePlaceholder": "What's happening, e.g. \"Universal Studios\"",
+    "otherSettings": "Other settings",
+    "collapse": "Hide ‹",
+    "expand": "Edit ›",
+    "dateLabel": "Date",
+    "pickFromWishlist": "Pick from your saved places",
+    "notesPlaceholder": "Notes (optional)",
+    "notesHint": "Drag the bottom-right corner to resize; add line breaks or \"1. 2. 3.\" to make a list",
+    "bookingLabel": "Booking status",
+    "bookingNone": "No booking needed",
+    "bookingNeeded": "Needs booking",
+    "bookingBooked": "Booked",
+    "foldSummaryMoved": "Moved to {{date}}",
+    "foldSummaryNotes": "Notes added",
+    "wishlistPickerTitle": "Pick from saved places",
+    "wishlistFilterPlaceholder": "Filter…",
+    "wishlistNoMatches": "No matching places"
+  },
+  "calendarView": {
+    "jumpToTimeline": "Edit in timeline ›",
+    "jumpToTimelineAdd": "Add in timeline ›",
+    "emptyDay": "Nothing planned for this day yet"
+  },
+  "mapView": {
+    "emptyTitle": "No itinerary items with a location yet",
+    "emptyHint": "When adding an item in \"Timeline\", search for a spot and pick it — it'll show up here as a pin.",
+    "dayLabel": "Day {{day}}",
+    "attributionHint": "Tap a date above to see that day's route"
+  },
+  "routeLeg": {
+    "unknownLocation": "Location unknown",
+    "distanceKm": "{{km}} km",
+    "distanceM": "{{m}} m",
+    "farAway": "{{distance}} away",
+    "walkTime": "{{minutes}} min walk · {{distance}}",
+    "viewRouteTitle": "View route on map"
+  },
   "memberGate": {
     "brand": "TripJournal",
     "title": "Who are you?",

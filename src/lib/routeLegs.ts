@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { TFunction } from 'i18next'
 import { db } from '../db/dexie'
 import type { ItineraryItem, LatLng, RouteLeg, RouteLegCacheEntry } from '../types'
 
@@ -99,15 +100,17 @@ export async function getDayRouteLegs(dayId: string, items: ItineraryItem[]): Pr
 // 展示文案：真实路线距离超过 WALK_SUGGESTION_MAX_METERS 时不再建议步行时长（比如跨城市的
 // 152公里"步行1817分钟"毫无意义），只显示"相距X公里"。API失败（'unavailable'）没有距离/时长
 // 数据可显示，返回null——这种情况下 RouteLegHint 只渲染一个跳转图标，不硬凑文字
-export function formatRouteLeg(leg: RouteLeg | undefined): string | null {
+export function formatRouteLeg(leg: RouteLeg | undefined, t: TFunction): string | null {
   if (!leg) return null
-  if (leg.kind === 'missing-coords') return '位置未知'
+  if (leg.kind === 'missing-coords') return t('routeLeg.unknownLocation')
   if (leg.kind === 'unavailable') return null
   const distanceText =
-    leg.distanceMeters >= 1000 ? `${(leg.distanceMeters / 1000).toFixed(1)}公里` : `${leg.distanceMeters}米`
-  if (leg.distanceMeters > WALK_SUGGESTION_MAX_METERS) return `相距${distanceText}`
+    leg.distanceMeters >= 1000
+      ? t('routeLeg.distanceKm', { km: (leg.distanceMeters / 1000).toFixed(1) })
+      : t('routeLeg.distanceM', { m: leg.distanceMeters })
+  if (leg.distanceMeters > WALK_SUGGESTION_MAX_METERS) return t('routeLeg.farAway', { distance: distanceText })
   const minutes = Math.round(leg.durationSeconds / 60)
-  return `步行${minutes}分钟 · ${distanceText}`
+  return t('routeLeg.walkTime', { minutes, distance: distanceText })
 }
 
 // 是否应该渲染成可点击跳转地图的链接——'missing-coords' 没有可用坐标，没法生成链接

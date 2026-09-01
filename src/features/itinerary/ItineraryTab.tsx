@@ -1,6 +1,7 @@
 import { Fragment, Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, Filter, Bookmark } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Trash2, Filter, Bookmark, MapPin } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { sortItineraryItems, hasLinkedDaySpreadExpense, resolveDayForItemMove } from '../../domain/itinerary'
@@ -26,8 +27,9 @@ import { WishlistScreen } from '../wishlist/WishlistScreen'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { DiscoveryDot } from '../../components/DiscoveryDot'
 import { markHintSeen } from '../../domain/discoveryHints'
+import { formatDateChipDow } from '../../lib/dateChip'
+import type { ResolvedLocale } from '../../lib/locale'
 
-const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 type ViewMode = 'timeline' | 'calendar' | 'map'
 type ItemFormHandle = { finishEditing: () => void }
 
@@ -45,6 +47,8 @@ export function ItineraryTab({
   // 一个ref/imperative handle更简单，跟其他地方"信号量"式的父子通信是一个套路
   addSignal?: number
 }) {
+  const { t, i18n } = useTranslation()
+  const locale: ResolvedLocale = i18n.language === 'en' ? 'en' : 'zh'
   const days = trip.startDate && trip.endDate ? dateRange(trip.startDate, trip.endDate) : []
   const [viewMode, setViewMode] = useState<ViewMode>('timeline')
   const [selected, setSelected] = useState(days[0] ?? '')
@@ -252,7 +256,7 @@ export function ItineraryTab({
   if (!days.length) {
     return (
       <div className="px-5 pt-3 pb-safe-fab-clearance text-sm text-muted">
-        这趟行程还没设置起止日期，还不能按天排行程，先去「账目」标签试试记一笔吧。
+        {t('itinerary.noDatesYet')}
       </div>
     )
   }
@@ -261,13 +265,13 @@ export function ItineraryTab({
     <div className="h-full flex flex-col relative">
       <div className="px-5 pt-3 pb-1 flex-shrink-0 flex items-center justify-between">
         <div className="flex gap-1 bg-segment rounded-xl p-1 w-fit">
-          {([['timeline', '时间线'], ['calendar', '日历'], ['map', '地图']] as [ViewMode, string][]).map(([key, label]) => (
+          {(['timeline', 'calendar', 'map'] as ViewMode[]).map((key) => (
             <button
               key={key}
               onClick={() => setViewMode(key)}
               className={`rounded-lg px-3 py-1.5 text-[12.5px] ${viewMode === key ? 'bg-ink text-paper' : 'text-muted'}`}
             >
-              {label}
+              {t(`itinerary.viewModes.${key}`)}
             </button>
           ))}
         </div>
@@ -275,7 +279,7 @@ export function ItineraryTab({
           <button
             onClick={() => { setWishlistOpen(true); markHintSeen(currentMemberId, 'wishlist') }}
             className="relative w-8 h-8 rounded-[10px] border border-plan/25 bg-plan/[0.06] text-plan flex items-center justify-center flex-shrink-0"
-            title="想去的地点"
+            title={t('itinerary.wishlistButton')}
           >
             <Bookmark className="w-[15px] h-[15px]" strokeWidth={1.8} />
             {/* 附近有想去的地点时，用数字角标顶替发现红点——角标本身已经是"有件
@@ -294,7 +298,7 @@ export function ItineraryTab({
               className={`w-8 h-8 rounded-[10px] border flex items-center justify-center flex-shrink-0 ${
                 onlyNeeded ? 'border-spend bg-spend/10 text-spend' : 'border-line bg-card text-muted'
               }`}
-              title="只看待预约"
+              title={t('itinerary.filterButton')}
             >
               <Filter className="w-[15px] h-[15px]" strokeWidth={1.8} />
             </button>
@@ -324,7 +328,7 @@ export function ItineraryTab({
           />
         )}
         {viewMode === 'map' && (
-          <Suspense fallback={<div className="px-5 pt-6 text-sm text-muted">地图加载中…</div>}>
+          <Suspense fallback={<div className="px-5 pt-6 text-sm text-muted">{t('itinerary.mapLoading')}</div>}>
             <MapView days={itineraryDays} items={allItems} selectedDate={selected} />
           </Suspense>
         )}
@@ -341,7 +345,7 @@ export function ItineraryTab({
                 className="flex gap-2 overflow-x-auto no-scrollbar pb-1 pt-0.5"
               >
                 {days.map((d) => {
-                  const dow = DOW[new Date(d + 'T00:00:00').getDay()]
+                  const dow = formatDateChipDow(d, locale)
                   const num = d.slice(-2).replace(/^0/, '')
                   const isActive = d === selected
                   return (
@@ -400,7 +404,7 @@ export function ItineraryTab({
 
             <div className="flex items-baseline justify-between mb-3">
               <div className="font-serif-sc text-sm">{selected} {currentDay?.title ? `· ${currentDay.title}` : ''}</div>
-              <div className="text-[11.5px] text-muted tabular">当日花费 {formatMoney(dayTotal)}</div>
+              <div className="text-[11.5px] text-muted tabular">{t('itinerary.dayTotalLabel')} {formatMoney(dayTotal)}</div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -465,9 +469,9 @@ export function ItineraryTab({
                               className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
                                 it.bookingStatus === 'needed' ? 'bg-spend/10 text-spend' : 'bg-positive/10 text-positive'
                               }`}
-                              title="点一下切换预约状态"
+                              title={t('itinerary.toggleBookingTitle')}
                             >
-                              {it.bookingStatus === 'needed' ? '待预约' : '已预约'}
+                              {it.bookingStatus === 'needed' ? t('itemForm.bookingNeeded') : t('itemForm.bookingBooked')}
                             </button>
                           )}
                           {itemTotal > 0 && <span className="text-xs tabular text-plan">{formatMoney(itemTotal)}</span>}
@@ -475,15 +479,15 @@ export function ItineraryTab({
                             type="button"
                             onClick={(e) => { e.stopPropagation(); setPendingDeleteId(it.id) }}
                             className="w-5 h-5 rounded-full flex items-center justify-center text-muted hover:bg-negative/10 hover:text-negative"
-                            title="删除"
+                            title={t('itinerary.deleteTitle')}
                           >
                             <Trash2 className="w-3 h-3" strokeWidth={1.8} />
                           </button>
                         </div>
                       </div>
                       {it.locationName && (
-                        <div className="text-[11.5px] text-muted mt-1 truncate">
-                          {it.lat != null && <span className="text-positive mr-1">📍</span>}
+                        <div className="text-[11.5px] text-muted mt-1 truncate flex items-center gap-1">
+                          {it.lat != null && <MapPin className="w-3 h-3 text-positive flex-shrink-0" strokeWidth={2} />}
                           {it.locationName}
                         </div>
                       )}
@@ -498,10 +502,10 @@ export function ItineraryTab({
                 )
               })}
               {!items.length && (
-                <div className="text-[13px] text-muted py-4 text-center">这天还没有安排，点右下角"+"添加一项</div>
+                <div className="text-[13px] text-muted py-4 text-center">{t('itinerary.emptyDay')}</div>
               )}
               {!!items.length && onlyNeeded && !items.some((it) => it.bookingStatus === 'needed' || formState === it.id) && (
-                <div className="text-[13px] text-muted py-4 text-center">这天没有待预约的行程项</div>
+                <div className="text-[13px] text-muted py-4 text-center">{t('itinerary.emptyFiltered')}</div>
               )}
             </div>
           </div>
@@ -550,8 +554,8 @@ export function ItineraryTab({
 
       {pendingDeleteId && (
         <ConfirmDialog
-          title="删除这个行程项？"
-          message="关联的费用记录不会被删除，但会解除关联。"
+          title={t('itinerary.deleteConfirmTitle')}
+          message={t('itinerary.deleteConfirmMessage')}
           onConfirm={confirmDeleteItem}
           onCancel={() => setPendingDeleteId(null)}
         />
@@ -559,9 +563,9 @@ export function ItineraryTab({
 
       {pendingDaySpreadMove && (
         <ConfirmDialog
-          title="这笔行程项关联的账目做了跨天分摊"
-          message="换到新日期后，那笔账目原本分摊到的那几天不会跟着自动改，需要你自己去账目页确认调整。确定要换日期吗？"
-          confirmLabel="确定换"
+          title={t('itinerary.moveConfirmTitle')}
+          message={t('itinerary.moveConfirmMessage')}
+          confirmLabel={t('itinerary.moveConfirmButton')}
           danger={false}
           onConfirm={async () => {
             const { itemId, newDate, fields } = pendingDaySpreadMove
@@ -604,6 +608,8 @@ const ItemForm = forwardRef<ItemFormHandle, {
   onDelete,
   countryCodes,
 }, ref) {
+  const { t, i18n } = useTranslation()
+  const locale: ResolvedLocale = i18n.language === 'en' ? 'en' : 'zh'
   const [title, setTitle] = useState(initial?.title ?? '')
   const [time, setTime] = useState(initial?.time ?? '')
   // 只有编辑已有行程项时才允许换日期——新建的项本来就是往当前选中这天加，
@@ -684,13 +690,13 @@ const ItemForm = forwardRef<ItemFormHandle, {
   function handleSave() {
     if (canSave) onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId, date)
   }
-  const bookingLabel = bookingStatus === 'needed' ? '待预约' : bookingStatus === 'booked' ? '已预约' : '无需预约'
+  const bookingLabel = bookingStatus === 'needed' ? t('itemForm.bookingNeeded') : bookingStatus === 'booked' ? t('itemForm.bookingBooked') : t('itemForm.bookingNone')
   // 折叠状态的一行摘要，跟AddExpensePage的"其他设置"摘要是同一个思路——
   // 收起时也要能看出里面大概是什么，不是纯粹的"改›"占位符
   const foldSummary = [
     bookingLabel,
-    notes.trim() ? '备注已填' : null,
-    initial && date !== currentDate ? `已换到${date}` : null,
+    notes.trim() ? t('itemForm.foldSummaryNotes') : null,
+    initial && date !== currentDate ? t('itemForm.foldSummaryMoved', { date }) : null,
   ].filter(Boolean).join(' · ')
 
   // 三栏都给flex-1，标题不管左右两边按钮宽度差多少都能真正居中——"删除"
@@ -700,17 +706,17 @@ const ItemForm = forwardRef<ItemFormHandle, {
   const header = (
     <div className="flex items-center px-4 pb-2.5 border-b border-line flex-shrink-0">
       <div className="flex-1">
-        <button onClick={onCancel} className="text-muted text-[12.5px]">取消</button>
+        <button onClick={onCancel} className="text-muted text-[12.5px]">{t('common.cancel')}</button>
       </div>
-      <span className="font-serif-sc text-[13.5px] font-semibold flex-shrink-0">{initial ? '编辑行程项' : '新增行程项'}</span>
+      <span className="font-serif-sc text-[13.5px] font-semibold flex-shrink-0">{initial ? t('itemForm.editTitle') : t('itemForm.newTitle')}</span>
       <div className="flex-1 flex items-center justify-end gap-4">
         {onDelete && (
-          <button onClick={onDelete} className="text-negative/85" title="删除">
+          <button onClick={onDelete} className="text-negative/85" title={t('common.delete')}>
             <Trash2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
           </button>
         )}
         <button onClick={handleSave} disabled={!canSave} className="text-plan text-[12.5px] font-semibold disabled:opacity-40">
-          保存
+          {t('itemForm.save')}
         </button>
       </div>
     </div>
@@ -720,7 +726,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
     <>
       {sheet && (
         <div className="text-[11px] text-muted mb-1">
-          {currentDate} · {DOW[new Date(currentDate + 'T00:00:00').getDay()]}
+          {currentDate} · {formatDateChipDow(currentDate, locale)}
         </div>
       )}
       <div className="flex gap-2">
@@ -728,7 +734,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="做什么，例如「环球影城」"
+          placeholder={t('itemForm.titlePlaceholder')}
           autoComplete="off"
           autoFocus={!initial}
           className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
@@ -740,21 +746,21 @@ const ItemForm = forwardRef<ItemFormHandle, {
         countryCodes={countryCodes}
       />
 
-      <div className="text-[10.5px] tracking-widest uppercase text-muted mt-1 mb-1">其他设置</div>
+      <div className="text-[10.5px] tracking-widest uppercase text-muted mt-1 mb-1">{t('itemForm.otherSettings')}</div>
       <button
         type="button"
         onClick={() => setDetailsOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-2 rounded-xl border border-dashed border-line bg-plan/[0.04] px-3.5 py-2.5 text-left"
       >
         <span className="text-[12px] text-soft min-w-0 truncate">{foldSummary}</span>
-        <span className="text-[11.5px] font-semibold text-plan flex-shrink-0">{detailsOpen ? '收起 ‹' : '改 ›'}</span>
+        <span className="text-[11.5px] font-semibold text-plan flex-shrink-0">{detailsOpen ? t('itemForm.collapse') : t('itemForm.expand')}</span>
       </button>
 
       {detailsOpen && (
         <>
           {initial && (
             <div>
-              <div className="text-[10px] tracking-widest uppercase text-muted mb-1">日期</div>
+              <div className="text-[10px] tracking-widest uppercase text-muted mb-1">{t('itemForm.dateLabel')}</div>
               <DatePicker value={date} onChange={setDate} />
             </div>
           )}
@@ -764,42 +770,42 @@ const ItemForm = forwardRef<ItemFormHandle, {
             className="flex items-center gap-1 text-[11.5px] text-plan font-semibold border border-dashed border-plan/40 rounded-lg px-2.5 py-1.5 w-fit"
           >
             <Bookmark className="w-3 h-3" strokeWidth={2.2} />
-            从想去的地点里选一个
+            {t('itemForm.pickFromWishlist')}
           </button>
           <div>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="备注（可选）"
+              placeholder={t('itemForm.notesPlaceholder')}
               rows={2}
               autoComplete="off"
               className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan leading-relaxed"
             />
-            <div className="text-[10px] text-muted mt-1">拖右下角可以拉高；换行或加"1. 2. 3."就能分点</div>
+            <div className="text-[10px] text-muted mt-1">{t('itemForm.notesHint')}</div>
           </div>
           <div>
-            <div className="text-[10px] tracking-widest uppercase text-muted mb-1">预约状态</div>
+            <div className="text-[10px] tracking-widest uppercase text-muted mb-1">{t('itemForm.bookingLabel')}</div>
             <div className="flex border border-line rounded-lg overflow-hidden">
               <button
                 type="button"
                 onClick={() => setBookingStatus(null)}
                 className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === null ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
               >
-                无需预约
+                {t('itemForm.bookingNone')}
               </button>
               <button
                 type="button"
                 onClick={() => setBookingStatus('needed')}
                 className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === 'needed' ? 'bg-spend text-card font-medium' : 'text-muted'}`}
               >
-                待预约
+                {t('itemForm.bookingNeeded')}
               </button>
               <button
                 type="button"
                 onClick={() => setBookingStatus('booked')}
                 className={`flex-1 py-1.5 text-[11.5px] ${bookingStatus === 'booked' ? 'bg-positive text-card font-medium' : 'text-muted'}`}
               >
-                已预约
+                {t('itemForm.bookingBooked')}
               </button>
             </div>
           </div>
@@ -810,17 +816,17 @@ const ItemForm = forwardRef<ItemFormHandle, {
 
   const wishlistModal = wishlistPickerOpen && (
     <CenteredModal onClose={() => setWishlistPickerOpen(false)}>
-      <div className="font-serif-sc text-[15px] text-ink mb-3">从想去的地点里选</div>
+      <div className="font-serif-sc text-[15px] text-ink mb-3">{t('itemForm.wishlistPickerTitle')}</div>
       <input
         autoFocus
         value={wishlistFilter}
         onChange={(e) => setWishlistFilter(e.target.value)}
-        placeholder="筛选…"
+        placeholder={t('itemForm.wishlistFilterPlaceholder')}
         className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-plan mb-2"
       />
       <div className="flex flex-col gap-1.5 max-h-[240px] overflow-y-auto no-scrollbar">
         {filteredWishlistPlaces.length === 0 && (
-          <div className="text-[12px] text-muted text-center py-4">没有匹配的地点</div>
+          <div className="text-[12px] text-muted text-center py-4">{t('itemForm.wishlistNoMatches')}</div>
         )}
         {filteredWishlistPlaces.map((p) => (
           <button

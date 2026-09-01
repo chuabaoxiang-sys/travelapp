@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ItineraryDay, ItineraryItem, Expense, ExpenseDayAllocation } from '../../types'
 import { formatMoney } from '../../lib/money'
@@ -7,9 +8,7 @@ import { sortItineraryItems } from '../../domain/itinerary'
 import { spendByDate as computeSpendByDate } from '../../domain/dayAllocations'
 import { useDayRouteLegs } from '../../lib/routeLegs'
 import { RouteLegHint } from '../../components/RouteLegHint'
-
-const DOW = ['一', '二', '三', '四', '五', '六', '日']
-const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+import { monthYearLabel } from '../../lib/calendarFormat'
 
 function daysInMonth(y: number, m: number) {
   return new Date(y, m, 0).getDate()
@@ -44,6 +43,9 @@ export function CalendarView({
   onSelect: (date: string) => void
   onJumpToTimeline: () => void
 }) {
+  const { t, i18n } = useTranslation()
+  const dow = t('datePicker.dow', { returnObjects: true }) as string[]
+  const months = t('datePicker.months', { returnObjects: true }) as string[]
   const initial = new Date(selected + 'T00:00:00')
   const [viewY, setViewY] = useState(initial.getFullYear())
   const [viewM, setViewM] = useState(initial.getMonth() + 1)
@@ -79,13 +81,13 @@ export function CalendarView({
           <button type="button" onClick={() => shiftMonth(-1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">
             <ChevronLeft className="w-4 h-4" strokeWidth={1.8} />
           </button>
-          <span className="font-serif-sc text-sm font-semibold">{viewY}年 {MONTH_NAMES[viewM - 1]}</span>
+          <span className="font-serif-sc text-sm font-semibold">{monthYearLabel(viewY, viewM, i18n.language, months)}</span>
           <button type="button" onClick={() => shiftMonth(1)} className="w-7 h-7 rounded-full hover:bg-paper text-muted flex items-center justify-center">
             <ChevronRight className="w-4 h-4" strokeWidth={1.8} />
           </button>
         </div>
         <div className="grid grid-cols-7 gap-1 mb-1">
-          {DOW.map((d) => <div key={d} className="text-center text-[10px] text-muted">{d}</div>)}
+          {dow.map((d) => <div key={d} className="text-center text-[10px] text-muted">{d}</div>)}
         </div>
         <div className="grid grid-cols-7 gap-1">
           {cells.map((d, i) => {
@@ -126,7 +128,7 @@ export function CalendarView({
               onClick={() => onJumpToTimeline()}
               className="text-[11.5px] text-plan"
             >
-              在时间线中编辑 ›
+              {t('calendarView.jumpToTimeline')}
             </button>
           </div>
           {selectedItems.map((it, i) => (
@@ -140,7 +142,7 @@ export function CalendarView({
                         it.bookingStatus === 'needed' ? 'bg-spend/10 text-spend' : 'bg-positive/10 text-positive'
                       }`}
                     >
-                      {it.bookingStatus === 'needed' ? '待预约' : '已预约'}
+                      {it.bookingStatus === 'needed' ? t('itemForm.bookingNeeded') : t('itemForm.bookingBooked')}
                     </span>
                   )}
                 </div>
@@ -150,15 +152,15 @@ export function CalendarView({
             </Fragment>
           ))}
           {!selectedItems.length && (
-            <div className="text-[13px] text-muted py-3 text-center">这天还没有安排的行程项</div>
+            <div className="text-[13px] text-muted py-3 text-center">{t('calendarView.emptyDay')}</div>
           )}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           <div className="font-serif-sc text-sm">{selected}</div>
-          <div className="text-[13px] text-muted py-3 text-center">这天还没有安排的行程项</div>
+          <div className="text-[13px] text-muted py-3 text-center">{t('calendarView.emptyDay')}</div>
           <button type="button" onClick={() => onJumpToTimeline()} className="text-[11.5px] text-plan text-center">
-            去时间线添加 ›
+            {t('calendarView.jumpToTimelineAdd')}
           </button>
         </div>
       )}

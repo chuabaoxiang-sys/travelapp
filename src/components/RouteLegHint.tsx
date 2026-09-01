@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Navigation } from 'lucide-react'
 import type { RouteLeg } from '../types'
 import { buildMapsUrl, formatRouteLeg, isLegLinkable } from '../lib/routeLegs'
@@ -9,6 +10,7 @@ import { buildMapsUrl, formatRouteLeg, isLegLinkable } from '../lib/routeLegs'
 // 跳转动作用图标（Navigation）而不是文字按钮，跟全APP"动作用图标优先"的风格保持一致——
 // API失败时没有距离/时长数据可显示，这种情况下这一行就只剩图标本身，靠 title 提示用途
 export function RouteLegHint({ leg }: { leg: RouteLeg | undefined }) {
+  const { t } = useTranslation()
   if (!leg) return null
 
   // w-fit：这一行是itinerary列表那个flex-col容器里的一个子项，容器没设align-items，
@@ -18,7 +20,7 @@ export function RouteLegHint({ leg }: { leg: RouteLeg | undefined }) {
   const className = 'text-[11px] text-muted pl-2 -my-0.5 flex items-center gap-1 w-fit'
 
   if (!isLegLinkable(leg)) {
-    const text = formatRouteLeg(leg)
+    const text = formatRouteLeg(leg, t)
     if (!text) return null
     return (
       <div className={className}>
@@ -27,13 +29,13 @@ export function RouteLegHint({ leg }: { leg: RouteLeg | undefined }) {
     )
   }
 
-  const text = formatRouteLeg(leg)
+  const text = formatRouteLeg(leg, t)
   return (
     <a
       href={buildMapsUrl(leg.from, leg.to)}
       target="_blank"
       rel="noopener noreferrer"
-      title="在地图中查看路线"
+      title={t('routeLeg.viewRouteTitle')}
       className={`${className} hover:text-plan`}
     >
       <span className="opacity-50">↳</span>

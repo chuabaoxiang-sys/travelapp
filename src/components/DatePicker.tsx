@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEscapeKey } from '../hooks/useEscapeKey'
+import { monthYearLabel } from '../lib/calendarFormat'
 
 function parseISO(v: string) {
   const [y, m, d] = v.split('-').map(Number)
@@ -28,10 +29,6 @@ function formatDisplay(v: string, locale: string, months: string[]) {
   if (!v) return ''
   const { y, m, d } = parseISO(v)
   return locale === 'zh' ? `${y}年${m}月${d}日` : `${months[m - 1]} ${d}, ${y}`
-}
-
-function monthYearLabel(y: number, m: number, locale: string, months: string[]) {
-  return locale === 'zh' ? `${y}年 ${months[m - 1]}` : `${months[m - 1]} ${y}`
 }
 
 export function DatePicker({
