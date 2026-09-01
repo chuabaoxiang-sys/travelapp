@@ -5,6 +5,7 @@ import type { ExpenseCategory } from '../types'
 // 不会跟着 index.css 里定义的深色变量走。改成直接返回 CSS 变量引用，
 // 分类色的"这个值具体是多少"从此只有 index.css 一个真相来源
 export const CATEGORY_COLORS: Record<string, string> = {
+  'cat-flight': 'var(--color-cat-flight)',
   'cat-transport': 'var(--color-cat-transport)',
   'cat-stay': 'var(--color-cat-stay)',
   'cat-food': 'var(--color-cat-food)',

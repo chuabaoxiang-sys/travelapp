@@ -227,7 +227,7 @@ export async function enqueueOutbox(tableName: string, recordId: string, operati
 // 也只会覆盖同一批行，不会插出重复分类。
 const DEFAULT_CATEGORIES: ExpenseCategory[] = [
   { id: 'seed-cat-insurance', name: '保险', phase: 'pre_trip', char: '险', colorVar: 'cat-misc', tripId: null, isSystemDefault: true },
-  { id: 'seed-cat-flight', name: '机票', phase: 'pre_trip', char: '行', colorVar: 'cat-transport', tripId: null, isSystemDefault: true },
+  { id: 'seed-cat-flight', name: '机票', phase: 'pre_trip', char: '行', colorVar: 'cat-flight', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-visa', name: '签证', phase: 'pre_trip', char: '签', colorVar: 'cat-misc', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-stay-prepaid', name: '酒店预付', phase: 'pre_trip', char: '宿', colorVar: 'cat-stay', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-food', name: '餐饮', phase: 'during_trip', char: '食', colorVar: 'cat-food', tripId: null, isSystemDefault: true },

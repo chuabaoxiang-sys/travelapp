@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight } from 'lucide-react'
 import { db } from '../../db/dexie'
@@ -21,6 +21,8 @@ import { DiscoveryDot } from '../../components/DiscoveryDot'
 import { markHintSeen } from '../../domain/discoveryHints'
 import { BudgetSheet } from '../budget/BudgetSheet'
 import { SplitTab } from '../split/SplitTab'
+
+const DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
 export function LedgerTab({
   trip,
@@ -59,6 +61,20 @@ export function LedgerTab({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [rateBookOpen, setRateBookOpen] = useState(false)
   const [budgetOpen, setBudgetOpen] = useState(false)
+  // 日期条跳转用——scrollAreaRef是滚动容器本身，必须是position:relative，
+  // 不然offsetTop会算到再往上第一个"有定位"的祖先节点上（很多情况下是body），
+  // 跳转位置会整个错掉，这是做mockup原型时真的踩过的坑
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const dayRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const [flashDate, setFlashDate] = useState<string | null>(null)
+  function scrollToDate(date: string) {
+    const container = scrollAreaRef.current
+    const target = dayRefs.current.get(date)
+    if (!container || !target) return
+    container.scrollTo({ top: target.offsetTop - 8, behavior: 'smooth' })
+    setFlashDate(date)
+    setTimeout(() => setFlashDate((d) => (d === date ? null : d)), 900)
+  }
   // 三段视角：全部（团队）/我的花费/结算——预算和分账不再是各自独立的tab，
   // 并进了账目页当中的两个分段，"预算"进一步降级成"全部"视角里的一个次级入口
   // （见下面的"管理预算"），因为它本来就是"花了多少"的参照系，不该跟账目分开看
@@ -173,7 +189,10 @@ export function LedgerTab({
           <SplitTab trip={trip} currentMemberId={currentMemberId} />
         </div>
       ) : (
-      <div className="px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar flex-1 min-h-0 flex flex-col gap-3.5">
+      <div
+        ref={scrollAreaRef}
+        className="relative px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar flex-1 min-h-0 flex flex-col gap-3.5"
+      >
       {/* min-h-0：这个滚动容器自己也是flex-col，套了"按天分组"那层嵌套之后，
           Safari会让它按内容撑高而不是卡在flex-1分到的那块空间——真机上表现
           就是划不动，Chrome这边测不出来。加这个限制强制它老实待在分到的
@@ -210,11 +229,47 @@ export function LedgerTab({
         </div>
       )}
 
+      {/* 日期条：只在有不止一天记录时才出现，一天的账目本来就不用跳。
+          虚线框表示这天不在行程正式日期范围内（比如出发前很早就买好的机票）——
+          这类账目确实存在，不能因为不在行程日期里就没有入口跳过去看 */}
+      {expensesByDay.length > 1 && (
+        // min-h-min：这个横向滚动条自己也在一个flex-col容器里当flex item，
+        // 浏览器对"overflow-x-auto的flex item"有个隐藏规则——纵轴的自动最小高度
+        // 会被当成可滚动内容直接归零，整条日期条因此被压成0高度、内容还在但看不见。
+        // 显式给个min-content撑住高度就绕开了这条规则
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-5 px-5 min-h-min">
+          {expensesByDay.map(({ date }) => {
+            const dow = DOW[new Date(date + 'T00:00:00').getDay()]
+            const md = `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
+            const outsideTrip = !!trip.startDate && !!trip.endDate && (date < trip.startDate || date > trip.endDate)
+            return (
+              <button
+                key={date}
+                onClick={() => scrollToDate(date)}
+                className={`flex-shrink-0 rounded-xl px-2.5 py-1.5 text-center border bg-card font-serif-sc ${
+                  outsideTrip ? 'border-dashed border-line text-muted' : 'border-line text-soft'
+                }`}
+              >
+                <div className="text-[8px] opacity-70">{dow}</div>
+                <div className="text-[12.5px] mt-0.5 tabular">{md}</div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
         {expensesByDay.map(({ date, items }) => {
           const daySubtotal = items.reduce((a, e) => a + e.homeAmount, 0)
           return (
-            <div key={date} className="flex flex-col gap-2">
+            <div
+              key={date}
+              ref={(el) => {
+                if (el) dayRefs.current.set(date, el)
+                else dayRefs.current.delete(date)
+              }}
+              className={`flex flex-col gap-2 rounded-2xl transition-shadow ${flashDate === date ? 'ring-2 ring-plan' : ''}`}
+            >
               <div className="flex items-baseline justify-between">
                 <span className="font-serif-sc text-[13px]">{date}</span>
                 <span className="text-[11px] text-muted tabular">当日 {formatMoney(daySubtotal, currencyLabel)}</span>

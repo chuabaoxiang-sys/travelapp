@@ -11,10 +11,16 @@
   --color-negative: #b91c1c;
   --color-muted: #8a8177;
 
+  /* 机票以前跟交通共用cat-transport——环形图表把两个同色的分类画成一段弧，
+     真实行程数据一测就看出来完全分不清。门票原本的棕黄色(#b45309)跟餐饮的
+     橙红色(#c2410c)感知色差也不够（CIEDE2000只有6.89，安全线20）。两处都用
+     CIEDE2000感知色差公式全量核查过跟其余颜色的组合，不是凭眼睛挑的——
+     sky-700跟其余6个颜色最近也有23.99的色差，lime跟最近的交通色也有24.99 */
+  --color-cat-flight: #0369a1;
   --color-cat-transport: #0f766e;
   --color-cat-stay: #7c3aed;
   --color-cat-food: #c2410c;
-  --color-cat-ticket: #b45309;
+  --color-cat-ticket: #4d7c0f;
   --color-cat-shop: #be123c;
   --color-cat-misc: #57534e;
 
@@ -78,6 +84,7 @@
   --dark-nav-inactive: #756c60;
   --dark-faint: #4a4438;
   --dark-spend-text: #ffd199;
+  --dark-cat-flight: #38bdf8;
   --dark-cat-transport: #4ecdc4;
   --dark-cat-stay: #c4b5fd;
   --dark-cat-food: #ff8a5c;
@@ -104,6 +111,7 @@
     --color-nav-inactive: var(--dark-nav-inactive);
     --color-faint: var(--dark-faint);
     --color-spend-text: var(--dark-spend-text);
+    --color-cat-flight: var(--dark-cat-flight);
     --color-cat-transport: var(--dark-cat-transport);
     --color-cat-stay: var(--dark-cat-stay);
     --color-cat-food: var(--dark-cat-food);
@@ -130,6 +138,7 @@
   --color-nav-inactive: var(--dark-nav-inactive);
   --color-faint: var(--dark-faint);
   --color-spend-text: var(--dark-spend-text);
+  --color-cat-flight: var(--dark-cat-flight);
   --color-cat-transport: var(--dark-cat-transport);
   --color-cat-stay: var(--dark-cat-stay);
   --color-cat-food: var(--dark-cat-food);
