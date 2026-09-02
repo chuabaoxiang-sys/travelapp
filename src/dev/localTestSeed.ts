@@ -129,7 +129,7 @@ export async function ensureLocalTestSeed() {
 
   const budgets: Budget[] = [
     { id: 'seed-budget-1', householdId, tripId: tripCurrent.id, categoryId: 'seed-cat-food', phase: 'during_trip', amount: 2000, alertThresholdPct: 80 },
-    { id: 'seed-budget-2', householdId, tripId: tripCurrent.id, categoryId: 'seed-cat-stay-onsite', phase: 'during_trip', amount: 3500, alertThresholdPct: 90 },
+    { id: 'seed-budget-2', householdId, tripId: tripCurrent.id, categoryId: 'seed-cat-stay-prepaid', phase: 'during_trip', amount: 3500, alertThresholdPct: 90 },
   ]
 
   function makeExpense(
@@ -180,7 +180,7 @@ export async function ensureLocalTestSeed() {
     makeExpense('1', tripCurrent.id, 'seed-cat-food', 380, 'seed-member-dad', ['seed-member-dad', 'seed-member-mom', 'seed-member-kid'], 'equal', 'seed-day-1', currentDayDates[0], '隅田川边晚餐'),
     makeExpense('2', tripCurrent.id, 'seed-cat-transport', 156, 'seed-member-mom', [], 'none', 'seed-day-1', currentDayDates[0], '机场快线车票'),
     makeExpense('3', tripCurrent.id, 'seed-cat-ticket', 220, 'seed-member-dad', ['seed-member-kid'], 'equal', 'seed-day-2', currentDayDates[1], '动物园门票（帮大宝垫付）'),
-    makeExpense('4', tripCurrent.id, 'seed-cat-stay-onsite', 890, 'seed-member-mom', ['seed-member-dad', 'seed-member-mom', 'seed-member-kid'], 'equal', null, currentDayDates[2], '箱根温泉旅馆一晚'),
+    makeExpense('4', tripCurrent.id, 'seed-cat-stay-prepaid', 890, 'seed-member-mom', ['seed-member-dad', 'seed-member-mom', 'seed-member-kid'], 'equal', null, currentDayDates[2], '箱根温泉旅馆一晚'),
     // 老行程一笔历史账目——涉及已停用成员，测试"历史记录里仍要看到停用成员"
     makeExpense('legacy-1', tripLegacy.id, 'seed-cat-food', 95, 'seed-member-retired', ['seed-member-dad', 'seed-member-retired'], 'equal', null, isoDaysFromNow(-38), '路边摊晚餐（表哥请客）'),
   ]

@@ -317,12 +317,11 @@
     "insurance": "保险",
     "flight": "机票",
     "visa": "签证",
-    "stayPrepaid": "酒店预付",
+    "stayPrepaid": "住宿",
     "food": "餐饮",
     "transport": "交通",
     "shopping": "购物",
     "ticket": "门票",
-    "stayOnsite": "住宿现付",
     "misc": "杂项"
   },
   "ledger": {

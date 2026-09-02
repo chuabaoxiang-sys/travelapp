@@ -14,7 +14,6 @@ const CATEGORY_ICONS: Record<string, IconComponent> = {
   'seed-cat-transport': Car,
   'seed-cat-shopping': ShoppingBag,
   'seed-cat-ticket': Ticket,
-  'seed-cat-stay-onsite': BedDouble,
   'seed-cat-misc': Package,
 }
 

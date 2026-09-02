@@ -229,12 +229,11 @@ const DEFAULT_CATEGORIES: ExpenseCategory[] = [
   { id: 'seed-cat-insurance', name: '保险', phase: 'pre_trip', char: '险', colorVar: 'cat-misc', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-flight', name: '机票', phase: 'pre_trip', char: '行', colorVar: 'cat-flight', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-visa', name: '签证', phase: 'pre_trip', char: '签', colorVar: 'cat-misc', tripId: null, isSystemDefault: true },
-  { id: 'seed-cat-stay-prepaid', name: '酒店预付', phase: 'pre_trip', char: '宿', colorVar: 'cat-stay', tripId: null, isSystemDefault: true },
+  { id: 'seed-cat-stay-prepaid', name: '住宿', phase: 'either', char: '宿', colorVar: 'cat-stay', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-food', name: '餐饮', phase: 'during_trip', char: '食', colorVar: 'cat-food', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-transport', name: '交通', phase: 'during_trip', char: '行', colorVar: 'cat-transport', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-shopping', name: '购物', phase: 'during_trip', char: '购', colorVar: 'cat-shop', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-ticket', name: '门票', phase: 'during_trip', char: '票', colorVar: 'cat-ticket', tripId: null, isSystemDefault: true },
-  { id: 'seed-cat-stay-onsite', name: '住宿现付', phase: 'during_trip', char: '宿', colorVar: 'cat-stay', tripId: null, isSystemDefault: true },
   { id: 'seed-cat-misc', name: '杂项', phase: 'either', char: '杂', colorVar: 'cat-misc', tripId: null, isSystemDefault: true },
 ]
 

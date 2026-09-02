@@ -151,7 +151,7 @@
     "balances": {
       "heading": "Who paid what",
       "settled": "Settled",
-      "receivable": "Gets back {{amount}}",
+      "receivable": "Is owed {{amount}}",
       "payable": "Owes {{amount}}",
       "paid": "Paid {{amount}}",
       "expenseCount_one": "{{count}} expense",
@@ -200,7 +200,7 @@
     "editTitle": "Edit item",
     "newTitle": "Add item",
     "save": "Save",
-    "titlePlaceholder": "What's happening, e.g. \"Universal Studios\"",
+    "titlePlaceholder": "e.g. \"Universal Studios\"",
     "otherSettings": "Other settings",
     "collapse": "Hide ‹",
     "expand": "Edit ›",
@@ -240,7 +240,7 @@
   "memberGate": {
     "brand": "TripJournal",
     "title": "Who are you?",
-    "subtitle": "Pick your name — expenses you log will be attributed to this identity (no password needed for now)",
+    "subtitle": "Pick your name — expenses you log will be counted under this name (no password needed for now)",
     "addPlaceholder": "Add a new family member",
     "addButton": "Add"
   },
@@ -325,12 +325,11 @@
     "insurance": "Insurance",
     "flight": "Flights",
     "visa": "Visa",
-    "stayPrepaid": "Prepaid stay",
+    "stayPrepaid": "Accommodation",
     "food": "Food",
     "transport": "Transport",
     "shopping": "Shopping",
     "ticket": "Tickets",
-    "stayOnsite": "Onsite stay",
     "misc": "Misc"
   },
   "ledger": {

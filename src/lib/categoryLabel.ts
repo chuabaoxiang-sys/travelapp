@@ -14,7 +14,6 @@ const SYSTEM_CATEGORY_KEYS: Record<string, string> = {
   'seed-cat-transport': 'transport',
   'seed-cat-shopping': 'shopping',
   'seed-cat-ticket': 'ticket',
-  'seed-cat-stay-onsite': 'stayOnsite',
   'seed-cat-misc': 'misc',
 }
 
