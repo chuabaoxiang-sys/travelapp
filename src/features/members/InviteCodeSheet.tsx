@@ -25,7 +25,7 @@ export function InviteCodeSheet({ onClose }: { onClose: () => void }) {
     // 之前只复制裸码，朋友收到一串字母数字不知道该干什么——现在带上说明文案和入口步骤，
     // 复制出去就是一条能直接发给对方的完整消息。图文教程（public/join-guide.html，
     // Vite原样发布成静态页）额外给一条链接，卡在哪一步都能照着截图对一遍
-    const message = t('inviteCode.shareMessage', { origin: window.location.origin, code })
+    const message = t('inviteCode.shareMessage', { origin: window.location.origin, code, buttonLabel: t('emailLogin.haveInviteCode') })
     await navigator.clipboard.writeText(message)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)

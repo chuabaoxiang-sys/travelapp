@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { Mail, KeyRound } from 'lucide-react'
 import { sendLoginCode, verifyLoginCode, joinHouseholdByInviteCode, NotInvitedError } from '../../domain/household'
 import { enableLocalTestMode } from '../../dev/localTestMode'
@@ -9,6 +10,7 @@ const RESEND_SECONDS = 30
 type CodeStatus = 'idle' | 'checking' | 'error' | 'success'
 
 export function EmailLogin() {
+  const { t } = useTranslation()
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -52,7 +54,7 @@ export function EmailLogin() {
       await sendLoginCode(email)
       enterCodeStep()
     } catch (err) {
-      setError(err instanceof NotInvitedError ? '这个邮箱还没被邀请，联系邀请你的人确认一下' : '发送失败，请检查邮箱地址后重试')
+      setError(err instanceof NotInvitedError ? t('emailLogin.notInvited') : t('emailLogin.sendFailed'))
     } finally {
       setBusy(false)
     }
@@ -65,13 +67,13 @@ export function EmailLogin() {
     try {
       const joined = await joinHouseholdByInviteCode(email, inviteCode)
       if (!joined) {
-        setJoinError('邀请码无效，请确认后重试')
+        setJoinError(t('emailLogin.invalidCode'))
         return
       }
       await sendLoginCode(email)
       enterCodeStep()
     } catch {
-      setJoinError('加入失败，请稍后重试')
+      setJoinError(t('emailLogin.joinFailed'))
     } finally {
       setJoinBusy(false)
     }
@@ -134,19 +136,19 @@ export function EmailLogin() {
   return (
     <div className="min-h-screen bg-ink flex items-center justify-center p-6">
       <div className="w-full max-w-sm bg-card rounded-3xl p-6 border border-line">
-        <div className="text-[11px] tracking-widest text-muted uppercase">旅记 · TripJournal</div>
+        <div className="text-[11px] tracking-widest text-muted uppercase">{t('common.brand')}</div>
 
         {step === 'email' && (
           <>
-            <h1 className="font-serif-sc text-2xl mt-2 text-ink">先登录一下</h1>
-            <p className="text-sm text-muted mt-1">输入邮箱，我们发一个6位验证码过去，填进去就能进（不用记密码）</p>
+            <h1 className="font-serif-sc text-2xl mt-2 text-ink">{t('emailLogin.title')}</h1>
+            <p className="text-sm text-muted mt-1">{t('emailLogin.subtitle')}</p>
             <div className="mt-5 flex flex-col gap-2.5">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="你的邮箱"
+                placeholder={t('emailLogin.emailPlaceholder')}
                 autoFocus
                 className="rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-plan"
               />
@@ -156,18 +158,18 @@ export function EmailLogin() {
                 className="rounded-xl bg-plan text-card py-2.5 text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-1.5"
               >
                 <Mail className="w-4 h-4" strokeWidth={1.8} />
-                {busy ? '发送中…' : '发送验证码'}
+                {busy ? t('emailLogin.sending') : t('emailLogin.sendCode')}
               </button>
               {error && <div className="text-[12px] text-negative">{error}</div>}
 
               {showInviteCode ? (
                 <div className="mt-1.5 pt-3 border-t border-line flex flex-col gap-2.5">
-                  <p className="text-[12.5px] text-muted">有团队的邀请码？输入邮箱（上面那栏）和邀请码，直接加入。</p>
+                  <p className="text-[12.5px] text-muted">{t('emailLogin.haveInviteCodePrompt')}</p>
                   <input
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleJoinByCode()}
-                    placeholder="邀请码"
+                    placeholder={t('emailLogin.inviteCodePlaceholder')}
                     className="rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm text-ink outline-none focus:border-plan tracking-[0.1em]"
                   />
                   <button
@@ -176,13 +178,13 @@ export function EmailLogin() {
                     className="rounded-xl border border-plan text-plan py-2.5 text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-1.5"
                   >
                     <KeyRound className="w-4 h-4" strokeWidth={1.8} />
-                    {joinBusy ? '加入中…' : '用邀请码加入'}
+                    {joinBusy ? t('emailLogin.joining') : t('emailLogin.joinByCode')}
                   </button>
                   {joinError && <div className="text-[12px] text-negative">{joinError}</div>}
                 </div>
               ) : (
                 <button onClick={() => setShowInviteCode(true)} className="text-[12.5px] text-plan text-left mt-0.5">
-                  有邀请码？点这里输入
+                  {t('emailLogin.haveInviteCode')}
                 </button>
               )}
             </div>
@@ -192,16 +194,16 @@ export function EmailLogin() {
         {step === 'code' && codeStatus === 'success' && (
           <div className="mt-6 text-center py-4">
             <div className="w-10 h-10 rounded-full bg-positive text-card flex items-center justify-center mx-auto mb-3 text-lg">✓</div>
-            <div className="font-serif-sc text-lg text-ink">验证成功</div>
-            <p className="text-[12.5px] text-muted mt-1">正在进入旅记…</p>
+            <div className="font-serif-sc text-lg text-ink">{t('emailLogin.verifySuccess')}</div>
+            <p className="text-[12.5px] text-muted mt-1">{t('emailLogin.enteringApp')}</p>
           </div>
         )}
 
         {step === 'code' && codeStatus !== 'success' && (
           <>
-            <h1 className="font-serif-sc text-2xl mt-2 text-ink">查一下验证码</h1>
+            <h1 className="font-serif-sc text-2xl mt-2 text-ink">{t('emailLogin.enterCodeTitle')}</h1>
             <p className="text-sm text-muted mt-1">
-              验证码已经发到 <span className="text-ink font-medium">{email}</span> 了，填进去就能登录（记得看看垃圾邮件夹）
+              <Trans i18nKey="emailLogin.codeSentTo" values={{ email }} components={{ b: <span className="text-ink font-medium" /> }} />
             </p>
 
             <div className={`mt-5 flex gap-2 justify-between ${codeStatus === 'error' ? 'shake' : ''}`}>
@@ -224,8 +226,8 @@ export function EmailLogin() {
               ))}
             </div>
             <div className="min-h-[16px] mt-2 text-[12px]">
-              {codeStatus === 'error' && <span className="text-negative">验证码不对，再看看</span>}
-              {codeStatus === 'checking' && <span className="text-muted">正在验证…</span>}
+              {codeStatus === 'error' && <span className="text-negative">{t('emailLogin.wrongCode')}</span>}
+              {codeStatus === 'checking' && <span className="text-muted">{t('emailLogin.verifying')}</span>}
             </div>
 
             <div className="mt-3 pt-3 border-t border-line flex flex-col gap-1.5">
@@ -234,12 +236,12 @@ export function EmailLogin() {
                 disabled={resendSeconds > 0 || resendBusy}
                 className="text-[12.5px] text-plan text-left disabled:text-muted"
               >
-                {resendSeconds > 0 ? `没收到？${resendSeconds}秒后可重新发送` : resendBusy ? '发送中…' : '重新发送验证码'}
+                {resendSeconds > 0 ? t('emailLogin.resendWait', { seconds: resendSeconds }) : resendBusy ? t('emailLogin.sending') : t('emailLogin.resendCode')}
               </button>
-              {resendNotice && <div className="text-[11.5px] text-positive">已重新发送</div>}
+              {resendNotice && <div className="text-[11.5px] text-positive">{t('emailLogin.resentNotice')}</div>}
             </div>
             <button onClick={() => setStep('email')} className="mt-3 text-[12px] text-muted text-left">
-              换个邮箱
+              {t('emailLogin.changeEmail')}
             </button>
           </>
         )}
@@ -252,7 +254,7 @@ export function EmailLogin() {
             }}
             className="mt-4 pt-3 border-t border-line text-[12px] text-muted text-left w-full"
           >
-            本地测试模式（跳过登录，看假数据 · 仅dev环境可见）
+            {t('emailLogin.localTestMode')}
           </button>
         )}
       </div>

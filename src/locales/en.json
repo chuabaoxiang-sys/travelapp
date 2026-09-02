@@ -8,7 +8,8 @@
     "hoursAgo_one": "{{count}} hour ago",
     "hoursAgo_other": "{{count}} hours ago",
     "daysAgo_one": "{{count}} day ago",
-    "daysAgo_other": "{{count}} days ago"
+    "daysAgo_other": "{{count}} days ago",
+    "brand": "TripJournal"
   },
   "datePicker": {
     "placeholder": "Select date",
@@ -285,7 +286,7 @@
     "regenerateConfirmTitle": "Regenerate the invite code?",
     "regenerateConfirmMessage": "The old code stops working immediately, even copies you already sent out — you'll need to send everyone the new one.",
     "regenerateConfirm": "Regenerate",
-    "shareMessage": "You're invited to join \"TripJournal\" — the tool our family uses to track trips and expenses.\nOpen {{origin}}\nTap \"有邀请码？点这里输入\" (Have an invite code?), then enter your email + this code to join:\n\n{{code}}\n\n(Step-by-step guide: {{origin}}/join-guide.html)"
+    "shareMessage": "You're invited to join \"TripJournal\" — the tool our family uses to track trips and expenses.\nOpen {{origin}}\nTap \"{{buttonLabel}}\", then enter your email + this code to join:\n\n{{code}}\n\n(Step-by-step guide: {{origin}}/join-guide.html)"
   },
   "wishlist": {
     "title": "Saved places",
@@ -693,5 +694,73 @@
     "priciestDay": "Priciest day",
     "byPerson": "By person",
     "personLine": "Paid {{paid}} · share {{owed}}"
+  },
+  "emailLogin": {
+    "title": "Let's log you in",
+    "subtitle": "Enter your email and we'll send a 6-digit code — no password to remember",
+    "emailPlaceholder": "Your email",
+    "sending": "Sending…",
+    "sendCode": "Send code",
+    "notInvited": "This email hasn't been invited yet — check with whoever invited you",
+    "sendFailed": "Couldn't send it — check the email address and try again",
+    "haveInviteCodePrompt": "Have a group invite code? Enter your email above plus the code to join directly.",
+    "inviteCodePlaceholder": "Invite code",
+    "joining": "Joining…",
+    "joinByCode": "Join with invite code",
+    "invalidCode": "That invite code isn't valid — check it and try again",
+    "joinFailed": "Couldn't join — try again shortly",
+    "haveInviteCode": "Have an invite code? Tap here",
+    "verifySuccess": "Verified",
+    "enteringApp": "Taking you in…",
+    "enterCodeTitle": "Check your code",
+    "codeSentTo": "We sent a code to <b>{{email}}</b> — enter it below to log in (check your spam folder too)",
+    "wrongCode": "That code's not right — double check it",
+    "verifying": "Verifying…",
+    "resendWait": "Didn't get it? Resend in {{seconds}}s",
+    "resendCode": "Resend code",
+    "resentNotice": "Resent",
+    "changeEmail": "Use a different email",
+    "localTestMode": "Local test mode (skip login, see sample data · dev only)"
+  },
+  "noHousehold": {
+    "title": "This email hasn't joined a group yet",
+    "subtitle": "You can log in with a different email, or skip waiting for an invite and create a new group yourself.",
+    "switchEmail": "Log in with a different email",
+    "namePrompt": "Give your group a name (e.g. \"Our Family Trips\") — you'll be its first member once it's created.",
+    "namePlaceholder": "Group name",
+    "creating": "Creating…",
+    "createGroup": "Create group",
+    "createFailed": "Couldn't create it — this feature might not be turned on yet, or it could be a network issue. Try again shortly.",
+    "orCreateNew": "Or create a new group"
+  },
+  "tripPicker": {
+    "myTrips": "My trips",
+    "savedPlaces": "Saved places",
+    "dateUnset": "Date not set",
+    "statusPlanning": "Planning",
+    "statusActive": "Active",
+    "statusCompleted": "Completed",
+    "statusArchived": "Archived",
+    "edit": "Edit",
+    "delete": "Delete",
+    "newTrip": "New trip",
+    "firstTimeGuide": "First time? Check the user guide first",
+    "deleteConfirmTitle": "Delete \"{{name}}\"?",
+    "deleteConfirmMessage": "This also deletes every itinerary item and expense under it — this can't be undone.",
+    "form": {
+      "namePlaceholder": "Trip name",
+      "nameHint": "e.g. \"2026 Kansai Family Trip\"",
+      "startDate": "Departure date",
+      "endDate": "Return date",
+      "dateError": "Return date can't be before the departure date",
+      "homeCurrency": "Home currency",
+      "otherCurrency": "Other",
+      "manualCurrencyPlaceholder": "Currency code, e.g. KRW",
+      "homeCurrencyHint": "All expenses for this trip will be converted to this currency",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "saveTitle": "Save changes",
+      "createTitle": "Create"
+    }
   }
 }

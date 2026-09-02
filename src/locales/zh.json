@@ -5,7 +5,8 @@
     "justNow": "刚刚",
     "minutesAgo_other": "{{count}}分钟前",
     "hoursAgo_other": "{{count}}小时前",
-    "daysAgo_other": "{{count}}天前"
+    "daysAgo_other": "{{count}}天前",
+    "brand": "旅记 · TripJournal"
   },
   "datePicker": {
     "placeholder": "选择日期",
@@ -275,7 +276,7 @@
     "regenerateConfirmTitle": "重新生成邀请码？",
     "regenerateConfirmMessage": "旧邀请码立刻失效，已经发出去的也不能用了，得把新码重新发给对方。",
     "regenerateConfirm": "重新生成",
-    "shareMessage": "邀请你加入\"旅记\"——我们家用来记行程和账目的小工具\n打开 {{origin}}\n点\"有邀请码？点这里输入\"，填你的邮箱 + 下面这串邀请码就能加入：\n\n{{code}}\n\n（一步步图文教程：{{origin}}/join-guide.html）"
+    "shareMessage": "邀请你加入\"旅记\"——我们家用来记行程和账目的小工具\n打开 {{origin}}\n点\"{{buttonLabel}}\"，填你的邮箱 + 下面这串邀请码就能加入：\n\n{{code}}\n\n（一步步图文教程：{{origin}}/join-guide.html）"
   },
   "wishlist": {
     "title": "想去的地点",
@@ -668,5 +669,73 @@
     "priciestDay": "最贵的一天",
     "byPerson": "每个人",
     "personLine": "垫付 {{paid}} · 应分摊 {{owed}}"
+  },
+  "emailLogin": {
+    "title": "先登录一下",
+    "subtitle": "输入邮箱，我们发一个6位验证码过去，填进去就能进（不用记密码）",
+    "emailPlaceholder": "你的邮箱",
+    "sending": "发送中…",
+    "sendCode": "发送验证码",
+    "notInvited": "这个邮箱还没被邀请，联系邀请你的人确认一下",
+    "sendFailed": "发送失败，请检查邮箱地址后重试",
+    "haveInviteCodePrompt": "有团队的邀请码？输入邮箱（上面那栏）和邀请码，直接加入。",
+    "inviteCodePlaceholder": "邀请码",
+    "joining": "加入中…",
+    "joinByCode": "用邀请码加入",
+    "invalidCode": "邀请码无效，请确认后重试",
+    "joinFailed": "加入失败，请稍后重试",
+    "haveInviteCode": "有邀请码？点这里输入",
+    "verifySuccess": "验证成功",
+    "enteringApp": "正在进入旅记…",
+    "enterCodeTitle": "查一下验证码",
+    "codeSentTo": "验证码已经发到 <b>{{email}}</b> 了，填进去就能登录（记得看看垃圾邮件夹）",
+    "wrongCode": "验证码不对，再看看",
+    "verifying": "正在验证…",
+    "resendWait": "没收到？{{seconds}}秒后可重新发送",
+    "resendCode": "重新发送验证码",
+    "resentNotice": "已重新发送",
+    "changeEmail": "换个邮箱",
+    "localTestMode": "本地测试模式（跳过登录，看假数据 · 仅dev环境可见）"
+  },
+  "noHousehold": {
+    "title": "这个邮箱还没加入团队",
+    "subtitle": "可以换一个邮箱重新登录，或者不等被邀请，直接自己建一个新团队。",
+    "switchEmail": "换个邮箱重新登录",
+    "namePrompt": "给团队起个名字（比如「陈家旅行团」），建好之后你就是里面第一个成员。",
+    "namePlaceholder": "团队名",
+    "creating": "创建中…",
+    "createGroup": "创建团队",
+    "createFailed": "创建失败，可能是这个功能还没开放，也可能是网络问题，稍后再试试",
+    "orCreateNew": "或者，创建一个新团队"
+  },
+  "tripPicker": {
+    "myTrips": "我的行程",
+    "savedPlaces": "想去的地点",
+    "dateUnset": "日期未定",
+    "statusPlanning": "规划中",
+    "statusActive": "进行中",
+    "statusCompleted": "已结束",
+    "statusArchived": "已归档",
+    "edit": "编辑",
+    "delete": "删除",
+    "newTrip": "新建行程",
+    "firstTimeGuide": "第一次用？先看使用指南",
+    "deleteConfirmTitle": "删除行程「{{name}}」？",
+    "deleteConfirmMessage": "这会同时删除它名下所有的行程安排和账目记录，无法恢复。",
+    "form": {
+      "namePlaceholder": "行程名称",
+      "nameHint": "例如「2026日本关西家族游」",
+      "startDate": "出发日期",
+      "endDate": "返程日期",
+      "dateError": "返程日期不能早于出发日期",
+      "homeCurrency": "本位币",
+      "otherCurrency": "其他",
+      "manualCurrencyPlaceholder": "币种代码，比如 KRW",
+      "homeCurrencyHint": "整趟行程的花费都会折算成这个币种",
+      "delete": "删除",
+      "cancel": "取消",
+      "saveTitle": "保存修改",
+      "createTitle": "创建"
+    }
   }
 }
