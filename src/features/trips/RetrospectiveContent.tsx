@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Trip } from '../../types'
 import { buildRetrospective, type TripRetrospective } from '../../domain/retrospective'
 import { formatMoney } from '../../lib/money'
@@ -18,27 +19,26 @@ function Bar({ pct, color }: { pct: number; color: string }) {
 }
 
 export function RetrospectiveContent({ trip }: { trip: Trip }) {
+  const { t } = useTranslation()
   const [data, setData] = useState<TripRetrospective | null>(null)
 
   useEffect(() => {
     const todayISO = new Date().toLocaleDateString('sv-SE')
-    buildRetrospective(trip.id, todayISO).then(setData)
-  }, [trip.id])
+    buildRetrospective(trip.id, todayISO, t).then(setData)
+  }, [trip.id, t])
 
   const currency = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
   const money = (n: number) => formatMoney(n, currency)
   const maxCat = data?.categories[0]?.total ?? 0
 
   if (!data) {
-    return <div className="text-[13px] text-muted py-10 text-center">正在汇总…</div>
+    return <div className="text-[13px] text-muted py-10 text-center">{t('retrospective.loading')}</div>
   }
 
   if (data.total === 0 && data.itemCount === 0) {
     return (
       <div className="text-[13px] text-muted py-10 text-center leading-relaxed">
-        这趟还没有任何记录。
-        <br />
-        记几笔账、加几项安排，这里就会有东西可看。
+        {t('retrospective.empty')}
       </div>
     )
   }
@@ -50,9 +50,11 @@ export function RetrospectiveContent({ trip }: { trip: Trip }) {
         <div className="text-[11px] tracking-wider text-on-dark/55">{trip.name}</div>
         <div className="font-bold tracking-tight tabular text-[32px] leading-none mt-1.5">{money(data.total)}</div>
         <div className="mt-2.5 text-[11px] text-on-dark/50 leading-relaxed">
-          {data.dayCount > 0 && `${data.dayCount} 天 · `}
-          {data.memberCount > 0 && `${data.memberCount} 人 · 人均 ${money(data.perPerson)}`}
-          {data.placeCount > 0 && ` · 去了 ${data.placeCount} 个地方`}
+          {[
+            data.dayCount > 0 ? t('retrospective.summaryDays', { count: data.dayCount }) : null,
+            data.memberCount > 0 ? t('retrospective.summaryPeopleAvg', { count: data.memberCount, amount: money(data.perPerson) }) : null,
+            data.placeCount > 0 ? t('retrospective.summaryPlaces', { count: data.placeCount }) : null,
+          ].filter(Boolean).join(' · ')}
         </div>
       </div>
 
@@ -60,17 +62,17 @@ export function RetrospectiveContent({ trip }: { trip: Trip }) {
       {data.unsettledCount > 0 && (
         <div className="rounded-2xl border border-spend/60 bg-spend/[.06] px-3.5 py-3">
           <div className="text-[13px] font-medium text-ink">
-            还有 {data.unsettledCount} 笔没结清
+            {t('retrospective.unsettledCount', { count: data.unsettledCount })}
           </div>
           <div className="text-[11px] text-muted mt-0.5">
-            合计 {money(data.unsettledTotal)}，去「账目 · 结算」可以逐笔结
+            {t('retrospective.unsettledDetail', { amount: money(data.unsettledTotal) })}
           </div>
         </div>
       )}
 
       {data.categories.length > 0 && (
         <div>
-          <div className="text-[11px] text-muted mb-2">这趟花在哪</div>
+          <div className="text-[11px] text-muted mb-2">{t('retrospective.whereItWent')}</div>
           <div className="flex flex-col gap-2.5">
             {data.categories.map((c) => (
               <div key={c.name}>
@@ -87,7 +89,7 @@ export function RetrospectiveContent({ trip }: { trip: Trip }) {
 
       {data.topDay && (
         <div className="rounded-2xl border border-line bg-card px-3.5 py-2.5 flex items-center">
-          <span className="text-[12.5px]">最贵的一天</span>
+          <span className="text-[12.5px]">{t('retrospective.priciestDay')}</span>
           <span className="ml-auto text-[12.5px] tabular">
             {data.topDay.date} · {money(data.topDay.total)}
           </span>
@@ -96,13 +98,13 @@ export function RetrospectiveContent({ trip }: { trip: Trip }) {
 
       {data.people.length > 0 && (
         <div>
-          <div className="text-[11px] text-muted mb-2">每个人</div>
+          <div className="text-[11px] text-muted mb-2">{t('retrospective.byPerson')}</div>
           <div className="flex flex-col gap-1.5">
             {data.people.map((p) => (
               <div key={p.memberName} className="rounded-2xl border border-line bg-card px-3.5 py-2.5 flex items-center">
                 <span className="text-[12.5px]">{p.memberName}</span>
                 <span className="ml-auto text-[11px] text-muted tabular">
-                  垫付 {money(p.paid)} · 应分摊 {money(p.owed)}
+                  {t('retrospective.personLine', { paid: money(p.paid), owed: money(p.owed) })}
                 </span>
               </div>
             ))}

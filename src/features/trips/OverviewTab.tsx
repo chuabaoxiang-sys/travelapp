@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { db } from '../../db/dexie'
 import type { Trip } from '../../types'
 import { resolveTripPhase, daysUntil, currentDayIndex } from '../../domain/tripPhase'
@@ -8,10 +9,11 @@ import { spentOnDate } from '../../domain/dayAllocations'
 import { getOverallBudget } from '../../domain/budgets'
 import { listWishlistPlaces, usageByWishlistEntry } from '../../domain/wishlist'
 import { daysInclusive, formatTimeHM } from '../../lib/dates'
+import { relativeTime } from '../../lib/relativeTime'
 import { Avatar } from '../../components/Avatar'
 import { SpendHero } from '../expenses/SpendHero'
 import { RetrospectiveContent } from './RetrospectiveContent'
-import { useActivityEntries, ACTIVITY_KIND_LABEL, ACTIVITY_KIND_CLASS, relativeTime } from '../activity/useActivityEntries'
+import { useActivityEntries, activityKindLabel, ACTIVITY_KIND_CLASS } from '../activity/useActivityEntries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
 import { ActivityFeed } from '../activity/ActivityFeed'
 
@@ -54,6 +56,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO: string; currentMemberId: string }) {
+  const { t } = useTranslation()
   const [wishlistOpen, setWishlistOpen] = useState(false)
 
   const items = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
@@ -82,28 +85,27 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
   return (
     <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full flex flex-col gap-3.5">
       <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
-        <div className="text-[11px] tracking-wider text-on-dark/55">距离出发</div>
+        <div className="text-[11px] tracking-wider text-on-dark/55">{t('overview.untilDeparture')}</div>
         <div className="font-bold tracking-tight tabular text-[30px] leading-none mt-1.5">
-          {daysLeft == null ? '还没定日期' : daysLeft <= 0 ? '就是今天' : `${daysLeft} 天`}
+          {daysLeft == null ? t('overview.noDateSet') : daysLeft <= 0 ? t('overview.today') : t('overview.daysLeft', { count: daysLeft })}
         </div>
         <div className="mt-2 text-[11px] text-on-dark/50">
-          {trip.name}
-          {trip.startDate && ` · ${trip.startDate} 出发`}
+          {trip.startDate ? t('overview.departsOn', { trip: trip.name, date: trip.startDate }) : trip.name}
         </div>
       </div>
 
       {needsBooking.length > 0 && (
         <div>
-          <SectionLabel>还没订</SectionLabel>
+          <SectionLabel>{t('overview.notReserved')}</SectionLabel>
           <div className="flex flex-col gap-2">
             {needsBooking.slice(0, 4).map((it) => (
               <Card key={it.id} tone="warn">
                 <div className="flex items-center gap-2.5">
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium truncate">{it.title}</div>
-                    <div className="text-[10.5px] text-muted mt-0.5">{dateOfDay(it.dayId) ?? '日期未知'}</div>
+                    <div className="text-[10.5px] text-muted mt-0.5">{dateOfDay(it.dayId) ?? t('overview.dateUnknown')}</div>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-spend/15 text-spend flex-shrink-0">待预约</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-spend/15 text-spend flex-shrink-0">{t('itemForm.bookingNeeded')}</span>
                 </div>
               </Card>
             ))}
@@ -112,20 +114,20 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
       )}
 
       <div>
-        <SectionLabel>准备得怎么样</SectionLabel>
+        <SectionLabel>{t('overview.gettingReady')}</SectionLabel>
         <div className="flex flex-col gap-2">
           {totalDays > 0 && (
             <Card>
               <div className="flex items-center text-[13px]">
-                <span>行程安排</span>
-                <span className="ml-auto text-muted tabular">{totalDays}天里{daysWithItems}天有安排</span>
+                <span>{t('nav.itinerary')}</span>
+                <span className="ml-auto text-muted tabular">{t('overview.itineraryProgress', { total: totalDays, withItems: daysWithItems })}</span>
               </div>
             </Card>
           )}
           {notYetUsed > 0 && (
             <button onClick={() => setWishlistOpen(true)} className="text-left">
               <Card tone="accent">
-                <div className="text-[13px] text-plan">{notYetUsed} 个想去的地点还没排进行程 ›</div>
+                <div className="text-[13px] text-plan">{t('overview.placesNotAdded', { count: notYetUsed })}</div>
               </Card>
             </button>
           )}
@@ -134,7 +136,7 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
 
       {!needsBooking.length && !totalDays && !notYetUsed && (
         <div className="text-[13px] text-muted text-center py-10">
-          先去「行程」标签排几项安排，这里会显示准备进度。
+          {t('overview.emptyBeforeTrip')}
         </div>
       )}
 
@@ -144,6 +146,7 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
 }
 
 function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
+  const { t } = useTranslation()
   const [activityOpen, setActivityOpen] = useState(false)
 
   const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
@@ -175,13 +178,13 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
     <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full flex flex-col gap-3.5">
       <div>
         {dayIndex != null && (
-          <div className="text-[11px] text-muted mb-1.5">第 {dayIndex} 天 · {todayISO.slice(5)}</div>
+          <div className="text-[11px] text-muted mb-1.5">{t('overview.dayIndex', { day: dayIndex, date: todayISO.slice(5) })}</div>
         )}
         <SpendHero state={allowance} currency={currencyLabel} />
       </div>
 
       <div>
-        <SectionLabel>接下来</SectionLabel>
+        <SectionLabel>{t('overview.upNext')}</SectionLabel>
         {upcoming.length ? (
           <div className="flex flex-col gap-2">
             {upcoming.slice(0, 3).map((it) => (
@@ -191,24 +194,24 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
                     <div className="text-[13px] font-medium truncate">{it.title}</div>
                     {it.locationName && <div className="text-[10.5px] text-muted mt-0.5 truncate">{it.locationName}</div>}
                   </div>
-                  <span className="text-[12px] tabular text-muted flex-shrink-0">{formatTimeHM(it.time) || '时间未定'}</span>
+                  <span className="text-[12px] tabular text-muted flex-shrink-0">{formatTimeHM(it.time) || t('overview.noTimeSet')}</span>
                 </div>
               </Card>
             ))}
           </div>
         ) : (
           <Card>
-            <div className="text-[12.5px] text-muted">今天的安排都过了，去「行程」标签看看明天。</div>
+            <div className="text-[12.5px] text-muted">{t('overview.todayDone')}</div>
           </Card>
         )}
       </div>
 
       <div>
         <div className="flex items-center">
-          <SectionLabel>家里刚才</SectionLabel>
+          <SectionLabel>{t('overview.recentActivity')}</SectionLabel>
           {entries.length > 2 && (
             <button onClick={() => setActivityOpen(true)} className="ml-auto text-[11px] text-plan mb-2">
-              查看全部 ›
+              {t('overview.viewAll')}
             </button>
           )}
         </div>
@@ -222,14 +225,14 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
                     <Avatar member={author} size={22} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[12px] font-medium">{author?.displayName ?? '有人'}</span>
+                        <span className="text-[12px] font-medium">{author?.displayName ?? t('activity.someone')}</span>
                         <span className={`text-[9.5px] px-1.5 py-0.5 rounded-full ${ACTIVITY_KIND_CLASS[en.kind]}`}>
-                          {ACTIVITY_KIND_LABEL[en.kind]}
+                          {activityKindLabel(en.kind, t)}
                         </span>
                       </div>
                       <div className="text-[12px] text-ink/85 mt-0.5 break-words">{en.text}</div>
                     </div>
-                    <div className="text-[10px] text-muted flex-shrink-0 pt-0.5">{relativeTime(en.at, now)}</div>
+                    <div className="text-[10px] text-muted flex-shrink-0 pt-0.5">{relativeTime(en.at, now, t)}</div>
                   </div>
                 </Card>
               )
@@ -237,7 +240,7 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
           </div>
         ) : (
           <Card>
-            <div className="text-[12.5px] text-muted">还没有人记账或加安排。</div>
+            <div className="text-[12.5px] text-muted">{t('overview.emptyDuringTrip')}</div>
           </Card>
         )}
       </div>

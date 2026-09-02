@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { X, Link2, RefreshCw, BookOpen, ListChecks, MoonStar, Languages } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { shareReadyFile, downloadFile } from '../../lib/share'
@@ -13,54 +14,7 @@ import { BottomSheet } from '../../components/BottomSheet'
 import { STUCK_THRESHOLD } from '../../components/SyncDetailSheet'
 import type { Trip } from '../../types'
 
-const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: 'light', label: '浅色' },
-  { value: 'dark', label: '深色' },
-  { value: 'system', label: '跟随系统' },
-]
-
-const LOCALE_OPTIONS: { value: LocalePreference; label: string }[] = [
-  { value: null, label: '跟随系统' },
-  { value: 'zh', label: '中文' },
-  { value: 'en', label: 'English' },
-]
-
 type ExportKind = 'excel' | 'json' | 'csv'
-
-const EXPORT_OPTIONS: { kind: ExportKind; label: string; desc: string; icon: ReactNode }[] = [
-  {
-    kind: 'excel',
-    label: 'EXCEL',
-    desc: 'Excel · 明细 + 汇总两个sheet，行程和账目都在里面',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="3" width="16" height="18" rx="2" />
-        <path d="M8 8h8M8 12h3M13 12h3M8 16h3M13 16h3" />
-      </svg>
-    ),
-  },
-  {
-    kind: 'json',
-    label: 'JSON',
-    desc: 'JSON · 给AI工具生成游记文案/短视频脚本用',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M7 3h7l5 5v13H7z" />
-        <path d="M14 3v5h5" />
-      </svg>
-    ),
-  },
-  {
-    kind: 'csv',
-    label: 'CSV',
-    desc: 'CSV · 摊平成表格，方便导入其他工具',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
-    ),
-  },
-]
 
 export function TripMoreSheet({
   trip,
@@ -77,10 +31,63 @@ export function TripMoreSheet({
   onOpenShareSettings: () => void
   onOpenSyncDetail: () => void
 }) {
+  const { t } = useTranslation()
+
+  const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+    { value: 'light', label: t('more.themeLight') },
+    { value: 'dark', label: t('more.themeDark') },
+    { value: 'system', label: t('more.followSystem') },
+  ]
+
+  const LOCALE_OPTIONS: { value: LocalePreference; label: string }[] = [
+    { value: null, label: t('more.followSystem') },
+    { value: 'zh', label: '中文' },
+    { value: 'en', label: 'English' },
+  ]
+
+  const EXPORT_OPTIONS: { kind: ExportKind; label: string; desc: string; icon: ReactNode }[] = [
+    {
+      kind: 'excel',
+      label: 'EXCEL',
+      desc: t('more.excelDesc'),
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="3" width="16" height="18" rx="2" />
+          <path d="M8 8h8M8 12h3M13 12h3M8 16h3M13 16h3" />
+        </svg>
+      ),
+    },
+    {
+      kind: 'json',
+      label: 'JSON',
+      desc: t('more.jsonDesc'),
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 3h7l5 5v13H7z" />
+          <path d="M14 3v5h5" />
+        </svg>
+      ),
+    },
+    {
+      kind: 'csv',
+      label: 'CSV',
+      desc: t('more.csvDesc'),
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      ),
+    },
+  ]
+
   const pendingOutbox = useLiveQuery(() => db.outbox.where('status').equals('pending').toArray()) ?? []
   const stuckCount = pendingOutbox.filter((e) => e.attempts >= STUCK_THRESHOLD).length
   const syncSummary =
-    stuckCount > 0 ? `${stuckCount}条看起来卡住了，点击查看` : pendingOutbox.length > 0 ? `${pendingOutbox.length}条还在重试中` : '全部已同步'
+    stuckCount > 0
+      ? t('more.syncStuck', { count: stuckCount })
+      : pendingOutbox.length > 0
+        ? t('more.syncPendingRetry', { count: pendingOutbox.length })
+        : t('more.syncAllSynced')
   const syncSummaryClass = stuckCount > 0 ? 'text-negative' : pendingOutbox.length > 0 ? 'text-spend' : 'text-muted'
 
   const [busy, setBusy] = useState<ExportKind | null>(null)
@@ -140,7 +147,7 @@ export function TripMoreSheet({
       }
       setReadyFile({ kind, file })
     } catch {
-      setError('导出失败，请重试')
+      setError(t('more.exportFailed'))
     } finally {
       setBusy(null)
     }
@@ -152,9 +159,9 @@ export function TripMoreSheet({
     if (!readyFile) return
     const { file } = readyFile
     setReadyFile(null)
-    shareReadyFile(file, `${trip.name} · 旅记导出`).then((result) => {
+    shareReadyFile(file, t('more.shareTitle', { trip: trip.name })).then((result) => {
       if (result.outcome === 'downloaded' && result.failureReason) {
-        setNote(`已改为直接下载文件（系统分享没有打开，原因：${result.failureReason}）`)
+        setNote(t('more.shareFallbackNote', { reason: result.failureReason }))
       }
     })
   }
@@ -164,19 +171,19 @@ export function TripMoreSheet({
         <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-3.5" />
 
         <div className="flex justify-between items-center mb-1">
-          <span className="text-sm font-semibold">更多</span>
-          <button onClick={onClose} className="text-muted" title="关闭">
+          <span className="text-sm font-semibold">{t('more.title')}</span>
+          <button onClick={onClose} className="text-muted" title={t('more.close')}>
             <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </button>
         </div>
 
-        <div className="text-[10px] font-bold text-muted tracking-wide mt-3.5 mb-1.5">外观</div>
+        <div className="text-[10px] font-bold text-muted tracking-wide mt-3.5 mb-1.5">{t('more.appearance')}</div>
 
         <div className="flex items-center gap-3 py-1.5">
           <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
             <MoonStar className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>
-          <div className="text-[13px] font-medium flex-1 min-w-0">深色模式</div>
+          <div className="text-[13px] font-medium flex-1 min-w-0">{t('more.darkMode')}</div>
           <div className="flex gap-1 bg-segment rounded-[10px] p-[3px] flex-shrink-0">
             {THEME_OPTIONS.map((opt) => (
               <button
@@ -196,7 +203,7 @@ export function TripMoreSheet({
           <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
             <Languages className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>
-          <div className="text-[13px] font-medium flex-1 min-w-0">语言</div>
+          <div className="text-[13px] font-medium flex-1 min-w-0">{t('more.language')}</div>
           <div className="flex gap-1 bg-segment rounded-[10px] p-[3px] flex-shrink-0">
             {LOCALE_OPTIONS.map((opt) => (
               <button
@@ -212,17 +219,17 @@ export function TripMoreSheet({
           </div>
         </div>
 
-        <div className="text-[10px] font-bold text-muted tracking-wide mt-3.5 mb-1.5 border-t border-line pt-3.5">导出与分享</div>
+        <div className="text-[10px] font-bold text-muted tracking-wide mt-3.5 mb-1.5 border-t border-line pt-3.5">{t('more.exportShare')}</div>
 
         <div className="flex items-center gap-3 py-1.5">
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium">导出行程</div>
+            <div className="text-[13px] font-medium">{t('more.exportTrip')}</div>
             <div className="text-[10.5px] text-muted mt-0.5">
               {busy
-                ? '生成中…'
+                ? t('more.exportGenerating')
                 : readyFile
-                  ? `${EXPORT_OPTIONS.find((o) => o.kind === readyFile.kind)?.label}文件已就绪，点击分享`
-                  : '选个格式，明细+汇总都在里面'}
+                  ? t('more.exportReady', { format: EXPORT_OPTIONS.find((o) => o.kind === readyFile.kind)?.label })
+                  : t('more.exportHint')}
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
@@ -257,15 +264,15 @@ export function TripMoreSheet({
             <Link2 className="w-[17px] h-[17px]" strokeWidth={1.8} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium">分享设置</div>
+            <div className="text-[13px] font-medium">{t('more.shareSettings')}</div>
             <div className="text-[10.5px] text-muted mt-0.5">
-              {effectiveShareScope(trip) === 'none' ? '还没开启只读分享链接' : '只读分享链接已开启'}
+              {effectiveShareScope(trip) === 'none' ? t('more.shareOff') : t('more.shareOn')}
             </div>
           </div>
-          <span className="text-[11.5px] text-plan flex-shrink-0">设置 ›</span>
+          <span className="text-[11.5px] text-plan flex-shrink-0">{t('more.settingsArrow')}</span>
         </button>
 
-        <div className="text-[10px] font-bold text-muted tracking-wide mt-4 mb-1.5">更多</div>
+        <div className="text-[10px] font-bold text-muted tracking-wide mt-4 mb-1.5">{t('more.otherSection')}</div>
 
         {/* "旅程回顾"和"行程动态"这两项搬进了「概览」tab——"回家后"形态就是旅程回顾的
             内容，"旅途中"形态里"家里刚才"是行程动态的精简版（带"查看全部"回到完整列表）。
@@ -276,10 +283,10 @@ export function TripMoreSheet({
             <ListChecks className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-medium">同步详情</div>
+            <div className="text-[12px] font-medium">{t('more.syncDetail')}</div>
             <div className={`text-[9.5px] mt-0.5 ${syncSummaryClass}`}>{syncSummary}</div>
           </div>
-          <span className="text-[10.5px] text-plan flex-shrink-0">查看 ›</span>
+          <span className="text-[10.5px] text-plan flex-shrink-0">{t('more.syncViewArrow')}</span>
         </button>
 
         <a
@@ -292,10 +299,10 @@ export function TripMoreSheet({
             <BookOpen className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-medium">使用指南</div>
-            <div className="text-[9.5px] text-muted mt-0.5">行程、记账、结算这些功能怎么用，照真实界面讲一遍</div>
+            <div className="text-[12px] font-medium">{t('more.userGuide')}</div>
+            <div className="text-[9.5px] text-muted mt-0.5">{t('more.userGuideDesc')}</div>
           </div>
-          <span className="text-[10.5px] text-plan flex-shrink-0">去看看 ›</span>
+          <span className="text-[10.5px] text-plan flex-shrink-0">{t('more.userGuideArrow')}</span>
         </a>
 
         <button onClick={onOpenFeedback} className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left">
@@ -305,10 +312,10 @@ export function TripMoreSheet({
             </svg>
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-medium">提交反馈</div>
-            <div className="text-[9.5px] text-muted mt-0.5">用得不顺手的地方、想加的功能，都可以说</div>
+            <div className="text-[12px] font-medium">{t('more.feedback')}</div>
+            <div className="text-[9.5px] text-muted mt-0.5">{t('more.feedbackDesc')}</div>
           </div>
-          <span className="text-[10.5px] text-plan flex-shrink-0">去反馈 ›</span>
+          <span className="text-[10.5px] text-plan flex-shrink-0">{t('more.feedbackArrow')}</span>
         </button>
 
         <button
@@ -320,10 +327,10 @@ export function TripMoreSheet({
             <RefreshCw className={`w-[15px] h-[15px] ${refreshing ? 'animate-spin' : ''}`} strokeWidth={1.8} />
           </span>
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-medium">检查更新</div>
-            <div className="text-[9.5px] text-muted mt-0.5 tabular">当前版本 {formatAppVersion()}</div>
+            <div className="text-[12px] font-medium">{t('more.checkUpdate')}</div>
+            <div className="text-[9.5px] text-muted mt-0.5 tabular">{t('more.currentVersion', { version: formatAppVersion() })}</div>
           </div>
-          <span className="text-[10.5px] text-plan flex-shrink-0">{refreshing ? '刷新中…' : '点击刷新'}</span>
+          <span className="text-[10.5px] text-plan flex-shrink-0">{refreshing ? t('more.refreshing') : t('more.tapToRefresh')}</span>
         </button>
     </BottomSheet>
   )

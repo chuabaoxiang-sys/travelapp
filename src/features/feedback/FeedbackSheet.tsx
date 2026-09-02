@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { X, Check, Pencil, Trash2 } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { getAllFeedback, createFeedback, updateFeedback, deleteFeedback } from '../../domain/feedback'
@@ -9,14 +11,12 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { FeedbackCategory, Feedback } from '../../types'
 
-const CATEGORIES: { value: FeedbackCategory; label: string; color: string }[] = [
-  { value: 'bug', label: '问题反馈', color: 'var(--color-negative)' },
-  { value: 'suggestion', label: '功能建议', color: 'var(--color-plan)' },
-  { value: 'other', label: '其他', color: 'var(--color-soft)' },
-]
-
-function categoryMeta(value: FeedbackCategory) {
-  return CATEGORIES.find((c) => c.value === value) ?? CATEGORIES[2]
+function categoriesOf(t: TFunction): { value: FeedbackCategory; label: string; color: string }[] {
+  return [
+    { value: 'bug', label: t('feedback.categoryBug'), color: 'var(--color-negative)' },
+    { value: 'suggestion', label: t('feedback.categorySuggestion'), color: 'var(--color-plan)' },
+    { value: 'other', label: t('feedback.categoryOther'), color: 'var(--color-soft)' },
+  ]
 }
 
 export function FeedbackSheet({
@@ -28,6 +28,11 @@ export function FeedbackSheet({
   currentMemberId: string
   onClose: () => void
 }) {
+  const { t, i18n } = useTranslation()
+  const CATEGORIES = categoriesOf(t)
+  function categoryMeta(value: FeedbackCategory) {
+    return CATEGORIES.find((c) => c.value === value) ?? CATEGORIES[2]
+  }
   const members = useLiveQuery(() => db.members.toArray()) ?? []
   const feedbackList = useLiveQuery(() => getAllFeedback()) ?? []
 
@@ -43,7 +48,7 @@ export function FeedbackSheet({
   useEscapeKey(!confirmDeleteId, onClose)
 
   function memberName(id: string) {
-    return members.find((m) => m.id === id)?.displayName ?? '未知'
+    return members.find((m) => m.id === id)?.displayName ?? t('feedback.unknownMember')
   }
   function memberOf(id: string) {
     return members.find((m) => m.id === id)
@@ -73,13 +78,13 @@ export function FeedbackSheet({
     <BottomSheet onClose={onClose} cardClassName="px-5 pt-3.5 pb-7 max-h-[88%] overflow-y-auto no-scrollbar">
         <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-3.5" />
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-semibold">反馈</span>
-          <button onClick={onClose} className="text-muted" title="关闭">
+          <span className="text-sm font-semibold">{t('feedback.title')}</span>
+          <button onClick={onClose} className="text-muted" title={t('feedback.close')}>
             <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </button>
         </div>
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">这属于</div>
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">{t('feedback.categoryLabel')}</div>
         <div className="flex gap-1.5">
           {CATEGORIES.map((c) => (
             <button
@@ -101,7 +106,7 @@ export function FeedbackSheet({
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="想到什么就写下来——用得不顺手的地方、希望APP能加的功能，都可以"
+          placeholder={t('feedback.contentPlaceholder')}
           rows={3}
           className="w-full mt-2.5 rounded-xl border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-plan resize-none"
         />
@@ -110,12 +115,12 @@ export function FeedbackSheet({
           disabled={!content.trim()}
           className="w-full mt-2 rounded-xl bg-plan text-card py-2.5 text-sm font-medium disabled:opacity-40"
         >
-          提交反馈
+          {t('feedback.submit')}
         </button>
 
         {feedbackList.length > 0 && (
           <>
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-5 mb-1">反馈记录 · 共{feedbackList.length}条</div>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-5 mb-1">{t('feedback.historyHeading', { count: feedbackList.length })}</div>
             <div className="flex flex-col">
               {feedbackList.map((f) => {
                 const meta = categoryMeta(f.category)
@@ -148,10 +153,10 @@ export function FeedbackSheet({
                           className="w-full rounded-lg border border-line bg-paper px-2.5 py-2 text-[13px] outline-none focus:border-plan resize-none"
                         />
                         <div className="flex gap-2">
-                          <button onClick={() => setEditingId(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title="取消">
+                          <button onClick={() => setEditingId(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title={t('feedback.cancel')}>
                             <X className="w-4 h-4" strokeWidth={1.8} />
                           </button>
-                          <button onClick={saveEdit} disabled={!editContent.trim()} className="flex-1 rounded-lg bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center" title="保存">
+                          <button onClick={saveEdit} disabled={!editContent.trim()} className="flex-1 rounded-lg bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center" title={t('feedback.save')}>
                             <Check className="w-4 h-4" strokeWidth={2} />
                           </button>
                         </div>
@@ -171,14 +176,14 @@ export function FeedbackSheet({
                           </div>
                           <div className="text-[13px] mt-1 whitespace-pre-wrap break-words">{f.content}</div>
                           <div className="text-[10.5px] text-muted mt-1 tabular">
-                            {new Date(f.createdAt).toLocaleDateString('zh-CN')}
-                            {f.appVersion && ` · 版本 ${f.appVersion}`}
+                            {new Date(f.createdAt).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'zh-CN')}
+                            {f.appVersion && t('feedback.versionSuffix', { version: f.appVersion })}
                           </div>
                         </div>
-                        <button onClick={() => startEdit(f)} className="w-6 h-6 rounded-lg border border-line bg-card flex items-center justify-center text-muted flex-shrink-0" title="编辑">
+                        <button onClick={() => startEdit(f)} className="w-6 h-6 rounded-lg border border-line bg-card flex items-center justify-center text-muted flex-shrink-0" title={t('feedback.edit')}>
                           <Pencil className="w-3 h-3" strokeWidth={1.8} />
                         </button>
-                        <button onClick={() => setConfirmDeleteId(f.id)} className="w-6 h-6 rounded-lg border border-line bg-card flex items-center justify-center text-muted flex-shrink-0" title="删除">
+                        <button onClick={() => setConfirmDeleteId(f.id)} className="w-6 h-6 rounded-lg border border-line bg-card flex items-center justify-center text-muted flex-shrink-0" title={t('feedback.delete')}>
                           <Trash2 className="w-3 h-3" strokeWidth={1.8} />
                         </button>
                       </div>
@@ -193,8 +198,8 @@ export function FeedbackSheet({
 
       {confirmDeleteId && (
         <ConfirmDialog
-          title="删除这条反馈？"
-          message="删除后无法恢复。"
+          title={t('feedback.deleteConfirmTitle')}
+          message={t('feedback.deleteConfirmMessage')}
           onConfirm={() => { deleteFeedback(confirmDeleteId); setConfirmDeleteId(null) }}
           onCancel={() => setConfirmDeleteId(null)}
         />

@@ -1,7 +1,9 @@
+import type { TFunction } from 'i18next'
 import { db } from '../db/dexie'
 import { assembleExportBundle, type PersonSummary } from './export'
 import { computeBalances, simplifyDebts } from './splits'
 import { CATEGORY_COLORS } from '../lib/categoryColors'
+import { categoryLabel } from '../lib/categoryLabel'
 import { daysInclusive } from '../lib/dates'
 
 // 旅程回顾——把这趟行程收尾时值得看一眼的东西凑成一页。
@@ -42,7 +44,7 @@ function round2(n: number) {
   return Math.round(n * 100) / 100
 }
 
-export async function buildRetrospective(tripId: string, todayISO: string): Promise<TripRetrospective> {
+export async function buildRetrospective(tripId: string, todayISO: string, t: TFunction): Promise<TripRetrospective> {
   const bundle = await assembleExportBundle(tripId)
   const { trip, daySummary, categorySummary, personSummary } = bundle
 
@@ -51,16 +53,19 @@ export async function buildRetrospective(tripId: string, todayISO: string): Prom
     db.expenseCategories.toArray(),
   ])
 
-  // 按名字对回分类色。分类名在预置分类里是唯一的，够用；对不上就退回杂项灰，
-  // 不让一个找不到的颜色把整页搞崩
-  const colorOfName = new Map(
-    allCategories.map((c) => [c.name, CATEGORY_COLORS[c.colorVar] ?? CATEGORY_COLORS['cat-misc']]),
-  )
-  const categories: RetroCategory[] = categorySummary.map((c) => ({
-    name: c.categoryName,
-    total: c.total,
-    color: colorOfName.get(c.categoryName) ?? CATEGORY_COLORS['cat-misc'],
-  }))
+  // 按名字对回分类对象，用来查颜色、也用来查翻译后的显示名（export.ts的
+  // CategorySummary只带原始中文名，因为Excel/CSV导出要的就是这个原始值）。
+  // 分类名在预置分类里是唯一的，够用；对不上就是用户自建分类，颜色退回杂项灰、
+  // 显示名保持原样——用户自己打的字不经过翻译层
+  const catByName = new Map(allCategories.map((c) => [c.name, c]))
+  const categories: RetroCategory[] = categorySummary.map((c) => {
+    const cat = catByName.get(c.categoryName)
+    return {
+      name: cat ? categoryLabel(cat, t) : c.categoryName,
+      total: c.total,
+      color: cat ? (CATEGORY_COLORS[cat.colorVar] ?? CATEGORY_COLORS['cat-misc']) : CATEGORY_COLORS['cat-misc'],
+    }
+  })
 
   const total = round2(categorySummary.reduce((s, c) => s + c.total, 0))
 

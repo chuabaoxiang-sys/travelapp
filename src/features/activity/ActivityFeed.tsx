@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import type { Trip } from '../../types'
 import { Avatar } from '../../components/Avatar'
 import { BottomSheet } from '../../components/BottomSheet'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
-import { useActivityEntries, ACTIVITY_KIND_LABEL, ACTIVITY_KIND_CLASS, relativeTime } from './useActivityEntries'
+import { relativeTime } from '../../lib/relativeTime'
+import { useActivityEntries, activityKindLabel, ACTIVITY_KIND_CLASS } from './useActivityEntries'
 
 // "行程动态"——把这趟行程里家里每个人做过的事按时间倒序摊开。
 //
@@ -16,6 +18,7 @@ import { useActivityEntries, ACTIVITY_KIND_LABEL, ACTIVITY_KIND_CLASS, relativeT
 // hook，只是截取前几条，不重新查一遍库。
 
 export function ActivityFeed({ trip, onClose }: { trip: Trip; onClose: () => void }) {
+  const { t } = useTranslation()
   useEscapeKey(true, onClose)
   const { entries, members } = useActivityEntries(trip)
 
@@ -27,15 +30,15 @@ export function ActivityFeed({ trip, onClose }: { trip: Trip; onClose: () => voi
     <BottomSheet onClose={onClose} cardClassName="px-5 pt-3.5 pb-7 max-h-[88%] overflow-y-auto no-scrollbar">
         <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-3.5" />
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-serif-sc text-[15px] font-semibold">行程动态</h2>
-          <button onClick={onClose} className="text-muted" title="关闭">
+          <h2 className="font-serif-sc text-[15px] font-semibold">{t('activity.title')}</h2>
+          <button onClick={onClose} className="text-muted" title={t('activity.close')}>
             <X className="w-[18px] h-[18px]" strokeWidth={1.8} />
           </button>
         </div>
 
         {!entries.length ? (
           <div className="text-[13px] text-muted py-8 text-center">
-            这趟行程还没有任何记录。记一笔账、或者加一项行程安排，这里就会出现谁做了什么。
+            {t('activity.empty')}
           </div>
         ) : (
           <div className="flex flex-col gap-2 pb-2">
@@ -46,14 +49,14 @@ export function ActivityFeed({ trip, onClose }: { trip: Trip; onClose: () => voi
                   <Avatar member={author} size={26} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[12.5px] font-medium">{author?.displayName ?? '有人'}</span>
+                      <span className="text-[12.5px] font-medium">{author?.displayName ?? t('activity.someone')}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${ACTIVITY_KIND_CLASS[en.kind]}`}>
-                        {ACTIVITY_KIND_LABEL[en.kind]}
+                        {activityKindLabel(en.kind, t)}
                       </span>
                     </div>
                     <div className="text-[12.5px] text-ink/85 mt-0.5 break-words">{en.text}</div>
                   </div>
-                  <div className="text-[10.5px] text-muted flex-shrink-0 pt-0.5">{relativeTime(en.at, now)}</div>
+                  <div className="text-[10.5px] text-muted flex-shrink-0 pt-0.5">{relativeTime(en.at, now, t)}</div>
                 </div>
               )
             })}

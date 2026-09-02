@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { X, Check, Copy, RefreshCw, Eye } from 'lucide-react'
 import { setShareScope, setShareTemplate, regenerateShareToken, buildShareUrl, effectiveShareScope } from '../../domain/share'
 import { BottomSheet } from '../../components/BottomSheet'
@@ -6,13 +8,6 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import { TEMPLATE_PICKER_LIST, UPCOMING_TEMPLATES } from '../share/templates/pickerList'
 import type { Trip, PublicShareScope } from '../../types'
-
-const SCOPE_OPTIONS: { value: PublicShareScope; label: string }[] = [
-  { value: 'none', label: '关闭' },
-  { value: 'itinerary', label: '仅行程' },
-  { value: 'expenses', label: '仅花费' },
-  { value: 'both', label: '两者都有' },
-]
 
 // 范围是否"变宽"了——只有变宽（从看不到某类内容变成看得到）才需要弹二次确认，
 // 变窄（关闭分享、或从"两者都有"收回到只剩一种）不需要，本来就是让人看得更少
@@ -24,13 +19,21 @@ function isWidening(from: PublicShareScope, to: PublicShareScope): boolean {
   return (itineraryAfter && !itineraryBefore) || (expensesAfter && !expensesBefore)
 }
 
-function scopeDescription(scope: PublicShareScope): string {
-  if (scope === 'itinerary') return '行程安排（日期、时间、地点）'
-  if (scope === 'expenses') return '花费汇总（总额和分类小计，不含每一笔明细）'
-  return '行程安排和花费汇总'
+function scopeDescription(scope: PublicShareScope, t: TFunction): string {
+  if (scope === 'itinerary') return t('shareSettings.scopeDescItinerary')
+  if (scope === 'expenses') return t('shareSettings.scopeDescExpenses')
+  return t('shareSettings.scopeDescBoth')
 }
 
 export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () => void }) {
+  const { t } = useTranslation()
+
+  const SCOPE_OPTIONS: { value: PublicShareScope; label: string }[] = [
+    { value: 'none', label: t('shareSettings.scopeNone') },
+    { value: 'itinerary', label: t('shareSettings.scopeItinerary') },
+    { value: 'expenses', label: t('shareSettings.scopeExpenses') },
+    { value: 'both', label: t('shareSettings.scopeBoth') },
+  ]
   const [pendingScope, setPendingScope] = useState<PublicShareScope | null>(null)
   const [confirmingRegenerate, setConfirmingRegenerate] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -103,16 +106,16 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
     <BottomSheet onClose={onClose} cardClassName="px-5 pt-3.5 pb-7 max-h-[88%] overflow-y-auto no-scrollbar">
         <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-3.5" />
         <div className="flex justify-between items-center mb-1">
-          <span className="text-sm font-semibold">分享设置</span>
-          <button onClick={onClose} className="text-muted" title="关闭">
+          <span className="text-sm font-semibold">{t('shareSettings.title')}</span>
+          <button onClick={onClose} className="text-muted" title={t('shareSettings.close')}>
             <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </button>
         </div>
         <div className="text-[11.5px] text-muted leading-relaxed mb-3">
-          生成一个只读链接，拿到链接的人不用登录就能看，但不能编辑。
+          {t('shareSettings.intro')}
         </div>
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">分享范围</div>
+        <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">{t('shareSettings.scopeLabel')}</div>
         <div className="flex gap-1.5 flex-wrap mb-4">
           {SCOPE_OPTIONS.map((opt) => {
             const active = currentScope === opt.value
@@ -133,15 +136,15 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
 
         {sharing && (
           <>
-            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">选一套分享页模板</div>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">{t('shareSettings.templateLabel')}</div>
             <div className="grid grid-cols-2 gap-2 mb-4">
-              {TEMPLATE_PICKER_LIST.map((t) => {
-                const active = trip.publicShareTemplate === t.id
-                const Thumb = t.thumbnail
+              {TEMPLATE_PICKER_LIST.map((tpl) => {
+                const active = trip.publicShareTemplate === tpl.id
+                const Thumb = tpl.thumbnail
                 return (
                   <button
-                    key={t.id}
-                    onClick={() => selectTemplate(t.id)}
+                    key={tpl.id}
+                    onClick={() => selectTemplate(tpl.id)}
                     disabled={syncing}
                     className={`rounded-xl overflow-hidden border text-left bg-card disabled:opacity-50 ${active ? 'border-plan border-2' : 'border-line'}`}
                   >
@@ -153,14 +156,14 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] font-medium px-2 py-1.5 truncate">{t.label}</div>
+                    <div className="text-[11px] font-medium px-2 py-1.5 truncate">{t(`shareSettings.templates.${tpl.id}`, { defaultValue: tpl.label })}</div>
                   </button>
                 )
               })}
-              {UPCOMING_TEMPLATES.map((t) => (
-                <div key={t.id} className="rounded-xl border border-dashed border-line opacity-50 flex flex-col">
-                  <div className="h-[62px] flex items-center justify-center text-[10.5px] text-muted">即将推出</div>
-                  <div className="text-[11px] px-2 py-1.5 truncate">{t.label}</div>
+              {UPCOMING_TEMPLATES.map((tpl) => (
+                <div key={tpl.id} className="rounded-xl border border-dashed border-line opacity-50 flex flex-col">
+                  <div className="h-[62px] flex items-center justify-center text-[10.5px] text-muted">{t('shareSettings.comingSoon')}</div>
+                  <div className="text-[11px] px-2 py-1.5 truncate">{tpl.label}</div>
                 </div>
               ))}
             </div>
@@ -170,7 +173,7 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
                 {syncing ? (
                   <div className="text-[11.5px] text-muted text-center py-1.5 flex items-center justify-center gap-1.5">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" strokeWidth={1.8} />
-                    正在同步到服务器…
+                    {t('shareSettings.syncingToServer')}
                   </div>
                 ) : (
                   <>
@@ -181,21 +184,21 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
                         className="flex-1 rounded-lg bg-plan text-card py-2 text-[12.5px] font-medium flex items-center justify-center gap-1.5"
                       >
                         <Copy className="w-3.5 h-3.5" strokeWidth={1.8} />
-                        {copied ? '已复制' : '复制链接'}
+                        {copied ? t('shareSettings.copied') : t('shareSettings.copyLink')}
                       </button>
                       <a
                         href={buildShareUrl(trip.publicShareToken!)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="rounded-lg border border-line px-3 py-2 text-muted flex items-center justify-center"
-                        title="预览分享页——发给朋友前，先看看对方会看到什么样子"
+                        title={t('shareSettings.previewTitle')}
                       >
                         <Eye className="w-3.5 h-3.5" strokeWidth={1.8} />
                       </a>
                       <button
                         onClick={() => setConfirmingRegenerate(true)}
                         className="rounded-lg border border-line px-3 py-2 text-muted flex items-center justify-center"
-                        title="重新生成链接（旧链接会失效）"
+                        title={t('shareSettings.regenerateTitle')}
                       >
                         <RefreshCw className="w-3.5 h-3.5" strokeWidth={1.8} />
                       </button>
@@ -204,7 +207,7 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
                 )}
               </div>
             ) : (
-              <div className="text-[11.5px] text-muted text-center py-2">先选一套模板才能生成链接</div>
+              <div className="text-[11.5px] text-muted text-center py-2">{t('shareSettings.pickTemplateFirst')}</div>
             )}
           </>
         )}
@@ -212,9 +215,9 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
 
       {pendingScope && (
         <ConfirmDialog
-          title="确认开启分享？"
-          message={`任何拿到这个链接的人都能看到：${scopeDescription(pendingScope)}。确定要开启吗？`}
-          confirmLabel="确认"
+          title={t('shareSettings.widenConfirmTitle')}
+          message={t('shareSettings.widenConfirmMessage', { scope: scopeDescription(pendingScope, t) })}
+          confirmLabel={t('shareSettings.confirm')}
           danger={false}
           onConfirm={confirmScopeChange}
           onCancel={() => setPendingScope(null)}
@@ -223,9 +226,9 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
 
       {confirmingRegenerate && (
         <ConfirmDialog
-          title="重新生成链接？"
-          message="旧链接会立刻失效、无法再打开，记得把新链接重新发给对方。"
-          confirmLabel="重新生成"
+          title={t('shareSettings.regenerateConfirmTitle')}
+          message={t('shareSettings.regenerateConfirmMessage')}
+          confirmLabel={t('shareSettings.regenerateConfirm')}
           onConfirm={confirmRegenerate}
           onCancel={() => setConfirmingRegenerate(false)}
         />
