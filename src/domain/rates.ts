@@ -127,6 +127,39 @@ export function deriveRateFromExchangeAmounts(homeAmount: string, foreignAmount:
   return home / foreign
 }
 
+export interface TripBlendedRate {
+  foreignCurrency: string
+  blendedRate: number
+}
+
+// "这趟换汇换得怎么样"——按每个币种真正被开销用掉的外币金额，加权这些开销
+// 各自来源的汇率簿条目的rate，算出这趟"实际花出去的钱"对应的综合汇率。
+// 故意不要求条目填过exchangedHomeAmount/exchangedForeignAmount（那是给单条
+// 目"进度条"用的，跟这里的用途不一样）——这里只关心真花出去的钱用的是哪个
+// 汇率，一个币种但凡有任何开销用过任何一条汇率就能算，没被用过的币种不返回。
+//
+// 之所以按"实际花费"而不是"实际换了多少钱"加权：换了但没花完的钱不该拉低/
+// 拉高这个数字——例子：机场换的汇率差但没花完，银行换的汇率好且全部花掉，
+// 按花费加权算出来的数字会更贴近"我这趟花的钱平均成本"这个用户真正关心的问题
+export async function tripBlendedRates(tripId: string): Promise<TripBlendedRate[]> {
+  const [entries, usage] = await Promise.all([getAllRateBookEntries(tripId), usageByEntry(tripId)])
+  const byCurrency = new Map<string, { weightedSum: number; totalForeign: number }>()
+  for (const e of entries) {
+    const u = usage.get(e.id)
+    if (!u || u.foreignAmount <= 0) continue
+    const acc = byCurrency.get(e.foreignCurrency) ?? { weightedSum: 0, totalForeign: 0 }
+    acc.weightedSum += u.foreignAmount * e.rate
+    acc.totalForeign += u.foreignAmount
+    byCurrency.set(e.foreignCurrency, acc)
+  }
+  return [...byCurrency.entries()]
+    .map(([foreignCurrency, { weightedSum, totalForeign }]) => ({
+      foreignCurrency,
+      blendedRate: weightedSum / totalForeign,
+    }))
+    .sort((a, b) => a.foreignCurrency.localeCompare(b.foreignCurrency))
+}
+
 // 输入新标签时的自动补全候选——取这趟行程里这个币种曾经用过的所有标签
 // （含已归档的，方便用户沿用命名习惯），按最近使用排序去重
 export async function suggestLabels(tripId: string, currency: string): Promise<string[]> {

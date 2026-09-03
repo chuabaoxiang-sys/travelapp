@@ -66,6 +66,14 @@
   },
   "rateBook": {
     "title": "汇率簿",
+    "summary": {
+      "title": "这趟换汇换得怎么样",
+      "subtitle": "按你实际花掉的钱，加权算出每种外币的平均汇率",
+      "rateLine": "1 {{currency}} ≈ {{amount}}",
+      "checkingMarket": "对比市场价…",
+      "lowerThanMarket": "比今天市场价低 {{pct}}%",
+      "higherThanMarket": "比今天市场价高 {{pct}}%"
+    },
     "add": "新增",
     "done": "完成",
     "empty": "这趟行程还没有保存过任何汇率。记外币账时，点金额旁边的\"+\"新建一个，之后就会出现在这里。",
@@ -357,7 +365,6 @@
   },
   "ledger": {
     "title": "账目",
-    "rateBookButton": "簿",
     "rateBookTitle": "汇率簿",
     "tabs": {
       "all": "全部",

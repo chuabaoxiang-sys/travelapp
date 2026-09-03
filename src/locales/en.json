@@ -69,6 +69,14 @@
   },
   "rateBook": {
     "title": "Rate book",
+    "summary": {
+      "title": "How your exchanges went",
+      "subtitle": "Weighted by what you actually spent from each exchange",
+      "rateLine": "1 {{currency}} ≈ {{amount}}",
+      "checkingMarket": "Checking today's rate…",
+      "lowerThanMarket": "{{pct}}% lower than today's rate",
+      "higherThanMarket": "{{pct}}% higher than today's rate"
+    },
     "add": "Add",
     "done": "Done",
     "empty": "No rates saved for this trip yet. When logging an expense in a foreign currency, tap \"+\" next to the amount to create one — it'll show up here afterwards.",
@@ -368,7 +376,6 @@
   },
   "ledger": {
     "title": "Ledger",
-    "rateBookButton": "Rates",
     "rateBookTitle": "Rate book",
     "tabs": {
       "all": "All",

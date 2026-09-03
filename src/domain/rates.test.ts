@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { deriveRateFromExchangeAmounts, usageByEntry, createRateBookEntry, updateRateBookEntry } from './rates'
+import { deriveRateFromExchangeAmounts, usageByEntry, createRateBookEntry, updateRateBookEntry, tripBlendedRates } from './rates'
 import { db } from '../db/dexie'
 import type { Expense } from '../types'
 
@@ -79,6 +79,74 @@ describe('usageByEntry（真实走Dexie）', () => {
     // entry-a：单选的500 + 拆分里分到的2000 = 2500，两笔账各算一次，count是2
     expect(usage.get('entry-a')).toEqual({ count: 2, foreignAmount: 2500 })
     expect(usage.get('entry-b')).toEqual({ count: 1, foreignAmount: 1200 })
+  })
+})
+
+describe('tripBlendedRates（真实走Dexie）', () => {
+  beforeEach(async () => {
+    await db.rateBookEntries.clear()
+    await db.expenses.clear()
+    await db.expenseRateAllocations.clear()
+  })
+
+  it('按实际花掉的外币金额加权，不是按换汇金额——同一个例子：机场换的贵但没花完，银行换的便宜且全部花掉', async () => {
+    const airport = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '机场换的', rate: 0.05, source: 'manual', createdBy: 'papa',
+      exchangedHomeAmount: 1000, exchangedForeignAmount: 20000,
+    })
+    const bank = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '银行换的', rate: 0.025, source: 'manual', createdBy: 'papa',
+      exchangedHomeAmount: 1000, exchangedForeignAmount: 40000,
+    })
+    // 机场那笔20000只花了5000，银行那笔40000全花完——按花费加权应该更贴近银行的便宜汇率，
+    // 不是简单平均两个rate，也不是按换汇总额(20000+40000)加权
+    await db.expenses.bulkAdd([expense('e1', airport.id, 5000), expense('e2', bank.id, 40000)])
+
+    const result = await tripBlendedRates('t1')
+    expect(result).toHaveLength(1)
+    expect(result[0].foreignCurrency).toBe('JPY')
+    // (5000*0.05 + 40000*0.025) / 45000 = 1250/45000
+    expect(result[0].blendedRate).toBeCloseTo(1250 / 45000, 6)
+  })
+
+  it('完全没被任何开销用过的币种不出现在结果里，哪怕汇率簿里有条目', async () => {
+    await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'KRW', label: '换了但没花', rate: 0.003, source: 'manual', createdBy: 'papa',
+    })
+    const result = await tripBlendedRates('t1')
+    expect(result).toHaveLength(0)
+  })
+
+  it('多币种各自独立加权，互不影响', async () => {
+    const jpy = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '日元', rate: 0.03, source: 'manual', createdBy: 'papa',
+    })
+    const krw = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'KRW', label: '韩元', rate: 0.0032, source: 'manual', createdBy: 'papa',
+    })
+    await db.expenses.bulkAdd([expense('e1', jpy.id, 10000), expense('e2', krw.id, 50000)])
+
+    const result = await tripBlendedRates('t1')
+    const byCurrency = Object.fromEntries(result.map((r) => [r.foreignCurrency, r.blendedRate]))
+    expect(byCurrency.JPY).toBeCloseTo(0.03, 6)
+    expect(byCurrency.KRW).toBeCloseTo(0.0032, 6)
+  })
+
+  it('拆多笔汇率的开销（走expenseRateAllocations）也计入加权', async () => {
+    const entryA = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: 'A', rate: 0.04, source: 'manual', createdBy: 'papa',
+    })
+    const entryB = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: 'B', rate: 0.02, source: 'manual', createdBy: 'papa',
+    })
+    await db.expenses.bulkAdd([expense('e1', null, 3000, true)])
+    await db.expenseRateAllocations.bulkAdd([
+      allocation('a1', 'e1', entryA.id, 1000),
+      allocation('a2', 'e1', entryB.id, 2000),
+    ])
+    const result = await tripBlendedRates('t1')
+    // (1000*0.04 + 2000*0.02) / 3000 = 80/3000
+    expect(result[0].blendedRate).toBeCloseTo(80 / 3000, 6)
   })
 })
 

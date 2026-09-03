@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation, Trans } from 'react-i18next'
 import { Check, X, Pencil, Archive, ArchiveRestore, Trash2, Plus } from 'lucide-react'
@@ -11,13 +11,24 @@ import {
   createRateBookEntry,
   usageByEntry,
   deriveRateFromExchangeAmounts,
+  tripBlendedRates,
   type RateEntryUsage,
 } from '../../domain/rates'
+import { fetchReferenceRate } from '../../api/fx'
 import { ExchangeAmountFields } from './ExchangeAmountFields'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { Trip, RateBookEntry } from '../../types'
+
+// 综合汇率的展示精度——跟单条汇率簿条目的rate字段不一样（那个直接原样显示）。
+// 这个是加权算出来的浮点数，实测发现4位小数不够看：0.0296/0.0301/算出来的0.0300
+// 这种量级的汇率，4位小数会把三个不同的数字全部显示成"0.03"，用户完全看不出
+// 综合汇率跟单条汇率的差别在哪。改成7位（跟ExchangeAmountFields推导汇率时的
+// 精度一致），再去掉计算噪音带出的多余尾零
+function formatRateAmount(rate: number): string {
+  return String(Math.round(rate * 1e7) / 1e7)
+}
 
 export function RateBookScreen({
   trip,
@@ -33,6 +44,25 @@ export function RateBookScreen({
   const active = entries.filter((e) => !e.archived)
   const archived = entries.filter((e) => e.archived)
   const usageMap = useLiveQuery(() => usageByEntry(trip.id), [trip.id]) ?? new Map<string, RateEntryUsage>()
+  const blended = useLiveQuery(() => tripBlendedRates(trip.id), [trip.id]) ?? []
+
+  // 市场参考价是网络请求，跟useLiveQuery那套Dexie响应式机制不是一回事——按币种缓存，
+  // 币种集合没变就不重新查，避免每次Dexie数据变动（哪怕跟汇率无关）都重新打一次API
+  const [referenceRates, setReferenceRates] = useState<Record<string, number | null>>({})
+  const blendedCurrencyKey = blended.map((b) => b.foreignCurrency).join(',')
+  useEffect(() => {
+    let cancelled = false
+    for (const b of blended) {
+      if (b.foreignCurrency in referenceRates) continue
+      fetchReferenceRate(b.foreignCurrency, trip.homeCurrency).then((rate) => {
+        if (!cancelled) setReferenceRates((prev) => ({ ...prev, [b.foreignCurrency]: rate }))
+      })
+    }
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blendedCurrencyKey, trip.homeCurrency])
 
   const byCurrency = new Map<string, RateBookEntry[]>()
   for (const e of active) {
@@ -171,6 +201,44 @@ export function RateBookScreen({
         {byCurrency.size === 0 && (
           <div className="text-[13px] text-muted py-8 text-center">
             {t('rateBook.empty')}
+          </div>
+        )}
+
+        {blended.length > 0 && (
+          <div className="bg-card border border-line rounded-2xl p-4 mb-4.5">
+            <div className="text-[13.5px] font-semibold">{t('rateBook.summary.title')}</div>
+            <div className="text-[10.5px] text-muted mt-0.5 leading-relaxed">{t('rateBook.summary.subtitle')}</div>
+            <div className="mt-3 flex flex-col gap-2.5">
+              {blended.map((b, i) => {
+                const ref = referenceRates[b.foreignCurrency]
+                const known = b.foreignCurrency in referenceRates
+                const pct = ref != null && ref > 0 ? (Math.abs(b.blendedRate - ref) / ref) * 100 : null
+                const lower = ref != null && b.blendedRate < ref
+                return (
+                  <div
+                    key={b.foreignCurrency}
+                    className={`flex items-baseline justify-between gap-2 ${i > 0 ? 'pt-2.5 border-t border-dashed border-line' : ''}`}
+                  >
+                    <span className="font-serif-sc text-[13.5px] tabular">
+                      {t('rateBook.summary.rateLine', {
+                        currency: b.foreignCurrency,
+                        amount: `${trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency}${formatRateAmount(b.blendedRate)}`,
+                      })}
+                    </span>
+                    {pct != null && (
+                      <span className={`text-[11px] font-semibold flex-shrink-0 ${lower ? 'text-positive' : 'text-negative'}`}>
+                        {t(lower ? 'rateBook.summary.lowerThanMarket' : 'rateBook.summary.higherThanMarket', {
+                          pct: pct.toFixed(1),
+                        })}
+                      </span>
+                    )}
+                    {pct == null && !known && (
+                      <span className="text-[11px] text-muted flex-shrink-0">{t('rateBook.summary.checkingMarket')}</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 

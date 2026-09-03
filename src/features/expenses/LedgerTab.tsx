@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, CircleDollarSign } from 'lucide-react'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
@@ -153,10 +153,10 @@ export function LedgerTab({
           <span className="font-serif-sc text-sm font-semibold">{t('ledger.title')}</span>
           <button
             onClick={() => { setRateBookOpen(true); markHintSeen(currentMemberId, 'rateBook') }}
-            className="relative w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-[14px] text-plan"
+            className="relative w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-plan"
             title={t('ledger.rateBookTitle')}
           >
-            {t('ledger.rateBookButton')}
+            <CircleDollarSign className="w-[15px] h-[15px]" strokeWidth={1.8} />
             <DiscoveryDot memberId={currentMemberId} hintKey="rateBook" />
           </button>
         </div>
