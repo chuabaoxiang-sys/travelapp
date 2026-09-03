@@ -1,10 +1,13 @@
+import { Trans, useTranslation } from 'react-i18next'
 import { formatMoney } from '../../../lib/money'
+import { categoryLabel } from '../../../lib/categoryLabel'
 import { formatDow, formatMD } from '../formatShared'
 import type { ShareTemplateProps } from './types'
 
 // 模板：路线地图感——一条纵向路线串起每一天，不依赖任何照片/地图数据，
 // 纯用一条竖线 + 圆点模拟"走过的路线"
 export function RouteTemplate({ data }: ShareTemplateProps) {
+  const { t, i18n } = useTranslation()
   const showItinerary = (data.scope === 'itinerary' || data.scope === 'both') && !!data.days?.length
   const showExpense = (data.scope === 'expenses' || data.scope === 'both') && data.expenseTotal != null
   const stopCount = data.days?.reduce((sum, d) => sum + d.items.length, 0) ?? 0
@@ -12,15 +15,17 @@ export function RouteTemplate({ data }: ShareTemplateProps) {
   return (
     <div className="min-h-screen bg-[#EBEEE9] text-[#1F2B24]" style={{ fontFamily: '"Noto Sans SC", -apple-system, system-ui, sans-serif' }}>
       <div className="max-w-[640px] mx-auto px-6.5 pt-11 pb-20">
-        <div className="text-[11px] tracking-[0.16em] text-[#6F7D73] uppercase">旅记 · 只读分享的旅程</div>
+        <div className="text-[11px] tracking-[0.16em] text-[#6F7D73] uppercase">{t('shareTemplates.route.eyebrow', { brand: t('common.appName') })}</div>
         <div className="mt-2 font-bold text-[26px] leading-tight tracking-tight text-wrap-balance">{data.name}</div>
         {data.startDate && data.endDate && (
           <div className="mt-1.5 text-[12.5px] text-[#6F7D73] tabular flex items-center gap-2">
             {data.startDate} – {data.endDate}
             {!!data.days?.length && (
-              <>
-                {' '}· 共 <b className="text-[#D9704F] font-bold">{data.days.length}</b> 天 · <b className="text-[#D9704F] font-bold">{stopCount}</b> 个地点
-              </>
+              <Trans
+                i18nKey="shareTemplates.route.statsLine"
+                values={{ days: data.days.length, stops: stopCount }}
+                components={[<b className="text-[#D9704F] font-bold" key="0" />, <b className="text-[#D9704F] font-bold" key="1" />]}
+              />
             )}
           </div>
         )}
@@ -37,7 +42,7 @@ export function RouteTemplate({ data }: ShareTemplateProps) {
                 <div className="flex items-baseline gap-2 mb-3">
                   {day.dayTitle && <div className="text-[15.5px] font-bold">{day.dayTitle}</div>}
                   <div className="text-[11.5px] text-[#6F7D73] tabular ml-auto">
-                    {formatMD(day.dayDate)} {formatDow(day.dayDate)}
+                    {formatMD(day.dayDate, i18n.language)} {formatDow(day.dayDate, i18n.language)}
                   </div>
                 </div>
                 <div className="flex flex-col">
@@ -59,17 +64,17 @@ export function RouteTemplate({ data }: ShareTemplateProps) {
           <div className="mt-7 p-5.5 bg-white rounded-2xl" style={{ boxShadow: '0 1px 2px rgba(31,43,36,0.06)' }}>
             <div className="flex items-center gap-1.5 text-[11px] tracking-[0.1em] text-[#6F7D73] uppercase mb-3">
               <span className="w-2 h-2 rounded-full bg-[#D9704F] inline-block" />
-              旅程终点 · 花费汇总
+              {t('shareTemplates.route.expenseSectionTitle')}
             </div>
             <div className="flex justify-between items-baseline pb-3.5 mb-3.5 border-b border-[#E3DED6]">
-              <span className="text-[13px]">全程总花费</span>
+              <span className="text-[13px]">{t('shareTemplates.common.totalExpenseLabel')}</span>
               <span className="text-[25px] font-bold tabular text-[#D9704F]">{formatMoney(data.expenseTotal!)}</span>
             </div>
             {!!data.expenseCategories?.length && (
               <div>
                 {data.expenseCategories.map((c) => (
-                  <div key={c.name} className="flex justify-between text-[13px] py-1.5 text-[#6F7D73]">
-                    <span>{c.name}</span>
+                  <div key={c.id} className="flex justify-between text-[13px] py-1.5 text-[#6F7D73]">
+                    <span>{categoryLabel(c, t)}</span>
                     <span className="tabular text-[#1F2B24] font-semibold">{formatMoney(c.amount)}</span>
                   </div>
                 ))}
@@ -78,7 +83,7 @@ export function RouteTemplate({ data }: ShareTemplateProps) {
           </div>
         )}
 
-        <div className="text-center text-[11.5px] text-[#6F7D73] mt-9">用「旅记」记录的家庭旅行</div>
+        <div className="text-center text-[11.5px] text-[#6F7D73] mt-9">{t('shareTemplates.common.footerFamilyShort', { brand: t('common.appName') })}</div>
       </div>
     </div>
   )

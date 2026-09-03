@@ -1,10 +1,13 @@
+import { useTranslation } from 'react-i18next'
 import { formatMoney } from '../../../lib/money'
+import { categoryLabel } from '../../../lib/categoryLabel'
 import { formatDow, formatMD } from '../formatShared'
 import type { ShareTemplateProps } from './types'
 
 // 模板：旅记手账风——沿用APP自己的品牌色系(ink/paper/plan)，胶带贴纸日期条 +
 // 虚线分隔的行程项，是10套里唯一延续APP自身视觉语言的一套
 export function JournalTemplate({ data }: ShareTemplateProps) {
+  const { t, i18n } = useTranslation()
   const showItinerary = (data.scope === 'itinerary' || data.scope === 'both') && !!data.days?.length
   const showExpense = (data.scope === 'expenses' || data.scope === 'both') && data.expenseTotal != null
 
@@ -19,7 +22,7 @@ export function JournalTemplate({ data }: ShareTemplateProps) {
     >
       <div className="max-w-[640px] mx-auto px-7 pt-12 pb-16">
         <div className="text-center">
-          <div className="text-[11px] tracking-[0.22em] text-[#8A8177] uppercase">旅记 · 分享的行程</div>
+          <div className="text-[11px] tracking-[0.22em] text-[#8A8177] uppercase">{t('shareTemplates.journal.eyebrow', { brand: t('common.appName') })}</div>
           <div className="mt-2.5 font-bold text-[28px] leading-tight text-wrap-balance" style={{ fontFamily: '"Noto Serif SC", "Songti SC", STSong, SimSun, serif' }}>
             {data.name}
           </div>
@@ -30,7 +33,7 @@ export function JournalTemplate({ data }: ShareTemplateProps) {
           )}
         </div>
         <div className="text-center text-[12px] text-[#8A8177] mt-3.5 mb-10 pt-3.5 border-t border-[#E8E0D4]">
-          只读分享 · 无法编辑
+          {t('shareTemplates.journal.readOnlyNotice')}
         </div>
 
         {showItinerary && (
@@ -55,7 +58,7 @@ export function JournalTemplate({ data }: ShareTemplateProps) {
                       </div>
                     )}
                     <div className="text-[12px] text-[#8A8177] tabular mt-0.5">
-                      {formatMD(day.dayDate)} · {formatDow(day.dayDate)}
+                      {formatMD(day.dayDate, i18n.language)} · {formatDow(day.dayDate, i18n.language)}
                     </div>
                   </div>
                 </div>
@@ -78,10 +81,10 @@ export function JournalTemplate({ data }: ShareTemplateProps) {
         {showExpense && (
           <div className="mt-11 p-5.5 bg-[#FFFDF9] border border-[#E8E0D4] rounded-[18px]">
             <div className="font-bold text-[14px] mb-3.5" style={{ fontFamily: '"Noto Serif SC", serif' }}>
-              花费汇总
+              {t('shareTemplates.journal.expenseSummaryTitle')}
             </div>
             <div className="flex justify-between items-baseline pb-3.5 mb-3.5 border-b border-[#E8E0D4]">
-              <span className="text-[13px]">全程总花费</span>
+              <span className="text-[13px]">{t('shareTemplates.common.totalExpenseLabel')}</span>
               <span className="font-bold text-[26px] tabular text-[#0F766E]" style={{ fontFamily: '"Noto Serif SC", serif' }}>
                 {formatMoney(data.expenseTotal!)}
               </span>
@@ -89,8 +92,8 @@ export function JournalTemplate({ data }: ShareTemplateProps) {
             {!!data.expenseCategories?.length && (
               <div>
                 {data.expenseCategories.map((c) => (
-                  <div key={c.name} className="flex justify-between text-[13px] py-1.5 text-[#8A8177]">
-                    <span>{c.name}</span>
+                  <div key={c.id} className="flex justify-between text-[13px] py-1.5 text-[#8A8177]">
+                    <span>{categoryLabel(c, t)}</span>
                     <span className="tabular text-[#1F1B16] font-semibold">{formatMoney(c.amount)}</span>
                   </div>
                 ))}
@@ -99,7 +102,7 @@ export function JournalTemplate({ data }: ShareTemplateProps) {
           </div>
         )}
 
-        <div className="text-center text-[11.5px] text-[#8A8177] mt-12">用「旅记」记录的家庭旅行 · 行程+账本一体化</div>
+        <div className="text-center text-[11.5px] text-[#8A8177] mt-12">{t('shareTemplates.common.footerFamily', { brand: t('common.appName') })}</div>
       </div>
     </div>
   )

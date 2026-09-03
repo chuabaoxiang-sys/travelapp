@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import { formatMoney } from '../../../lib/money'
+import { categoryLabel } from '../../../lib/categoryLabel'
 import { formatDotDate, formatDow } from '../formatShared'
 import type { ShareTemplateProps } from './types'
 
@@ -8,6 +10,7 @@ const LABEL_FONT = '"Barlow Semi Condensed", ui-sans-serif, sans-serif'
 // 模板：出发信息板——机场出发大厅翻牌显示屏质感，高密度、机械、准点感，
 // 固定表头 TIME/DESTINATION/DAY + 逐日深色分组行
 export function DepartureBoardTemplate({ data }: ShareTemplateProps) {
+  const { t, i18n } = useTranslation()
   const showItinerary = (data.scope === 'itinerary' || data.scope === 'both') && !!data.days?.length
   const showExpense = (data.scope === 'expenses' || data.scope === 'both') && data.expenseTotal != null
 
@@ -53,7 +56,7 @@ export function DepartureBoardTemplate({ data }: ShareTemplateProps) {
                   </div>
                   {day.dayTitle && <div className="text-[12.5px] font-medium">{day.dayTitle}</div>}
                   <div className="ml-auto text-[10px] font-semibold tracking-[2px] text-[#7D8590]" style={{ fontFamily: LABEL_FONT }}>
-                    {formatDow(day.dayDate).replace('周', '').toUpperCase()}
+                    {formatDow(day.dayDate, i18n.language).replace('周', '').toUpperCase()}
                   </div>
                 </div>
                 {day.items.map((it, j) => (
@@ -90,14 +93,14 @@ export function DepartureBoardTemplate({ data }: ShareTemplateProps) {
             {!!data.expenseCategories?.length && (
               <div className="mt-2.5 flex flex-wrap gap-1.5">
                 {data.expenseCategories.map((c) => (
-                  <div key={c.name} className="border border-[#2B313B] rounded px-2 py-1 text-[10.5px] text-[#A9B1BA]">
-                    {c.name} <span className="font-medium tabular text-[#E9ECEF]" style={{ fontFamily: MONO }}>{formatMoney(c.amount)}</span>
+                  <div key={c.id} className="border border-[#2B313B] rounded px-2 py-1 text-[10.5px] text-[#A9B1BA]">
+                    {categoryLabel(c, t)} <span className="font-medium tabular text-[#E9ECEF]" style={{ fontFamily: MONO }}>{formatMoney(c.amount)}</span>
                   </div>
                 ))}
               </div>
             )}
             <div className="mt-3 text-[9.5px] font-semibold tracking-[3px] text-[#4C545F]" style={{ fontFamily: LABEL_FONT }}>
-              POWERED BY 旅记
+              {t('shareTemplates.departureBoard.footer', { brand: t('common.appName') })}
             </div>
           </div>
         )}

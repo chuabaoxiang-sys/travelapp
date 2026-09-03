@@ -1,5 +1,4 @@
 import type { TFunction } from 'i18next'
-import type { ExpenseCategory } from '../types'
 
 // 10个系统预设分类的id是固定、跟语言无关的字面量（db/dexie.ts的DEFAULT_CATEGORIES），
 // 这里只是把id去掉'seed-cat-'前缀映射成驼峰key去locales/*.json里查显示名。
@@ -17,7 +16,7 @@ const SYSTEM_CATEGORY_KEYS: Record<string, string> = {
   'seed-cat-misc': 'misc',
 }
 
-export function categoryLabel(category: ExpenseCategory | null | undefined, t: TFunction): string {
+export function categoryLabel(category: { id: string; name: string } | null | undefined, t: TFunction): string {
   if (!category) return ''
   const key = SYSTEM_CATEGORY_KEYS[category.id]
   return key ? t(`categories.${key}`) : category.name

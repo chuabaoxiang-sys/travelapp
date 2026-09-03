@@ -75,6 +75,7 @@ export interface SharedTripItem {
 }
 
 export interface SharedExpenseCategory {
+  id: string
   name: string
   amount: number
 }

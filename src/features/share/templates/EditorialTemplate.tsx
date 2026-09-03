@@ -1,10 +1,13 @@
+import { useTranslation } from 'react-i18next'
 import { formatMoney } from '../../../lib/money'
+import { categoryLabel } from '../../../lib/categoryLabel'
 import { formatDow, formatDotDate } from '../formatShared'
 import type { ShareTemplateProps } from './types'
 
 // 模板 2b：时刻表编辑感——不用卡片，纯排版，超大号等宽数字日期做视觉锚点，
 // 页脚反白成实色块收尾
 export function EditorialTemplate({ data }: ShareTemplateProps) {
+  const { t, i18n } = useTranslation()
   const showItinerary = (data.scope === 'itinerary' || data.scope === 'both') && !!data.days?.length
   const showExpense = (data.scope === 'expenses' || data.scope === 'both') && data.expenseTotal != null
 
@@ -35,7 +38,7 @@ export function EditorialTemplate({ data }: ShareTemplateProps) {
                   <div className="text-[30px] font-bold tabular tracking-tight" style={{ fontFamily: '"Space Grotesk", ui-sans-serif, sans-serif' }}>
                     {formatDotDate(day.dayDate)}
                   </div>
-                  <div className="text-[11px] text-[#6B6A5E]">{formatDow(day.dayDate)}</div>
+                  <div className="text-[11px] text-[#6B6A5E]">{formatDow(day.dayDate, i18n.language)}</div>
                   <div className="ml-auto text-[11px] tracking-[0.14em] text-[#2C3AE8]" style={{ fontFamily: '"Space Grotesk", ui-sans-serif, sans-serif' }}>
                     DAY {i + 1}
                   </div>
@@ -72,8 +75,8 @@ export function EditorialTemplate({ data }: ShareTemplateProps) {
             {!!data.expenseCategories?.length && (
               <div className="mt-3">
                 {data.expenseCategories.map((c) => (
-                  <div key={c.name} className="flex justify-between py-1 text-[11.5px] border-b border-[#FAFAF7]/14 last:border-b-0">
-                    <span className="text-[#FAFAF7]/62">{c.name}</span>
+                  <div key={c.id} className="flex justify-between py-1 text-[11.5px] border-b border-[#FAFAF7]/14 last:border-b-0">
+                    <span className="text-[#FAFAF7]/62">{categoryLabel(c, t)}</span>
                     <span className="tabular font-medium" style={{ fontFamily: '"Space Grotesk", ui-sans-serif, sans-serif' }}>
                       {formatMoney(c.amount)}
                     </span>
@@ -82,7 +85,7 @@ export function EditorialTemplate({ data }: ShareTemplateProps) {
               </div>
             )}
             <div className="mt-3.5 text-[10px] tracking-[0.14em] text-[#FAFAF7]/50" style={{ fontFamily: '"Space Grotesk", ui-sans-serif, sans-serif' }}>
-              RECORDED WITH 旅记
+              {t('shareTemplates.editorial.footer', { brand: t('common.appName') })}
             </div>
           </div>
         )}

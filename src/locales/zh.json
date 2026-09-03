@@ -6,14 +6,36 @@
     "minutesAgo_other": "{{count}}分钟前",
     "hoursAgo_other": "{{count}}小时前",
     "daysAgo_other": "{{count}}天前",
-    "brand": "旅记 · TripJournal"
+    "brand": "旅记 · TripJournal",
+    "appName": "旅记"
   },
   "datePicker": {
     "placeholder": "选择日期",
     "clear": "清除",
     "today": "今天",
-    "dow": ["一", "二", "三", "四", "五", "六", "日"],
-    "months": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]
+    "dow": [
+      "一",
+      "二",
+      "三",
+      "四",
+      "五",
+      "六",
+      "日"
+    ],
+    "months": [
+      "1月",
+      "2月",
+      "3月",
+      "4月",
+      "5月",
+      "6月",
+      "7月",
+      "8月",
+      "9月",
+      "10月",
+      "11月",
+      "12月"
+    ]
   },
   "timePicker": {
     "placeholder": "选择时间"
@@ -178,7 +200,11 @@
     }
   },
   "itinerary": {
-    "viewModes": { "timeline": "时间线", "calendar": "日历", "map": "地图" },
+    "viewModes": {
+      "timeline": "时间线",
+      "calendar": "日历",
+      "map": "地图"
+    },
     "wishlistButton": "想去的地点",
     "filterButton": "只看待预约",
     "noDatesYet": "这趟行程还没设置起止日期，还不能按天排行程，先去「账目」标签试试记一笔吧。",
@@ -361,10 +387,22 @@
     }
   },
   "spendHero": {
-    "dailyRemaining": { "label": "今天还能花", "sub": "今日额度 {{allowance}} · 已花 {{spent}}" },
-    "dailyOver": { "label": "今天超了", "sub": "今天已花 {{spent}} · 额度 {{allowance}}" },
-    "budgetOver": { "label": "已超总预算", "sub": "这趟已花 {{total}} · 预算 {{budget}}" },
-    "noBudget": { "label": "今天已花", "sub": "这趟共 {{total}}" },
+    "dailyRemaining": {
+      "label": "今天还能花",
+      "sub": "今日额度 {{allowance}} · 已花 {{spent}}"
+    },
+    "dailyOver": {
+      "label": "今天超了",
+      "sub": "今天已花 {{spent}} · 额度 {{allowance}}"
+    },
+    "budgetOver": {
+      "label": "已超总预算",
+      "sub": "这趟已花 {{total}} · 预算 {{budget}}"
+    },
+    "noBudget": {
+      "label": "今天已花",
+      "sub": "这趟共 {{total}}"
+    },
     "outsideTrip": {
       "label": "这趟已花",
       "subWithBudget": "预算 {{budget}} · 还剩 {{remaining}}",
@@ -605,6 +643,52 @@
       "gazette": "旅行纪事报",
       "color-block": "亲子色块",
       "glass": "夜航玻璃"
+    }
+  },
+  "shareTemplates": {
+    "ticket": {
+      "badge": "BOARDING · 旅程凭证",
+      "footer": "ISSUED BY {{brand}} · READ-ONLY TRIP RECORD"
+    },
+    "editorial": {
+      "footer": "RECORDED WITH {{brand}}"
+    },
+    "collage": {
+      "eyebrow": "家 族 旅 行 记 录",
+      "day": "第 {{day}} 天"
+    },
+    "journal": {
+      "eyebrow": "{{brand}} · 分享的行程",
+      "readOnlyNotice": "只读分享 · 无法编辑",
+      "expenseSummaryTitle": "花费汇总"
+    },
+    "route": {
+      "eyebrow": "{{brand}} · 只读分享的旅程",
+      "statsLine": " · 共 <0>{{days}}</0> 天 · <1>{{stops}}</1> 个地点",
+      "expenseSectionTitle": "旅程终点 · 花费汇总"
+    },
+    "statement": {
+      "eyebrow": "{{brand}} · 旅程结算单",
+      "activityLogTitle": "行程活动记录"
+    },
+    "departureBoard": {
+      "footer": "POWERED BY {{brand}}"
+    },
+    "gazette": {
+      "editionLabel": "家 庭 版",
+      "byline": "旅 记 出 品",
+      "masthead": "旅行纪事",
+      "expenseSectionTitle": "本次开支决算"
+    },
+    "colorBlock": {
+      "eyebrow": "我们一家的旅行"
+    },
+    "common": {
+      "totalExpenseLabel": "全程总花费",
+      "totalSpentCasual": "这趟一共花了",
+      "footerShort": "用「{{brand}}」记录 · 分享",
+      "footerFamily": "用「{{brand}}」记录的家庭旅行 · 行程+账本一体化",
+      "footerFamilyShort": "用「{{brand}}」记录的家庭旅行"
     }
   },
   "feedback": {

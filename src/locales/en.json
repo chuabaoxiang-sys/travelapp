@@ -9,14 +9,36 @@
     "hoursAgo_other": "{{count}} hours ago",
     "daysAgo_one": "{{count}} day ago",
     "daysAgo_other": "{{count}} days ago",
-    "brand": "TripJournal"
+    "brand": "TripJournal",
+    "appName": "TripJournal"
   },
   "datePicker": {
     "placeholder": "Select date",
     "clear": "Clear",
     "today": "Today",
-    "dow": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
-    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    "dow": [
+      "Mo",
+      "Tu",
+      "We",
+      "Th",
+      "Fr",
+      "Sa",
+      "Su"
+    ],
+    "months": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ]
   },
   "timePicker": {
     "placeholder": "Select time"
@@ -188,7 +210,11 @@
     }
   },
   "itinerary": {
-    "viewModes": { "timeline": "Timeline", "calendar": "Calendar", "map": "Map" },
+    "viewModes": {
+      "timeline": "Timeline",
+      "calendar": "Calendar",
+      "map": "Map"
+    },
     "wishlistButton": "Saved places",
     "filterButton": "Needs reservation only",
     "noDatesYet": "This trip doesn't have start/end dates yet, so it can't be planned day by day — try logging an expense on the Ledger tab first.",
@@ -373,10 +399,22 @@
     }
   },
   "spendHero": {
-    "dailyRemaining": { "label": "Left for today", "sub": "Today's allowance {{allowance}} · spent {{spent}}" },
-    "dailyOver": { "label": "Over for today", "sub": "Spent {{spent}} today · allowance {{allowance}}" },
-    "budgetOver": { "label": "Over total budget", "sub": "Spent {{total}} so far · budget {{budget}}" },
-    "noBudget": { "label": "Spent today", "sub": "{{total}} total so far" },
+    "dailyRemaining": {
+      "label": "Left for today",
+      "sub": "Today's allowance {{allowance}} · spent {{spent}}"
+    },
+    "dailyOver": {
+      "label": "Over for today",
+      "sub": "Spent {{spent}} today · allowance {{allowance}}"
+    },
+    "budgetOver": {
+      "label": "Over total budget",
+      "sub": "Spent {{total}} so far · budget {{budget}}"
+    },
+    "noBudget": {
+      "label": "Spent today",
+      "sub": "{{total}} total so far"
+    },
     "outsideTrip": {
       "label": "Spent so far",
       "subWithBudget": "Budget {{budget}} · {{remaining}} left",
@@ -623,6 +661,52 @@
       "gazette": "Gazette",
       "color-block": "Color Blocks",
       "glass": "Night Glass"
+    }
+  },
+  "shareTemplates": {
+    "ticket": {
+      "badge": "BOARDING · TRIP PASS",
+      "footer": "ISSUED BY {{brand}} · READ-ONLY TRIP RECORD"
+    },
+    "editorial": {
+      "footer": "RECORDED WITH {{brand}}"
+    },
+    "collage": {
+      "eyebrow": "F A M I L Y   T R I P",
+      "day": "Day {{day}}"
+    },
+    "journal": {
+      "eyebrow": "{{brand}} · Shared Itinerary",
+      "readOnlyNotice": "Read-only · Can't be edited",
+      "expenseSummaryTitle": "Expense Summary"
+    },
+    "route": {
+      "eyebrow": "{{brand}} · Read-only Shared Trip",
+      "statsLine": " · <0>{{days}}</0> days · <1>{{stops}}</1> stops",
+      "expenseSectionTitle": "Journey's End · Expense Summary"
+    },
+    "statement": {
+      "eyebrow": "{{brand}} · Trip Statement",
+      "activityLogTitle": "Activity Log"
+    },
+    "departureBoard": {
+      "footer": "POWERED BY {{brand}}"
+    },
+    "gazette": {
+      "editionLabel": "F A M I L Y   E D I T I O N",
+      "byline": "B Y   T R I P J O U R N A L",
+      "masthead": "TRAVEL GAZETTE",
+      "expenseSectionTitle": "Final Tally"
+    },
+    "colorBlock": {
+      "eyebrow": "Our Family Trip"
+    },
+    "common": {
+      "totalExpenseLabel": "Total spent",
+      "totalSpentCasual": "This trip cost",
+      "footerShort": "Recorded with {{brand}}",
+      "footerFamily": "A family trip recorded with {{brand}} — itinerary and ledger in one",
+      "footerFamilyShort": "A family trip recorded with {{brand}}"
     }
   },
   "feedback": {

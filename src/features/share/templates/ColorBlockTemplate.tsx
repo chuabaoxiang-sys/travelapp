@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import { formatMoney } from '../../../lib/money'
+import { categoryLabel } from '../../../lib/categoryLabel'
 import { formatDotDate } from '../formatShared'
 import { DAY_COLORS } from './colorBlockPalette'
 import type { ShareTemplateProps } from './types'
@@ -9,6 +11,7 @@ const ROUND = '"Zen Maru Gothic", "Noto Sans SC", -apple-system, system-ui, sans
 // 模板：亲子色块——一天一个颜色循环，圆润、明亮、好认，孩子也能一眼看懂
 // 今天去哪，最适合发在家族群里
 export function ColorBlockTemplate({ data }: ShareTemplateProps) {
+  const { t } = useTranslation()
   const showItinerary = (data.scope === 'itinerary' || data.scope === 'both') && !!data.days?.length
   const showExpense = (data.scope === 'expenses' || data.scope === 'both') && data.expenseTotal != null
   const heroColor = DAY_COLORS[0]
@@ -17,7 +20,7 @@ export function ColorBlockTemplate({ data }: ShareTemplateProps) {
     <div className="min-h-screen bg-white text-[#1A1A1A]" style={{ fontFamily: '"Noto Sans SC", -apple-system, system-ui, sans-serif' }}>
       <div className="max-w-[640px] mx-auto">
         <div className="px-6.5 pt-9 pb-6 text-white" style={{ background: heroColor }}>
-          <div className="text-[12px] tracking-[2px] opacity-90">我们一家的旅行</div>
+          <div className="text-[12px] tracking-[2px] opacity-90">{t('shareTemplates.colorBlock.eyebrow')}</div>
           <div className="mt-2.5 font-black text-[30px] leading-tight text-wrap-balance" style={{ fontFamily: ROUND }}>
             {data.name}
           </div>
@@ -80,7 +83,7 @@ export function ColorBlockTemplate({ data }: ShareTemplateProps) {
           <div className="bg-[#F7F7F4] border-t-2 border-[#ECECE7] px-4.5 pt-4 pb-4.5">
             <div className="flex justify-between items-baseline">
               <div className="font-bold text-[13.5px]" style={{ fontFamily: ROUND }}>
-                这趟一共花了
+                {t('shareTemplates.common.totalSpentCasual')}
               </div>
               <div className="font-bold text-[22px] tabular text-[#2BB3A3]" style={{ fontFamily: MONO }}>
                 {formatMoney(data.expenseTotal!)}
@@ -90,16 +93,16 @@ export function ColorBlockTemplate({ data }: ShareTemplateProps) {
               <div className="mt-2.5 flex flex-wrap gap-1.5">
                 {data.expenseCategories.map((c, i) => (
                   <div
-                    key={c.name}
+                    key={c.id}
                     className="rounded-full px-2.5 py-1 text-[11px] text-white"
                     style={{ background: DAY_COLORS[i % DAY_COLORS.length] }}
                   >
-                    {c.name} <span className="font-bold tabular" style={{ fontFamily: MONO }}>{formatMoney(c.amount)}</span>
+                    {categoryLabel(c, t)} <span className="font-bold tabular" style={{ fontFamily: MONO }}>{formatMoney(c.amount)}</span>
                   </div>
                 ))}
               </div>
             )}
-            <div className="mt-3.5 text-center text-[11px] text-[#A3A39C]">用「旅记」记录 · 分享</div>
+            <div className="mt-3.5 text-center text-[11px] text-[#A3A39C]">{t('shareTemplates.common.footerShort', { brand: t('common.appName') })}</div>
           </div>
         )}
       </div>

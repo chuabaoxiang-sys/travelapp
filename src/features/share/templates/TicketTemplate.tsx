@@ -1,9 +1,12 @@
+import { useTranslation } from 'react-i18next'
 import { formatMoney } from '../../../lib/money'
+import { categoryLabel } from '../../../lib/categoryLabel'
 import { formatDotDate, formatDow, formatMD } from '../formatShared'
 import type { ShareTemplateProps } from './types'
 
 // 模板 2a：车票凭证感——一天一张可撕的票根，登机牌式头部 + 打孔虚线分隔
 export function TicketTemplate({ data }: ShareTemplateProps) {
+  const { t, i18n } = useTranslation()
   const showItinerary = (data.scope === 'itinerary' || data.scope === 'both') && !!data.days?.length
   const showExpense = (data.scope === 'expenses' || data.scope === 'both') && data.expenseTotal != null
 
@@ -13,7 +16,7 @@ export function TicketTemplate({ data }: ShareTemplateProps) {
         <div className="bg-[#1B3A6B] text-[#EFEDE6] px-6 pt-8 pb-6">
           <div className="flex justify-between items-start">
             <div className="text-[10px] tracking-[0.2em] opacity-70" style={{ fontFamily: 'ui-monospace, "SF Mono", Consolas, monospace' }}>
-              BOARDING · 旅程凭证
+              {t('shareTemplates.ticket.badge')}
             </div>
           </div>
           <div className="mt-4 font-bold text-[26px] leading-tight">{data.name}</div>
@@ -47,7 +50,7 @@ export function TicketTemplate({ data }: ShareTemplateProps) {
                 <div className="flex-1 min-w-0">
                   {day.dayTitle && <div className="text-[13px] font-medium truncate">{day.dayTitle}</div>}
                   <div className="mt-0.5 text-[10px] tracking-[0.1em] text-[#8A8578]" style={{ fontFamily: 'ui-monospace, monospace' }}>
-                    DAY {i + 1} · {formatMD(day.dayDate)} {formatDow(day.dayDate)}
+                    DAY {i + 1} · {formatMD(day.dayDate, i18n.language)} {formatDow(day.dayDate, i18n.language)}
                   </div>
                 </div>
               </div>
@@ -81,8 +84,8 @@ export function TicketTemplate({ data }: ShareTemplateProps) {
             {!!data.expenseCategories?.length && (
               <div className="mt-2.5 flex gap-3.5 flex-wrap">
                 {data.expenseCategories.map((c) => (
-                  <div key={c.name}>
-                    <div className="text-[10px] text-[#8A8578]">{c.name}</div>
+                  <div key={c.id}>
+                    <div className="text-[10px] text-[#8A8578]">{categoryLabel(c, t)}</div>
                     <div className="mt-0.5 text-[12px] font-medium tabular" style={{ fontFamily: 'ui-monospace, monospace' }}>
                       {formatMoney(c.amount)}
                     </div>
@@ -94,7 +97,7 @@ export function TicketTemplate({ data }: ShareTemplateProps) {
         )}
 
         <div className="text-center text-[9.5px] tracking-[0.12em] text-[#A8A296] py-4" style={{ fontFamily: 'ui-monospace, monospace' }}>
-          ISSUED BY 旅记 · READ-ONLY TRIP RECORD
+          {t('shareTemplates.ticket.footer', { brand: t('common.appName') })}
         </div>
       </div>
     </div>

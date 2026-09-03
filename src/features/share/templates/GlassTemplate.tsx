@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import { formatMoney } from '../../../lib/money'
+import { categoryLabel } from '../../../lib/categoryLabel'
 import { formatDotDate, formatDow } from '../formatShared'
 import type { ShareTemplateProps } from './types'
 
@@ -7,6 +9,7 @@ const MONO = 'ui-monospace, "IBM Plex Mono", "SF Mono", Consolas, monospace'
 // 模板：夜航玻璃——七套里最克制内敛的一套，毛玻璃卡片悬浮在深蓝背景上，
 // 靠留白撑层级，适合成年朋友之间转发
 export function GlassTemplate({ data }: ShareTemplateProps) {
+  const { t, i18n } = useTranslation()
   const showItinerary = (data.scope === 'itinerary' || data.scope === 'both') && !!data.days?.length
   const showExpense = (data.scope === 'expenses' || data.scope === 'both') && data.expenseTotal != null
 
@@ -39,7 +42,7 @@ export function GlassTemplate({ data }: ShareTemplateProps) {
                 <div className="flex items-baseline gap-2.5">
                   {day.dayTitle && <div className="font-medium text-[15px]">{day.dayTitle}</div>}
                   <div className="ml-auto text-[11.5px] font-medium tabular text-[#E8EFF7]/45" style={{ fontFamily: MONO }}>
-                    {formatDotDate(day.dayDate)} {formatDow(day.dayDate)}
+                    {formatDotDate(day.dayDate)} {formatDow(day.dayDate, i18n.language)}
                   </div>
                 </div>
                 <div className="mt-2.5">
@@ -73,14 +76,14 @@ export function GlassTemplate({ data }: ShareTemplateProps) {
             {!!data.expenseCategories?.length && (
               <div className="mt-2.5">
                 {data.expenseCategories.map((c) => (
-                  <div key={c.name} className="flex justify-between py-1 text-[11.5px] border-b border-[#E8EFF7]/[0.08] last:border-b-0">
-                    <span className="text-[#E8EFF7]/60">{c.name}</span>
+                  <div key={c.id} className="flex justify-between py-1 text-[11.5px] border-b border-[#E8EFF7]/[0.08] last:border-b-0">
+                    <span className="text-[#E8EFF7]/60">{categoryLabel(c, t)}</span>
                     <span className="font-medium tabular" style={{ fontFamily: MONO }}>{formatMoney(c.amount)}</span>
                   </div>
                 ))}
               </div>
             )}
-            <div className="mt-3 text-center text-[10.5px] tracking-[2.4px] text-[#E8EFF7]/40">用「旅记」记录 · 分享</div>
+            <div className="mt-3 text-center text-[10.5px] tracking-[2.4px] text-[#E8EFF7]/40">{t('shareTemplates.common.footerShort', { brand: t('common.appName') })}</div>
           </div>
         )}
       </div>
