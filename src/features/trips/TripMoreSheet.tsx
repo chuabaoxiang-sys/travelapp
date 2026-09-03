@@ -135,12 +135,12 @@ export function TripMoreSheet({
     setReadyFile(null)
     setBusy(kind)
     try {
-      const bundle = await assembleExportBundle(trip.id)
+      const bundle = await assembleExportBundle(trip.id, t)
       // buildExcelFile 依赖的 xlsx 库源码7MB+，绝大多数用户从来不点导出——
       // 动态import让它只在真的点了导出按钮时才下载，不拖累主包体积
       const { buildExcelFile, buildJsonFile, buildCsvFile } = await import('../../domain/exportRenderers')
       const file =
-        kind === 'excel' ? buildExcelFile(bundle) : kind === 'json' ? buildJsonFile(bundle) : buildCsvFile(bundle)
+        kind === 'excel' ? buildExcelFile(bundle, t) : kind === 'json' ? buildJsonFile(bundle, t) : buildCsvFile(bundle, t)
       if (!navigator.share) {
         downloadFile(file)
         return

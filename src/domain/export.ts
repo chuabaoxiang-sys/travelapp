@@ -1,5 +1,7 @@
+import type { TFunction } from 'i18next'
 import { db } from '../db/dexie'
 import { computeBalances } from './splits'
+import { categoryLabel } from '../lib/categoryLabel'
 import type { Trip } from '../types'
 
 function round2(n: number) {
@@ -8,7 +10,7 @@ function round2(n: number) {
 
 export interface ExportRow {
   date: string
-  type: '行程' | '账目'
+  type: 'itinerary' | 'expense'
   title: string
   location: string | null
   categoryName: string | null
@@ -47,7 +49,7 @@ export interface ExportBundle {
 
 // 导出数据组装器：把行程记录和账目记录整理成一份干净的中间结构，
 // Excel/JSON/CSV 三种渲染器都从这一份数据出发，不用各自重新查一遍库
-export async function assembleExportBundle(tripId: string): Promise<ExportBundle> {
+export async function assembleExportBundle(tripId: string, t: TFunction): Promise<ExportBundle> {
   const trip = await db.trips.get(tripId)
   if (!trip) throw new Error('行程不存在')
 
@@ -60,12 +62,15 @@ export async function assembleExportBundle(tripId: string): Promise<ExportBundle
   ])
 
   const dayById = new Map(itineraryDays.map((d) => [d.id, d]))
-  const memberName = (id: string) => members.find((m) => m.id === id)?.displayName ?? '未知'
-  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? '未知'
+  const memberName = (id: string) => members.find((m) => m.id === id)?.displayName ?? t('export.unknownMember')
+  const categoryName = (id: string) => {
+    const cat = categories.find((c) => c.id === id)
+    return cat ? categoryLabel(cat, t) : t('export.unknownCategory')
+  }
 
   const itineraryRows: ExportRow[] = itineraryItems.map((it) => ({
     date: dayById.get(it.dayId)?.date ?? '',
-    type: '行程',
+    type: 'itinerary',
     title: it.title,
     location: it.locationName,
     categoryName: null,
@@ -78,7 +83,7 @@ export async function assembleExportBundle(tripId: string): Promise<ExportBundle
 
   const expenseRows: ExportRow[] = expenses.map((e) => ({
     date: e.expenseDate,
-    type: '账目',
+    type: 'expense',
     title: e.description || categoryName(e.categoryId),
     location: null,
     categoryName: categoryName(e.categoryId),

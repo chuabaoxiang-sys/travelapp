@@ -770,5 +770,31 @@
     "close": "关闭",
     "iosNonSafariHint": "iOS上只有 <b>Safari</b> 才能把旅记装成独立APP——当前这个浏览器不支持，请用 Safari 重新打开这个网址",
     "iosSafariHint": "在 Safari 点击底部<b>分享</b>图标 →「添加到主屏幕」，就能像App一样打开旅记，支持离线使用"
+  },
+  "export": {
+    "unknownCategory": "未知",
+    "unknownMember": "未知",
+    "typeItinerary": "行程",
+    "typeExpense": "账目",
+    "fileNameSuffix": "旅记导出",
+    "colDate": "日期",
+    "colType": "类型",
+    "colTitle": "标题",
+    "colLocation": "地点",
+    "colCategory": "分类",
+    "colAmount": "金额",
+    "colCurrency": "币种",
+    "colConverted": "折算({{currency}})",
+    "colPayer": "付款人",
+    "colNote": "备注",
+    "sheetDetail": "明细",
+    "sheetSummary": "汇总",
+    "byDay": "按天汇总",
+    "byCategory": "按分类汇总",
+    "byPerson": "按人汇总",
+    "colName": "姓名",
+    "colPaid": "垫付",
+    "colShare": "应分摊",
+    "colNet": "净额（正=应收，负=应付）"
   }
 }

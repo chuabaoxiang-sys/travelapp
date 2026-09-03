@@ -797,5 +797,31 @@
     "close": "Close",
     "iosNonSafariHint": "Only <b>Safari</b> can install TripJournal as a standalone app on iOS — this browser doesn't support it. Open this page in Safari instead.",
     "iosSafariHint": "In Safari, tap the <b>Share</b> icon at the bottom, then \"Add to Home Screen\" — TripJournal will open like an app, with offline support"
+  },
+  "export": {
+    "unknownCategory": "Unknown",
+    "unknownMember": "Unknown",
+    "typeItinerary": "Itinerary",
+    "typeExpense": "Expense",
+    "fileNameSuffix": "TripJournal-export",
+    "colDate": "Date",
+    "colType": "Type",
+    "colTitle": "Title",
+    "colLocation": "Location",
+    "colCategory": "Category",
+    "colAmount": "Amount",
+    "colCurrency": "Currency",
+    "colConverted": "Converted ({{currency}})",
+    "colPayer": "Paid by",
+    "colNote": "Note",
+    "sheetDetail": "Details",
+    "sheetSummary": "Summary",
+    "byDay": "By day",
+    "byCategory": "By category",
+    "byPerson": "By person",
+    "colName": "Name",
+    "colPaid": "Paid",
+    "colShare": "Share",
+    "colNet": "Net (+ = owed to them, − = they owe)"
   }
 }

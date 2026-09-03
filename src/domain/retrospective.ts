@@ -45,7 +45,7 @@ function round2(n: number) {
 }
 
 export async function buildRetrospective(tripId: string, todayISO: string, t: TFunction): Promise<TripRetrospective> {
-  const bundle = await assembleExportBundle(tripId)
+  const bundle = await assembleExportBundle(tripId, t)
   const { trip, daySummary, categorySummary, personSummary } = bundle
 
   const [items, allCategories] = await Promise.all([
