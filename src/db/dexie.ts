@@ -237,8 +237,16 @@ const DEFAULT_CATEGORIES: ExpenseCategory[] = [
   { id: 'seed-cat-misc', name: '杂项', phase: 'either', char: '杂', colorVar: 'cat-misc', tripId: null, isSystemDefault: true },
 ]
 
+// 这几个id曾经在DEFAULT_CATEGORIES里、后来被下线/合并掉了——bulkPut只会
+// upsert当前列表里的行，不会删掉本地已经种过、现在已经从列表里拿掉的旧行，
+// 所以老设备本地库里会一直留着这些"孤儿"分类（英文界面下会露出没翻译的
+// 原始中文名，因为categoryLabel的映射表里已经没有它们了）。每次启动都
+// 顺手删一遍，删除是幂等的，不存在也不会报错
+const RETIRED_CATEGORY_IDS = ['seed-cat-stay-onsite']
+
 export async function ensureSeedData() {
   await db.expenseCategories.bulkPut(DEFAULT_CATEGORIES)
+  await db.expenseCategories.bulkDelete(RETIRED_CATEGORY_IDS)
 }
 
 // 按日期取或建一条 itineraryDay——记账时把费用挂到某一天，
