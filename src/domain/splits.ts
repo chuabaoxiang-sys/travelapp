@@ -60,7 +60,7 @@ export async function saveExpenseSplits(
   customAmounts?: Record<string, number>,
 ) {
   const householdId = await getCurrentHouseholdId()
-  if (!householdId) throw new Error('未找到所属团队')
+  if (!householdId) throw new Error('No household found')
   await db.expenseSplits.where('expenseId').equals(expenseId).delete()
   const shares = resolveSplitShares(homeAmount, splitType, memberIds, payerId, customAmounts)
   const rows = shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount }))

@@ -248,7 +248,7 @@ export async function ensureItineraryDay(tripId: string, date: string) {
   const existing = await db.itineraryDays.where({ tripId, date }).first()
   if (existing) return existing
   const householdId = await getCurrentHouseholdId()
-  if (!householdId) throw new Error('未找到所属团队')
+  if (!householdId) throw new Error('No household found')
   const id = crypto.randomUUID()
   const now = Date.now()
   const day: ItineraryDay = { id, householdId, tripId, date, title: null, notes: null, createdAt: now, updatedAt: now }

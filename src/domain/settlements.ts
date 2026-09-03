@@ -23,7 +23,7 @@ export async function createSettlement(params: {
   isPrepayment?: boolean
 }) {
   const householdId = await getCurrentHouseholdId()
-  if (!householdId) throw new Error('未找到所属团队')
+  if (!householdId) throw new Error('No household found')
   const id = crypto.randomUUID()
   const now = Date.now()
   const settlement: Settlement = {

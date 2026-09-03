@@ -17,7 +17,7 @@ const LOCAL_TEST_HOUSEHOLD_ID = 'local-test-household'
 export class NotInvitedError extends Error {}
 
 export async function sendLoginCode(email: string): Promise<void> {
-  if (!supabase) throw new Error('云端服务未配置')
+  if (!supabase) throw new Error('Cloud service isn\'t configured')
   const trimmed = email.trim()
 
   // 真正调用发送登录邮件之前，先问一句"这个邮箱在邀请名单里吗"——不在的话直接
@@ -40,7 +40,7 @@ export async function sendLoginCode(email: string): Promise<void> {
 // 校验用户填的6位验证码——成功后Supabase客户端会自动建立session并触发
 // App.tsx 里监听的 onAuthStateChange，不需要这里手动处理后续跳转
 export async function verifyLoginCode(email: string, code: string): Promise<void> {
-  if (!supabase) throw new Error('云端服务未配置')
+  if (!supabase) throw new Error('Cloud service isn\'t configured')
   const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' })
   if (error) throw error
 }
@@ -133,7 +133,7 @@ export async function listMyHouseholds(): Promise<MyHousehold[]> {
 // 不属于会抛错。注意：调用这个之后本地数据还是旧团队的，必须接着走
 // domain/teamSwitch.ts 里的完整流程，不要单独调用这个函数
 export async function setActiveHousehold(householdId: string): Promise<void> {
-  if (!supabase) throw new Error('云端服务未配置')
+  if (!supabase) throw new Error('Cloud service isn\'t configured')
   const { error } = await supabase.rpc('set_active_household', { p_household_id: householdId })
   if (error) throw error
 }
@@ -174,7 +174,7 @@ export async function joinHouseholdByInviteCode(email: string, code: string): Pr
 // 数据库那边的 create_household 已经在同一个事务里调用了 set_active_household，
 // 这里不需要再调一次。
 export async function createHousehold(name: string): Promise<string> {
-  if (!supabase) throw new Error('云端服务未配置')
+  if (!supabase) throw new Error('Cloud service isn\'t configured')
   const { data, error } = await supabase.rpc('create_household', { p_name: name.trim() })
   if (error) throw error
   clearHouseholdCache()

@@ -42,7 +42,7 @@ export async function saveDayAllocations(
   customAmounts?: Record<string, number>,
 ) {
   const householdId = await getCurrentHouseholdId()
-  if (!householdId) throw new Error('未找到所属团队')
+  if (!householdId) throw new Error('No household found')
   await db.expenseDayAllocations.where('expenseId').equals(expenseId).delete()
   const shares = resolveDayShares(homeAmount, mode, dates, customAmounts)
   if (!shares.length) return

@@ -15,7 +15,7 @@ export async function createFeedback(params: {
   content: string
 }) {
   const householdId = await getCurrentHouseholdId()
-  if (!householdId) throw new Error('未找到所属团队')
+  if (!householdId) throw new Error('No household found')
   const id = crypto.randomUUID()
   const now = Date.now()
   // 提交这一刻的版本自动带上，不用用户自己说清楚是哪个版本

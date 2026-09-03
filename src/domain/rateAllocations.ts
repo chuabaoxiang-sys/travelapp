@@ -39,7 +39,7 @@ export function resolveRateShares(inputs: RateAllocationInput[]): ResolvedRateSh
 // 的延迟约束，走通用的逐行同步 hook 就够了，不需要手动打包 outbox
 export async function saveRateAllocations(expenseId: string, tripId: string, inputs: RateAllocationInput[]) {
   const householdId = await getCurrentHouseholdId()
-  if (!householdId) throw new Error('未找到所属团队')
+  if (!householdId) throw new Error('No household found')
   await db.expenseRateAllocations.where('expenseId').equals(expenseId).delete()
   const shares = resolveRateShares(inputs)
   if (!shares.length) return

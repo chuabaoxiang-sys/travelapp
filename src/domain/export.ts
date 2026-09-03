@@ -51,7 +51,7 @@ export interface ExportBundle {
 // Excel/JSON/CSV 三种渲染器都从这一份数据出发，不用各自重新查一遍库
 export async function assembleExportBundle(tripId: string, t: TFunction): Promise<ExportBundle> {
   const trip = await db.trips.get(tripId)
-  if (!trip) throw new Error('行程不存在')
+  if (!trip) throw new Error('Trip not found')
 
   const [members, categories, itineraryDays, itineraryItems, expenses] = await Promise.all([
     db.members.toArray(),

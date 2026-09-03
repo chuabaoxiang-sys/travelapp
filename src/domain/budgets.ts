@@ -32,7 +32,7 @@ export async function upsertBudget(params: {
     return existing.id
   }
   const householdId = await getCurrentHouseholdId()
-  if (!householdId) throw new Error('未找到所属团队')
+  if (!householdId) throw new Error('No household found')
   const id = crypto.randomUUID()
   const budget: Budget = {
     id,
