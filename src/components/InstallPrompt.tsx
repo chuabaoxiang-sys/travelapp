@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { X, Download } from 'lucide-react'
 
 const ANDROID_DISMISS_KEY = 'trip-journal:install-prompt-dismissed'
@@ -32,6 +33,7 @@ function isIOSNonSafariBrowser() {
 // Chrome/Edge/Android 用系统的 beforeinstallprompt 弹自定义安装条；iOS Safari 完全不支持
 // 这个事件（没有编程方式触发安装），只能提示用户自己走"分享→添加到主屏幕"的手动步骤
 export function InstallPrompt() {
+  const { t } = useTranslation()
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [showIOSHint, setShowIOSHint] = useState(false)
   const [iosNonSafari, setIOSNonSafari] = useState(false)
@@ -72,13 +74,13 @@ export function InstallPrompt() {
       <div className="fixed left-0 right-0 bottom-0 z-[100] flex justify-center px-4" style={safeAreaStyle}>
         <div className="w-full max-w-[380px] bg-ink text-paper rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3">
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium">把旅记安装到主屏幕</div>
-            <div className="text-[11px] text-paper/60 mt-0.5">像App一样打开，支持离线使用</div>
+            <div className="text-[13px] font-medium">{t('installPrompt.title')}</div>
+            <div className="text-[11px] text-paper/60 mt-0.5">{t('installPrompt.subtitle')}</div>
           </div>
           <button
             onClick={() => { localStorage.setItem(ANDROID_DISMISS_KEY, '1'); setDeferredEvent(null) }}
             className="text-paper/50 flex-shrink-0"
-            title="暂不"
+            title={t('installPrompt.notNow')}
           >
             <X className="w-4 h-4" strokeWidth={1.8} />
           </button>
@@ -89,7 +91,7 @@ export function InstallPrompt() {
               setDeferredEvent(null)
             }}
             className="rounded-xl bg-plan text-card px-3 py-2 flex-shrink-0"
-            title="安装"
+            title={t('installPrompt.install')}
           >
             <Download className="w-4 h-4" strokeWidth={1.8} />
           </button>
@@ -104,15 +106,15 @@ export function InstallPrompt() {
         <div className="w-full max-w-[380px] bg-ink text-paper rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3">
           <div className="flex-1 min-w-0 text-[12px] leading-relaxed">
             {iosNonSafari ? (
-              <>iOS上只有 <span className="font-medium">Safari</span> 才能把旅记装成独立APP——当前这个浏览器不支持，请用 Safari 重新打开这个网址</>
+              <Trans i18nKey="installPrompt.iosNonSafariHint" components={{ b: <span className="font-medium" /> }} />
             ) : (
-              <>在 Safari 点击底部<span className="font-medium">分享</span>图标 →「添加到主屏幕」，就能像App一样打开旅记，支持离线使用</>
+              <Trans i18nKey="installPrompt.iosSafariHint" components={{ b: <span className="font-medium" /> }} />
             )}
           </div>
           <button
             onClick={() => { localStorage.setItem(IOS_DISMISS_KEY, '1'); setShowIOSHint(false) }}
             className="text-paper/50 flex-shrink-0"
-            title="关闭"
+            title={t('installPrompt.close')}
           >
             <X className="w-4 h-4" strokeWidth={1.8} />
           </button>

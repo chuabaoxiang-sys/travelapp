@@ -737,5 +737,38 @@
       "saveTitle": "保存修改",
       "createTitle": "创建"
     }
+  },
+  "teamSwitcher": {
+    "label": "团队",
+    "switchGroup": "切换团队",
+    "close": "关闭",
+    "switchingTo": "正在切换到 {{name}}",
+    "switchingHint": "重新下载这个团队的数据，稍等一下",
+    "independentNote": "每个团队的行程和账目完全独立，互相看不到。",
+    "pendingWarning_other": "还有 <b>{{count}} 条</b>记录没同步上去。等它们同步完再切，不然这几条会丢。",
+    "pendingSyncErrorMsg_other": "还有 {{count}} 条记录没同步上去，等同步完再切",
+    "switchFailed": "切换失败，检查一下网络再试",
+    "current": "当前"
+  },
+  "countryPicker": {
+    "remove": "移除",
+    "searchPlaceholder": "搜索目的地国家",
+    "optionalMulti": "可选，可多选"
+  },
+  "currencyPicker": {
+    "label": "会用到的货币",
+    "remove": "移除",
+    "homeCurrencySuffix": "{{code}} · 本位币",
+    "searchPlaceholder": "搜索货币，比如「日元」「JPY」",
+    "hint": "本位币会自动算进去；这里选好的币种，记账时能一键点选，不用再手动输入"
+  },
+  "installPrompt": {
+    "title": "把旅记安装到主屏幕",
+    "subtitle": "像App一样打开，支持离线使用",
+    "notNow": "暂不",
+    "install": "安装",
+    "close": "关闭",
+    "iosNonSafariHint": "iOS上只有 <b>Safari</b> 才能把旅记装成独立APP——当前这个浏览器不支持，请用 Safari 重新打开这个网址",
+    "iosSafariHint": "在 Safari 点击底部<b>分享</b>图标 →「添加到主屏幕」，就能像App一样打开旅记，支持离线使用"
   }
 }

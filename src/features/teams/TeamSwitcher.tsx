@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { Users, ChevronDown, Check, Circle, AlertCircle, X } from 'lucide-react'
 import { listMyHouseholds, type MyHousehold } from '../../domain/household'
 import { switchTeam, countPendingSync, PendingSyncError } from '../../domain/teamSwitch'
@@ -8,6 +9,7 @@ import { useBackDismiss } from '../../hooks/useBackDismiss'
 // 团队切换入口。刻意只在"属于2个以上团队"时才渲染任何东西——绝大多数人只属于
 // 一个团队，给他们加一行永远用不到的东西是纯噪音。
 export function TeamSwitcher() {
+  const { t } = useTranslation()
   const [teams, setTeams] = useState<MyHousehold[]>([])
   const [open, setOpen] = useState(false)
 
@@ -16,7 +18,7 @@ export function TeamSwitcher() {
   }, [])
 
   if (teams.length < 2) return null
-  const current = teams.find((t) => t.isActive) ?? teams[0]
+  const current = teams.find((team) => team.isActive) ?? teams[0]
 
   return (
     <>
@@ -26,7 +28,7 @@ export function TeamSwitcher() {
       >
         <Users className="w-[13px] h-[13px] text-card/55 flex-shrink-0" strokeWidth={2} />
         <span className="flex-1 min-w-0">
-          <span className="block text-[9px] tracking-[0.16em] uppercase text-card/45">团队</span>
+          <span className="block text-[9px] tracking-[0.16em] uppercase text-card/45">{t('teamSwitcher.label')}</span>
           <span className="block font-serif-sc text-[13px] text-card font-semibold truncate">{current.name}</span>
         </span>
         <ChevronDown className="w-[14px] h-[14px] text-card/60 flex-shrink-0" strokeWidth={2} />
@@ -38,6 +40,7 @@ export function TeamSwitcher() {
 }
 
 function TeamSwitchSheet({ teams, onClose }: { teams: MyHousehold[]; onClose: () => void }) {
+  const { t } = useTranslation()
   // 打开弹层时就查一次待同步条数：有没推上去的记录时不能切（那些记录带着旧团队的
   // household_id，切过去会被RLS永久拒绝），所以直接把选项禁用掉并说明原因，
   // 而不是让人点了之后才报错
@@ -72,8 +75,8 @@ function TeamSwitchSheet({ teams, onClose }: { teams: MyHousehold[]; onClose: ()
       setSwitching(null)
       setError(
         err instanceof PendingSyncError
-          ? `还有 ${err.pendingCount} 条记录没同步上去，等同步完再切`
-          : '切换失败，检查一下网络再试',
+          ? t('teamSwitcher.pendingSyncErrorMsg', { count: err.pendingCount })
+          : t('teamSwitcher.switchFailed'),
       )
       void countPendingSync().then(setPending)
     }
@@ -86,9 +89,9 @@ function TeamSwitchSheet({ teams, onClose }: { teams: MyHousehold[]; onClose: ()
         <div className="w-[34px] h-[3px] rounded-full bg-handle mx-auto mb-3" />
 
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[12.5px] font-semibold text-ink">切换团队</span>
+          <span className="text-[12.5px] font-semibold text-ink">{t('teamSwitcher.switchGroup')}</span>
           {!switching && (
-            <button onClick={onClose} className="text-muted" title="关闭">
+            <button onClick={onClose} className="text-muted" title={t('teamSwitcher.close')}>
               <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
             </button>
           )}
@@ -97,20 +100,20 @@ function TeamSwitchSheet({ teams, onClose }: { teams: MyHousehold[]; onClose: ()
         {switching ? (
           <div className="text-center py-6">
             <div className="w-6 h-6 mx-auto mb-2.5 rounded-full border-2 border-plan/20 border-t-plan animate-spin motion-reduce:animate-none" />
-            <div className="font-serif-sc text-[14px] text-ink font-semibold">正在切换到 {switching.name}</div>
-            <div className="text-[11px] text-muted mt-1">重新下载这个团队的数据，稍等一下</div>
+            <div className="font-serif-sc text-[14px] text-ink font-semibold">{t('teamSwitcher.switchingTo', { name: switching.name })}</div>
+            <div className="text-[11px] text-muted mt-1">{t('teamSwitcher.switchingHint')}</div>
           </div>
         ) : (
           <>
             <div className="text-[11px] text-muted leading-relaxed mb-3">
-              每个团队的行程和账目完全独立，互相看不到。
+              {t('teamSwitcher.independentNote')}
             </div>
 
             {!!pending && (
               <div className="flex gap-1.5 items-start rounded-xl border border-spend/30 bg-spend/10 px-2.5 py-2 mb-2.5 text-[11px] leading-relaxed text-spend-text">
                 <AlertCircle className="w-[13px] h-[13px] mt-[2px] flex-shrink-0" strokeWidth={2.2} />
                 <span>
-                  还有 <span className="font-semibold">{pending} 条</span>记录没同步上去。等它们同步完再切，不然这几条会丢。
+                  <Trans i18nKey="teamSwitcher.pendingWarning" count={pending} values={{ count: pending }} components={{ b: <span className="font-semibold" /> }} />
                 </span>
               </div>
             )}
@@ -118,24 +121,24 @@ function TeamSwitchSheet({ teams, onClose }: { teams: MyHousehold[]; onClose: ()
             {error && <div className="text-[11px] text-negative mb-2.5">{error}</div>}
 
             <div className="flex flex-col gap-1.5">
-              {teams.map((t) => {
-                const disabled = !t.isActive && !!pending
+              {teams.map((team) => {
+                const disabled = !team.isActive && !!pending
                 return (
                   <button
-                    key={t.id}
-                    onClick={() => pick(t)}
+                    key={team.id}
+                    onClick={() => pick(team)}
                     disabled={disabled}
                     className={`flex items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left ${
-                      t.isActive ? 'border-plan bg-plan/[0.06]' : 'border-line bg-card'
+                      team.isActive ? 'border-plan bg-plan/[0.06]' : 'border-line bg-card'
                     } ${disabled ? 'opacity-40' : ''}`}
                   >
-                    {t.isActive ? (
+                    {team.isActive ? (
                       <Check className="w-[13px] h-[13px] text-plan flex-shrink-0" strokeWidth={2.4} />
                     ) : (
                       <Circle className="w-[13px] h-[13px] text-line flex-shrink-0" strokeWidth={2} />
                     )}
-                    <span className="flex-1 font-serif-sc text-[13px] text-ink font-semibold truncate">{t.name}</span>
-                    {t.isActive && <span className="text-[9.5px] text-plan font-bold flex-shrink-0">当前</span>}
+                    <span className="flex-1 font-serif-sc text-[13px] text-ink font-semibold truncate">{team.name}</span>
+                    {team.isActive && <span className="text-[9.5px] text-plan font-bold flex-shrink-0">{t('teamSwitcher.current')}</span>}
                   </button>
                 )
               })}

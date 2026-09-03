@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { searchCurrencies } from '../lib/currencies'
 import { useEscapeKey } from '../hooks/useEscapeKey'
@@ -17,6 +18,7 @@ export function CurrencyPicker({
   value: string[]
   onChange: (codes: string[]) => void
 }) {
+  const { t, i18n } = useTranslation()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -44,16 +46,16 @@ export function CurrencyPicker({
 
   return (
     <div>
-      <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">会用到的货币</div>
+      <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">{t('currencyPicker.label')}</div>
       <div className="relative" ref={wrapRef}>
         <div className="flex flex-wrap gap-1.5 mb-1.5">
           <span className="inline-flex items-center rounded-full bg-segment text-soft text-[11.5px] px-2.5 py-1">
-            {homeCurrency} · 本位币
+            {t('currencyPicker.homeCurrencySuffix', { code: homeCurrency })}
           </span>
           {value.map((code) => (
             <span key={code} className="inline-flex items-center gap-1 rounded-full bg-plan/10 text-plan text-[11.5px] px-2.5 py-1">
               {code}
-              <button type="button" onClick={() => remove(code)} className="text-plan/60 hover:text-plan" title="移除">
+              <button type="button" onClick={() => remove(code)} className="text-plan/60 hover:text-plan" title={t('currencyPicker.remove')}>
                 <X className="w-2.5 h-2.5" strokeWidth={2} />
               </button>
             </span>
@@ -63,10 +65,10 @@ export function CurrencyPicker({
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
-          placeholder="搜索货币，比如「日元」「JPY」"
+          placeholder={t('currencyPicker.searchPlaceholder')}
           className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-plan"
         />
-        <div className="text-[10.5px] text-muted mt-1">本位币会自动算进去；这里选好的币种，记账时能一键点选，不用再手动输入</div>
+        <div className="text-[10.5px] text-muted mt-1">{t('currencyPicker.hint')}</div>
         {open && results.length > 0 && (
           <div className="absolute z-40 mt-1 w-full rounded-xl border border-line bg-card shadow-lg overflow-hidden max-h-[180px] overflow-y-auto no-scrollbar">
             {results.map((c) => (
@@ -76,7 +78,7 @@ export function CurrencyPicker({
                 onClick={() => add(c.code)}
                 className="w-full text-left px-3 py-2 text-[12.5px] text-ink hover:bg-paper border-b border-line last:border-0"
               >
-                {c.nameZh} <span className="text-muted text-[10.5px]">{c.code}</span>
+                {i18n.language === 'en' ? c.nameEn : c.nameZh} <span className="text-muted text-[10.5px]">{c.code}</span>
               </button>
             ))}
           </div>

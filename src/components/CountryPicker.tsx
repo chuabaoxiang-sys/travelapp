@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { searchCountries, countryByCode } from '../lib/countries'
 import { useEscapeKey } from '../hooks/useEscapeKey'
@@ -10,6 +11,7 @@ export function CountryPicker({
   value: string[]
   onChange: (codes: string[]) => void
 }) {
+  const { t, i18n } = useTranslation()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -40,10 +42,11 @@ export function CountryPicker({
       <div className="flex flex-wrap gap-1.5 mb-1.5">
         {value.map((code) => {
           const c = countryByCode(code)
+          const name = i18n.language === 'en' ? (c?.nameEn ?? code) : (c?.nameZh ?? code)
           return (
             <span key={code} className="inline-flex items-center gap-1 rounded-full bg-plan/10 text-plan text-[11.5px] px-2.5 py-1">
-              {c?.nameZh ?? code}
-              <button type="button" onClick={() => remove(code)} className="text-plan/60 hover:text-plan" title="移除">
+              {name}
+              <button type="button" onClick={() => remove(code)} className="text-plan/60 hover:text-plan" title={t('countryPicker.remove')}>
                 <X className="w-2.5 h-2.5" strokeWidth={2} />
               </button>
             </span>
@@ -54,10 +57,10 @@ export function CountryPicker({
         value={query}
         onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
-        placeholder="搜索目的地国家"
+        placeholder={t('countryPicker.searchPlaceholder')}
         className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-plan"
       />
-      <div className="text-[10.5px] text-muted mt-1">可选，可多选</div>
+      <div className="text-[10.5px] text-muted mt-1">{t('countryPicker.optionalMulti')}</div>
       {open && results.length > 0 && (
         <div className="absolute z-40 mt-1 w-full rounded-xl border border-line bg-card shadow-lg overflow-hidden max-h-[180px] overflow-y-auto no-scrollbar">
           {results.map((c) => (
@@ -67,7 +70,7 @@ export function CountryPicker({
               onClick={() => add(c.code)}
               className="w-full text-left px-3 py-2 text-[12.5px] text-ink hover:bg-paper border-b border-line last:border-0"
             >
-              {c.nameZh}
+              {i18n.language === 'en' ? c.nameEn : c.nameZh}
             </button>
           ))}
         </div>

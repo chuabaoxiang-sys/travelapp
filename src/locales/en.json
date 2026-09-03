@@ -762,5 +762,40 @@
       "saveTitle": "Save changes",
       "createTitle": "Create"
     }
+  },
+  "teamSwitcher": {
+    "label": "Group",
+    "switchGroup": "Switch group",
+    "close": "Close",
+    "switchingTo": "Switching to {{name}}",
+    "switchingHint": "Re-downloading this group's data — hang on",
+    "independentNote": "Each group's trips and expenses are completely separate from the others — they can't see each other.",
+    "pendingWarning_one": "<b>{{count}}</b> record hasn't synced yet. Wait for it to finish before switching, or it'll be lost.",
+    "pendingWarning_other": "<b>{{count}}</b> records haven't synced yet. Wait for them to finish before switching, or they'll be lost.",
+    "pendingSyncErrorMsg_one": "{{count}} record hasn't synced yet — wait for it to finish before switching",
+    "pendingSyncErrorMsg_other": "{{count}} records haven't synced yet — wait for them to finish before switching",
+    "switchFailed": "Couldn't switch — check your network and try again",
+    "current": "Current"
+  },
+  "countryPicker": {
+    "remove": "Remove",
+    "searchPlaceholder": "Search destination country",
+    "optionalMulti": "Optional, pick as many as you like"
+  },
+  "currencyPicker": {
+    "label": "Currencies you'll use",
+    "remove": "Remove",
+    "homeCurrencySuffix": "{{code}} · home currency",
+    "searchPlaceholder": "Search currency, e.g. \"Yen\" or \"JPY\"",
+    "hint": "Your home currency is already included — currencies you pick here show up as one-tap options when logging an expense, so you don't have to type them out"
+  },
+  "installPrompt": {
+    "title": "Add TripJournal to your home screen",
+    "subtitle": "Opens like an app, works offline",
+    "notNow": "Not now",
+    "install": "Install",
+    "close": "Close",
+    "iosNonSafariHint": "Only <b>Safari</b> can install TripJournal as a standalone app on iOS — this browser doesn't support it. Open this page in Safari instead.",
+    "iosSafariHint": "In Safari, tap the <b>Share</b> icon at the bottom, then \"Add to Home Screen\" — TripJournal will open like an app, with offline support"
   }
 }
