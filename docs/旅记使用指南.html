@@ -11,7 +11,7 @@
     --color-paper: #f7f3ec;
     --color-card: #fffdf9;
     --color-line: #e8e0d4;
-    --color-plan: #4c1d95;
+    --color-plan: #282e71;
     --color-spend: #e8703a;
     --color-positive: #0f766e;
     --color-negative: #b91c1c;
@@ -71,7 +71,7 @@
     padding: 90px 28px 70px;
     text-align: center;
     background:
-      radial-gradient(ellipse at 30% 20%, rgba(76,29,149,0.08), transparent 55%),
+      radial-gradient(ellipse at 30% 20%, rgba(40,46,113,0.08), transparent 55%),
       var(--color-paper);
     border-bottom: 1px solid var(--color-line);
   }
@@ -165,11 +165,11 @@
     page-break-inside: avoid;
     break-inside: avoid;
   }
-  .phone .bar { height: 10px; background: linear-gradient(90deg, var(--color-plan), #7c4fd0); }
+  .phone .bar { height: 10px; background: linear-gradient(90deg, var(--color-plan), #6c7eda); }
   .phone .scr { padding: 10px 10px 12px; font-size: 8.6px; }
   .phone .top-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
   .avatar { width: 16px; height: 16px; border-radius: 999px; background: var(--color-plan); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; flex-shrink: 0; }
-  .pill { font-size: 6.6px; padding: 1.5px 5px; border-radius: 999px; background: rgba(76,29,149,0.08); color: var(--color-plan); white-space: nowrap; }
+  .pill { font-size: 6.6px; padding: 1.5px 5px; border-radius: 999px; background: rgba(40,46,113,0.08); color: var(--color-plan); white-space: nowrap; }
   .pill.warn { background: rgba(232,112,58,0.12); color: var(--color-spend); }
   .trip-row { display: flex; gap: 4px; margin-bottom: 6px; align-items: stretch; }
   .trip-card { flex: 1; min-width: 0; background: var(--color-card); border: 1px solid var(--color-line); border-radius: 8px; padding: 6px 7px; display:flex; justify-content:space-between; align-items:center; gap:4px; }
@@ -207,18 +207,18 @@
   .settle-row { display:flex; align-items:center; gap:4px; font-size:7.4px; margin-bottom:3px; }
   .settle-btn { width:100%; text-align:center; background: var(--color-plan); color:#fff; border-radius:6px; padding:5px 0; font-size:7px; font-weight:600; margin-top:4px; }
   .icon-btn { width:14px; height:14px; border-radius:4px; border:1px solid var(--color-line); background:var(--color-card); display:flex; align-items:center; justify-content:center; }
-  .icon-btn.plan { border-color: rgba(76,29,149,.3); background: rgba(76,29,149,.08); }
+  .icon-btn.plan { border-color: rgba(40,46,113,.3); background: rgba(40,46,113,.08); }
   .toggle-row { display:flex; border-radius:6px; overflow:hidden; border:1px solid var(--color-line); margin: 4px 0; }
   .toggle-row span { flex:1; text-align:center; padding:4px 0; font-size:6.8px; }
   .toggle-row span.on { background: var(--color-ink); color:#fff; }
-  .member-chip { border:1.4px solid var(--color-plan); background: rgba(76,29,149,.08); color: var(--color-plan); border-radius:999px; padding:3px 6px; font-size:6.8px; display:inline-flex; align-items:center; gap:2px; }
+  .member-chip { border:1.4px solid var(--color-plan); background: rgba(40,46,113,.08); color: var(--color-plan); border-radius:999px; padding:3px 6px; font-size:6.8px; display:inline-flex; align-items:center; gap:2px; }
 
   /* ---- entry-point callout: 先说清楚入口在哪，再讲里面怎么操作 ---- */
   .entry {
     width: 220px;
     border: 1px dashed var(--color-plan);
     border-radius: 14px;
-    background: rgba(76,29,149,0.04);
+    background: rgba(40,46,113,0.04);
     padding: 8px 9px 9px;
     margin-bottom: 10px;
     page-break-inside: avoid;
@@ -264,7 +264,7 @@
   .thumb-label { font-size: 8px; color: var(--color-muted); text-align: center; margin-top: 4px; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.5px; }
   .cal-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 5px; border-radius: 2px; color: var(--color-muted); }
-  .cal-cell.on { background: rgba(76,29,149,0.12); color: var(--color-ink); font-weight: 700; }
+  .cal-cell.on { background: rgba(40,46,113,0.12); color: var(--color-ink); font-weight: 700; }
   .cal-cell .amt { font-size: 3.6px; color: var(--color-plan); }
   .map-thumb {
     position: relative; height: 100%; border-radius: 6px; overflow: hidden;
@@ -507,7 +507,7 @@
           <span class="chip-btn active">🍜 餐饮</span><span class="chip-btn">📦 杂项</span><span class="chip-btn">🛍 购物</span><span class="chip-btn">🏨 住宿</span>
         </div>
         <div class="field-label">其他设置</div>
-        <div class="field-box row-between" style="border-style:dashed;background:rgba(76,29,149,.05);"><span class="muted" style="font-size:6px;">今天・爸爸垫付・3人平均分摊</span><span class="plan-text" style="font-weight:700;">改 ›</span></div>
+        <div class="field-box row-between" style="border-style:dashed;background:rgba(40,46,113,.05);"><span class="muted" style="font-size:6px;">今天・爸爸垫付・3人平均分摊</span><span class="plan-text" style="font-weight:700;">改 ›</span></div>
       </div>
     </div>
     </div>

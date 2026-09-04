@@ -100,7 +100,8 @@ export function BottomNav({
               // 行程tab上这颗按钮的动作被TripShell换成了"添加行程项"（同一个"+"，
               // 不新增按钮），title跟着换一下，长按/悬停时读到的文字才对得上
               title={active === 'itinerary' ? t('nav.addItineraryItem') : t('nav.addExpense')}
-              className="w-[46px] h-[46px] rounded-full bg-plan text-card flex items-center justify-center -mt-[22px] shadow-[0_8px_18px_rgba(76,29,149,0.35)] transition-transform active:scale-95"
+              className="w-[46px] h-[46px] rounded-full bg-plan text-card flex items-center justify-center -mt-[22px] transition-transform active:scale-95"
+              style={{ boxShadow: '0 8px 18px color-mix(in srgb, var(--color-plan) 35%, transparent)' }}
             >
               <Plus className="w-6 h-6" strokeWidth={2} />
             </button>
