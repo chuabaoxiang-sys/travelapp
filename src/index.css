@@ -213,8 +213,15 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* 2026-09-04：每个tab/弹层内容区自己是一个独立的滚动容器，各自有自己的
+   橡皮筋回弹——跟html/body那条overscroll-behavior-y:none（只管page级下拉
+   刷新）是两回事，之前一直没管。网上拉到顶继续往上拉时，内容会往下多滑
+   一截，滑出这个容器本来该待的范围，盖到上面固定不动的行程切换卡片上，
+   两张卡片短暂重叠、看起来很别扭——概览页加了深色倒计时大卡贴在最顶上
+   之后第一次被用户看见，但其实所有用这个class的滚动区都有同样的问题 */
 .no-scrollbar {
   scrollbar-width: none;
+  overscroll-behavior-y: contain;
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
