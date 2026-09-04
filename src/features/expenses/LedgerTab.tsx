@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, CircleDollarSign } from 'lucide-react'
+import { ChevronRight, CircleDollarSign, Wallet } from 'lucide-react'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
@@ -10,7 +10,7 @@ import { formatDateChipDow, formatDateChipDate } from '../../lib/dateChip'
 import type { ResolvedLocale } from '../../lib/locale'
 import { AddExpensePage } from './AddExpensePage'
 import { RateBookScreen } from '../rates/RateBookScreen'
-import { getOverallBudget } from '../../domain/budgets'
+import { getOverallBudget, getCategoryBudgets, overBudgetCategories } from '../../domain/budgets'
 import { computeBalances } from '../../domain/splits'
 import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
@@ -57,6 +57,18 @@ export function LedgerTab({
   // 一样，只能靠金额分辨；关联行程项本身就是比分类名更具体的名字
   const itineraryItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const overallBudget = useLiveQuery(() => getOverallBudget(trip.id), [trip.id])
+  const categoryBudgets = useLiveQuery(() => getCategoryBudgets(trip.id), [trip.id]) ?? []
+  // "管理预算"入口只负责报"这趟已花"深色大卡没说的事——具体哪个分类超支了。
+  // 总预算超没超、花了多少/还剩多少，大卡（SpendHero）早就说完了，这里不重复
+  const overCategories = overBudgetCategories(expenses, categoryBudgets, categories)
+  const budgetOverSubtitle =
+    overCategories.length === 0
+      ? null
+      : overCategories.length === 1
+        ? t('ledger.budgetOverOne', { category: categoryLabel(overCategories[0], t) })
+        : overCategories.length === 2
+          ? t('ledger.budgetOverTwo', { a: categoryLabel(overCategories[0], t), b: categoryLabel(overCategories[1], t) })
+          : t('ledger.budgetOverMany', { count: overCategories.length })
   // computeBalances 里的"应分摊(owed)"本来就是"这个人对这趟行程要负责多少钱"——
   // 不管是分摊来的还是自己的个人开销，一笔账只要有他的 expense_split 行就会算进去，
   // 正好就是"我的花费"这个数字，不用另外算一遍
@@ -219,10 +231,25 @@ export function LedgerTab({
               逻辑完全没动，只是换了个容器（见 BudgetSheet） */}
           <button
             onClick={() => setBudgetOpen(true)}
-            className="w-full flex items-center justify-between rounded-2xl border border-line bg-card px-3.5 py-2.5 text-left"
+            className="w-full flex items-center gap-3 rounded-2xl border border-line bg-card px-3.5 py-2.5 text-left"
           >
-            <span className="text-[13px] text-plan">{t('ledger.manageBudget')}</span>
-            <ChevronRight className="w-4 h-4 text-muted" strokeWidth={1.8} />
+            <span
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={
+                overCategories.length > 0
+                  ? { background: 'color-mix(in srgb, var(--color-negative) 14%, var(--color-card))', color: 'var(--color-negative)' }
+                  : { background: 'color-mix(in srgb, var(--color-plan) 13%, var(--color-card))', color: 'var(--color-plan)' }
+              }
+            >
+              <Wallet className="w-[18px] h-[18px]" strokeWidth={1.9} />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[13px] font-semibold">{t('ledger.manageBudget')}</span>
+              {budgetOverSubtitle && (
+                <span className="block text-[11px] font-semibold mt-0.5 text-negative">{budgetOverSubtitle}</span>
+              )}
+            </span>
+            <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" strokeWidth={1.8} />
           </button>
         </div>
       ) : (

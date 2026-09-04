@@ -1,6 +1,6 @@
 import { db } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
-import type { Budget, Expense, ExpensePhase } from '../types'
+import type { Budget, Expense, ExpenseCategory, ExpensePhase } from '../types'
 
 function round2(n: number) {
   return Math.round(n * 100) / 100
@@ -56,4 +56,17 @@ export async function deleteBudget(id: string) {
 export function sumSpend(expenses: Expense[], categoryId: string | null) {
   const filtered = categoryId === null ? expenses : expenses.filter((e) => e.categoryId === categoryId)
   return round2(filtered.reduce((a, e) => a + e.homeAmount, 0))
+}
+
+// 账目页"管理预算"入口跟这个函数共用同一套"谁超支了"的判断——跟BudgetTab里
+// categoryRows的over逻辑必须是同一个算法，不能各写一份，不然两处可能对不上
+export function overBudgetCategories(
+  expenses: Expense[],
+  categoryBudgets: Budget[],
+  categories: ExpenseCategory[],
+): ExpenseCategory[] {
+  return categoryBudgets
+    .filter((b) => sumSpend(expenses, b.categoryId) > b.amount)
+    .map((b) => categories.find((c) => c.id === b.categoryId))
+    .filter((c): c is ExpenseCategory => !!c)
 }

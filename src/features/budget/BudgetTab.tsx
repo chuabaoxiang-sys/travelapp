@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Trash2, Check, X, Plus, AlertTriangle } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { getOverallBudget, getCategoryBudgets, upsertBudget, deleteBudget, sumSpend } from '../../domain/budgets'
@@ -10,6 +11,84 @@ import { categoryColor } from '../../lib/categoryColors'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import type { Trip } from '../../types'
+
+// 总览环的进场扫入动效——跟汇率簿对比条、花费环形图同一套双重requestAnimationFrame
+// 技巧（见RateBookScreen.tsx顶部注释）：先摆到"还没画出来"的初始状态，等浏览器
+// 真的画完这一帧，下一帧再改成最终状态，CSS transition才有起点可以过渡。
+// 百分比数字额外用RAF手动数上去——文字内容不是能被CSS transition的属性
+const RING_SIZE = 160
+const RING_STROKE = 18
+const RING_R = (RING_SIZE - RING_STROKE) / 2
+const RING_C = RING_SIZE / 2
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_R
+
+function BudgetRing({
+  pct,
+  cappedPct,
+  over,
+  entered,
+  subLabel,
+  t,
+}: {
+  pct: number
+  cappedPct: number
+  over: boolean
+  entered: boolean
+  subLabel: string
+  t: TFunction
+}) {
+  const numRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const el = numRef.current
+    if (!el) return
+    if (!entered) {
+      el.textContent = '0%'
+      return
+    }
+    const start = performance.now()
+    const duration = 900
+    let raf = 0
+    function tick(now: number) {
+      const progress = Math.min(1, (now - start) / duration)
+      const eased = 1 - (1 - progress) ** 3
+      el!.textContent = `${Math.round(pct * eased)}%`
+      if (progress < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entered, pct])
+
+  const finalOffset = RING_CIRCUMFERENCE * (1 - cappedPct / 100)
+
+  return (
+    <div className="relative flex-shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
+      <svg width={RING_SIZE} height={RING_SIZE} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={RING_C} cy={RING_C} r={RING_R} fill="none" stroke="var(--color-line)" strokeWidth={RING_STROKE} />
+        <circle
+          cx={RING_C}
+          cy={RING_C}
+          r={RING_R}
+          fill="none"
+          stroke={over ? 'var(--color-negative)' : 'var(--color-plan)'}
+          strokeWidth={RING_STROKE}
+          strokeLinecap="round"
+          strokeDasharray={RING_CIRCUMFERENCE}
+          strokeDashoffset={entered ? finalOffset : RING_CIRCUMFERENCE}
+          style={{ transition: 'stroke-dashoffset 900ms cubic-bezier(0.16, 1, 0.3, 1)' }}
+        />
+      </svg>
+      <div className="absolute rounded-full bg-paper flex flex-col items-center justify-center" style={{ inset: RING_STROKE }}>
+        <div className="text-[10.5px] tracking-widest text-muted">{t('budget.ringLabel')}</div>
+        <div className="font-bold tracking-tight tabular text-[24px] mt-0.5">
+          <span ref={numRef} />
+        </div>
+        <div className="text-[11px] text-muted mt-0.5">{subLabel}</div>
+      </div>
+    </div>
+  )
+}
 
 export function BudgetTab({ trip }: { trip: Trip }) {
   const { t } = useTranslation()
@@ -25,6 +104,23 @@ export function BudgetTab({ trip }: { trip: Trip }) {
   const [newCategoryAmount, setNewCategoryAmount] = useState('')
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
   const [confirmRemoveOverall, setConfirmRemoveOverall] = useState(false)
+
+  // 页面（BudgetSheet）每次打开都是重新mount，不用像列表内容变化那样费心
+  // 判断"要不要重播"——单纯的"挂载后下一帧"触发一次就够。双重RAF跟BudgetRing
+  // 同一个原因：等首帧真的画完（超支警示框/分类条都在"隐藏"状态），下一帧
+  // 再翻转，CSS transition才有起点
+  const [entered, setEntered] = useState(false)
+  useEffect(() => {
+    let raf1 = 0
+    let raf2 = 0
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setEntered(true))
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+  }, [])
 
   const totalSpend = sumSpend(expenses, null)
   const overallPct = overallBudget ? Math.min(999, Math.round((totalSpend / overallBudget.amount) * 100)) : 0
@@ -67,20 +163,18 @@ export function BudgetTab({ trip }: { trip: Trip }) {
       {overallBudget && !editingOverall ? (
         <div className="mb-4">
           <div className="ring-wrap flex justify-center py-2">
-            <div
-              className="w-[160px] h-[160px] rounded-full flex items-center justify-center"
-              style={{ background: `conic-gradient(${overallOver ? 'var(--color-negative)' : 'var(--color-plan)'} ${Math.min(100, overallPct) * 3.6}deg, var(--color-line) 0)` }}
-            >
-              <div className="w-[124px] h-[124px] rounded-full bg-paper flex flex-col items-center justify-center">
-                <div className="text-[10.5px] tracking-widest text-muted">{t('budget.ringLabel')}</div>
-                <div className="font-bold tracking-tight tabular text-[24px] mt-0.5">{overallPct}%</div>
-                <div className="text-[11px] text-muted mt-0.5">
-                  {overallOver
-                    ? t('budget.over', { amount: formatMoney(totalSpend - overallBudget.amount) })
-                    : t('budget.left', { amount: formatMoney(overallBudget.amount - totalSpend) })}
-                </div>
-              </div>
-            </div>
+            <BudgetRing
+              pct={overallPct}
+              cappedPct={Math.min(100, overallPct)}
+              over={overallOver}
+              entered={entered}
+              subLabel={
+                overallOver
+                  ? t('budget.over', { amount: formatMoney(totalSpend - overallBudget.amount) })
+                  : t('budget.left', { amount: formatMoney(overallBudget.amount - totalSpend) })
+              }
+              t={t}
+            />
           </div>
           <div className="flex items-center justify-between text-[11.5px] text-muted px-2">
             <span>{formatMoney(totalSpend)} / {formatMoney(overallBudget.amount)}</span>
@@ -114,8 +208,12 @@ export function BudgetTab({ trip }: { trip: Trip }) {
 
       {categoryRows.some((r) => r.over) && (
         <div className="flex flex-col gap-2 mb-3">
-          {categoryRows.filter((r) => r.over).map((r) => (
-            <div key={r.budget.id} className="border-[1.5px] border-negative rounded-2xl px-3.5 py-3">
+          {categoryRows.filter((r) => r.over).map((r, i) => (
+            <div
+              key={r.budget.id}
+              className={`border-[1.5px] border-negative rounded-2xl px-3.5 py-3 transition-[opacity,transform] duration-300 ${entered ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+              style={{ transitionDelay: `${i * 70}ms`, transitionTimingFunction: entered ? 'cubic-bezier(0.34, 1.56, 0.64, 1)' : undefined }}
+            >
               <div className="flex items-center justify-between text-[13px] font-semibold text-negative">
                 <span className="flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5" strokeWidth={2} />
@@ -187,8 +285,12 @@ export function BudgetTab({ trip }: { trip: Trip }) {
       )}
 
       <div className="flex flex-col gap-3">
-        {categoryRows.map((r) => (
-          <div key={r.budget.id}>
+        {categoryRows.map((r, i) => (
+          <div
+            key={r.budget.id}
+            className={`transition-[opacity,transform] duration-300 ease-out ${entered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}
+            style={{ transitionDelay: `${90 + i * 70}ms` }}
+          >
             <div className="flex justify-between items-baseline text-[13.5px]">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-sm" style={{ background: categoryColor(r.category) }} />
@@ -204,7 +306,7 @@ export function BudgetTab({ trip }: { trip: Trip }) {
             <div className="mt-1.5 h-1.5 rounded-full bg-line overflow-hidden">
               <div
                 className="bar-fill h-full rounded-full"
-                style={{ width: `${Math.min(100, r.pct)}%`, background: r.over ? 'var(--color-negative)' : categoryColor(r.category) }}
+                style={{ width: entered ? `${Math.min(100, r.pct)}%` : '0%', background: r.over ? 'var(--color-negative)' : categoryColor(r.category) }}
               />
             </div>
           </div>

@@ -378,6 +378,9 @@
       "settle": "结算"
     },
     "manageBudget": "管理预算",
+    "budgetOverOne": "{{category}}已超出预算",
+    "budgetOverTwo": "{{a}}、{{b}}已超出预算",
+    "budgetOverMany": "{{count}}个分类已超出预算",
     "mineHero": {
       "label": "我这趟要承担",
       "sublabel": "自己付的 + 分摊别人垫付的"

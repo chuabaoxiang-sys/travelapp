@@ -389,6 +389,9 @@
       "settle": "Settle"
     },
     "manageBudget": "Manage budget",
+    "budgetOverOne": "{{category}} is over budget",
+    "budgetOverTwo": "{{a}} and {{b}} are over budget",
+    "budgetOverMany": "{{count}} categories are over budget",
     "mineHero": {
       "label": "My share this trip",
       "sublabel": "What you paid, plus your share of what others covered"
