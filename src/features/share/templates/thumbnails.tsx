@@ -44,7 +44,7 @@ export function CollageThumb() {
 export function JournalThumb() {
   return (
     <div className="relative w-full h-full" style={{ background: '#F7F3EC' }}>
-      <div className="absolute" style={{ top: 10, left: 14, width: 22, height: 8, background: '#4C1D95', opacity: 0.3, transform: 'rotate(-3deg)' }} />
+      <div className="absolute" style={{ top: 10, left: 14, width: 22, height: 8, background: '#282E71', opacity: 0.3, transform: 'rotate(-3deg)' }} />
       <div className="absolute font-bold" style={{ top: 8, right: 10, fontSize: 15, color: '#1F1B16', fontFamily: 'Georgia, serif' }}>旅</div>
       <div
         className="absolute inset-x-0"

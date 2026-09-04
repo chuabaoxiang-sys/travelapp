@@ -41,7 +41,7 @@ export function JournalTemplate({ data }: ShareTemplateProps) {
             {data.days!.map((day, i) => (
               <div key={i} className="mb-9 relative pt-2">
                 <div
-                  className="absolute -top-0.5 left-[50px] w-[60px] h-[17px] bg-[#4C1D95]/[0.14] border border-[#4C1D95]/20"
+                  className="absolute -top-0.5 left-[50px] w-[60px] h-[17px] bg-[#282E71]/[0.14] border border-[#282E71]/20"
                   style={{ transform: 'rotate(-2.2deg)' }}
                 />
                 <div className="flex items-baseline gap-3 mb-3.5">
@@ -65,7 +65,7 @@ export function JournalTemplate({ data }: ShareTemplateProps) {
                 <div className="ml-[52px] flex flex-col gap-0.5">
                   {day.items.map((it, j) => (
                     <div key={j} className="flex gap-3.5 py-2.5 border-b border-dashed border-[#E8E0D4] last:border-b-0">
-                      {it.time && <div className="w-11 flex-shrink-0 text-[13px] font-semibold tabular text-[#4C1D95] pt-px">{it.time}</div>}
+                      {it.time && <div className="w-11 flex-shrink-0 text-[13px] font-semibold tabular text-[#282E71] pt-px">{it.time}</div>}
                       <div>
                         <div className="text-[14.5px] font-semibold">{it.title}</div>
                         {it.locationName && <div className="text-[12px] text-[#8A8177] mt-0.5">{it.locationName}</div>}
