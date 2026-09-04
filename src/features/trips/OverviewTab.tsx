@@ -13,6 +13,7 @@ import { daysInclusive, formatTimeHM } from '../../lib/dates'
 import { dateChipParts } from '../../lib/dateChip'
 import type { ResolvedLocale } from '../../lib/locale'
 import { relativeTime } from '../../lib/relativeTime'
+import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { Avatar } from '../../components/Avatar'
 import { SpendHero } from '../expenses/SpendHero'
 import { RetrospectiveContent } from './RetrospectiveContent'
@@ -62,6 +63,10 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
   const { t, i18n } = useTranslation()
   const locale: ResolvedLocale = i18n.language === 'en' ? 'en' : 'zh'
   const [wishlistOpen, setWishlistOpen] = useState(false)
+  // TripPicker.tsx、ItineraryTab.tsx打开WishlistScreen的地方都接了这个——
+  // 装成PWA后没有浏览器返回按钮，安卓返回键是唯一的"退一步"手势，这里漏接
+  // 的话会直接退出整个APP而不是关掉这个页面
+  useBackDismiss(wishlistOpen, () => setWishlistOpen(false))
 
   const items = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const itineraryDays = useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
@@ -264,6 +269,9 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
 function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
   const { t } = useTranslation()
   const [activityOpen, setActivityOpen] = useState(false)
+  // 同样漏掉的返回键拦截——"家里刚才"的"查看全部"这个全屏页也没接过，
+  // 按返回键会直接退出APP，跟上面BeforeTrip里想去的地点是同一类问题
+  useBackDismiss(activityOpen, () => setActivityOpen(false))
 
   const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
   const dayAllocations = useLiveQuery(() => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
