@@ -72,10 +72,13 @@
     "summary": {
       "title": "How your exchanges went",
       "subtitle": "Weighted by what you actually spent from each exchange",
-      "rateLine": "1 {{currency}} ≈ {{amount}}",
       "checkingMarket": "Checking today's rate…",
       "lowerThanMarket": "{{pct}}% lower than today's rate",
-      "higherThanMarket": "{{pct}}% higher than today's rate"
+      "higherThanMarket": "{{pct}}% higher than today's rate",
+      "gaugeBetter": "Better deal",
+      "gaugeMarket": "Today's rate",
+      "gaugeWorse": "Worse deal",
+      "ratePrefix": "1 {{currency}} ≈ {{prefix}}"
     },
     "add": "Add",
     "close": "Close",

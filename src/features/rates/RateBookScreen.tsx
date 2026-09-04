@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation, Trans } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Check, X, Pencil, Archive, ArchiveRestore, Trash2, Plus } from 'lucide-react'
 import {
   getAllRateBookEntries,
@@ -28,6 +29,118 @@ import type { Trip, RateBookEntry } from '../../types'
 // 精度一致），再去掉计算噪音带出的多余尾零
 function formatRateAmount(rate: number): string {
   return String(Math.round(rate * 1e7) / 1e7)
+}
+
+// 对比条封顶的范围——超出±15%就贴在最边上，不会把条拉爆
+const GAUGE_RANGE = 15
+
+// 综合汇率这一行的进场动效：数字从0滚动到目标值，跟市场价的对比条从中点
+// （"今天市场价"）滑到实际位置。两个动效都不靠React state每帧重渲染驱动，
+// 直接改DOM——同一个技巧SpendBreakdownCard的环形图扫入动效已经在用
+// （见那边"双重requestAnimationFrame"的注释），这里照抄：数字滚动本身没有
+// "起点"可言，用RAF手动打点；对比条则是先摆到中点这个"看不出移动过"的
+// 初始位置，下一帧再改成最终位置，CSS transition才有起点可以过渡
+function RateSummaryRow({
+  index,
+  foreignCurrency,
+  blendedRate,
+  homeCurrencyPrefix,
+  pct,
+  lower,
+  known,
+  t,
+}: {
+  index: number
+  foreignCurrency: string
+  blendedRate: number
+  homeCurrencyPrefix: string
+  pct: number | null
+  lower: boolean
+  known: boolean
+  t: TFunction
+}) {
+  const numRef = useRef<HTMLSpanElement>(null)
+  const dotRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = numRef.current
+    if (!el) return
+    const start = performance.now()
+    const duration = 900
+    let raf = 0
+    function tick(now: number) {
+      const progress = Math.min(1, (now - start) / duration)
+      const eased = 1 - (1 - progress) ** 3
+      el!.textContent = formatRateAmount(blendedRate * eased)
+      if (progress < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blendedRate])
+
+  useEffect(() => {
+    if (pct == null) return
+    const dot = dotRef.current
+    if (!dot) return
+    const signed = lower ? -pct : pct
+    const clamped = Math.max(-GAUGE_RANGE, Math.min(GAUGE_RANGE, signed))
+    const pos = `${50 + (clamped / GAUGE_RANGE) * 44}%`
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        dot.style.left = pos
+      })
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+  }, [pct, lower])
+
+  return (
+    <div className={`${index > 0 ? 'pt-3 mt-3 border-t border-dashed border-line' : ''}`}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-serif-sc text-[13.5px] tabular">
+          {t('rateBook.summary.ratePrefix', { currency: foreignCurrency, prefix: homeCurrencyPrefix })}
+          <span ref={numRef} />
+        </span>
+        {pct != null && (
+          <span className={`text-[11px] font-semibold flex-shrink-0 ${lower ? 'text-positive' : 'text-negative'}`}>
+            {t(lower ? 'rateBook.summary.lowerThanMarket' : 'rateBook.summary.higherThanMarket', {
+              pct: pct.toFixed(1),
+            })}
+          </span>
+        )}
+        {pct == null && !known && (
+          <span className="text-[11px] text-muted flex-shrink-0">{t('rateBook.summary.checkingMarket')}</span>
+        )}
+      </div>
+      {pct != null && (
+        <div className="mt-2.5">
+          <div
+            className="relative h-[5px] rounded-full mx-[3px]"
+            style={{
+              background:
+                'linear-gradient(90deg, color-mix(in srgb, var(--color-positive) 55%, transparent), var(--color-line) 47%, var(--color-line) 53%, color-mix(in srgb, var(--color-negative) 55%, transparent))',
+            }}
+          >
+            <div className="absolute -top-1 left-1/2 w-0.5 h-3.5 bg-muted rounded-full -translate-x-1/2" />
+            <div
+              ref={dotRef}
+              className="absolute top-1/2 w-[13px] h-[13px] rounded-full border-2 border-card shadow -translate-x-1/2 -translate-y-1/2 transition-[left] duration-[1100ms] ease-out"
+              style={{ left: '50%', background: lower ? 'var(--color-positive)' : 'var(--color-negative)' }}
+            />
+          </div>
+          <div className="flex justify-between mt-1.5 text-[9.5px] text-muted">
+            <span>{t('rateBook.summary.gaugeBetter')}</span>
+            <span>{t('rateBook.summary.gaugeMarket')}</span>
+            <span>{t('rateBook.summary.gaugeWorse')}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function RateBookScreen({
@@ -202,34 +315,24 @@ export function RateBookScreen({
           <div className="bg-card border border-line rounded-2xl p-4 mb-4.5">
             <div className="text-[13.5px] font-semibold">{t('rateBook.summary.title')}</div>
             <div className="text-[10.5px] text-muted mt-0.5 leading-relaxed">{t('rateBook.summary.subtitle')}</div>
-            <div className="mt-3 flex flex-col gap-2.5">
+            <div className="mt-3 flex flex-col">
               {blended.map((b, i) => {
                 const ref = referenceRates[b.foreignCurrency]
                 const known = b.foreignCurrency in referenceRates
                 const pct = ref != null && ref > 0 ? (Math.abs(b.blendedRate - ref) / ref) * 100 : null
                 const lower = ref != null && b.blendedRate < ref
                 return (
-                  <div
+                  <RateSummaryRow
                     key={b.foreignCurrency}
-                    className={`flex items-baseline justify-between gap-2 ${i > 0 ? 'pt-2.5 border-t border-dashed border-line' : ''}`}
-                  >
-                    <span className="font-serif-sc text-[13.5px] tabular">
-                      {t('rateBook.summary.rateLine', {
-                        currency: b.foreignCurrency,
-                        amount: `${trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency}${formatRateAmount(b.blendedRate)}`,
-                      })}
-                    </span>
-                    {pct != null && (
-                      <span className={`text-[11px] font-semibold flex-shrink-0 ${lower ? 'text-positive' : 'text-negative'}`}>
-                        {t(lower ? 'rateBook.summary.lowerThanMarket' : 'rateBook.summary.higherThanMarket', {
-                          pct: pct.toFixed(1),
-                        })}
-                      </span>
-                    )}
-                    {pct == null && !known && (
-                      <span className="text-[11px] text-muted flex-shrink-0">{t('rateBook.summary.checkingMarket')}</span>
-                    )}
-                  </div>
+                    index={i}
+                    foreignCurrency={b.foreignCurrency}
+                    blendedRate={b.blendedRate}
+                    homeCurrencyPrefix={trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency}
+                    pct={pct}
+                    lower={lower}
+                    known={known}
+                    t={t}
+                  />
                 )
               })}
             </div>

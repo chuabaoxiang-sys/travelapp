@@ -69,10 +69,13 @@
     "summary": {
       "title": "这趟换汇换得怎么样",
       "subtitle": "按你实际花掉的钱，加权算出每种外币的平均汇率",
-      "rateLine": "1 {{currency}} ≈ {{amount}}",
       "checkingMarket": "对比市场价…",
       "lowerThanMarket": "比今天市场价低 {{pct}}%",
-      "higherThanMarket": "比今天市场价高 {{pct}}%"
+      "higherThanMarket": "比今天市场价高 {{pct}}%",
+      "gaugeBetter": "更划算",
+      "gaugeMarket": "今天市场价",
+      "gaugeWorse": "更吃亏",
+      "ratePrefix": "1 {{currency}} ≈ {{prefix}}"
     },
     "add": "新增",
     "close": "关闭",
