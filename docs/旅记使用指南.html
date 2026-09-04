@@ -164,6 +164,14 @@
     box-shadow: 0 10px 26px rgba(31,27,22,0.12);
     page-break-inside: avoid;
     break-inside: avoid;
+    position: relative;
+  }
+  /* 悬浮"新增"圆按钮——想去的地点/汇率簿这两个全屏面板用，跟主界面"记一笔"
+     FAB同一个视觉语言，标题栏只留返回/关闭 */
+  .mini-fab {
+    position: absolute; bottom: 8px; right: 8px; width: 22px; height: 22px; border-radius: 999px;
+    background: var(--color-plan); color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; box-shadow: 0 3px 8px rgba(40,46,113,0.35);
   }
   .phone .bar { height: 10px; background: linear-gradient(90deg, var(--color-plan), #6c7eda); }
   .phone .scr { padding: 10px 10px 12px; font-size: 8.6px; }
@@ -644,13 +652,13 @@
       <div class="scr">
         <div class="row-between" style="margin-bottom:6px;">
           <span style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;">想去的地点</span>
-          <span class="plan-text" style="font-size:6.8px;font-weight:600;">+ 新增</span>
         </div>
         <div class="item-card">
           <div class="row-between"><span style="font-weight:600;">一兰拉面 涩谷店</span><span class="chip-btn" style="font-size:6px;">○ 还没去</span></div>
           <div class="item-sub">朋友推荐，记得点半熟蛋</div>
         </div>
         <div class="muted" style="font-size:6.6px;text-align:center;margin-top:10px;">还能收藏更多地点…</div>
+        <div class="mini-fab">+</div>
       </div>
     </div>
     </div>
@@ -658,7 +666,7 @@
       <h3 class="step-h">具体步骤</h3>
       <ol class="steps">
         <li>入口有两处：顶层"我的行程"列表页右上角的胶囊按钮；或者进了具体某趟行程后，<b>行程</b>tab头部的紫色书签图标（不管切到时间线/日历/地图哪个视图都在）。</li>
-        <li>点"<b>新增</b>"，填地点名字（可以搜索定位，或者贴Google Maps链接）和备注。</li>
+        <li>点右下角悬浮的"<b>+</b>"，填地点名字（可以搜索定位，或者贴Google Maps链接）和备注。</li>
         <li>安排行程时，"添加行程项"表单上方有"从想去的地点里选一个"，选一条会自动带上名字和坐标，不用重新搜索。</li>
         <li>安排行程时，如果清单里有地点离当天已排的行程比较近，"想去的地点"书签图标上会出现数字角标；点进去，这些"附近想去"的地点会单独列在最上面，点"+"直接加进当天。</li>
         <li>每条地点可以标"还没去 / 已去过"，跟"有没有被排进过行程"是两件独立的事。</li>
@@ -687,7 +695,6 @@
       <div class="scr">
         <div class="row-between" style="margin-bottom:5px;">
           <span style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;">汇率簿</span>
-          <span class="plan-text" style="font-size:6.8px;font-weight:600;">+ 新增</span>
         </div>
         <div class="item-card" style="margin-bottom:6px;">
           <div style="font-weight:700;font-size:7.2px;">这趟换汇换得怎么样</div>
@@ -707,13 +714,14 @@
           <div class="item-sub">参考汇率 · 最近用于 2026/8/21</div>
         </div>
         <div class="muted" style="font-size:6.2px;margin-top:6px;">编辑汇率只影响之后新记的账，不会改动过去已保存的记录金额。</div>
+        <div class="mini-fab">+</div>
       </div>
     </div>
     </div>
     <div class="body-col">
       <h3 class="step-h">具体步骤</h3>
       <ol class="steps">
-        <li>从账目页点右上角的图标按钮进入汇率簿，点"<b>新增</b>"，可以按当前汇率参考值直接采用，或者手动输入你实际换到的汇率（比如现金换汇跟银行刷卡汇率不一样）。</li>
+        <li>从账目页点右上角的图标按钮进入汇率簿，点右下角悬浮的"<b>+</b>"，可以按当前汇率参考值直接采用，或者手动输入你实际换到的汇率（比如现金换汇跟银行刷卡汇率不一样）。</li>
         <li>同一个货币对可以记<b>不止一条</b>——比如"出发前换的现金"和"当地刷卡"两种汇率分开记，记账时按实际情况挑对的那条。</li>
         <li>记外币账目时，直接从这里选一条汇率，金额自动按汇率换算成本位币，不用自己算。</li>
         <li>如果一笔开销的钱其实来自不止一批换汇（比如一部分现金一部分卡），可以在记账时拆开选多条汇率分别计入。</li>

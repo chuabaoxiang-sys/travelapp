@@ -186,15 +186,9 @@ export function RateBookScreen({
     <div className="absolute inset-0 z-30 bg-paper flex flex-col">
       <div className="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0 border-b border-line">
         <span className="font-serif-sc text-[15px] font-semibold">{t('rateBook.title')}</span>
-        <div className="flex items-center gap-3.5">
-          <button onClick={openAddModal} className="flex items-center gap-1 text-plan text-[12.5px] font-semibold">
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.2} />
-            {t('rateBook.add')}
-          </button>
-          <button onClick={onClose} className="text-plan" title={t('rateBook.done')}>
-            <Check className="w-[17px] h-[17px]" strokeWidth={2} />
-          </button>
-        </div>
+        <button onClick={onClose} className="text-muted" title={t('rateBook.close')}>
+          <X className="w-[15px] h-[15px]" strokeWidth={1.8} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-3">
@@ -413,6 +407,15 @@ export function RateBookScreen({
           {t('rateBook.footnote')}
         </div>
       </div>
+
+      <button
+        onClick={openAddModal}
+        title={t('rateBook.add')}
+        className="absolute bottom-5 right-5 w-[46px] h-[46px] rounded-full bg-plan text-card flex items-center justify-center transition-transform active:scale-95"
+        style={{ boxShadow: '0 8px 18px color-mix(in srgb, var(--color-plan) 40%, transparent)' }}
+      >
+        <Plus className="w-6 h-6" strokeWidth={2.4} />
+      </button>
 
       {confirmArchiveId && (
         <ConfirmDialog

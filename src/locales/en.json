@@ -78,7 +78,7 @@
       "higherThanMarket": "{{pct}}% higher than today's rate"
     },
     "add": "Add",
-    "done": "Done",
+    "close": "Close",
     "empty": "No rates saved for this trip yet. When logging an expense in a foreign currency, tap \"+\" next to the amount to create one — it'll show up here afterwards.",
     "source": {
       "manual": "Manual",
@@ -325,8 +325,8 @@
   "wishlist": {
     "title": "Saved places",
     "add": "Add",
-    "done": "Done",
-    "empty": "No saved places yet. Found a restaurant or spot you like? Tap \"Add\" in the top right to save it — pick it later when planning your itinerary.",
+    "close": "Close",
+    "empty": "No saved places yet. Found a restaurant or spot you like? Tap the \"+\" in the bottom right to save it — pick it later when planning your itinerary.",
     "nearbyLabel": "Nearby · {{count}}",
     "addToToday": "Add to today",
     "allPlaces": "All places",
