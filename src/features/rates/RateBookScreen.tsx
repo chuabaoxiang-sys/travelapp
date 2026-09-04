@@ -45,6 +45,7 @@ function RateSummaryRow({
   foreignCurrency,
   blendedRate,
   homeCurrencyPrefix,
+  marketRate,
   pct,
   lower,
   known,
@@ -54,12 +55,14 @@ function RateSummaryRow({
   foreignCurrency: string
   blendedRate: number
   homeCurrencyPrefix: string
+  marketRate: number | null
   pct: number | null
   lower: boolean
   known: boolean
   t: TFunction
 }) {
   const numRef = useRef<HTMLSpanElement>(null)
+  const pctRef = useRef<HTMLSpanElement>(null)
   const dotRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -78,6 +81,26 @@ function RateSummaryRow({
     return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blendedRate])
+
+  // 百分比跟综合汇率数字同一套滚动动效——之前只有汇率本身会动，百分比是
+  // 直接蹦出来的，跟旁边正在滚动的数字放在一起看很突兀
+  useEffect(() => {
+    if (pct == null) return
+    const target = pct
+    const el = pctRef.current
+    if (!el) return
+    const start = performance.now()
+    const duration = 900
+    let raf = 0
+    function tick(now: number) {
+      const progress = Math.min(1, (now - start) / duration)
+      const eased = 1 - (1 - progress) ** 3
+      el!.textContent = (target * eased).toFixed(1)
+      if (progress < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [pct])
 
   useEffect(() => {
     if (pct == null) return
@@ -106,16 +129,21 @@ function RateSummaryRow({
           <span ref={numRef} />
         </span>
         {pct != null && (
-          <span className={`text-[11px] font-semibold flex-shrink-0 ${lower ? 'text-positive' : 'text-negative'}`}>
-            {t(lower ? 'rateBook.summary.lowerThanMarket' : 'rateBook.summary.higherThanMarket', {
-              pct: pct.toFixed(1),
-            })}
+          <span className={`text-[11px] font-semibold flex-shrink-0 tabular ${lower ? 'text-positive' : 'text-negative'}`}>
+            {t(lower ? 'rateBook.summary.lowerThanMarketPrefix' : 'rateBook.summary.higherThanMarketPrefix')}
+            <span ref={pctRef} />
+            {t(lower ? 'rateBook.summary.lowerThanMarketSuffix' : 'rateBook.summary.higherThanMarketSuffix')}
           </span>
         )}
         {pct == null && !known && (
           <span className="text-[11px] text-muted flex-shrink-0">{t('rateBook.summary.checkingMarket')}</span>
         )}
       </div>
+      {pct != null && marketRate != null && (
+        <div className="text-[10.5px] text-muted mt-1 tabular">
+          {t('rateBook.summary.marketRate', { prefix: homeCurrencyPrefix, rate: formatRateAmount(marketRate) })}
+        </div>
+      )}
       {pct != null && (
         <div className="mt-2.5">
           <div
@@ -328,6 +356,7 @@ export function RateBookScreen({
                     foreignCurrency={b.foreignCurrency}
                     blendedRate={b.blendedRate}
                     homeCurrencyPrefix={trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency}
+                    marketRate={ref ?? null}
                     pct={pct}
                     lower={lower}
                     known={known}
