@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Trash2, Check, X, Plus, AlertTriangle } from 'lucide-react'
+import { Trash2, Check, X, Plus, Pencil, AlertTriangle } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { getOverallBudget, getCategoryBudgets, upsertBudget, deleteBudget, sumSpend } from '../../domain/budgets'
 import { formatMoney } from '../../lib/money'
@@ -104,6 +104,8 @@ export function BudgetTab({ trip }: { trip: Trip }) {
   const [newCategoryAmount, setNewCategoryAmount] = useState('')
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
   const [confirmRemoveOverall, setConfirmRemoveOverall] = useState(false)
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  const [editCategoryAmount, setEditCategoryAmount] = useState('')
 
   // 页面（BudgetSheet）每次打开都是重新mount，不用像列表内容变化那样费心
   // 判断"要不要重播"——单纯的"挂载后下一帧"触发一次就够。双重RAF跟BudgetRing
@@ -154,6 +156,20 @@ export function BudgetTab({ trip }: { trip: Trip }) {
     setAddingCategoryBudget(false)
     setNewCategoryId('')
     setNewCategoryAmount('')
+  }
+
+  function startEditCategory(budgetId: string, currentAmount: number) {
+    setEditingCategoryId(budgetId)
+    setEditCategoryAmount(String(currentAmount))
+  }
+
+  // 分类不能改——哪个分类对应哪个预算是创建时定的，想换分类走删除重加；
+  // 这里只改金额，跟"改总预算"是同一个upsertBudget，categoryId传原来那个不变
+  async function saveCategoryEdit(categoryId: string) {
+    const amount = parseFloat(editCategoryAmount)
+    if (!amount) return
+    await upsertBudget({ tripId: trip.id, categoryId, amount })
+    setEditingCategoryId(null)
   }
 
   return (
@@ -296,12 +312,33 @@ export function BudgetTab({ trip }: { trip: Trip }) {
                 <span className="w-2 h-2 rounded-sm" style={{ background: categoryColor(r.category) }} />
                 {r.category ? categoryLabel(r.category, t) : t('budget.unknownCategory')}
               </span>
-              <span className="flex items-center gap-2">
-                <span className="tabular text-[12px]">{formatMoney(r.spend)} / {formatMoney(r.budget.amount)}</span>
-                <button onClick={() => setConfirmRemoveId(r.budget.id)} className="text-muted" title={t('budget.delete')}>
-                  <Trash2 className="w-3 h-3" strokeWidth={1.8} />
-                </button>
-              </span>
+              {editingCategoryId === r.budget.id ? (
+                <span className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    value={editCategoryAmount}
+                    onChange={(e) => setEditCategoryAmount(e.target.value)}
+                    inputMode="decimal"
+                    className="w-20 rounded-lg border border-plan bg-paper px-2 py-0.5 text-right text-[12px] font-serif-sc tabular outline-none"
+                  />
+                  <button onClick={() => setEditingCategoryId(null)} className="text-muted" title={t('budget.cancel')}>
+                    <X className="w-3.5 h-3.5" strokeWidth={1.8} />
+                  </button>
+                  <button onClick={() => saveCategoryEdit(r.budget.categoryId as string)} className="text-plan" title={t('budget.save')}>
+                    <Check className="w-3.5 h-3.5" strokeWidth={2} />
+                  </button>
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <span className="tabular text-[12px]">{formatMoney(r.spend)} / {formatMoney(r.budget.amount)}</span>
+                  <button onClick={() => startEditCategory(r.budget.id, r.budget.amount)} className="text-plan" title={t('budget.edit')}>
+                    <Pencil className="w-3 h-3" strokeWidth={1.8} />
+                  </button>
+                  <button onClick={() => setConfirmRemoveId(r.budget.id)} className="text-muted" title={t('budget.delete')}>
+                    <Trash2 className="w-3 h-3" strokeWidth={1.8} />
+                  </button>
+                </span>
+              )}
             </div>
             <div className="mt-1.5 h-1.5 rounded-full bg-line overflow-hidden">
               <div

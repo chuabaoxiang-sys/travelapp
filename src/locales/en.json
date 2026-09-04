@@ -51,6 +51,7 @@
     "left": "{{amount}} left",
     "editOverall": "Edit total",
     "delete": "Delete",
+    "edit": "Edit budget",
     "save": "Save",
     "cancel": "Cancel",
     "editOverallHint": "Change the total budget for this trip",

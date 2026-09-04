@@ -48,6 +48,7 @@
     "left": "还剩 {{amount}}",
     "editOverall": "改总预算",
     "delete": "删除",
+    "edit": "改预算",
     "save": "保存",
     "cancel": "取消",
     "editOverallHint": "修改整趟行程的总预算",
