@@ -220,7 +220,13 @@ export function MapView({
 
   return (
     <div className="h-full flex flex-col pb-safe-nav-clearance">
-      <div className="flex-1 relative">
+      {/* isolate：地图内部这几个悬浮按钮/日期条用了zIndex:1000才能盖过Leaflet
+          自己内部图层（瓦片/图钉/弹窗几个pane本身也有几百的z-index）——不隔离
+          的话这个1000会直接跟页面级的全屏面板（比如"想去的地点"用的z-30）
+          比大小，在同一个层叠上下文里1000完胜30，导致地图整个透到面板上面
+          去。加isolate把这些z-index都框在地图自己这个容器内部，对外只按
+          普通文档流参与层叠，不会再越过外层任何东西 */}
+      <div className="flex-1 relative isolate">
         <MapContainer center={center} zoom={12} scrollWheelZoom zoomControl={false} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             attribution="&copy; OpenStreetMap contributors"

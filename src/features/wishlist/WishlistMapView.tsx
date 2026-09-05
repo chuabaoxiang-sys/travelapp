@@ -112,7 +112,10 @@ export function WishlistMapView({ places }: { places: WishlistPlace[] }) {
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col">
-      <div className="flex-1 relative">
+      {/* isolate：跟MapView.tsx同一个坑——Leaflet内部图层/悬浮控件的z-index
+          不隔离的话会直接跟外层全屏面板的z-index比大小，可能透到外层元素
+          上面去。加isolate把这些都框在地图自己这个容器内部 */}
+      <div className="flex-1 relative isolate">
         <MapContainer center={center} zoom={12} scrollWheelZoom zoomControl={false} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             attribution="&copy; OpenStreetMap contributors"
