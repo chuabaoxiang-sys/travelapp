@@ -298,13 +298,38 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
   const now = Date.now()
   const dayIndex = trip.startDate ? currentDayIndex(todayISO, trip.startDate) : null
 
+  // 这个tab是条件渲染，每次切回"概览"都是重新mount——挂载后下一帧触发一次
+  // 进场动效就够，跟BeforeTrip/RetrospectiveContent那套双重RAF一致
+  const [entered, setEntered] = useState(false)
+  useEffect(() => {
+    let raf1 = 0
+    let raf2 = 0
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setEntered(true))
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+  }, [])
+
+  // 下面两组卡片（接下来/最近动态）用同一个递增计数器错开时间，不管哪组
+  // 渲染的是真实列表还是"空状态"占位卡，都当一张卡算，连着往下错开
+  let step = 0
+  function enterClass() {
+    return `transition-[opacity,transform] duration-300 ease-out ${entered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`
+  }
+  function enterDelay() {
+    return { transitionDelay: `${step++ * 90}ms` }
+  }
+
   return (
     <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full flex flex-col gap-3.5">
       <div>
         {dayIndex != null && (
           <div className="text-[11px] text-muted mb-1.5">{t('overview.dayIndex', { day: dayIndex, date: todayISO.slice(5) })}</div>
         )}
-        <SpendHero state={allowance} currency={currencyLabel} />
+        <SpendHero state={allowance} currency={currencyLabel} entered={entered} />
       </div>
 
       <div>
@@ -313,7 +338,7 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
           <div className="flex flex-col gap-2">
             {upcoming.slice(0, 3).map((it) => (
               <Card key={it.id} tone="accent">
-                <div className="flex items-center gap-2.5">
+                <div className={`flex items-center gap-2.5 ${enterClass()}`} style={enterDelay()}>
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium truncate">{it.title}</div>
                     {it.locationName && <div className="text-[10.5px] text-muted mt-0.5 truncate">{it.locationName}</div>}
@@ -325,7 +350,7 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
           </div>
         ) : (
           <Card>
-            <div className="text-[12.5px] text-muted">{t('overview.todayDone')}</div>
+            <div className={`text-[12.5px] text-muted ${enterClass()}`} style={enterDelay()}>{t('overview.todayDone')}</div>
           </Card>
         )}
       </div>
@@ -345,7 +370,7 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
               const author = en.authorId ? members.find((m) => m.id === en.authorId) : undefined
               return (
                 <Card key={en.id}>
-                  <div className="flex items-start gap-2.5">
+                  <div className={`flex items-start gap-2.5 ${enterClass()}`} style={enterDelay()}>
                     <Avatar member={author} size={22} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -364,7 +389,7 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
           </div>
         ) : (
           <Card>
-            <div className="text-[12.5px] text-muted">{t('overview.emptyDuringTrip')}</div>
+            <div className={`text-[12.5px] text-muted ${enterClass()}`} style={enterDelay()}>{t('overview.emptyDuringTrip')}</div>
           </Card>
         )}
       </div>

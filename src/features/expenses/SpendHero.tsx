@@ -13,10 +13,18 @@ import { heroRawValue, type AllowanceState } from '../../domain/dailyAllowance'
 // spend 橙（它本来就是"花销强调色"），"超了"这件事靠标题文案和填满的进度条表达，
 // 不额外引入新颜色。
 
-function bar(pct: number) {
+// entered=false时先画成0%，交给.bar-fill自己的CSS transition滚到目标宽度——
+// 默认true是为了不动LedgerTab那边的既有效果：LedgerTab是"全部/我的"来回切换
+// 复用同一个大卡，不是每次都重新mount，没有"进场"这个时刻可言，一直画最终宽度
+// 就好；只有OverviewTab的"出行中"是每次切回来都重新mount，才需要显式传false
+// 起步、下一帧翻true触发这段滚入
+function bar(pct: number, entered: boolean) {
   return (
     <div className="mt-2.5 h-1 rounded-full bg-on-dark/15 overflow-hidden">
-      <div className="bar-fill h-full rounded-full bg-spend" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+      <div
+        className="bar-fill h-full rounded-full bg-spend"
+        style={{ width: entered ? `${Math.min(100, Math.max(0, pct))}%` : '0%' }}
+      />
     </div>
   )
 }
@@ -26,6 +34,7 @@ export function SpendHero({
   currency,
   onSetBudget,
   animatedValueOverride,
+  entered = true,
 }: {
   state: AllowanceState
   currency: string
@@ -34,6 +43,8 @@ export function SpendHero({
   // "全部/我的"切换连续滚动）；不传就用组件自己内部这份，独立使用时（比如
   // OverviewTab）不用额外接线也能正常滚
   animatedValueOverride?: number
+  // 见上面bar()的注释——只有需要"从0滚到目标宽度"进场效果的调用方才用得到
+  entered?: boolean
 }) {
   const { t } = useTranslation()
   const money = (n: number) => formatMoney(n, currency)
@@ -90,7 +101,7 @@ export function SpendHero({
         {value}
       </div>
       <div className="mt-2 text-[11px] text-on-dark/50">{sub}</div>
-      {progress !== null && bar(progress)}
+      {progress !== null && bar(progress, entered)}
       {cta && onSetBudget && (
         <button onClick={onSetBudget} className="mt-2.5 text-[11px] text-plan-on-dark">
           {t('spendHero.setBudgetCta')}
