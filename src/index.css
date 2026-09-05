@@ -202,6 +202,13 @@ body {
 .pb-safe-fab-clearance {
   padding-bottom: calc(104px + 54px + 20px + env(safe-area-inset-bottom));
 }
+/* 给不滚动、整块铺满tab内容区的视图（比如行程地图）用——底部导航是absolute
+   盖在内容区上面、不是flex排开的邻居，靠自己"填满高度"填不出留白，最底下
+   的内容会直接被导航栏（连带悬浮的"+"按钮）挡住。跟FAB自己同一个基准
+   （104px），够把文字露在悬浮按钮上方，不需要再叠FAB的直径 */
+.pb-safe-nav-clearance {
+  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+}
 
 .paper-texture {
   background-image:

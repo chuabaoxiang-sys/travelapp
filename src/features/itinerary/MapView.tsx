@@ -40,7 +40,7 @@ function wishlistPinIcon() {
   return L.divIcon({
     className: '',
     html: `<div style="width:34px;height:42px;filter:drop-shadow(0 3px 5px rgba(31,20,10,.38));position:relative;">
-      <svg viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;">
+      <svg viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" overflow="visible" style="display:block;width:100%;height:100%;overflow:visible;">
         <path d="M17 0C7.6 0 0 7.5 0 16.8c0 11.3 15 23.6 16.3 24.7.4.3 1 .3 1.4 0C19 40.4 34 28.1 34 16.8 34 7.5 26.4 0 17 0z" fill="var(--color-card)" stroke="var(--color-plan)" stroke-width="2.4"/>
       </svg>
       <div style="position:absolute;top:6px;left:0;right:0;text-align:center;color:var(--color-plan);font-size:13px;line-height:1;">&#9829;</div>
@@ -219,7 +219,7 @@ export function MapView({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col pb-safe-nav-clearance">
       <div className="flex-1 relative">
         <MapContainer center={center} zoom={12} scrollWheelZoom zoomControl={false} style={{ height: '100%', width: '100%' }}>
           <TileLayer

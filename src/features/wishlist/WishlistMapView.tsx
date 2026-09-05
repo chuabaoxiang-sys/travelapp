@@ -8,13 +8,23 @@ import type { WishlistPlace } from '../../types'
 // 跟MapView.tsx（行程页地图）里的水滴图钉是同一个SVG形状，但这里的颜色语义
 // 不一样——不是"第几天"，是"去过/还没去"，特意没有抽成共用函数：两边各自
 // 独立维护，万一以后哪边样式要单独改，不用担心牵动另一边
+//
+// 2026-09-05：纯色平涂+零图标被吐槽"一堆同色点，没有美感"——大部分地点都是
+// "还没去"这一种状态时尤其明显。加一圈跟MapView.tsx"第几天"图钉同款的浅色
+// 高光圆撑出层次，再按状态放一个小图标（心形＝还没去，打勾＝去过），颜色
+// 语义完全不变，只是图钉本身不再是一块空白色块
 function statusPinIcon(visited: boolean) {
   const color = visited ? 'var(--color-positive)' : 'var(--color-plan)'
+  const glyph = visited
+    ? '<path d="M11.5 17l3.8 3.8 7.2-8" fill="none" stroke="var(--color-card)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+    : '<path d="M17 22.5c-4-2.6-6.4-5-6.4-7.9 0-2 1.5-3.4 3.3-3.4 1.2 0 2.3.6 3.1 1.7.8-1.1 1.9-1.7 3.1-1.7 1.8 0 3.3 1.4 3.3 3.4 0 2.9-2.4 5.3-6.4 7.9z" fill="var(--color-card)" opacity=".92"/>'
   return L.divIcon({
     className: '',
     html: `<div style="width:34px;height:42px;filter:drop-shadow(0 3px 5px rgba(31,20,10,.38));position:relative;">
       <svg viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;">
         <path d="M17 0C7.6 0 0 7.5 0 16.8c0 11.3 15 23.6 16.3 24.7.4.3 1 .3 1.4 0C19 40.4 34 28.1 34 16.8 34 7.5 26.4 0 17 0z" fill="${color}"/>
+        <circle cx="17" cy="16.5" r="11.5" fill="var(--color-card)" opacity="0.16"/>
+        ${glyph}
       </svg>
     </div>`,
     iconSize: [34, 42],
