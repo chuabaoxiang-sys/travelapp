@@ -467,9 +467,10 @@
             <div class="map-pin" style="background:#b91c1c; top:38%; left:45%;"><span>1</span></div>
             <div class="map-pin" style="background:#c2410c; top:55%; left:60%;"><span>2</span></div>
             <div class="map-pin" style="background:#c2410c; top:70%; left:35%;"><span>2</span></div>
+            <div class="map-pin" style="background:var(--color-card); border:1.4px solid var(--color-plan); top:22%; left:70%;"><span style="color:var(--color-plan);">♥</span></div>
           </div>
         </div>
-        <div class="thumb-label">地图视图（按天上色）</div>
+        <div class="thumb-label">地图视图（按天上色 + 想去的地点图层）</div>
       </div>
     </div>
     </div>
@@ -477,6 +478,7 @@
       <h3 class="step-h">具体步骤</h3>
       <ol class="steps">
         <li>行程页顶部有三个视图可以切换：<b>时间线</b>（按天逐条看）、<b>日历</b>（一个月看全貌，日期下面顺带显示当天花了多少）、<b>地图</b>（每天的行程点用不同颜色标出来，点上面的日期图例还能只看那天的路线——图例可以左右滑动，行程天数多也不占地方）。</li>
+        <li>地图右上角有个爱心图标的开关，打开后会多显示一批空心图钉——想去但还没排进这趟行程的地点，方便对着已经排好的行程看看实际隔多远。点空心图钉只显示名字和备注，不能直接从这里加进行程。</li>
         <li>先在上面横向选一个日期，再点底部悬浮的紫色"<b>+</b>"按钮（在日历/地图视图点也会自动切回时间线）——弹出一张从下往上滑出的卡片，跟"记一笔"是同一个样式；填时间、要做什么、地点（可以搜索或直接贴Google Maps链接），换日期/从想去的地点选/备注/预约状态这几项收在"<b>其他设置</b>"里，点开才展开，顶栏"保存"随时够得到，不用往下滑。</li>
         <li>点已有的卡片会原地展开成编辑框——"其他设置"默认是展开的（编辑时通常正是要改这几项），改完点顶栏"保存"，或者<b>直接点卡片外面的空白处</b>：标题填了就自动保存，标题还是空的就直接放弃，不会留下一条空行程项。</li>
         <li>手机上用返回键也能收起编辑框，不会因此退出整个APP。</li>
@@ -655,6 +657,7 @@
         <div class="row-between" style="margin-bottom:6px;">
           <span style="font-family:var(--font-serif-sc);font-size:8.4px;font-weight:700;">想去的地点</span>
         </div>
+        <span class="segmented" style="margin:0 0 6px;"><span class="on" style="font-size:6px;padding:1.5px 6px;">列表</span><span style="font-size:6px;padding:1.5px 6px;">地图</span></span>
         <div class="item-card">
           <div class="row-between"><span style="font-weight:600;">一兰拉面 涩谷店</span><span class="chip-btn" style="font-size:6px;">○ 还没去</span></div>
           <div class="item-sub">朋友推荐，记得点半熟蛋</div>
@@ -672,8 +675,10 @@
         <li>安排行程时，"添加行程项"表单上方有"从想去的地点里选一个"，选一条会自动带上名字和坐标，不用重新搜索。</li>
         <li>安排行程时，如果清单里有地点离当天已排的行程比较近，"想去的地点"书签图标上会出现数字角标；点进去，这些"附近想去"的地点会单独列在最上面，点"+"直接加进当天。</li>
         <li>每条地点可以标"还没去 / 已去过"，跟"有没有被排进过行程"是两件独立的事。</li>
+        <li>标题下面"列表/地图"切一下能看地图——图钉颜色按"还没去/已去过"区分，点图钉看名字和备注；没定位的地点上不了地图，下面会提示"N个地点没有定位"，点开是纯文字清单。</li>
       </ol>
       <div class="tip">删除收藏清单里的地点，不影响已经排进行程里的那些行程项——它们各自保留了自己的名字和坐标。</div>
+      <div class="tip">规划行程时，行程页地图右上角也有一个爱心图标的图层开关，打开后能在已经排好的行程图钉旁边，同时看到还没排进去的想去地点（空心图钉），方便对比真实距离。</div>
     </div>
   </div>
 </section>

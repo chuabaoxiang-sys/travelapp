@@ -276,7 +276,10 @@
     "emptyTitle": "No itinerary items with a location yet",
     "emptyHint": "When adding an item in \"Timeline\", search for a spot and pick it — it'll show up here as a pin.",
     "dayLabel": "Day {{day}}",
-    "attributionHint": "Tap a date above to see that day's route"
+    "attributionHint": "Tap a date above to see that day's route",
+    "wishlistLayerToggle": "Show saved places",
+    "wishlistLegend": "Saved, not planned",
+    "itineraryLegend": "In itinerary"
   },
   "routeLeg": {
     "unknownLocation": "Location unknown",
@@ -331,8 +334,17 @@
   },
   "wishlist": {
     "title": "Saved places",
+    "viewModes": {
+      "list": "List",
+      "map": "Map"
+    },
     "add": "Add",
     "close": "Close",
+    "mapLoading": "Loading map…",
+    "mapEmptyTitle": "No located places yet",
+    "mapEmptyHint": "When adding a place, search for a spot and pick it — it'll show up here as a pin.",
+    "unlocatedCount_one": "{{count}} place isn't located and won't show on the map",
+    "unlocatedCount_other": "{{count}} places aren't located and won't show on the map",
     "empty": "No saved places yet. Found a restaurant or spot you like? Tap the \"+\" in the bottom right to save it — pick it later when planning your itinerary.",
     "nearbyLabel": "Nearby · {{count}}",
     "addToToday": "Add to today",

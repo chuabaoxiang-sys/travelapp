@@ -329,7 +329,7 @@ export function ItineraryTab({
         )}
         {viewMode === 'map' && (
           <Suspense fallback={<div className="px-5 pt-6 text-sm text-muted">{t('itinerary.mapLoading')}</div>}>
-            <MapView days={itineraryDays} items={allItems} selectedDate={selected} />
+            <MapView days={itineraryDays} items={allItems} selectedDate={selected} wishlistPlaces={wishlistPlaces} />
           </Suspense>
         )}
         {viewMode === 'timeline' && (

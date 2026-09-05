@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MapContainer, TileLayer, Marker, Polyline, Popup, ZoomControl, useMap } from 'react-leaflet'
-import { Map as MapIcon } from 'lucide-react'
+import { Map as MapIcon, Heart } from 'lucide-react'
 import L from 'leaflet'
-import type { ItineraryDay, ItineraryItem } from '../../types'
+import type { ItineraryDay, ItineraryItem, WishlistPlace } from '../../types'
 import { formatTimeHM } from '../../lib/dates'
 import { sortItineraryItems } from '../../domain/itinerary'
 
@@ -26,6 +26,24 @@ function pinIcon(label: string, color: string) {
         <circle cx="17" cy="16.5" r="11.5" fill="var(--color-card)" opacity="0.16"/>
       </svg>
       <div style="position:absolute;top:5px;left:0;right:0;text-align:center;font:700 12.5px 'Noto Serif SC',serif;color:var(--color-card);">${label}</div>
+    </div>`,
+    iconSize: [34, 42],
+    iconAnchor: [17, 42],
+    popupAnchor: [0, -40],
+  })
+}
+
+// "想去的地点"图层用的空心图钉——跟按天上色的实心图钉刻意长得不一样：这些地点
+// 还没排进行程，不该看起来像"已经定下来的安排"。心形图标呼应"想去/收藏"这个
+// 概念，颜色固定用强调色，不跟着"第几天"的颜色走（它们本来就不属于任何一天）
+function wishlistPinIcon() {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:34px;height:42px;filter:drop-shadow(0 3px 5px rgba(31,20,10,.38));position:relative;">
+      <svg viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;">
+        <path d="M17 0C7.6 0 0 7.5 0 16.8c0 11.3 15 23.6 16.3 24.7.4.3 1 .3 1.4 0C19 40.4 34 28.1 34 16.8 34 7.5 26.4 0 17 0z" fill="var(--color-card)" stroke="var(--color-plan)" stroke-width="2.4"/>
+      </svg>
+      <div style="position:absolute;top:6px;left:0;right:0;text-align:center;color:var(--color-plan);font-size:13px;line-height:1;">&#9829;</div>
     </div>`,
     iconSize: [34, 42],
     iconAnchor: [17, 42],
@@ -72,7 +90,17 @@ function FitBounds({ positions, boundsKey }: { positions: [number, number][]; bo
   return null
 }
 
-export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; items: ItineraryItem[]; selectedDate?: string }) {
+export function MapView({
+  days,
+  items,
+  selectedDate,
+  wishlistPlaces,
+}: {
+  days: ItineraryDay[]
+  items: ItineraryItem[]
+  selectedDate?: string
+  wishlistPlaces: WishlistPlace[]
+}) {
   const { t } = useTranslation()
   // 从时间线切过来时，直接以时间线正看着的那天开局，不要每次都从"什么都没选"
   // 重新来——地图有自己的一套日期chip可以再改选，这里只管初始值。MapView在
@@ -81,6 +109,21 @@ export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; i
   const [activeDayId, setActiveDayId] = useState<string | null>(
     () => days.find((d) => d.date === selectedDate)?.id ?? null,
   )
+
+  // 默认关——"看行程排得怎么样"是这个视图本来的主场景，想去的地点是可选的
+  // 叠加信息，不该一进来就多一堆额外图钉。同样MapView整个切出去会卸载，
+  // 每次进来都是重新从关掉开始，不需要额外记住上次的选择
+  const [showWishlist, setShowWishlist] = useState(false)
+
+  // 已经排进这趟行程（任意一天）的想去地点不用再画一次——它已经以"实心图钉"的
+  // 身份出现了。判断用sourceWishlistId这个纯追溯字段，跟WishlistScreen里
+  // "全部想去的地点"用的是同一套判断逻辑（usageByWishlistEntry），只是这里
+  // 只关心"在这趟行程"而不是"在任意一趟行程"，直接用当前的items算就够了，
+  // 不用另外查usage
+  const wishlistPins = useMemo(() => {
+    const linkedIds = new Set(items.map((it) => it.sourceWishlistId).filter((id): id is string => !!id))
+    return wishlistPlaces.filter((p) => p.lat != null && p.lng != null && !linkedIds.has(p.id))
+  }, [wishlistPlaces, items])
 
   // items 是 Dexie 查询的原始顺序，不代表实际时间顺序——图钉编号和连线走向
   // 都要按时间排，不排序的话同一天的点会按插入顺序连线，跟真实行程顺序对不上
@@ -218,8 +261,35 @@ export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; i
               </Marker>
             )
           })}
+          {showWishlist &&
+            wishlistPins.map((p) => (
+              <Marker key={p.id} position={[p.lat as number, p.lng as number]} icon={wishlistPinIcon()}>
+                <Popup>
+                  <div style={{ fontSize: 13 }}>
+                    <div style={{ color: 'var(--color-plan)', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+                      {t('wishlist.title')}
+                    </div>
+                    <b>{p.name}</b>
+                    {p.notes && <div style={{ color: 'var(--color-muted)', fontSize: 11, marginTop: 2 }}>{p.notes}</div>}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
         </MapContainer>
-        <div className="absolute top-3 left-3 right-3 flex gap-1.5 overflow-x-auto no-scrollbar" style={{ zIndex: 1000 }}>
+        <button
+          type="button"
+          onClick={() => setShowWishlist((v) => !v)}
+          title={t('mapView.wishlistLayerToggle')}
+          className="absolute top-3 right-3 w-[34px] h-[34px] rounded-full flex items-center justify-center shadow-sm"
+          style={
+            showWishlist
+              ? { background: 'var(--color-plan)', color: 'var(--color-card)', zIndex: 1000 }
+              : { background: 'color-mix(in srgb, var(--color-card) 90%, transparent)', color: 'var(--color-muted)', zIndex: 1000 }
+          }
+        >
+          <Heart className="w-[15px] h-[15px]" strokeWidth={2} fill={showWishlist ? 'currentColor' : 'none'} />
+        </button>
+        <div className="absolute top-3 left-3 right-[52px] flex gap-1.5 overflow-x-auto no-scrollbar" style={{ zIndex: 1000 }}>
           {[...dayGroups.keys()]
             .sort((a, b) => (dayIndexByDate.get(a) ?? 0) - (dayIndexByDate.get(b) ?? 0))
             .map((dayId) => {
@@ -248,6 +318,18 @@ export function MapView({ days, items, selectedDate }: { days: ItineraryDay[]; i
             })}
         </div>
       </div>
+      {showWishlist && wishlistPins.length > 0 && (
+        <div className="px-4 py-2 flex items-center justify-center gap-4 text-[10.5px] text-muted flex-shrink-0 bg-paper border-t border-line">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-sm bg-muted flex-shrink-0" />
+            {t('mapView.itineraryLegend')}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Heart className="w-2.5 h-2.5 text-plan flex-shrink-0" strokeWidth={2.4} />
+            {t('mapView.wishlistLegend')}
+          </span>
+        </div>
+      )}
       <div className="px-4 py-2 text-[10.5px] text-muted text-center flex-shrink-0 bg-paper">
         © OpenStreetMap contributors · {t('mapView.attributionHint')}
       </div>

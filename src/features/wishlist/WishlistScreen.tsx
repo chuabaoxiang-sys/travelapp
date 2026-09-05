@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import { Check, X, Pencil, Trash2, Plus, Circle, CheckCircle2, MapPin } from 'lucide-react'
@@ -17,6 +17,12 @@ import { CenteredModal } from '../../components/CenteredModal'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 import type { WishlistPlace } from '../../types'
 
+// leaflet/react-leaflet源码近4MB，只有切到"地图"这个视图才用得到——懒加载，
+// 跟ItineraryTab.tsx里MapView的懒加载是同一个道理
+const WishlistMapView = lazy(() => import('./WishlistMapView').then((m) => ({ default: m.WishlistMapView })))
+
+type ViewMode = 'list' | 'map'
+
 export function WishlistScreen({
   currentMemberId,
   onClose,
@@ -34,6 +40,7 @@ export function WishlistScreen({
   const places = useLiveQuery(() => listWishlistPlaces()) ?? []
   const usageMap = useLiveQuery(() => usageByWishlistEntry()) ?? new Map<string, WishlistUsage>()
 
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editLocation, setEditLocation] = useState<LocationValue>({ name: '', lat: null, lng: null })
   const [editNotes, setEditNotes] = useState('')
@@ -97,6 +104,27 @@ export function WishlistScreen({
         </button>
       </div>
 
+      <div className="px-5 pt-2.5 pb-1 flex-shrink-0">
+        <div className="flex gap-1 bg-segment rounded-xl p-1 w-fit">
+          {(['list', 'map'] as ViewMode[]).map((key) => (
+            <button
+              key={key}
+              onClick={() => setViewMode(key)}
+              className={`rounded-lg px-3 py-1.5 text-[12.5px] ${viewMode === key ? 'bg-ink text-paper' : 'text-muted'}`}
+            >
+              {t(`wishlist.viewModes.${key}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {viewMode === 'map' ? (
+        <div className="flex-1 overflow-hidden">
+          <Suspense fallback={<div className="px-5 pt-6 text-sm text-muted">{t('wishlist.mapLoading')}</div>}>
+            <WishlistMapView places={places} />
+          </Suspense>
+        </div>
+      ) : (
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-3">
         {places.length === 0 && (
           <div className="text-[13px] text-muted py-8 text-center">
@@ -215,6 +243,7 @@ export function WishlistScreen({
           })}
         </div>
       </div>
+      )}
 
       <button
         onClick={openAddModal}
