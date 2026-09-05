@@ -75,15 +75,48 @@ function arrowIcon(angleDeg: number, color: string) {
 //
 // 切换日期前先关掉还开着的地点弹窗——不然Leaflet弹窗自带的"自动挪动地图
 // 让弹窗保持可见"会跟这里的挪动抢地图控制权
+//
+// 2026-09-05：从"想去的地点"自己那张地图（WishlistMapView.tsx）挖出来的
+// 同一个坑——这个视图是"时间线/日历/地图"切出来的，MapContainer挂载那一刻
+// 容器不一定已经定型，这时候fitBounds量到的容器尺寸是{x:0,y:0}，算出来的
+// "刚好框住"缩放级别会离谱地大，图钉被投影到几千像素外；手机上锁屏/切
+// 后台这类场景还会让Leaflet自己的ResizeObserver事后又摸到一次坏尺寸，把
+// 已经摆正的图钉重新弄飞。做法跟那边一致：只信得过map.getSize()真正量到
+// 的非零尺寸，量到0就用requestAnimationFrame重试；同时订阅'resize'事件，
+// 之后再检测到一次尺寸变化就照最新的重新fit一次，不假设"挂载时机对了就
+// 一劳永逸"
 function FitBounds({ positions, boundsKey }: { positions: [number, number][]; boundsKey: string }) {
   const map = useMap()
   useEffect(() => {
     map.closePopup()
     if (!positions.length) return
-    if (positions.length === 1) {
-      map.setView(positions[0], 14, { animate: false })
-    } else {
-      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40], animate: false })
+
+    function applyFit() {
+      const size = map.getSize()
+      if (size.x === 0 || size.y === 0) return false
+      if (positions.length === 1) {
+        map.setView(positions[0], 14, { animate: false })
+      } else {
+        map.fitBounds(L.latLngBounds(positions), { padding: [40, 40], animate: false })
+      }
+      return true
+    }
+
+    let raf = 0
+    function tryFit() {
+      map.invalidateSize()
+      if (!applyFit()) raf = requestAnimationFrame(tryFit)
+    }
+    raf = requestAnimationFrame(tryFit)
+
+    function onResize() {
+      applyFit()
+    }
+    map.on('resize', onResize)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      map.off('resize', onResize)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boundsKey])

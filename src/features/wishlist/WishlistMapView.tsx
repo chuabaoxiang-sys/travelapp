@@ -24,15 +24,53 @@ function statusPinIcon(visited: boolean) {
 }
 
 // 一进来把地图缩放/移动到刚好框住所有带定位的点——跟MapView.tsx同样的
-// animate:false也是同样的原因（真机复现过缩放动画卡住导致图钉停在旧位置）
+// animate:false也是同样的原因（真机复现过缩放动画卡住导致图钉停在旧位置）。
+//
+// 这里额外抓到一个更深的坑：这张地图是"列表/地图"切换出来的（不是像行程页
+// 地图那样从一开始就常驻），MapContainer挂载那一刻容器可能还没真正定型——
+// 这时候调用map.getSize()量到的是{x:0,y:0}，哪怕紧挨着先调用了
+// invalidateSize()也一样。拿一个0×0的视口去fitBounds两个相距十几公里的点，
+// 算出来的"刚好框住"的缩放级别会离谱地大（实测跳到18级），图钉自然被投影
+// 到几千像素外。而且这不只是挂载那一刻的问题——手机上锁屏/切后台/系统
+// 弹窗这类会让浏览器短暂"不可见"的场景，都可能让Leaflet自己的
+// ResizeObserver在容器还没真正定型时又摸到一次坏尺寸，把已经摆正的图钉
+// 重新弄飞（这个坑真的会反复发作，不是摆一次姿势就一劳永逸）。
+// 应对方式是让这一步自己会"自愈"：每次只信得过map.getSize()真正量到的
+// 非零尺寸，量到0就靠requestAnimationFrame再等一帧重试；同时订阅Leaflet
+// 自己的'resize'事件——只要它之后又检测到一次尺寸变化（不管是真的转屏还是
+// 前面说的那类可疑重算），就照着最新的（这时候多半已经是真实尺寸）重新
+// fit一次，而不是假设"只要挂载时机对了就再也不会错"
 function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap()
   useEffect(() => {
     if (!positions.length) return
-    if (positions.length === 1) {
-      map.setView(positions[0], 13, { animate: false })
-    } else {
-      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40], animate: false })
+
+    function applyFit() {
+      const size = map.getSize()
+      if (size.x === 0 || size.y === 0) return false
+      if (positions.length === 1) {
+        map.setView(positions[0], 13, { animate: false })
+      } else {
+        map.fitBounds(L.latLngBounds(positions), { padding: [40, 40], animate: false })
+      }
+      return true
+    }
+
+    let raf = 0
+    function tryFit() {
+      map.invalidateSize()
+      if (!applyFit()) raf = requestAnimationFrame(tryFit)
+    }
+    raf = requestAnimationFrame(tryFit)
+
+    function onResize() {
+      applyFit()
+    }
+    map.on('resize', onResize)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      map.off('resize', onResize)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -52,7 +90,7 @@ export function WishlistMapView({ places }: { places: WishlistPlace[] }) {
 
   if (!pinned.length) {
     return (
-      <div className="px-5 pt-3 h-full flex flex-col items-center justify-center text-center gap-2">
+      <div className="px-5 pt-3 flex-1 flex flex-col items-center justify-center text-center gap-2">
         <div className="w-[60px] h-[60px] rounded-full bg-segment flex items-center justify-center text-muted">
           <MapPin className="w-6 h-6" strokeWidth={1.8} />
         </div>
@@ -63,7 +101,7 @@ export function WishlistMapView({ places }: { places: WishlistPlace[] }) {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex-1 overflow-hidden flex flex-col">
       <div className="flex-1 relative">
         <MapContainer center={center} zoom={12} scrollWheelZoom zoomControl={false} style={{ height: '100%', width: '100%' }}>
           <TileLayer

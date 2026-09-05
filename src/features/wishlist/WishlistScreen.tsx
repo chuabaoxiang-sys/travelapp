@@ -119,11 +119,9 @@ export function WishlistScreen({
       </div>
 
       {viewMode === 'map' ? (
-        <div className="flex-1 overflow-hidden">
-          <Suspense fallback={<div className="px-5 pt-6 text-sm text-muted">{t('wishlist.mapLoading')}</div>}>
-            <WishlistMapView places={places} />
-          </Suspense>
-        </div>
+        <Suspense fallback={<div className="px-5 pt-6 text-sm text-muted">{t('wishlist.mapLoading')}</div>}>
+          <WishlistMapView places={places} />
+        </Suspense>
       ) : (
       <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-3">
         {places.length === 0 && (
