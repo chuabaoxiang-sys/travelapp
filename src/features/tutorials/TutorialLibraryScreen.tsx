@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { X, ChevronLeft } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { TUTORIALS, stepRing, tutorialImage, type Tutorial } from './tutorialsData'
 
 // 滑动切页的判定阈值（px）——横向位移超过这个数、且比竖向位移更明显，才算一次滑动，
@@ -85,17 +85,19 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
     setStepIndex(i)
   }
 
+  // 故意不调用 setPointerCapture——试过之后发现它会连带把"点击"也重定向到
+  // 捕获它的这个外层容器上，导致容器内嵌套的圆点、翻页箭头这些按钮的onClick
+  // 完全失效（用JS直接调.click()测试是正常的，因为那样绕过了浏览器原生的
+  // 指针事件流程，只有真实点击才会触发这个问题，排查这个bug花了不少功夫）。
+  // 不用捕获的代价：如果手指拖到这个容器范围以外才松开，这次滑动不会被计入——
+  // 这个容器基本覆盖了头部以下的整个画面，真实发生这种情况的概率很低，
+  // 换来嵌套按钮能正常点击是更值得的取舍
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    e.currentTarget.setPointerCapture(e.pointerId)
     dragStart.current = { x: e.clientX, y: e.clientY }
   }
   function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
     const start = dragStart.current
     dragStart.current = null
-    // 明确释放指针捕获——部分手机浏览器在pointerup之后不会自动完全释放，
-    // 遗留的捕获状态可能让下一次触摸（哪怕手指落在别的地方）被错误地当成
-    // 还在跟这个元素交互，导致"在别的区域拖也能翻页"这种诡异现象
-    e.currentTarget.releasePointerCapture(e.pointerId)
     if (!start) return
     const dx = e.clientX - start.x
     const dy = e.clientY - start.y
@@ -109,9 +111,8 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
       goTo(stepIndex - 1)
     }
   }
-  function handlePointerCancel(e: React.PointerEvent<HTMLDivElement>) {
+  function handlePointerCancel() {
     dragStart.current = null
-    e.currentTarget.releasePointerCapture(e.pointerId)
   }
 
   return (
@@ -145,7 +146,20 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
               尺寸用aspect-ratio+固定高度算出来（不依赖img加载状态或inline-block
               收缩行为），比单纯"按宽度撑满"更可控，虽然这次滑动判定已经挪到了
               外层，不再单独依赖这个盒子的边界，但保留这个写法本身仍然更稳妥 */}
-          <div className="flex justify-center mb-4 flex-shrink-0">
+          {/* 图片两侧加一对箭头按钮——纯图标+圆点不够明显，用户反馈"看不出来能滑动"。
+              箭头本身也是可以直接点的翻页入口，跟滑动是两条并行的路，不是滑动的
+              视觉提示而已。箭头按钮的点击跟外层的滑动手势各自独立：箭头是普通
+              button，点击事件不会被外层的pointerdown/up判定成一次滑动（位移量
+              基本是0，够不上SWIPE_THRESHOLD） */}
+          <div className="relative flex justify-center mb-4 flex-shrink-0">
+            <button
+              onClick={() => stepIndex > 0 && goTo(stepIndex - 1)}
+              disabled={stepIndex === 0}
+              title={t('tutorials.prevStep')}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-card border border-line shadow-sm flex items-center justify-center text-muted disabled:opacity-30"
+            >
+              <ChevronLeft className="w-4 h-4" strokeWidth={2.2} />
+            </button>
             <div
               className="relative rounded-2xl overflow-hidden border border-line shadow-sm"
               style={{ height: '42vh', aspectRatio: '390 / 844' }}
@@ -164,6 +178,13 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
                 />
               )}
             </div>
+            <button
+              onClick={() => (isLast ? onBack() : goTo(stepIndex + 1))}
+              title={t('tutorials.nextStep')}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-plan text-card shadow-sm flex items-center justify-center"
+            >
+              <ChevronRight className="w-4 h-4" strokeWidth={2.2} />
+            </button>
           </div>
           <div className="flex-shrink-0 overflow-y-auto no-scrollbar max-h-[30vh]">
             <div className="font-serif-sc text-[16px] font-semibold text-center mb-1.5">{step.title}</div>
