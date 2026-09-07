@@ -92,6 +92,10 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
   function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
     const start = dragStart.current
     dragStart.current = null
+    // 明确释放指针捕获——部分手机浏览器在pointerup之后不会自动完全释放，
+    // 遗留的捕获状态可能让下一次触摸（哪怕手指落在别的地方）被错误地当成
+    // 还在跟这个元素交互，导致"在别的区域拖也能翻页"这种诡异现象
+    e.currentTarget.releasePointerCapture(e.pointerId)
     if (!start) return
     const dx = e.clientX - start.x
     const dy = e.clientY - start.y
@@ -104,6 +108,10 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
     } else if (stepIndex > 0) {
       goTo(stepIndex - 1)
     }
+  }
+  function handlePointerCancel(e: React.PointerEvent<HTMLDivElement>) {
+    dragStart.current = null
+    e.currentTarget.releasePointerCapture(e.pointerId)
   }
 
   return (
@@ -118,51 +126,62 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
         <span className="w-[18px] flex-shrink-0" />
       </div>
 
-      <div className="flex-1 flex flex-col justify-center min-h-0 px-5 pt-4 pb-2">
-        {/* 图片按高度封顶（不再按宽度撑满），一屏放得下图+文字+圆点，不用再上下拖动
-            才能看完一步；容器inline-block贴着图片实际渲染尺寸收缩，红圈的百分比定位
-            照旧相对这个盒子，不用跟着改。图片区域支持左右滑动切页（Pointer Events，
-            同时兼容触屏和鼠标拖拽，方便桌面测试）——只在松开时判定一次方向，
-            不做跟手的实时拖拽。翻页只靠滑动+下面的圆点，没有"返回/下一步"按钮——
-            按钮那版被反馈"很鸡肋"，去掉了。外层加justify-center，图+文字这一组
-            整体居中——按钮去掉之后空出来的高度不再是一截难看的死白 */}
-        <div className="flex justify-center mb-4 flex-shrink-0">
-          <div
-            className="relative inline-block rounded-2xl overflow-hidden border border-line shadow-sm touch-pan-y"
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-          >
-            <img src={tutorialImage(stepId, lang)} alt="" className="block w-auto max-h-[42vh]" draggable={false} />
-            {ring && (
-              <div
-                className="absolute border-[3px] border-negative rounded-full pointer-events-none"
-                style={{
-                  left: `${ring.left}%`,
-                  top: `${ring.top}%`,
-                  width: `${ring.width}%`,
-                  height: `${ring.height}%`,
-                  boxShadow: '0 0 0 3px color-mix(in srgb, var(--color-negative) 15%, transparent)',
-                }}
-              />
-            )}
+      {/* 拖拽/滑动的判定挂在这一整块（头部下面除了头部本身的所有区域：图片、
+          标题、说明、圆点），不是只挂在图片小方框上——之前只在图片上做过一版，
+          用户真机反馈"拖图片两侧空白/标题文字也能翻页"，怀疑是移动端浏览器下
+          图片容器的可交互范围跟可见范围对不上（inline-block收缩不够贴，具体
+          原因没能在桌面上复现确认）。与其继续猜哪块区域算不算数，不如干脆整个
+          内容区域都当成同一块可滑动画布——这样"拖哪都能翻页"就是设计好的行为，
+          不再是要修的bug */}
+      <div
+        className="flex-1 flex flex-col min-h-0 touch-pan-y"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      >
+        <div className="flex-1 flex flex-col justify-center min-h-0 px-5 pt-4 pb-2">
+          {/* 图片按高度封顶（不再按宽度撑满），一屏放得下图+文字+圆点，不用再
+              上下拖动才能看完一步；红圈的百分比定位相对这个盒子，不用跟着改。
+              尺寸用aspect-ratio+固定高度算出来（不依赖img加载状态或inline-block
+              收缩行为），比单纯"按宽度撑满"更可控，虽然这次滑动判定已经挪到了
+              外层，不再单独依赖这个盒子的边界，但保留这个写法本身仍然更稳妥 */}
+          <div className="flex justify-center mb-4 flex-shrink-0">
+            <div
+              className="relative rounded-2xl overflow-hidden border border-line shadow-sm"
+              style={{ height: '42vh', aspectRatio: '390 / 844' }}
+            >
+              <img src={tutorialImage(stepId, lang)} alt="" className="block w-full h-full" draggable={false} />
+              {ring && (
+                <div
+                  className="absolute border-[3px] border-negative rounded-full pointer-events-none"
+                  style={{
+                    left: `${ring.left}%`,
+                    top: `${ring.top}%`,
+                    width: `${ring.width}%`,
+                    height: `${ring.height}%`,
+                    boxShadow: '0 0 0 3px color-mix(in srgb, var(--color-negative) 15%, transparent)',
+                  }}
+                />
+              )}
+            </div>
+          </div>
+          <div className="flex-shrink-0 overflow-y-auto no-scrollbar max-h-[30vh]">
+            <div className="font-serif-sc text-[16px] font-semibold text-center mb-1.5">{step.title}</div>
+            <div className="text-[13px] text-muted text-center leading-relaxed max-w-[320px] mx-auto">{step.desc}</div>
           </div>
         </div>
-        <div className="flex-shrink-0 overflow-y-auto no-scrollbar max-h-[30vh]">
-          <div className="font-serif-sc text-[16px] font-semibold text-center mb-1.5">{step.title}</div>
-          <div className="text-[13px] text-muted text-center leading-relaxed max-w-[320px] mx-auto">{step.desc}</div>
-        </div>
-      </div>
 
-      <div className="flex justify-center gap-1.5 py-2.5 px-5 pb-5 flex-shrink-0 overflow-x-auto no-scrollbar">
-        {tutorial.stepIds.map((id, i) => (
-          <button
-            key={id}
-            onClick={() => goTo(i)}
-            className={`h-[6px] rounded-full flex-shrink-0 transition-all ${
-              i === stepIndex ? 'w-[18px] bg-plan' : 'w-[6px] bg-line'
-            }`}
-          />
-        ))}
+        <div className="flex justify-center gap-1.5 py-2.5 px-5 pb-5 flex-shrink-0 overflow-x-auto no-scrollbar">
+          {tutorial.stepIds.map((id, i) => (
+            <button
+              key={id}
+              onClick={() => goTo(i)}
+              className={`h-[6px] rounded-full flex-shrink-0 transition-all ${
+                i === stepIndex ? 'w-[18px] bg-plan' : 'w-[6px] bg-line'
+              }`}
+            />
+          ))}
+        </div>
       </div>
     </>
   )
