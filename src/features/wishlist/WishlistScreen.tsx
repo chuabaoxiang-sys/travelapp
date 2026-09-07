@@ -325,13 +325,23 @@ export function WishlistScreen({
                         </a>
                       )
                     })}
-                    <button
-                      onClick={() => openLinkModal(p.id)}
-                      title={t('wishlist.linkAdd')}
-                      className="flex-shrink-0 w-[118px] h-[190px] rounded-xl border border-dashed border-line text-muted flex items-center justify-center"
-                    >
-                      <Plus className="w-5 h-5" strokeWidth={2} />
-                    </button>
+                    {links.length > 0 ? (
+                      <button
+                        onClick={() => openLinkModal(p.id)}
+                        title={t('wishlist.linkAdd')}
+                        className="flex-shrink-0 w-[118px] h-[190px] rounded-xl border border-dashed border-line text-muted flex items-center justify-center"
+                      >
+                        <Plus className="w-5 h-5" strokeWidth={2} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => openLinkModal(p.id)}
+                        className="flex items-center gap-1 text-plan text-[12.5px] font-semibold"
+                      >
+                        <Plus className="w-3.5 h-3.5" strokeWidth={2.2} />
+                        {t('wishlist.linkAdd')}
+                      </button>
+                    )}
                   </div>
                   )
                 })()}
