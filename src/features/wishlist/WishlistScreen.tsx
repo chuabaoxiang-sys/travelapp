@@ -417,7 +417,7 @@ export function WishlistScreen({
             onChange={(e) => setAddLinkUrl(e.target.value)}
             placeholder={t('wishlist.linkAddPlaceholder')}
             disabled={addSubmitting}
-            className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan mt-2 disabled:opacity-60"
+            className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan mt-2 disabled:opacity-60 truncate"
           />
           <div className="flex gap-2 mt-4">
             <button
@@ -454,7 +454,7 @@ export function WishlistScreen({
             placeholder={t('wishlist.linkAddPlaceholder')}
             disabled={linkSubmitting}
             autoFocus
-            className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan disabled:opacity-60"
+            className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan disabled:opacity-60 truncate"
           />
           <div className="flex gap-2 mt-4">
             <button
