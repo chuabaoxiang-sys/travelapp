@@ -70,6 +70,8 @@ export function WishlistScreen({
   const [addOpen, setAddOpen] = useState(false)
   const [addLocation, setAddLocation] = useState<LocationValue>({ name: '', lat: null, lng: null })
   const [addNotes, setAddNotes] = useState('')
+  const [addLinkUrl, setAddLinkUrl] = useState('')
+  const [addSubmitting, setAddSubmitting] = useState(false)
   const [linkModalPlaceId, setLinkModalPlaceId] = useState<string | null>(null)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkSubmitting, setLinkSubmitting] = useState(false)
@@ -97,19 +99,31 @@ export function WishlistScreen({
   function openAddModal() {
     setAddLocation({ name: '', lat: null, lng: null })
     setAddNotes('')
+    setAddLinkUrl('')
     setAddOpen(true)
   }
 
+  // 参考链接是可选的——不填就跟以前一样，只存地点本身。填了的话，等地点
+  // 存好拿到真正的id之后，接着走addWishlistPlaceLink同一套抓取逻辑，不用
+  // 另外写一遍
   async function confirmAdd() {
     if (!addLocation.name.trim()) return
-    await createWishlistPlace({
-      name: addLocation.name.trim(),
-      lat: addLocation.lat,
-      lng: addLocation.lng,
-      notes: addNotes.trim() || null,
-      createdBy: currentMemberId,
-    })
-    setAddOpen(false)
+    setAddSubmitting(true)
+    try {
+      const place = await createWishlistPlace({
+        name: addLocation.name.trim(),
+        lat: addLocation.lat,
+        lng: addLocation.lng,
+        notes: addNotes.trim() || null,
+        createdBy: currentMemberId,
+      })
+      if (addLinkUrl.trim()) {
+        await addWishlistPlaceLink(place.id, addLinkUrl.trim(), currentMemberId)
+      }
+      setAddOpen(false)
+    } finally {
+      setAddSubmitting(false)
+    }
   }
 
   function startEdit(p: WishlistPlace) {
@@ -252,10 +266,18 @@ export function WishlistScreen({
                 {/* 参考链接——横向大卡片轮播，图片区域够大能看清画面内容（比72×72
                     小图标方案明显更有分量）。抓不到缩略图时不缩小卡片、不报错，
                     图片区域换成平台色块+ImageOff图标，标题换成"预览不可用"，
-                    点击照样跳转原链接——这是故意的优雅降级，不是bug */}
-                {editingId !== p.id && (
-                  <div className="flex gap-2 mt-2.5 overflow-x-auto no-scrollbar">
-                    {(linksMap.get(p.id) ?? []).map((link) => {
+                    点击照样跳转原链接——这是故意的优雅降级，不是bug。
+                    一条链接都没有时，容器不能带overflow-x-auto——真机上验证过，
+                    一个不需要横向滚动的overflow-x-auto区域（哪怕本身没有可滚动的
+                    内容）仍然会被手机浏览器当成"这里归我管"，手指落在这块区域上
+                    竖向滑动会卡一下、传不到外层列表，同时容器还是撑满卡片宽度，
+                    "+"旁边空出一大截很难看。改成w-fit只包住"+"按钮本身，没有
+                    链接就不用这个容器负责横向滚动 */}
+                {editingId !== p.id && (() => {
+                  const links = linksMap.get(p.id) ?? []
+                  return (
+                  <div className={`flex gap-2 mt-2.5 ${links.length > 0 ? 'overflow-x-auto no-scrollbar' : 'w-fit'}`}>
+                    {links.map((link) => {
                       const badge = PLATFORM_BADGE[link.platform]
                       return (
                         <a
@@ -311,7 +333,8 @@ export function WishlistScreen({
                       <Plus className="w-5 h-5" strokeWidth={2} />
                     </button>
                   </div>
-                )}
+                  )
+                })()}
 
                 {editingId !== p.id && usage && usage.tripNames.length > 0 && (
                   <div className="text-[10.5px] text-plan mt-2 pt-2 border-t border-dashed border-line flex items-center gap-1.5">
@@ -367,7 +390,7 @@ export function WishlistScreen({
       )}
 
       {addOpen && (
-        <CenteredModal onClose={() => setAddOpen(false)}>
+        <CenteredModal onClose={() => !addSubmitting && setAddOpen(false)}>
           <div className="font-serif-sc text-[15px] text-ink mb-3">{t('wishlist.addTitle')}</div>
           <LocationPicker value={addLocation} onChange={setAddLocation} />
           <textarea
@@ -375,14 +398,37 @@ export function WishlistScreen({
             onChange={(e) => setAddNotes(e.target.value)}
             placeholder={t('wishlist.notesPlaceholder')}
             rows={2}
-            className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan mt-2"
+            disabled={addSubmitting}
+            className="w-full resize-y rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan mt-2 disabled:opacity-60"
+          />
+          <input
+            type="text"
+            value={addLinkUrl}
+            onChange={(e) => setAddLinkUrl(e.target.value)}
+            placeholder={t('wishlist.linkAddPlaceholder')}
+            disabled={addSubmitting}
+            className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan mt-2 disabled:opacity-60"
           />
           <div className="flex gap-2 mt-4">
-            <button onClick={() => setAddOpen(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title={t('wishlist.cancel')}>
+            <button
+              onClick={() => setAddOpen(false)}
+              disabled={addSubmitting}
+              className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center disabled:opacity-50"
+              title={t('wishlist.cancel')}
+            >
               <X className="w-4 h-4" strokeWidth={1.8} />
             </button>
-            <button onClick={confirmAdd} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title={t('wishlist.save')}>
-              <Check className="w-4 h-4" strokeWidth={2} />
+            <button
+              onClick={confirmAdd}
+              disabled={addSubmitting}
+              className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center disabled:opacity-50"
+              title={t('wishlist.save')}
+            >
+              {addSubmitting && addLinkUrl.trim() ? (
+                <span className="text-[11px]">{t('wishlist.linkFetching')}</span>
+              ) : (
+                <Check className="w-4 h-4" strokeWidth={2} />
+              )}
             </button>
           </div>
         </CenteredModal>
