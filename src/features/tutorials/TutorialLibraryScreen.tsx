@@ -151,7 +151,7 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
               视觉提示而已。箭头按钮的点击跟外层的滑动手势各自独立：箭头是普通
               button，点击事件不会被外层的pointerdown/up判定成一次滑动（位移量
               基本是0，够不上SWIPE_THRESHOLD） */}
-          <div className="relative flex justify-center mb-4 flex-shrink-0">
+          <div className="relative flex justify-center mb-5 flex-shrink-0">
             <button
               onClick={() => stepIndex > 0 && goTo(stepIndex - 1)}
               disabled={stepIndex === 0}
@@ -162,7 +162,7 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
             </button>
             <div
               className="relative rounded-2xl overflow-hidden border border-line shadow-sm"
-              style={{ height: '42vh', aspectRatio: '390 / 844' }}
+              style={{ height: '60vh', aspectRatio: '390 / 844' }}
             >
               <img src={tutorialImage(stepId, lang)} alt="" className="block w-full h-full" draggable={false} />
               {ring && (
@@ -187,8 +187,8 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
             </button>
           </div>
           <div className="flex-shrink-0 overflow-y-auto no-scrollbar max-h-[30vh]">
-            <div className="font-serif-sc text-[16px] font-semibold text-center mb-1.5">{step.title}</div>
-            <div className="text-[13px] text-muted text-center leading-relaxed max-w-[320px] mx-auto">{step.desc}</div>
+            <div className="font-serif-sc text-[18px] font-semibold text-center mb-1.5">{step.title}</div>
+            <div className="text-[15px] text-muted text-center leading-relaxed max-w-[320px] mx-auto">{step.desc}</div>
           </div>
         </div>
 
