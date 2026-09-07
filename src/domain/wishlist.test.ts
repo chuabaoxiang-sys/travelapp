@@ -6,11 +6,17 @@ import {
   deleteWishlistPlace,
   usageByWishlistEntry,
   nearbyWishlistSuggestions,
+  addWishlistPlaceLink,
+  deleteWishlistPlaceLink,
+  linksByWishlistPlace,
 } from './wishlist'
 import { db } from '../db/dexie'
 import type { Trip, ItineraryItem } from '../types'
 
 vi.mock('./household', () => ({ getCurrentHouseholdId: async () => 'h1' }))
+
+const resolveLinkPreviewMock = vi.fn()
+vi.mock('../api/linkPreview', () => ({ resolveLinkPreview: (...args: unknown[]) => resolveLinkPreviewMock(...args) }))
 
 function trip(id: string, name: string): Trip {
   return {
@@ -62,6 +68,70 @@ describe('createWishlistPlace / updateWishlistPlace / toggleWishlistVisited / de
     const p = await createWishlistPlace({ name: 'x', lat: null, lng: null, notes: null, createdBy: null })
     await deleteWishlistPlace(p.id)
     expect(await db.wishlistPlaces.get(p.id)).toBeUndefined()
+  })
+
+  it('删除地点时，本地挂在下面的链接跟着清掉（远端靠数据库on delete cascade，本地这边要手动清）', async () => {
+    resolveLinkPreviewMock.mockResolvedValue(null)
+    const p = await createWishlistPlace({ name: 'x', lat: null, lng: null, notes: null, createdBy: null })
+    await addWishlistPlaceLink(p.id, 'https://youtu.be/abc', null)
+    await deleteWishlistPlace(p.id)
+    expect(await db.wishlistPlaceLinks.where('wishlistPlaceId').equals(p.id).toArray()).toEqual([])
+  })
+})
+
+describe('addWishlistPlaceLink / deleteWishlistPlaceLink / linksByWishlistPlace（真实走Dexie）', () => {
+  beforeEach(async () => {
+    await db.wishlistPlaces.clear()
+    await db.wishlistPlaceLinks.clear()
+    resolveLinkPreviewMock.mockReset()
+  })
+
+  it('抓到预览时，平台/标题/缩略图都存下来', async () => {
+    resolveLinkPreviewMock.mockResolvedValue({ platform: 'youtube', title: '标题', thumbnailUrl: 'https://img.youtube.com/vi/abc/hqdefault.jpg' })
+    const p = await createWishlistPlace({ name: 'x', lat: null, lng: null, notes: null, createdBy: null })
+    const link = await addWishlistPlaceLink(p.id, 'https://youtu.be/abc', 'papa')
+    expect(link.platform).toBe('youtube')
+    expect(link.title).toBe('标题')
+    expect(link.thumbnailUrl).toBe('https://img.youtube.com/vi/abc/hqdefault.jpg')
+    expect(link.householdId).toBe('h1')
+    expect(link.createdBy).toBe('papa')
+  })
+
+  it('抓不到预览（返回null）时，链接照样存下来，只是platform落回other、标题缩略图为空——不是失败', async () => {
+    resolveLinkPreviewMock.mockResolvedValue(null)
+    const p = await createWishlistPlace({ name: 'x', lat: null, lng: null, notes: null, createdBy: null })
+    const link = await addWishlistPlaceLink(p.id, 'https://www.xiaohongshu.com/discovery/item/abc', null)
+    expect(link.platform).toBe('other')
+    expect(link.title).toBeNull()
+    expect(link.thumbnailUrl).toBeNull()
+    expect(link.url).toBe('https://www.xiaohongshu.com/discovery/item/abc')
+  })
+
+  it('删除链接是硬删除，不需要二次确认', async () => {
+    resolveLinkPreviewMock.mockResolvedValue(null)
+    const p = await createWishlistPlace({ name: 'x', lat: null, lng: null, notes: null, createdBy: null })
+    const link = await addWishlistPlaceLink(p.id, 'https://youtu.be/abc', null)
+    await deleteWishlistPlaceLink(link.id)
+    expect(await db.wishlistPlaceLinks.get(link.id)).toBeUndefined()
+  })
+
+  it('linksByWishlistPlace按地点分组，同一地点多条链接按加入顺序排序', async () => {
+    resolveLinkPreviewMock.mockResolvedValue(null)
+    const p1 = await createWishlistPlace({ name: 'p1', lat: null, lng: null, notes: null, createdBy: null })
+    const p2 = await createWishlistPlace({ name: 'p2', lat: null, lng: null, notes: null, createdBy: null })
+    const l1 = await addWishlistPlaceLink(p1.id, 'https://youtu.be/a', null)
+    const l2 = await addWishlistPlaceLink(p1.id, 'https://youtu.be/b', null)
+    await addWishlistPlaceLink(p2.id, 'https://youtu.be/c', null)
+
+    const byPlace = await linksByWishlistPlace()
+    expect(byPlace.get(p1.id)?.map((l) => l.id)).toEqual([l1.id, l2.id])
+    expect(byPlace.get(p2.id)?.length).toBe(1)
+  })
+
+  it('没有任何链接的地点，不出现在返回的Map里', async () => {
+    const p = await createWishlistPlace({ name: 'x', lat: null, lng: null, notes: null, createdBy: null })
+    const byPlace = await linksByWishlistPlace()
+    expect(byPlace.has(p.id)).toBe(false)
   })
 })
 

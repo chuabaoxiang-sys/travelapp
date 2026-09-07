@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { Check, X, Pencil, Trash2, Plus, Circle, CheckCircle2, MapPin } from 'lucide-react'
+import { Check, X, Pencil, Trash2, Plus, Circle, CheckCircle2, MapPin, ImageOff } from 'lucide-react'
 import {
   listWishlistPlaces,
   createWishlistPlace,
@@ -9,13 +9,34 @@ import {
   toggleWishlistVisited,
   deleteWishlistPlace,
   usageByWishlistEntry,
+  addWishlistPlaceLink,
+  deleteWishlistPlaceLink,
+  linksByWishlistPlace,
   type WishlistUsage,
 } from '../../domain/wishlist'
 import { LocationPicker, type LocationValue } from '../../components/LocationPicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
-import type { WishlistPlace } from '../../types'
+import type { WishlistPlace, WishlistPlaceLink, WishlistPlaceLinkPlatform } from '../../types'
+
+// 平台角标用纯色圆点+一个字母/符号，不复刻各平台真实logo图形（避免商标问题），
+// 颜色取每个平台的品牌色，够用来一眼分辨"这条链接是哪个平台的"
+const PLATFORM_BADGE: Record<WishlistPlaceLinkPlatform, { color: string; label: string }> = {
+  youtube: { color: '#E4342A', label: '▶' },
+  facebook: { color: '#1877F2', label: 'f' },
+  bilibili: { color: '#FB7299', label: 'B' },
+  xiaohongshu: { color: '#FE2442', label: '红' },
+  other: { color: 'var(--color-muted)', label: '·' },
+}
+
+const PLATFORM_LABEL_KEY: Record<WishlistPlaceLinkPlatform, string> = {
+  youtube: 'wishlist.linkPlatformYoutube',
+  facebook: 'wishlist.linkPlatformFacebook',
+  bilibili: 'wishlist.linkPlatformBilibili',
+  xiaohongshu: 'wishlist.linkPlatformXiaohongshu',
+  other: 'wishlist.linkPlatformOther',
+}
 
 // leaflet/react-leaflet源码近4MB，只有切到"地图"这个视图才用得到——懒加载，
 // 跟ItineraryTab.tsx里MapView的懒加载是同一个道理
@@ -39,6 +60,7 @@ export function WishlistScreen({
   const { t } = useTranslation()
   const places = useLiveQuery(() => listWishlistPlaces()) ?? []
   const usageMap = useLiveQuery(() => usageByWishlistEntry()) ?? new Map<string, WishlistUsage>()
+  const linksMap = useLiveQuery(() => linksByWishlistPlace()) ?? new Map<string, WishlistPlaceLink[]>()
 
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -48,10 +70,29 @@ export function WishlistScreen({
   const [addOpen, setAddOpen] = useState(false)
   const [addLocation, setAddLocation] = useState<LocationValue>({ name: '', lat: null, lng: null })
   const [addNotes, setAddNotes] = useState('')
+  const [linkModalPlaceId, setLinkModalPlaceId] = useState<string | null>(null)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkSubmitting, setLinkSubmitting] = useState(false)
 
-  // 三个嵌套弹层（pendingDelete 的 ConfirmDialog、addOpen 的 CenteredModal）打开时
-  // 暂停这里自己的Escape监听，避免一键关掉两层
-  useEscapeKey(!pendingDelete && !addOpen, onClose)
+  // 四个嵌套弹层（pendingDelete 的 ConfirmDialog、addOpen/linkModalPlaceId 的
+  // CenteredModal）打开时暂停这里自己的Escape监听，避免一键关掉两层
+  useEscapeKey(!pendingDelete && !addOpen && !linkModalPlaceId, onClose)
+
+  function openLinkModal(placeId: string) {
+    setLinkUrl('')
+    setLinkModalPlaceId(placeId)
+  }
+
+  async function confirmAddLink() {
+    if (!linkModalPlaceId || !linkUrl.trim()) return
+    setLinkSubmitting(true)
+    try {
+      await addWishlistPlaceLink(linkModalPlaceId, linkUrl.trim(), currentMemberId)
+      setLinkModalPlaceId(null)
+    } finally {
+      setLinkSubmitting(false)
+    }
+  }
 
   function openAddModal() {
     setAddLocation({ name: '', lat: null, lng: null })
@@ -208,6 +249,70 @@ export function WishlistScreen({
                   </div>
                 )}
 
+                {/* 参考链接——横向大卡片轮播，图片区域够大能看清画面内容（比72×72
+                    小图标方案明显更有分量）。抓不到缩略图时不缩小卡片、不报错，
+                    图片区域换成平台色块+ImageOff图标，标题换成"预览不可用"，
+                    点击照样跳转原链接——这是故意的优雅降级，不是bug */}
+                {editingId !== p.id && (
+                  <div className="flex gap-2 mt-2.5 overflow-x-auto no-scrollbar">
+                    {(linksMap.get(p.id) ?? []).map((link) => {
+                      const badge = PLATFORM_BADGE[link.platform]
+                      return (
+                        <a
+                          key={link.id}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative flex-shrink-0 w-[118px] rounded-xl overflow-hidden border border-line bg-card"
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              deleteWishlistPlaceLink(link.id)
+                            }}
+                            title={t('wishlist.delete')}
+                            className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-ink/55 text-paper flex items-center justify-center"
+                          >
+                            <X className="w-3 h-3" strokeWidth={2.4} />
+                          </button>
+                          {link.thumbnailUrl ? (
+                            <img src={link.thumbnailUrl} alt="" className="w-full h-[148px] object-cover block" />
+                          ) : (
+                            <div
+                              className="w-full h-[148px] flex items-center justify-center"
+                              style={{ background: `color-mix(in srgb, ${badge.color} 16%, var(--color-segment))` }}
+                            >
+                              <ImageOff className="w-6 h-6" style={{ color: badge.color }} strokeWidth={1.6} />
+                            </div>
+                          )}
+                          <div className="p-1.5">
+                            <div className={`text-[10.5px] leading-snug line-clamp-2 min-h-[27px] ${link.thumbnailUrl ? '' : 'text-muted italic'}`}>
+                              {link.thumbnailUrl ? (link.title ?? '') : t('wishlist.linkPreviewUnavailable')}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span
+                                className="w-[15px] h-[15px] rounded-full flex items-center justify-center text-[8.5px] font-bold text-card flex-shrink-0 leading-none"
+                                style={{ background: badge.color }}
+                              >
+                                {badge.label}
+                              </span>
+                              <span className="text-[9.5px] text-muted truncate">{t(PLATFORM_LABEL_KEY[link.platform])}</span>
+                            </div>
+                          </div>
+                        </a>
+                      )
+                    })}
+                    <button
+                      onClick={() => openLinkModal(p.id)}
+                      title={t('wishlist.linkAdd')}
+                      className="flex-shrink-0 w-[118px] h-[190px] rounded-xl border border-dashed border-line text-muted flex items-center justify-center"
+                    >
+                      <Plus className="w-5 h-5" strokeWidth={2} />
+                    </button>
+                  </div>
+                )}
+
                 {editingId !== p.id && usage && usage.tripNames.length > 0 && (
                   <div className="text-[10.5px] text-plan mt-2 pt-2 border-t border-dashed border-line flex items-center gap-1.5">
                     <Check className="w-3 h-3 flex-shrink-0" strokeWidth={2.5} />
@@ -278,6 +383,43 @@ export function WishlistScreen({
             </button>
             <button onClick={confirmAdd} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title={t('wishlist.save')}>
               <Check className="w-4 h-4" strokeWidth={2} />
+            </button>
+          </div>
+        </CenteredModal>
+      )}
+
+      {linkModalPlaceId && (
+        <CenteredModal onClose={() => !linkSubmitting && setLinkModalPlaceId(null)}>
+          <div className="font-serif-sc text-[15px] text-ink mb-3">{t('wishlist.linkAdd')}</div>
+          <input
+            type="text"
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            placeholder={t('wishlist.linkAddPlaceholder')}
+            disabled={linkSubmitting}
+            autoFocus
+            className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan disabled:opacity-60"
+          />
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={() => setLinkModalPlaceId(null)}
+              disabled={linkSubmitting}
+              className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center disabled:opacity-50"
+              title={t('wishlist.cancel')}
+            >
+              <X className="w-4 h-4" strokeWidth={1.8} />
+            </button>
+            <button
+              onClick={confirmAddLink}
+              disabled={linkSubmitting || !linkUrl.trim()}
+              className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              title={t('wishlist.save')}
+            >
+              {linkSubmitting ? (
+                <span className="text-[11px]">{t('wishlist.linkFetching')}</span>
+              ) : (
+                <Check className="w-4 h-4" strokeWidth={2} />
+              )}
             </button>
           </div>
         </CenteredModal>

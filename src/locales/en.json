@@ -359,7 +359,16 @@
     "save": "Save",
     "deleteConfirmTitle": "Delete {{name}}?",
     "deleteConfirmMessage": "Anything already added to your itinerary stays put — this just removes it from the list, and can't be undone.",
-    "addTitle": "Add a place"
+    "addTitle": "Add a place",
+    "linkAdd": "Add a link",
+    "linkAddPlaceholder": "Paste a YouTube / Facebook / Bilibili / Xiaohongshu link…",
+    "linkFetching": "Fetching preview…",
+    "linkPreviewUnavailable": "No preview — tap to open",
+    "linkPlatformYoutube": "YouTube",
+    "linkPlatformFacebook": "Facebook",
+    "linkPlatformBilibili": "Bilibili",
+    "linkPlatformXiaohongshu": "Xiaohongshu",
+    "linkPlatformOther": "Link"
   },
   "locationPicker": {
     "placeholder": "Location",

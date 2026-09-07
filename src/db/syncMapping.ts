@@ -449,4 +449,32 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       updatedAt: ms(r.updated_at),
     }),
   },
+  // 没有updatedAt：链接只有增/删，不支持编辑，见migration 0027的说明
+  wishlistPlaceLinks: {
+    remoteTable: 'wishlist_place_link',
+    conflictColumns: 'id',
+    hasUpdatedAt: false,
+    toRemote: (l) => ({
+      id: l.id,
+      wishlist_place_id: l.wishlistPlaceId,
+      household_id: l.householdId,
+      url: l.url,
+      platform: l.platform,
+      title: l.title,
+      thumbnail_url: l.thumbnailUrl,
+      created_by: l.createdBy ?? null,
+      created_at: iso(l.createdAt),
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      wishlistPlaceId: r.wishlist_place_id,
+      householdId: r.household_id,
+      url: r.url,
+      platform: r.platform,
+      title: r.title,
+      thumbnailUrl: r.thumbnail_url,
+      createdBy: r.created_by ?? null,
+      createdAt: ms(r.created_at),
+    }),
+  },
 }

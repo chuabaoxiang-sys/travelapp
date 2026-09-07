@@ -18,6 +18,7 @@ import type {
   Feedback,
   RouteLegCacheEntry,
   WishlistPlace,
+  WishlistPlaceLink,
   DiscoveryHint,
 } from '../types'
 
@@ -50,6 +51,7 @@ const SYNCED_TABLES = [
   'settlements',
   'feedback',
   'wishlistPlaces',
+  'wishlistPlaceLinks',
 ] as const
 
 export class TripJournalDB extends Dexie {
@@ -70,6 +72,7 @@ export class TripJournalDB extends Dexie {
   feedback!: EntityTable<Feedback, 'id'>
   routeLegCache!: EntityTable<RouteLegCacheEntry, 'dayId'>
   wishlistPlaces!: EntityTable<WishlistPlace, 'id'>
+  wishlistPlaceLinks!: EntityTable<WishlistPlaceLink, 'id'>
   discoveryHints!: EntityTable<DiscoveryHint, 'id'>
 
   constructor() {
@@ -118,6 +121,12 @@ export class TripJournalDB extends Dexie {
     // 有没有被结算过"，用来判断能不能编辑/删除那笔账目
     this.version(7).stores({
       settlements: 'id, tripId, fromMemberId, toMemberId, expenseId',
+    })
+    // 想去的地点可以挂参考链接（YouTube/Facebook/Bilibili/小红书）——全新的表，
+    // 跟着wishlistPlaces走，地点删除时数据库层on delete cascade一起清掉远端数据，
+    // 本地这边deleteWishlistPlace要记得连带清一次，避免残留孤儿数据
+    this.version(8).stores({
+      wishlistPlaceLinks: 'id, wishlistPlaceId, householdId, createdAt',
     })
     registerOutboxHooks(this)
   }

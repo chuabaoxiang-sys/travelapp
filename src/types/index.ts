@@ -170,6 +170,24 @@ export interface WishlistPlace {
   updatedAt: number
 }
 
+export type WishlistPlaceLinkPlatform = 'youtube' | 'facebook' | 'bilibili' | 'xiaohongshu' | 'other'
+
+// 挂在某个WishlistPlace下面的参考链接——一对多，地点被删时数据库层on delete
+// cascade一起清掉。title/thumbnailUrl是加链接那一刻服务端抓一次存下来的，
+// 两者都抓不到时保持null，UI走降级样式，不是错误。没有updatedAt：链接只有
+// 增/删，不支持编辑，见迁移0027的说明
+export interface WishlistPlaceLink {
+  id: string
+  wishlistPlaceId: string
+  householdId: string
+  url: string
+  platform: WishlistPlaceLinkPlatform
+  title: string | null
+  thumbnailUrl: string | null
+  createdBy: string | null
+  createdAt: number
+}
+
 export interface RateBookEntry {
   id: string
   householdId: string

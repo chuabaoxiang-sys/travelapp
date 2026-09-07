@@ -1,7 +1,8 @@
 import { db } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
 import { haversineMeters } from '../lib/geo'
-import type { WishlistPlace, ItineraryItem } from '../types'
+import { resolveLinkPreview } from '../api/linkPreview'
+import type { WishlistPlace, WishlistPlaceLink, ItineraryItem } from '../types'
 
 export async function listWishlistPlaces(): Promise<WishlistPlace[]> {
   const all = await db.wishlistPlaces.toArray()
@@ -50,6 +51,50 @@ export async function toggleWishlistVisited(id: string, visited: boolean) {
 // 追溯指针），不依赖这条收藏继续存在，删掉不影响已经排好的行程
 export async function deleteWishlistPlace(id: string) {
   await db.wishlistPlaces.delete(id)
+  // 远端数据库层on delete cascade会自动清掉挂在下面的链接，但本地Dexie这边
+  // 两张表是各自独立同步的，不会自动级联——手动清一次，避免残留孤儿数据
+  await db.wishlistPlaceLinks.where('wishlistPlaceId').equals(id).delete()
+}
+
+// 贴一条YouTube/Facebook/Bilibili/小红书链接，服务端抓一次缩略图/标题存下来。
+// 抓不到（resolveLinkPreview返回null，或者平台字段缺失）不算失败——链接本身
+// 照样存，title/thumbnailUrl留空，UI走降级样式，用户随时能点开原链接
+export async function addWishlistPlaceLink(wishlistPlaceId: string, url: string, createdBy: string | null): Promise<WishlistPlaceLink> {
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) throw new Error('No household found')
+  const preview = await resolveLinkPreview(url)
+  const link: WishlistPlaceLink = {
+    id: crypto.randomUUID(),
+    wishlistPlaceId,
+    householdId,
+    url,
+    platform: preview?.platform ?? 'other',
+    title: preview?.title ?? null,
+    thumbnailUrl: preview?.thumbnailUrl ?? null,
+    createdBy,
+    createdAt: Date.now(),
+  }
+  await db.wishlistPlaceLinks.add(link)
+  return link
+}
+
+// 硬删除——链接本身没有其他数据依赖它，删了大不了重贴一条，不需要二次确认
+export async function deleteWishlistPlaceLink(id: string) {
+  await db.wishlistPlaceLinks.delete(id)
+}
+
+// 一次查出当前团队所有链接、按地点分组——照抄 usageByWishlistEntry 的做法，
+// 现查不存计数器，供 WishlistScreen 一次性拿到"每个地点分别挂了哪些链接"
+export async function linksByWishlistPlace(): Promise<Map<string, WishlistPlaceLink[]>> {
+  const links = await db.wishlistPlaceLinks.toArray()
+  const byPlace = new Map<string, WishlistPlaceLink[]>()
+  for (const link of links) {
+    const arr = byPlace.get(link.wishlistPlaceId) ?? []
+    arr.push(link)
+    byPlace.set(link.wishlistPlaceId, arr)
+  }
+  for (const arr of byPlace.values()) arr.sort((a, b) => a.createdAt - b.createdAt)
+  return byPlace
 }
 
 export interface WishlistUsage {
