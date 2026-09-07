@@ -23,6 +23,7 @@ export function TripMoreSheet({
   onOpenFeedback,
   onOpenShareSettings,
   onOpenSyncDetail,
+  onOpenTutorials,
 }: {
   trip: Trip
   currentMemberId: string
@@ -30,6 +31,7 @@ export function TripMoreSheet({
   onOpenFeedback: () => void
   onOpenShareSettings: () => void
   onOpenSyncDetail: () => void
+  onOpenTutorials: () => void
 }) {
   const { t } = useTranslation()
 
@@ -289,10 +291,8 @@ export function TripMoreSheet({
           <span className="text-[10.5px] text-plan flex-shrink-0">{t('more.syncViewArrow')}</span>
         </button>
 
-        <a
-          href="/user-guide.html"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={onOpenTutorials}
           className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left"
         >
           <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
@@ -303,7 +303,7 @@ export function TripMoreSheet({
             <div className="text-[9.5px] text-muted mt-0.5">{t('more.userGuideDesc')}</div>
           </div>
           <span className="text-[10.5px] text-plan flex-shrink-0">{t('more.userGuideArrow')}</span>
-        </a>
+        </button>
 
         <button onClick={onOpenFeedback} className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left">
           <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">

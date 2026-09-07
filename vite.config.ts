@@ -64,6 +64,10 @@ export default defineConfig({
         // 把整个应用外壳（HTML/JS/CSS/图标）预缓存，保证断网也能直接打开；
         // 地图瓦片/地点搜索这些第三方请求不缓存，本来就要求联网才有意义
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // 使用教程里的真实截图不预缓存——39步×中英两份，体积比现在整个APP外壳
+        // 预缓存的1.6MB还大好几倍，塞进去会让首次安装/更新体积暴涨。这些图只在
+        // 用户真的点开某篇教程时才按需网络加载
+        globIgnores: ['tutorial-shots/**'],
         // 真实bug教训：默认（false）生成的sw.js会把skipWaiting做成"要等一条
         // SKIP_WAITING消息才触发"，但一直没有代码在发这条消息——新版本永远卡在
         // "装完了、没人叫它接管"，不管用户怎么刷新都没用。这里改成无条件自动跳过等待

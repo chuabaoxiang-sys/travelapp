@@ -945,5 +945,92 @@
     "colPaid": "Paid",
     "colShare": "Share",
     "colNet": "Net (+ = owed to them, − = they owe)"
+  },
+  "tutorials": {
+    "libraryTitle": "Tutorials",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "quickstart": {
+      "title": "Getting Started",
+      "desc": "What the four tabs do, and how Overview changes with your trip",
+      "steps": [
+        { "title": "Meet the four tabs", "desc": "Overview, Itinerary, Ledger, More — the purple circle button in the middle is \"Add expense,\" reachable from Itinerary or Ledger any time." },
+        { "title": "Before you leave", "desc": "A countdown card, your still-unbooked plans, and a checklist of what's ready." },
+        { "title": "While you're traveling", "desc": "What's left to spend today, what's coming up, and what everyone else just did." },
+        { "title": "After you're home", "desc": "Total spend, per-person average, where the money went — this is the old \"trip recap,\" now shown automatically once you're back." },
+        { "title": "Start a new trip", "desc": "\"+ New trip\" at the bottom of \"My trips\" — name it, pick a home currency, and go." }
+      ]
+    },
+    "itinerary": {
+      "title": "Planning Your Itinerary",
+      "desc": "Timeline, calendar, and map views for what to do each day",
+      "steps": [
+        { "title": "Three views to switch between", "desc": "Timeline for a day-by-day list, Calendar for the whole month at a glance, Map for color-coded routes." },
+        { "title": "Add a plan", "desc": "Tap the floating \"+\" bottom right, fill in the time, what you're doing, and the place, then save." },
+        { "title": "Edit or delete one", "desc": "Tap an existing card to expand it into an editor — save your changes, or delete it from there." },
+        { "title": "Pull from your wishlist", "desc": "When adding a plan, \"Pick from your wishlist\" at the top fills in the name and location for you." },
+        { "title": "See wishlist spots on the map", "desc": "The heart icon top-right on the map shows places you've saved but haven't scheduled yet." },
+        { "title": "Nearby wishlist reminders", "desc": "When a saved place is close to that day's plans, a number badge shows up on the bookmark icon." }
+      ]
+    },
+    "ledgerSettle": {
+      "title": "Expenses & Settling Up",
+      "desc": "Log an expense, edit it, use foreign currency, settle up",
+      "steps": [
+        { "title": "Tap the \"+\" at the bottom", "desc": "It's there on Ledger and Itinerary alike, always in the same spot." },
+        { "title": "Enter the amount, pick a category", "desc": "Currency defaults to your home currency; once you pick a category, whether it counts as \"before the trip\" or \"during\" is worked out for you." },
+        { "title": "Pay in another currency", "desc": "Tap another currency next to the amount — as long as you've saved a rate for it, the conversion happens automatically." },
+        { "title": "Expand \"Other settings\"", "desc": "Tap \"Edit\" — date, who paid, and how to split are tucked in here, usually already right." },
+        { "title": "Link it to a plan", "desc": "Tie an expense to a specific itinerary item, so you can see the cost when you look back at that day." },
+        { "title": "Edit or delete an expense", "desc": "Tap an existing entry to expand it — expenses already settled can't have their amount changed anymore." },
+        { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back." },
+        { "title": "Settle specific expenses", "desc": "Pick one or a few expenses and settle just those, instead of the running total." },
+        { "title": "Log a prepayment", "desc": "If someone handed over a lump sum upfront, \"Add\" next to \"Settlement records\" logs it directly — no expense needed first." },
+        { "title": "Who paid what", "desc": "See at a glance what each person covered and what they owe." }
+      ]
+    },
+    "budget": {
+      "title": "Managing Your Budget",
+      "desc": "Set an overall budget, or break it down by category",
+      "steps": [
+        { "title": "Set an overall budget", "desc": "The first time you open \"Manage budget,\" it'll ask you to set one." },
+        { "title": "Add a category budget", "desc": "Cap spending on categories like Food or Stay individually, each with its own progress bar." },
+        { "title": "Change a budget amount", "desc": "Tap the pencil next to a category budget to edit the number directly." },
+        { "title": "Remove a category budget", "desc": "Tap the trash icon if you don't want to track it anymore — expenses already logged aren't affected." }
+      ]
+    },
+    "wishlist": {
+      "title": "Your Wishlist",
+      "desc": "Save places you want to visit, ready for any trip you plan",
+      "steps": [
+        { "title": "Save a new place", "desc": "Tap the floating \"+\" — add a name (search it or paste a Google Maps link) and a note." },
+        { "title": "Paste a reference link", "desc": "Spotted something on YouTube, Facebook, Bilibili, or Xiaohongshu? Paste the link and it grabs a thumbnail automatically." },
+        { "title": "When a thumbnail can't load", "desc": "Some platforms just can't be fetched — it falls back to a colored icon, still tap-through to the original link." },
+        { "title": "Mark visited or not", "desc": "Separate from whether it's ever been scheduled into a trip — you toggle this yourself." },
+        { "title": "See them color-coded on the map", "desc": "Pin color shows visited vs. not — tap a pin for its name and notes." }
+      ]
+    },
+    "rates": {
+      "title": "Your Rate Book",
+      "desc": "Save exchange rates ahead of time, no calculator needed later",
+      "steps": [
+        { "title": "Log an exchange rate", "desc": "From Ledger, tap the icon top-right to open your rate book, then \"+\" — use the reference rate or enter what you actually got." },
+        { "title": "Keep more than one per pair", "desc": "Cash exchange and card rates differ — log both, and pick the right one when you spend." },
+        { "title": "Use a rate when logging", "desc": "Pick a saved rate for a foreign-currency expense and it converts to your home currency automatically." },
+        { "title": "See how your exchange went", "desc": "A weighted rate based on what you actually spent, compared against today's market rate." }
+      ]
+    },
+    "settings": {
+      "title": "Settings & Your Data",
+      "desc": "Dark mode, language, exporting, and sharing links all live here",
+      "steps": [
+        { "title": "Switch dark mode", "desc": "Light, dark, or follow system — your choice is remembered." },
+        { "title": "Switch language", "desc": "Follow system, 中文, or English — this follows you, not the device, even after switching phones." },
+        { "title": "Export your trip", "desc": "Excel, JSON, or CSV — each includes both the detail and the summary." },
+        { "title": "Turn on a read-only share link", "desc": "Send it to family who haven't installed the app — they can view everything, no sign-up needed." },
+        { "title": "Check sync status", "desc": "See which records haven't synced yet, and manually give up on ones that are stuck." }
+      ]
+    }
   }
 }

@@ -20,6 +20,7 @@ import { ShareStatusBadge } from './ShareStatusBadge'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { useLastSeen, countUnseen } from './useLastSeen'
 import { SyncDetailSheet } from '../../components/SyncDetailSheet'
+import { TutorialLibraryScreen } from '../tutorials/TutorialLibraryScreen'
 
 const NOT_FOUND = Symbol('trip-not-found')
 
@@ -49,6 +50,7 @@ export function TripShell({
   const [shareSettingsOpen, setShareSettingsOpen] = useState(false)
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false)
   const [syncDetailOpen, setSyncDetailOpen] = useState(false)
+  const [tutorialsOpen, setTutorialsOpen] = useState(false)
   const [itineraryFormOpen, setItineraryFormOpen] = useState(false)
   // FAB在"行程"tab上被接成"添加行程项"而不是"记一笔"——它没法直接调用ItineraryTab
   // 内部的setFormState，靠这个自增计数器当信号，ItineraryTab自己的effect监听变化
@@ -79,7 +81,8 @@ export function TripShell({
   // 它会以为用户按了返回键、立刻把自己关掉。表现就是"从更多面板点分享设置/提交
   // 反馈完全没反应"（真机反馈过）。合成一个之后，弹层之间切换时这个
   // hook 的 active 一直是 true，不发生卸载+装载，那个竞态从根上就不存在了
-  const anySheetOpen = sheetOpen || moreOpen || feedbackOpen || shareSettingsOpen || inviteCodeOpen || syncDetailOpen
+  const anySheetOpen =
+    sheetOpen || moreOpen || feedbackOpen || shareSettingsOpen || inviteCodeOpen || syncDetailOpen || tutorialsOpen
   function closeAllSheets() {
     setSheetOpen(false)
     setMoreOpen(false)
@@ -87,6 +90,7 @@ export function TripShell({
     setShareSettingsOpen(false)
     setInviteCodeOpen(false)
     setSyncDetailOpen(false)
+    setTutorialsOpen(false)
   }
   useBackDismiss(anySheetOpen, closeAllSheets)
 
@@ -179,10 +183,13 @@ export function TripShell({
             onOpenFeedback={() => { setMoreOpen(false); setFeedbackOpen(true) }}
             onOpenShareSettings={() => { setMoreOpen(false); setShareSettingsOpen(true) }}
             onOpenSyncDetail={() => { setMoreOpen(false); setSyncDetailOpen(true) }}
+            onOpenTutorials={() => { setMoreOpen(false); setTutorialsOpen(true) }}
           />
         )}
 
         {syncDetailOpen && <SyncDetailSheet onClose={() => setSyncDetailOpen(false)} />}
+
+        {tutorialsOpen && <TutorialLibraryScreen onClose={() => setTutorialsOpen(false)} />}
 
         {feedbackOpen && (
           <FeedbackSheet tripId={trip.id} currentMemberId={currentMemberId} onClose={() => setFeedbackOpen(false)} />

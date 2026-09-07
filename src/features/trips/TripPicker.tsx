@@ -12,6 +12,7 @@ import { CountryPicker } from '../../components/CountryPicker'
 import { CurrencyPicker } from '../../components/CurrencyPicker'
 import { countryByCode } from '../../lib/countries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
+import { TutorialLibraryScreen } from '../tutorials/TutorialLibraryScreen'
 import { TeamSwitcher } from '../teams/TeamSwitcher'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { DiscoveryDot } from '../../components/DiscoveryDot'
@@ -45,6 +46,8 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
   const [pendingDelete, setPendingDelete] = useState<Trip | null>(null)
   const [wishlistOpen, setWishlistOpen] = useState(false)
   useBackDismiss(wishlistOpen, () => setWishlistOpen(false))
+  const [tutorialsOpen, setTutorialsOpen] = useState(false)
+  useBackDismiss(tutorialsOpen, () => setTutorialsOpen(false))
 
   async function confirmRemoveTrip() {
     if (!pendingDelete) return
@@ -152,15 +155,13 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
                 {t('tripPicker.newTrip')}
               </button>
               {!trips.length && (
-                <a
-                  href="/user-guide.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => setTutorialsOpen(true)}
                   className="mt-3.5 w-full flex items-center justify-center gap-1.5 text-[12px] text-plan-on-dark"
                 >
                   <BookOpen className="w-[13px] h-[13px]" strokeWidth={1.8} />
                   {t('tripPicker.firstTimeGuide')}
-                </a>
+                </button>
               )}
             </>
           )
@@ -179,6 +180,8 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
       {wishlistOpen && (
         <WishlistScreen currentMemberId={currentMemberId} onClose={() => setWishlistOpen(false)} />
       )}
+
+      {tutorialsOpen && <TutorialLibraryScreen onClose={() => setTutorialsOpen(false)} />}
     </div>
   )
 }
