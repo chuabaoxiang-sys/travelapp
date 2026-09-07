@@ -948,9 +948,6 @@
   },
   "tutorials": {
     "libraryTitle": "Tutorials",
-    "back": "Back",
-    "next": "Next",
-    "done": "Done",
     "quickstart": {
       "title": "Getting Started",
       "desc": "What the four tabs do, and how Overview changes with your trip",

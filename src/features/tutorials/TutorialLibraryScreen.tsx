@@ -97,7 +97,10 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
     const dy = e.clientY - start.y
     if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return
     if (dx < 0) {
-      if (!isLast) goTo(stepIndex + 1)
+      // 最后一步再往前滑，等同于"完成"，直接退回教程库首页——没有按钮了，
+      // 不能再靠"下一步"变成"完成"来提示这件事
+      if (isLast) onBack()
+      else goTo(stepIndex + 1)
     } else if (stepIndex > 0) {
       goTo(stepIndex - 1)
     }
@@ -115,19 +118,21 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
         <span className="w-[18px] flex-shrink-0" />
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 px-5 pt-4 pb-2">
-        {/* 图片按高度封顶（不再按宽度撑满），一屏放得下图+文字+圆点+按钮，不用再上下拖动
+      <div className="flex-1 flex flex-col justify-center min-h-0 px-5 pt-4 pb-2">
+        {/* 图片按高度封顶（不再按宽度撑满），一屏放得下图+文字+圆点，不用再上下拖动
             才能看完一步；容器inline-block贴着图片实际渲染尺寸收缩，红圈的百分比定位
             照旧相对这个盒子，不用跟着改。图片区域支持左右滑动切页（Pointer Events，
             同时兼容触屏和鼠标拖拽，方便桌面测试）——只在松开时判定一次方向，
-            不做跟手的实时拖拽；返回/下一步按钮保留，滑动是锦上添花，不是唯一入口 */}
+            不做跟手的实时拖拽。翻页只靠滑动+下面的圆点，没有"返回/下一步"按钮——
+            按钮那版被反馈"很鸡肋"，去掉了。外层加justify-center，图+文字这一组
+            整体居中——按钮去掉之后空出来的高度不再是一截难看的死白 */}
         <div className="flex justify-center mb-4 flex-shrink-0">
           <div
             className="relative inline-block rounded-2xl overflow-hidden border border-line shadow-sm touch-pan-y"
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
           >
-            <img src={tutorialImage(stepId, lang)} alt="" className="block w-auto max-h-[38vh]" draggable={false} />
+            <img src={tutorialImage(stepId, lang)} alt="" className="block w-auto max-h-[42vh]" draggable={false} />
             {ring && (
               <div
                 className="absolute border-[3px] border-negative rounded-full pointer-events-none"
@@ -142,13 +147,13 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
             )}
           </div>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+        <div className="flex-shrink-0 overflow-y-auto no-scrollbar max-h-[30vh]">
           <div className="font-serif-sc text-[16px] font-semibold text-center mb-1.5">{step.title}</div>
           <div className="text-[13px] text-muted text-center leading-relaxed max-w-[320px] mx-auto">{step.desc}</div>
         </div>
       </div>
 
-      <div className="flex justify-center gap-1.5 py-2.5 px-5 flex-shrink-0 overflow-x-auto no-scrollbar">
+      <div className="flex justify-center gap-1.5 py-2.5 px-5 pb-5 flex-shrink-0 overflow-x-auto no-scrollbar">
         {tutorial.stepIds.map((id, i) => (
           <button
             key={id}
@@ -158,22 +163,6 @@ function TutorialDetail({ tutorial, onBack }: { tutorial: Tutorial; onBack: () =
             }`}
           />
         ))}
-      </div>
-
-      <div className="flex gap-2.5 px-5 pb-5 pt-1 flex-shrink-0">
-        <button
-          onClick={() => stepIndex > 0 && goTo(stepIndex - 1)}
-          disabled={stepIndex === 0}
-          className="flex-1 rounded-full border border-line text-muted py-2.5 text-[13.5px] font-semibold disabled:opacity-35"
-        >
-          {t('tutorials.back')}
-        </button>
-        <button
-          onClick={() => (isLast ? onBack() : goTo(stepIndex + 1))}
-          className="flex-1 rounded-full bg-plan text-card py-2.5 text-[13.5px] font-semibold"
-        >
-          {isLast ? t('tutorials.done') : t('tutorials.next')}
-        </button>
       </div>
     </>
   )
