@@ -114,7 +114,7 @@ export async function listMyHouseholds(): Promise<MyHousehold[]> {
   // 弹层会正常显示失败提示——本地能验证的是布局和交互，不是切换本身
   if (import.meta.env.DEV && (!supabase || isLocalTestModeEnabled())) {
     return [
-      { id: LOCAL_TEST_HOUSEHOLD_ID, name: '本地测试团队', isActive: true },
+      { id: LOCAL_TEST_HOUSEHOLD_ID, name: 'Claude', isActive: true },
       { id: 'local-test-household-2', name: '另一个测试团队', isActive: false },
     ]
   }
