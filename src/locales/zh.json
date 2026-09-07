@@ -350,7 +350,7 @@
     "deleteConfirmMessage": "已经排进行程的安排不受影响，只是这条从清单里消失，不能再找回来了。",
     "addTitle": "新增想去的地点",
     "linkAdd": "添加参考链接",
-    "linkAddPlaceholder": "贴上YouTube / Facebook / Bilibili / 小红书链接…",
+    "linkAddPlaceholder": "贴视频或帖子链接",
     "linkFetching": "正在抓取预览…",
     "linkPreviewUnavailable": "预览不可用，点击打开",
     "linkPlatformYoutube": "YouTube",

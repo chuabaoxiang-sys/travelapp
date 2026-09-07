@@ -361,7 +361,7 @@
     "deleteConfirmMessage": "Anything already added to your itinerary stays put — this just removes it from the list, and can't be undone.",
     "addTitle": "Add a place",
     "linkAdd": "Add a link",
-    "linkAddPlaceholder": "Paste a YouTube / Facebook / Bilibili / Xiaohongshu link…",
+    "linkAddPlaceholder": "Paste a video or post link",
     "linkFetching": "Fetching preview…",
     "linkPreviewUnavailable": "No preview — tap to open",
     "linkPlatformYoutube": "YouTube",
