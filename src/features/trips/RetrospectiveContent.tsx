@@ -4,6 +4,7 @@ import type { Trip } from '../../types'
 import { buildRetrospective, type TripRetrospective } from '../../domain/retrospective'
 import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
+import { MoodCurveCard } from '../satisfaction/MoodCurveCard'
 
 // 旅程回顾的内容本体，不含任何"这是一个可关闭弹层"的外壳——这一段现在是
 // 「概览」tab"回家后"形态的正文，跟别的tab内容一样常驻显示，不是弹出来再关掉的东西。
@@ -31,14 +32,14 @@ function Bar({ pct, color, entered, delayMs }: { pct: number; color: string; ent
   )
 }
 
-export function RetrospectiveContent({ trip }: { trip: Trip }) {
+export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { trip: Trip; currentMemberId: string; refreshKey?: number }) {
   const { t } = useTranslation()
   const [data, setData] = useState<TripRetrospective | null>(null)
 
   useEffect(() => {
     const todayISO = new Date().toLocaleDateString('sv-SE')
-    buildRetrospective(trip.id, todayISO, t).then(setData)
-  }, [trip.id, t])
+    buildRetrospective(trip.id, todayISO, t, currentMemberId).then(setData)
+  }, [trip.id, t, currentMemberId, refreshKey])
 
   // 这个tab是条件渲染，每次切回"概览"都是重新mount——挂载后下一帧触发一次
   // 进场动效就够，跟BeforeTrip那套双重RAF一致：等首帧真的画完（数字/占比条
@@ -113,6 +114,10 @@ export function RetrospectiveContent({ trip }: { trip: Trip }) {
           </div>
         </div>
       )}
+
+      <div className={enterClass()} style={enterDelay()}>
+        <MoodCurveCard satisfaction={data.satisfaction} />
+      </div>
 
       {data.categories.length > 0 && (() => {
         const sectionDelay = step++ * 90

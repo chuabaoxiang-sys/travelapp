@@ -1018,5 +1018,26 @@
         { "title": "查看同步详情", "desc": "能看到哪些记录还没同步成功，卡住太久的还能手动放弃同步。" }
       ]
     }
+  },
+  "satisfaction": {
+    "entryTitle_one": "有 {{count}} 天可以翻卡回顾了",
+    "entryTitle_other": "有 {{count}} 天可以翻卡回顾了",
+    "deckTitle": "翻卡回顾",
+    "close": "关闭",
+    "askDay": "这一天过得怎么样？",
+    "remaining_one": "还有 {{count}} 天待翻",
+    "remaining_other": "还有 {{count}} 天待翻",
+    "allDone": "这个身份目前没有新的可以翻了，明天再来看看",
+    "ratingWorth": "值",
+    "ratingNeutral": "一般",
+    "ratingRegret": "后悔",
+    "skip": "跳过",
+    "viewMe": "我的回顾",
+    "viewAll": "全家整体",
+    "expenseStatMe": "你标记的 <b>{{count}}</b> 笔账目里，<b>{{worth}}</b> 笔你觉得值",
+    "expenseStatAll": "全家一共标记了 <b>{{count}}</b> 次账目，其中 <b>{{worth}}</b> 次觉得值",
+    "stampZoneTitle": "点一下标记这笔账目的满意度",
+    "pickerTitle": "这笔账目花得值吗？",
+    "clearMine": "清除我的标记"
   }
 }

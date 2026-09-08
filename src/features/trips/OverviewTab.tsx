@@ -20,6 +20,8 @@ import { RetrospectiveContent } from './RetrospectiveContent'
 import { useActivityEntries, activityKindLabel, ACTIVITY_KIND_CLASS } from '../activity/useActivityEntries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
 import { ActivityFeed } from '../activity/ActivityFeed'
+import { SatisfactionEntryCard } from '../satisfaction/SatisfactionEntryCard'
+import { SatisfactionFlipDeck } from '../satisfaction/SatisfactionFlipDeck'
 
 // 「概览」——四个功能tab时代根本不存在的东西。这个APP一直假设用户"想用某个功能"，
 // 但真实情况是用户处在某个时刻：出发前、旅途中、回家后，而这三个时刻需要看的东西
@@ -34,17 +36,42 @@ import { ActivityFeed } from '../activity/ActivityFeed'
 export function OverviewTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
   const todayISO = new Date().toLocaleDateString('sv-SE')
   const phase = resolveTripPhase(todayISO, trip.startDate, trip.endDate)
+  const [flipDeckOpen, setFlipDeckOpen] = useState(false)
+  useBackDismiss(flipDeckOpen, () => setFlipDeckOpen(false))
+  // buildRetrospective是一次性拉取，不像useLiveQuery那样会随IndexedDB写入自动
+  // 重新查询——翻卡片就是在这个页面上开的一个全屏覆盖层，关掉之后如果不主动
+  // 让回顾内容重新拉一次，心情曲线会一直停留在"翻卡片之前"那份旧数据，
+  // 这是真机测试才发现的坑。用一个自增的key强制RetrospectiveContent的
+  // useEffect重新跑一遍，比额外接一层实时查询改动更小
+  const [satisfactionVersion, setSatisfactionVersion] = useState(0)
+  function closeFlipDeck() {
+    setFlipDeckOpen(false)
+    setSatisfactionVersion((v) => v + 1)
+  }
 
   if (phase === 'after') {
     return (
-      <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full">
-        <RetrospectiveContent trip={trip} />
-      </div>
+      <>
+        <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full flex flex-col gap-3.5">
+          <SatisfactionEntryCard trip={trip} currentMemberId={currentMemberId} onOpen={() => setFlipDeckOpen(true)} />
+          <RetrospectiveContent trip={trip} currentMemberId={currentMemberId} refreshKey={satisfactionVersion} />
+        </div>
+        {flipDeckOpen && (
+          <SatisfactionFlipDeck trip={trip} currentMemberId={currentMemberId} onClose={closeFlipDeck} />
+        )}
+      </>
     )
   }
 
   if (phase === 'during') {
-    return <DuringTrip trip={trip} todayISO={todayISO} />
+    return (
+      <>
+        <DuringTrip trip={trip} todayISO={todayISO} currentMemberId={currentMemberId} onOpenFlipDeck={() => setFlipDeckOpen(true)} />
+        {flipDeckOpen && (
+          <SatisfactionFlipDeck trip={trip} currentMemberId={currentMemberId} onClose={() => setFlipDeckOpen(false)} />
+        )}
+      </>
+    )
   }
 
   return <BeforeTrip trip={trip} todayISO={todayISO} currentMemberId={currentMemberId} />
@@ -266,7 +293,7 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
   )
 }
 
-function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
+function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip: Trip; todayISO: string; currentMemberId: string; onOpenFlipDeck: () => void }) {
   const { t } = useTranslation()
   const [activityOpen, setActivityOpen] = useState(false)
   // 同样漏掉的返回键拦截——"家里刚才"的"查看全部"这个全屏页也没接过，
@@ -331,6 +358,8 @@ function DuringTrip({ trip, todayISO }: { trip: Trip; todayISO: string }) {
         )}
         <SpendHero state={allowance} currency={currencyLabel} entered={entered} />
       </div>
+
+      <SatisfactionEntryCard trip={trip} currentMemberId={currentMemberId} onOpen={onOpenFlipDeck} />
 
       <div>
         <SectionLabel>{t('overview.upNext')}</SectionLabel>

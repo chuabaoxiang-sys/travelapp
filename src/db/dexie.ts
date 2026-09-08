@@ -20,6 +20,8 @@ import type {
   WishlistPlace,
   WishlistPlaceLink,
   DiscoveryHint,
+  DaySatisfaction,
+  ExpenseSatisfaction,
 } from '../types'
 
 // 会被同步到云端的表——本地写操作会自动记一条 outbox。expenseCategories 不算在内，
@@ -52,6 +54,8 @@ const SYNCED_TABLES = [
   'feedback',
   'wishlistPlaces',
   'wishlistPlaceLinks',
+  'daySatisfactions',
+  'expenseSatisfactions',
 ] as const
 
 export class TripJournalDB extends Dexie {
@@ -74,6 +78,8 @@ export class TripJournalDB extends Dexie {
   wishlistPlaces!: EntityTable<WishlistPlace, 'id'>
   wishlistPlaceLinks!: EntityTable<WishlistPlaceLink, 'id'>
   discoveryHints!: EntityTable<DiscoveryHint, 'id'>
+  daySatisfactions!: EntityTable<DaySatisfaction, 'id'>
+  expenseSatisfactions!: EntityTable<ExpenseSatisfaction, 'id'>
 
   constructor() {
     super('trip-journal')
@@ -127,6 +133,14 @@ export class TripJournalDB extends Dexie {
     // 本地这边deleteWishlistPlace要记得连带清一次，避免残留孤儿数据
     this.version(8).stores({
       wishlistPlaceLinks: 'id, wishlistPlaceId, householdId, createdAt',
+    })
+    // 满意度标记（值/一般/后悔）——每个成员对同一天/同一笔账目各自独立打一行，
+    // 不强制填（跳过=根本不存在这一行，不是存个'skip'）。复合索引[dayId+memberId]/
+    // [expenseId+memberId]用来快速判断"这个人对这一条打过分没有"，决定是新增
+    // 还是更新已有那一行。全新的表，不影响已有数据
+    this.version(9).stores({
+      daySatisfactions: 'id, tripId, dayId, memberId, [dayId+memberId]',
+      expenseSatisfactions: 'id, tripId, expenseId, memberId, [expenseId+memberId]',
     })
     registerOutboxHooks(this)
   }

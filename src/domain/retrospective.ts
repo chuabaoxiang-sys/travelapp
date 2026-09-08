@@ -5,6 +5,7 @@ import { computeBalances, simplifyDebts } from './splits'
 import { CATEGORY_COLORS } from '../lib/categoryColors'
 import { categoryLabel } from '../lib/categoryLabel'
 import { daysInclusive } from '../lib/dates'
+import { dayMoodCurve, expenseSatisfactionStat, type DayMoodPoint, type ExpenseSatisfactionStat } from './satisfaction'
 
 // 旅程回顾——把这趟行程收尾时值得看一眼的东西凑成一页。
 //
@@ -25,6 +26,15 @@ export interface RetroCategory {
   color: string
 }
 
+// 心情曲线+账目统计各自都有"我的"和"全家整体"两个口径，一次性都算出来，
+// UI 的个人/整体切换只是换一份已经算好的数据展示，不用切一次就重新查一次
+export interface SatisfactionRetro {
+  moodCurveMe: DayMoodPoint[]
+  moodCurveAll: DayMoodPoint[]
+  expenseStatMe: ExpenseSatisfactionStat
+  expenseStatAll: ExpenseSatisfactionStat
+}
+
 export interface TripRetrospective {
   finished: boolean
   total: number
@@ -38,13 +48,14 @@ export interface TripRetrospective {
   people: PersonSummary[]
   unsettledCount: number
   unsettledTotal: number
+  satisfaction: SatisfactionRetro
 }
 
 function round2(n: number) {
   return Math.round(n * 100) / 100
 }
 
-export async function buildRetrospective(tripId: string, todayISO: string, t: TFunction): Promise<TripRetrospective> {
+export async function buildRetrospective(tripId: string, todayISO: string, t: TFunction, currentMemberId: string): Promise<TripRetrospective> {
   const bundle = await assembleExportBundle(tripId, t)
   const { trip, daySummary, categorySummary, personSummary } = bundle
 
@@ -85,6 +96,13 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
   // 还有几笔没结：跟分账页用的是同一套算法，不另起一套，免得两处数字对不上
   const transfers = simplifyDebts(await computeBalances(tripId))
 
+  const [moodCurveMe, moodCurveAll, expenseStatMe, expenseStatAll] = await Promise.all([
+    dayMoodCurve(tripId, { kind: 'me', memberId: currentMemberId }),
+    dayMoodCurve(tripId, { kind: 'all' }),
+    expenseSatisfactionStat(tripId, { kind: 'me', memberId: currentMemberId }),
+    expenseSatisfactionStat(tripId, { kind: 'all' }),
+  ])
+
   return {
     finished: !!trip.endDate && todayISO > trip.endDate,
     total,
@@ -98,5 +116,6 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
     people: [...personSummary].sort((a, b) => b.paid - a.paid),
     unsettledCount: transfers.length,
     unsettledTotal: round2(transfers.reduce((s, t) => s + t.amount, 0)),
+    satisfaction: { moodCurveMe, moodCurveAll, expenseStatMe, expenseStatAll },
   }
 }

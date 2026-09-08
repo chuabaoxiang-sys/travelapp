@@ -25,6 +25,7 @@ import { DiscoveryDot } from '../../components/DiscoveryDot'
 import { markHintSeen } from '../../domain/discoveryHints'
 import { BudgetSheet } from '../budget/BudgetSheet'
 import { SplitTab } from '../split/SplitTab'
+import { SatisfactionStampBadge } from '../satisfaction/SatisfactionStampBadge'
 
 export function LedgerTab({
   trip,
@@ -314,10 +315,16 @@ export function LedgerTab({
                 const myShare = myShareOf(e.id, splits, currentMemberId)
                 const isNew = !!highlightSince && e.createdAt > highlightSince && e.recordedBy !== currentMemberId
                 return (
-                  <button
+                  // 用 div+role="button" 而不是原生 <button>——账目行现在要塞进一个
+                  // 独立可点的"盖章"小组件，<button>套<button>是非法的HTML嵌套，
+                  // 触屏上点击行为会不可靠（同样的坑见 ItineraryTab.tsx 行程项那行）
+                  <div
                     key={e.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setEditingId(e.id)}
-                    className={`text-left flex items-center gap-3 bg-card rounded-2xl px-3.5 py-2.5 border transition-colors hover:border-plan/50 ${
+                    onKeyDown={(ev) => { if (ev.key === 'Enter') setEditingId(e.id) }}
+                    className={`text-left flex items-center gap-3 bg-card rounded-2xl px-3.5 py-2.5 border transition-colors hover:border-plan/50 cursor-pointer ${
                       isNew ? 'border-spend/70 bg-spend/[.04]' : 'border-line'
                     }`}
                   >
@@ -347,13 +354,14 @@ export function LedgerTab({
                         </div>
                       )}
                     </div>
+                    <SatisfactionStampBadge expenseId={e.id} tripId={trip.id} currentMemberId={currentMemberId} />
                     <div className="text-right flex-shrink-0">
                       <div className="text-[15px] tabular">{formatMoney(e.homeAmount, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}</div>
                       {e.expenseCurrency !== trip.homeCurrency && (
                         <div className="text-[10px] text-muted tabular">{e.expenseCurrency} {e.expenseAmount}</div>
                       )}
                     </div>
-                  </button>
+                  </div>
                 )
               })}
             </div>

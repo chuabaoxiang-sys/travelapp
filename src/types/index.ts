@@ -246,6 +246,40 @@ export interface ExpenseSplit {
   shareAmount: number
 }
 
+// "值/一般/后悔"——每个成员对同一天/同一笔账目各自独立打分，同一个
+// (dayId,memberId)或(expenseId,memberId)只应该有一行，靠数据库唯一约束
+// 保证（见0029迁移）
+export type SatisfactionRating = 'worth' | 'neutral' | 'regret'
+
+// 【为什么day的rating可以是null，expense的不行——真机测试才发现的坑】
+// 翻卡片"跳过"最初设计成"不存在这一行"，实测发现这样"跳过"对一个从没打过分
+// 的天完全没有效果：pendingDaysForMember判断"待翻"就是"这行不存在"，跳过
+// 如果也是"不存在"，那张卡会原地卡住翻不过去。改成"跳过=存一行、rating=null"，
+// 用行的存在与否区分"问过没问过"，用rating是否为null区分"有没有具体表态"——
+// 两件事分开才不会互相打架。expense没有翻卡片这种"队列"概念，随时可以点
+// "+"重新标，不需要记住"问过"，所以expense的null继续走删除这一行的老逻辑
+export interface DaySatisfaction {
+  id: string
+  householdId: string
+  tripId: string
+  dayId: string
+  memberId: string
+  rating: SatisfactionRating | null
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ExpenseSatisfaction {
+  id: string
+  householdId: string
+  tripId: string
+  expenseId: string
+  memberId: string
+  rating: SatisfactionRating
+  createdAt: number
+  updatedAt: number
+}
+
 // 跨天开销摊到每一天的金额。选中的日子不要求连续（比如周游券只在第1天和第4天用），
 // 所以存的是一行一个具体日期，而不是起止范围
 export interface ExpenseDayAllocation {

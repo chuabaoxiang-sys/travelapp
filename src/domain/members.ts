@@ -39,7 +39,7 @@ export async function renameMember(id: string, displayName: string) {
 // Dexie schema 没有给这些字段建索引，不能用 .where()（会直接报错），
 // 只能整表扫一遍用 .filter()——家庭旅游场景数据量很小，性能完全没问题
 export async function memberHasHistory(id: string): Promise<boolean> {
-  const [paidCount, recordedCount, splitCount, settleFromCount, settleToCount, feedbackCount, rateCount] =
+  const [paidCount, recordedCount, splitCount, settleFromCount, settleToCount, feedbackCount, rateCount, daySatisfactionCount, expenseSatisfactionCount] =
     await Promise.all([
       db.expenses.filter((e) => e.paidBy === id).count(),
       db.expenses.filter((e) => e.recordedBy === id).count(),
@@ -48,9 +48,13 @@ export async function memberHasHistory(id: string): Promise<boolean> {
       db.settlements.where('toMemberId').equals(id).count(),
       db.feedback.where('submittedBy').equals(id).count(),
       db.rateBookEntries.filter((r) => r.createdBy === id).count(),
+      db.daySatisfactions.where('memberId').equals(id).count(),
+      db.expenseSatisfactions.where('memberId').equals(id).count(),
     ])
   return (
-    paidCount + recordedCount + splitCount + settleFromCount + settleToCount + feedbackCount + rateCount > 0
+    paidCount + recordedCount + splitCount + settleFromCount + settleToCount + feedbackCount + rateCount +
+      daySatisfactionCount + expenseSatisfactionCount >
+    0
   )
 }
 
