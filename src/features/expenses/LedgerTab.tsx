@@ -7,6 +7,7 @@ import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { formatDateChipDow, formatDateChipDate } from '../../lib/dateChip'
+import { relativeTime } from '../../lib/relativeTime'
 import type { ResolvedLocale } from '../../lib/locale'
 import { AddExpensePage } from './AddExpensePage'
 import { RateBookScreen } from '../rates/RateBookScreen'
@@ -165,6 +166,7 @@ export function LedgerTab({
   const hasForeignCurrencyUsage = expenses.some((e) => e.expenseCurrency !== trip.homeCurrency)
   const hasMultiPersonSplit = expenses.some((e) => splitCountOf(e.id) >= 2)
   const hasEnoughForBreakdown = expenses.length >= 3
+  const now = Date.now()
 
   return (
     <div className="h-full flex flex-col relative">
@@ -326,6 +328,7 @@ export function LedgerTab({
                 const cat = categoryOf(e.categoryId)
                 const payer = memberOf(e.paidBy)
                 const recorder = memberOf(e.recordedBy)
+                const editor = e.lastEditedBy ? memberOf(e.lastEditedBy) : undefined
                 const linkedItem = e.itineraryItemId ? itineraryItemOf(e.itineraryItemId) : undefined
                 const isPersonal = e.splitType === 'none'
                 const myShare = myShareOf(e.id, splits, currentMemberId)
@@ -363,6 +366,15 @@ export function LedgerTab({
                           显示过，所以"这笔是家里别人帮我记的"完全看不出来 */}
                       {recorder && e.recordedBy !== e.paidBy && (
                         <div className="text-[10.5px] text-muted/80 mt-0.5 truncate">{t('ledger.recordedBy', { name: recorder.displayName })}</div>
+                      )}
+                      {/* 轻量版变更归属——只记录"谁最后改的"，不追踪具体改了什么字段
+                          （完整的逐字段修改历史快照被讨论时否决了，成本太高）。
+                          e.lastEditedBy 从创建以来没被改过时是undefined，这行天然
+                          不显示，不需要额外判断 */}
+                      {editor && (
+                        <div className="text-[10.5px] text-muted/80 mt-0.5 truncate">
+                          {t('ledger.lastEditedBy', { name: editor.displayName, time: relativeTime(e.updatedAt, now, t) })}
+                        </div>
                       )}
                       {view === 'mine' && !isPersonal && (
                         <div className="text-[11px] text-plan mt-0.5">

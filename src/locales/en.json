@@ -423,6 +423,7 @@
     "paidBySummary_other": "{{name}} paid · split {{count}} ways",
     "personalBadge": "Personal",
     "recordedBy": "Logged by {{name}}",
+    "lastEditedBy": "Last edited by {{name}} · {{time}}",
     "yourShareLabel": "Your share",
     "yourShareNotApplicable": "— you paid, not split to yourself",
     "emptyMine": "Nothing here involves you yet",

@@ -410,6 +410,7 @@
     "paidBySummary_other": "{{name}}垫付 · {{count}}人分摊",
     "personalBadge": "个人开销",
     "recordedBy": "由 {{name}} 记录",
+    "lastEditedBy": "最后由 {{name}} 修改于 {{time}}",
     "yourShareLabel": "你的份额",
     "yourShareNotApplicable": "—（你垫付，不分摊给自己）",
     "emptyMine": "还没有跟你相关的账目",

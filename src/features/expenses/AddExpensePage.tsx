@@ -438,6 +438,7 @@ export function AddExpensePage({
         daySpreadMode,
         rateSpread,
         itemizedFeePercent: itemizedFeePercentForSave,
+        lastEditedBy: currentMemberId,
         updatedAt: Date.now(),
       })
     } else {

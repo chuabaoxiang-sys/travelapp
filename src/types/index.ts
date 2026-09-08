@@ -241,6 +241,10 @@ export interface Expense {
   // （比如10表示10%）。只是给编辑页回显用的快照，真正的每人份额已经算进
   // ExpenseSplit了，这个字段不参与任何结算计算
   itemizedFeePercent?: number | null
+  // 谁最后编辑过这笔账目——null/undefined表示从创建以来没被改过（跟recordedBy
+  // 一样是"谁"，不是"改了什么"；轻量版的变更归属，讨论时明确选了这个而不是
+  // 完整的逐字段修改历史快照，成本低很多）
+  lastEditedBy?: string | null
   createdAt: number
   updatedAt: number
 }
