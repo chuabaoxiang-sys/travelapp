@@ -48,7 +48,7 @@ export default defineConfig({
         id: '/',
         name: '旅记 · TripJournal',
         short_name: '旅记',
-        description: '家庭旅行行程与账目记录',
+        description: '结伴旅行的行程与账目记录',
         lang: 'zh-CN',
         start_url: '/',
         display: 'standalone',

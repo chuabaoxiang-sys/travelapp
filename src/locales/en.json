@@ -320,7 +320,7 @@
   "inviteCode": {
     "title": "Invite a member",
     "close": "Close",
-    "description": "Send this invite code to the family or friend you want to add — they enter their email and this code on the login screen to join your group themselves, no manual setup needed on our end.",
+    "description": "Send this invite code to whoever you're traveling with — they enter their email and this code on the login screen to join your group themselves, no manual setup needed on our end.",
     "loading": "Loading…",
     "loadError": "Couldn't load the invite code — try again shortly",
     "codeLabel": "Group invite code",
@@ -330,7 +330,7 @@
     "regenerateConfirmTitle": "Regenerate the invite code?",
     "regenerateConfirmMessage": "The old code stops working immediately, even copies you already sent out — you'll need to send everyone the new one.",
     "regenerateConfirm": "Regenerate",
-    "shareMessage": "You're invited to join \"TripJournal\" — the tool our family uses to track trips and expenses.\nOpen {{origin}}\nTap \"{{buttonLabel}}\", then enter your email + this code to join:\n\n{{code}}\n\n(Step-by-step guide: {{origin}}/join-guide.html)"
+    "shareMessage": "You're invited to join \"TripJournal\" — the tool we use to track trips and expenses together.\nOpen {{origin}}\nTap \"{{buttonLabel}}\", then enter your email + this code to join:\n\n{{code}}\n\n(Step-by-step guide: {{origin}}/join-guide.html)"
   },
   "wishlist": {
     "title": "Saved places",
@@ -608,7 +608,7 @@
     "retryingNormally": "Retrying normally",
     "amountLabel": "Amount {{amount}}",
     "discardConfirmTitle": "Discard this record?",
-    "discardConfirmMessage": "This won't delete the data on your phone — but this change will stop syncing to other devices or family members, and won't be retried again. Discard it?",
+    "discardConfirmMessage": "This won't delete the data on your phone — but this change will stop syncing to other devices or teammates, and won't be retried again. Discard it?",
     "discardConfirm": "Discard",
     "dependencyWaiting": "This depends on another record that hasn't synced yet — once that one's done, this will automatically retry. No need to do anything.",
     "tables": {
@@ -710,7 +710,7 @@
       "footer": "RECORDED WITH {{brand}}"
     },
     "collage": {
-      "eyebrow": "F A M I L Y   T R I P",
+      "eyebrow": "T R A V E L   R E C O R D",
       "day": "Day {{day}}"
     },
     "journal": {
@@ -731,20 +731,20 @@
       "footer": "POWERED BY {{brand}}"
     },
     "gazette": {
-      "editionLabel": "F A M I L Y   E D I T I O N",
+      "editionLabel": "T R A V E L   E D I T I O N",
       "byline": "B Y   T R I P J O U R N A L",
       "masthead": "TRAVEL GAZETTE",
       "expenseSectionTitle": "Final Tally"
     },
     "colorBlock": {
-      "eyebrow": "Our Family Trip"
+      "eyebrow": "Our Trip Together"
     },
     "common": {
       "totalExpenseLabel": "Total spent",
       "totalSpentCasual": "This trip cost",
       "footerShort": "Recorded with {{brand}}",
-      "footerFamily": "A family trip recorded with {{brand}} — itinerary and ledger in one",
-      "footerFamilyShort": "A family trip recorded with {{brand}}"
+      "footerFamily": "A trip recorded with {{brand}} — itinerary and ledger in one",
+      "footerFamilyShort": "A trip recorded with {{brand}}"
     }
   },
   "feedback": {
@@ -848,7 +848,7 @@
     "title": "This email hasn't joined a group yet",
     "subtitle": "You can log in with a different email, or skip waiting for an invite and create a new group yourself.",
     "switchEmail": "Log in with a different email",
-    "namePrompt": "Give your group a name (e.g. \"Our Family Trips\") — you'll be its first member once it's created.",
+    "namePrompt": "Give your group a name (e.g. \"Weekend Wanderers\") — you'll be its first member once it's created.",
     "namePlaceholder": "Group name",
     "creating": "Creating…",
     "createGroup": "Create group",
@@ -871,7 +871,7 @@
     "deleteConfirmMessage": "This also deletes every itinerary item and expense under it — this can't be undone.",
     "form": {
       "namePlaceholder": "Trip name",
-      "nameHint": "e.g. \"2026 Kansai Family Trip\"",
+      "nameHint": "e.g. \"2026 Kansai Group Trip\"",
       "startDate": "Departure date",
       "endDate": "Return date",
       "dateError": "Return date can't be before the departure date",

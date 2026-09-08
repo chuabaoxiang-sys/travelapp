@@ -283,7 +283,7 @@
     "brand": "旅记 · TripJournal",
     "title": "你是谁？",
     "subtitle": "选择你的名字，之后记的账都会算在这个身份下（暂不需要密码）",
-    "addPlaceholder": "添加新家庭成员",
+    "addPlaceholder": "添加新成员",
     "addButton": "添加"
   },
   "identitySwitcher": {
@@ -293,7 +293,7 @@
     "delete": "删除",
     "restore": "恢复",
     "namePlaceholder": "姓名",
-    "addMember": "添加家庭成员",
+    "addMember": "添加成员",
     "inviteMember": "邀请新成员加入团队",
     "collapseInactive": "收起已停用",
     "inactiveCount": "已停用的成员（{{count}}）",
@@ -310,7 +310,7 @@
   "inviteCode": {
     "title": "邀请新成员",
     "close": "关闭",
-    "description": "把下面这串邀请码发给想邀请的家人朋友，对方在登录页输入自己的邮箱 + 这串码，就能自己加入你的团队，不用再找我们手动开通。",
+    "description": "把下面这串邀请码发给想邀请的旅伴朋友，对方在登录页输入自己的邮箱 + 这串码，就能自己加入你的团队，不用再找我们手动开通。",
     "loading": "加载中…",
     "loadError": "拿不到邀请码，请稍后重试",
     "codeLabel": "团队邀请码",
@@ -320,7 +320,7 @@
     "regenerateConfirmTitle": "重新生成邀请码？",
     "regenerateConfirmMessage": "旧邀请码立刻失效，已经发出去的也不能用了，得把新码重新发给对方。",
     "regenerateConfirm": "重新生成",
-    "shareMessage": "邀请你加入\"旅记\"——我们家用来记行程和账目的小工具\n打开 {{origin}}\n点\"{{buttonLabel}}\"，填你的邮箱 + 下面这串邀请码就能加入：\n\n{{code}}\n\n（一步步图文教程：{{origin}}/join-guide.html）"
+    "shareMessage": "邀请你加入\"旅记\"——一起出行记行程和账目的小工具\n打开 {{origin}}\n点\"{{buttonLabel}}\"，填你的邮箱 + 下面这串邀请码就能加入：\n\n{{code}}\n\n（一步步图文教程：{{origin}}/join-guide.html）"
   },
   "wishlist": {
     "title": "想去的地点",
@@ -589,12 +589,12 @@
     "retryingNormally": "正常重试中",
     "amountLabel": "金额 {{amount}}",
     "discardConfirmTitle": "放弃同步这条记录？",
-    "discardConfirmMessage": "本地这条数据不会被删除，还在你手机上——但这次改动以后不会再同步给其他设备/家人，也不会再重试。确定要放弃吗？",
+    "discardConfirmMessage": "本地这条数据不会被删除，还在你手机上——但这次改动以后不会再同步给其他设备/团队成员，也不会再重试。确定要放弃吗？",
     "discardConfirm": "放弃同步",
     "dependencyWaiting": "这条数据依赖的另一条记录还没同步成功，等它同步好之后这条会自动跟着重试，不用手动处理",
     "tables": {
       "trips": "行程",
-      "members": "家庭成员",
+      "members": "成员",
       "tripMembers": "行程成员",
       "itineraryDays": "行程日期",
       "itineraryItems": "行程项",
@@ -678,7 +678,7 @@
       "statement": "旅程结算单",
       "departure-board": "出发信息板",
       "gazette": "旅行纪事报",
-      "color-block": "亲子色块",
+      "color-block": "撞色简约风",
       "glass": "夜航玻璃"
     }
   },
@@ -691,7 +691,7 @@
       "footer": "RECORDED WITH {{brand}}"
     },
     "collage": {
-      "eyebrow": "家 族 旅 行 记 录",
+      "eyebrow": "旅 行 记 录",
       "day": "第 {{day}} 天"
     },
     "journal": {
@@ -712,20 +712,20 @@
       "footer": "POWERED BY {{brand}}"
     },
     "gazette": {
-      "editionLabel": "家 庭 版",
+      "editionLabel": "旅 行 版",
       "byline": "旅 记 出 品",
       "masthead": "旅行纪事",
       "expenseSectionTitle": "本次开支决算"
     },
     "colorBlock": {
-      "eyebrow": "我们一家的旅行"
+      "eyebrow": "这一趟，一起出发"
     },
     "common": {
       "totalExpenseLabel": "全程总花费",
       "totalSpentCasual": "这趟一共花了",
       "footerShort": "用「{{brand}}」记录 · 分享",
-      "footerFamily": "用「{{brand}}」记录的家庭旅行 · 行程+账本一体化",
-      "footerFamilyShort": "用「{{brand}}」记录的家庭旅行"
+      "footerFamily": "用「{{brand}}」记录的这趟旅行 · 行程+账本一体化",
+      "footerFamilyShort": "用「{{brand}}」记录的这趟旅行"
     }
   },
   "feedback": {
@@ -822,7 +822,7 @@
     "title": "这个邮箱还没加入团队",
     "subtitle": "可以换一个邮箱重新登录，或者不等被邀请，直接自己建一个新团队。",
     "switchEmail": "换个邮箱重新登录",
-    "namePrompt": "给团队起个名字（比如「陈家旅行团」），建好之后你就是里面第一个成员。",
+    "namePrompt": "给团队起个名字（比如「五人穷游小队」），建好之后你就是里面第一个成员。",
     "namePlaceholder": "团队名",
     "creating": "创建中…",
     "createGroup": "创建团队",
@@ -845,7 +845,7 @@
     "deleteConfirmMessage": "这会同时删除它名下所有的行程安排和账目记录，无法恢复。",
     "form": {
       "namePlaceholder": "行程名称",
-      "nameHint": "例如「2026日本关西家族游」",
+      "nameHint": "例如「2026关西五人行」",
       "startDate": "出发日期",
       "endDate": "返程日期",
       "dateError": "返程日期不能早于出发日期",
