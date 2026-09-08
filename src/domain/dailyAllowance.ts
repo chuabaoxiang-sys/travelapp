@@ -16,9 +16,9 @@ import { daysInclusive } from '../lib/dates'
 
 export type AllowanceState =
   // 正常：今天还能花多少
-  | { kind: 'daily-remaining'; remaining: number; allowance: number; todaySpent: number; daysLeft: number }
+  | { kind: 'daily-remaining'; remaining: number; allowance: number; todaySpent: number; daysLeft: number; budget: number; total: number }
   // 今天的额度花超了（但整趟预算还没超）
-  | { kind: 'daily-over'; over: number; allowance: number; todaySpent: number }
+  | { kind: 'daily-over'; over: number; allowance: number; todaySpent: number; budget: number; total: number }
   // 整趟预算已经超了——这时候再算"今天还能花"是自欺欺人，直接说全局
   | { kind: 'budget-over'; over: number; total: number; budget: number }
   // 没设预算：没有上限可参照，但仍然给一个"会随记账变化"的数字
@@ -82,7 +82,7 @@ export function resolveAllowance(input: AllowanceInput): AllowanceState {
   const allowance = round2((budget - spentBeforeToday) / Math.max(1, daysLeft))
 
   if (todaySpent > allowance) {
-    return { kind: 'daily-over', over: round2(todaySpent - allowance), allowance, todaySpent: round2(todaySpent) }
+    return { kind: 'daily-over', over: round2(todaySpent - allowance), allowance, todaySpent: round2(todaySpent), budget, total: round2(total) }
   }
 
   return {
@@ -91,5 +91,7 @@ export function resolveAllowance(input: AllowanceInput): AllowanceState {
     allowance,
     todaySpent: round2(todaySpent),
     daysLeft,
+    budget,
+    total: round2(total),
   }
 }

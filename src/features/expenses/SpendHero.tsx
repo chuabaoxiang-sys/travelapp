@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { heroRawValue, type AllowanceState } from '../../domain/dailyAllowance'
@@ -54,17 +54,23 @@ export function SpendHero({
   let big = true // 大数字用 spend 橙；退化状态用纸色，因为它只是陈述事实，不是可行动的额度
   let progress: number | null = null
   let cta = false
+  // 这两个状态在"今天"这个视角之外，完全看不出这趟整体还剩多少——核实过#22后
+  // 补的第二行小字，只在这两个状态出现（其余状态本来就已经是整趟视角，或者
+  // 压根没有预算可言）
+  let tripRemaining: number | null = null
 
   switch (state.kind) {
     case 'daily-remaining':
       label = t('spendHero.dailyRemaining.label')
       sub = t('spendHero.dailyRemaining.sub', { allowance: money(state.allowance), spent: money(state.todaySpent) })
       progress = state.allowance > 0 ? (state.todaySpent / state.allowance) * 100 : 0
+      tripRemaining = state.budget - state.total
       break
     case 'daily-over':
       label = t('spendHero.dailyOver.label')
       sub = t('spendHero.dailyOver.sub', { spent: money(state.todaySpent), allowance: money(state.allowance) })
       progress = 100
+      tripRemaining = state.budget - state.total
       break
     case 'budget-over':
       label = t('spendHero.budgetOver.label')
@@ -101,6 +107,15 @@ export function SpendHero({
         {value}
       </div>
       <div className="mt-2 text-[11px] text-on-dark/50">{sub}</div>
+      {tripRemaining !== null && (
+        <div className="mt-1 text-[11px] text-on-dark/75">
+          <Trans
+            i18nKey="spendHero.tripRemaining"
+            values={{ remaining: money(tripRemaining) }}
+            components={{ b: <span className="font-semibold text-spend" /> }}
+          />
+        </div>
+      )}
       {progress !== null && bar(progress, entered)}
       {cta && onSetBudget && (
         <button onClick={onSetBudget} className="mt-2.5 text-[11px] text-plan-on-dark">

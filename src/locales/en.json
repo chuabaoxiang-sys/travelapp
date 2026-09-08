@@ -459,6 +459,7 @@
       "subWithBudget": "Budget {{budget}} · {{remaining}} left",
       "subNoBudget": "No budget set yet"
     },
+    "tripRemaining": "<b>{{remaining}}</b> left for the trip",
     "setBudgetCta": "Set a budget to see your daily allowance ›"
   },
   "tripHeader": {

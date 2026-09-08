@@ -446,6 +446,7 @@
       "subWithBudget": "预算 {{budget}} · 还剩 {{remaining}}",
       "subNoBudget": "还没设预算"
     },
+    "tripRemaining": "这趟一共还剩 <b>{{remaining}}</b>",
     "setBudgetCta": "设个预算，就能看到每天还能花多少 ›"
   },
   "tripHeader": {

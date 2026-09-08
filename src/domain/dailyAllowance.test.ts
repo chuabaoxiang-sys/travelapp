@@ -23,6 +23,9 @@ describe('resolveAllowance', () => {
     expect(s.daysLeft).toBe(3)
     expect(s.allowance).toBeCloseTo(1033.33, 2)
     expect(s.remaining).toBeCloseTo(933.33, 2)
+    // 整趟视角的字段也要在，SpendHero用它们算"这趟一共还剩"
+    expect(s.budget).toBe(5000)
+    expect(s.total).toBe(2000)
   })
 
   it('今天的消费不会把今天的额度本身压低——否则同一笔钱等于扣两次', () => {
@@ -46,6 +49,8 @@ describe('resolveAllowance', () => {
     expect(s.kind).toBe('daily-over')
     if (s.kind !== 'daily-over') return
     expect(s.over).toBeGreaterThan(0)
+    expect(s.budget).toBe(5000)
+    expect(s.total).toBe(3000)
   })
 
   it('整趟预算超了，优先报全局，不再算每日额度', () => {
