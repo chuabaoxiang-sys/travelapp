@@ -159,19 +159,28 @@ export function LedgerTab({
     return splits.filter((s) => s.expenseId === expenseId).length
   }
 
+  // "简单模式"渐进式复杂度——一个从没记过账的新团队，第一次打开这个标签不该
+  // 同时看到汇率簿/结算/预算/分类图这几个进阶概念，等对应场景真的出现了
+  // 才自然露出来，不是靠一个开关手动切换，是数据本身决定要不要展示
+  const hasForeignCurrencyUsage = expenses.some((e) => e.expenseCurrency !== trip.homeCurrency)
+  const hasMultiPersonSplit = expenses.some((e) => splitCountOf(e.id) >= 2)
+  const hasEnoughForBreakdown = expenses.length >= 3
+
   return (
     <div className="h-full flex flex-col relative">
       <div className="px-5 pt-3 pb-3.5 flex-shrink-0 flex flex-col gap-3.5">
         <div className="flex items-center justify-between">
           <span className="font-serif-sc text-sm font-semibold">{t('ledger.title')}</span>
-          <button
-            onClick={() => { setRateBookOpen(true); markHintSeen(currentMemberId, 'rateBook') }}
-            className="relative w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-plan"
-            title={t('ledger.rateBookTitle')}
-          >
-            <CircleDollarSign className="w-[15px] h-[15px]" strokeWidth={1.8} />
-            <DiscoveryDot memberId={currentMemberId} hintKey="rateBook" />
-          </button>
+          {hasForeignCurrencyUsage && (
+            <button
+              onClick={() => { setRateBookOpen(true); markHintSeen(currentMemberId, 'rateBook') }}
+              className="relative w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-plan"
+              title={t('ledger.rateBookTitle')}
+            >
+              <CircleDollarSign className="w-[15px] h-[15px]" strokeWidth={1.8} />
+              <DiscoveryDot memberId={currentMemberId} hintKey="rateBook" />
+            </button>
+          )}
         </div>
 
         <div className="flex border border-line rounded-xl overflow-hidden">
@@ -189,13 +198,15 @@ export function LedgerTab({
           >
             {t('ledger.tabs.mine')}
           </button>
-          <button
-            type="button"
-            onClick={() => setView('settle')}
-            className={`flex-1 py-1.5 text-[12px] ${view === 'settle' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
-          >
-            {t('ledger.tabs.settle')}
-          </button>
+          {hasMultiPersonSplit && (
+            <button
+              type="button"
+              onClick={() => setView('settle')}
+              className={`flex-1 py-1.5 text-[12px] ${view === 'settle' ? 'bg-ink text-paper font-medium' : 'text-muted'}`}
+            >
+              {t('ledger.tabs.settle')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -220,16 +231,21 @@ export function LedgerTab({
       {view === 'team' ? (
         <div key="team" className="card-swap flex flex-col gap-3.5">
           <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} />
-          <SpendBreakdownCard
-            expenses={expenses}
-            categories={categories}
-            dayAllocations={dayAllocations}
-            todayISO={todayISO}
-            currency={currencyLabel}
-          />
+          {hasEnoughForBreakdown && (
+            <SpendBreakdownCard
+              expenses={expenses}
+              categories={categories}
+              dayAllocations={dayAllocations}
+              todayISO={todayISO}
+              currency={currencyLabel}
+            />
+          )}
           {/* 预算不再是独立tab，降级成这里的一个次级入口——它本来就是"花了多少"
               的参照系，跟账目列表放在一起看才有意义，改总预算/加分类预算的表单
-              逻辑完全没动，只是换了个容器（见 BudgetSheet） */}
+              逻辑完全没动，只是换了个容器（见 BudgetSheet）。这个入口不跟"简单
+              模式"的记满3笔账规则挂钩——这是整个APP里唯一能设预算的地方（旧的
+              独立"预算"标签页早就没在路由里了），出发前想先设好预算这种真实
+              场景不能被"记满3笔才出现"的规则挡住 */}
           <button
             onClick={() => setBudgetOpen(true)}
             className="w-full flex items-center gap-3 rounded-2xl border border-line bg-card px-3.5 py-2.5 text-left"
