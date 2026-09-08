@@ -578,6 +578,9 @@
     "shareOn": "Read-only sharing is on",
     "settingsArrow": "Settings ›",
     "otherSection": "Other",
+    "subscription": "Pro",
+    "subscriptionDesc": "One-time unlock, yours for good",
+    "subscriptionArrow": "View ›",
     "syncDetail": "Sync details",
     "syncViewArrow": "View ›",
     "syncAllSynced": "Everything's synced",
@@ -595,6 +598,18 @@
     "currentVersion": "Current version {{version}}",
     "refreshing": "Refreshing…",
     "tapToRefresh": "Tap to refresh"
+  },
+  "subscription": {
+    "title": "Pro",
+    "close": "Close",
+    "description": "Unlock Pro with a one-time payment — no subscription, yours for good.",
+    "loading": "Loading…",
+    "loadError": "Couldn't load — try again in a moment",
+    "statusFree": "Not unlocked",
+    "statusActive": "Pro unlocked",
+    "purchasedOn": "Unlocked {{date}}",
+    "unlock": "Unlock Pro · RM99",
+    "redirecting": "Redirecting…"
   },
   "syncDetail": {
     "title": "Sync details",

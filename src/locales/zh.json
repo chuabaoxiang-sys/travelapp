@@ -562,6 +562,9 @@
     "shareOn": "只读分享链接已开启",
     "settingsArrow": "设置 ›",
     "otherSection": "更多",
+    "subscription": "Pro",
+    "subscriptionDesc": "一次性解锁，永久使用",
+    "subscriptionArrow": "查看 ›",
     "syncDetail": "同步详情",
     "syncViewArrow": "查看 ›",
     "syncAllSynced": "全部已同步",
@@ -577,6 +580,18 @@
     "currentVersion": "当前版本 {{version}}",
     "refreshing": "刷新中…",
     "tapToRefresh": "点击刷新"
+  },
+  "subscription": {
+    "title": "Pro",
+    "close": "关闭",
+    "description": "一次性解锁 Pro，没有月费，买断永久使用",
+    "loading": "加载中…",
+    "loadError": "加载失败，稍后再试",
+    "statusFree": "还没解锁",
+    "statusActive": "已解锁 Pro",
+    "purchasedOn": "{{date}} 解锁",
+    "unlock": "解锁 Pro · RM99",
+    "redirecting": "跳转中…"
   },
   "syncDetail": {
     "title": "同步详情",

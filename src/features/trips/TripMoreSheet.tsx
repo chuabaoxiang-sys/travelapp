@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { X, Link2, RefreshCw, BookOpen, ListChecks, MoonStar, Languages } from 'lucide-react'
+import { X, Link2, RefreshCw, BookOpen, ListChecks, MoonStar, Languages, Crown } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { shareReadyFile, downloadFile } from '../../lib/share'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -24,6 +24,7 @@ export function TripMoreSheet({
   onOpenShareSettings,
   onOpenSyncDetail,
   onOpenTutorials,
+  onOpenSubscription,
 }: {
   trip: Trip
   currentMemberId: string
@@ -32,6 +33,7 @@ export function TripMoreSheet({
   onOpenShareSettings: () => void
   onOpenSyncDetail: () => void
   onOpenTutorials: () => void
+  onOpenSubscription: () => void
 }) {
   const { t } = useTranslation()
 
@@ -276,11 +278,22 @@ export function TripMoreSheet({
 
         <div className="text-[10px] font-bold text-muted tracking-wide mt-4 mb-1.5">{t('more.otherSection')}</div>
 
+        <button onClick={onOpenSubscription} className="w-full flex items-center gap-2.5 py-2 text-left">
+          <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+            <Crown className="w-[15px] h-[15px]" strokeWidth={1.8} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[12px] font-medium">{t('more.subscription')}</div>
+            <div className="text-[9.5px] text-muted mt-0.5">{t('more.subscriptionDesc')}</div>
+          </div>
+          <span className="text-[10.5px] text-plan flex-shrink-0">{t('more.subscriptionArrow')}</span>
+        </button>
+
         {/* "旅程回顾"和"行程动态"这两项搬进了「概览」tab——"回家后"形态就是旅程回顾的
             内容，"旅途中"形态里"家里刚才"是行程动态的精简版（带"查看全部"回到完整列表）。
             两份数据只留一个入口，不然改一处容易忘改另一处 */}
 
-        <button onClick={onOpenSyncDetail} className="w-full flex items-center gap-2.5 py-2 text-left">
+        <button onClick={onOpenSyncDetail} className="w-full flex items-center gap-2.5 py-2 border-t border-line text-left">
           <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
             <ListChecks className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>

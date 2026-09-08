@@ -16,6 +16,7 @@ import { IdentitySwitcher } from '../members/IdentitySwitcher'
 import { DiscoveryDot } from '../../components/DiscoveryDot'
 import { markHintSeen } from '../../domain/discoveryHints'
 import { InviteCodeSheet } from '../members/InviteCodeSheet'
+import { SubscriptionSheet } from '../billing/SubscriptionSheet'
 import { ShareStatusBadge } from './ShareStatusBadge'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { useLastSeen, countUnseen } from './useLastSeen'
@@ -51,6 +52,7 @@ export function TripShell({
   const [inviteCodeOpen, setInviteCodeOpen] = useState(false)
   const [syncDetailOpen, setSyncDetailOpen] = useState(false)
   const [tutorialsOpen, setTutorialsOpen] = useState(false)
+  const [subscriptionOpen, setSubscriptionOpen] = useState(false)
   const [itineraryFormOpen, setItineraryFormOpen] = useState(false)
   // FAB在"行程"tab上被接成"添加行程项"而不是"记一笔"——它没法直接调用ItineraryTab
   // 内部的setFormState，靠这个自增计数器当信号，ItineraryTab自己的effect监听变化
@@ -82,7 +84,14 @@ export function TripShell({
   // 反馈完全没反应"（真机反馈过）。合成一个之后，弹层之间切换时这个
   // hook 的 active 一直是 true，不发生卸载+装载，那个竞态从根上就不存在了
   const anySheetOpen =
-    sheetOpen || moreOpen || feedbackOpen || shareSettingsOpen || inviteCodeOpen || syncDetailOpen || tutorialsOpen
+    sheetOpen ||
+    moreOpen ||
+    feedbackOpen ||
+    shareSettingsOpen ||
+    inviteCodeOpen ||
+    syncDetailOpen ||
+    tutorialsOpen ||
+    subscriptionOpen
   function closeAllSheets() {
     setSheetOpen(false)
     setMoreOpen(false)
@@ -91,6 +100,7 @@ export function TripShell({
     setInviteCodeOpen(false)
     setSyncDetailOpen(false)
     setTutorialsOpen(false)
+    setSubscriptionOpen(false)
   }
   useBackDismiss(anySheetOpen, closeAllSheets)
 
@@ -184,6 +194,7 @@ export function TripShell({
             onOpenShareSettings={() => { setMoreOpen(false); setShareSettingsOpen(true) }}
             onOpenSyncDetail={() => { setMoreOpen(false); setSyncDetailOpen(true) }}
             onOpenTutorials={() => { setMoreOpen(false); setTutorialsOpen(true) }}
+            onOpenSubscription={() => { setMoreOpen(false); setSubscriptionOpen(true) }}
           />
         )}
 
@@ -200,6 +211,8 @@ export function TripShell({
         )}
 
         {inviteCodeOpen && <InviteCodeSheet onClose={() => setInviteCodeOpen(false)} />}
+
+        {subscriptionOpen && <SubscriptionSheet onClose={() => setSubscriptionOpen(false)} />}
       </div>
     </div>
   )
