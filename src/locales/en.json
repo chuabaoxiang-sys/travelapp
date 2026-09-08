@@ -1080,6 +1080,9 @@
     "expenseStatAll_one": "The family has tagged <b>{{count}}</b> expense in total, <b>{{worth}}</b> felt worth it",
     "expenseStatAll_other": "The family has tagged <b>{{count}}</b> expenses in total, <b>{{worth}}</b> of them felt worth it",
     "stampZoneTitle": "Tap to rate this expense",
+    "stampWorth": "YES!",
+    "stampNeutral": "MEH",
+    "stampRegret": "OOPS",
     "pickerTitle": "Was this expense worth it?",
     "clearMine": "Clear my tag"
   }
