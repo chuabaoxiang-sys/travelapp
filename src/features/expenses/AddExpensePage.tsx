@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Lock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Lock, Plus, X } from 'lucide-react'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
@@ -15,6 +15,7 @@ import { createRateBookEntry, recordRateUsage } from '../../domain/rates'
 import { saveExpenseSplits } from '../../domain/splits'
 import { saveDayAllocations, deleteDayAllocations } from '../../domain/dayAllocations'
 import { saveRateAllocations, deleteRateAllocations } from '../../domain/rateAllocations'
+import { saveItemizedExpense, deleteLineItems, getLineItemsForExpense, type LoadedLineItem } from '../../domain/lineItems'
 import { isExpenseSettled } from '../../domain/settlements'
 import { categoryColor } from '../../lib/categoryColors'
 import { round2 } from '../../lib/money'
@@ -153,16 +154,41 @@ export function AddExpensePage({
     spreadInitialized.current = true
   }, [initial, existingAllocations])
 
-  // "大家分摊/个人开销"用独立状态记录，而不是从 splitMemberIds.length 推导——
+  // "大家分摊/逐项拆账/个人开销"用独立状态记录，而不是从 splitMemberIds.length 推导——
   // 否则在"大家分摊"模式里手动取消勾选到只剩1人时，界面会突然塌成"个人开销"的样子，
   // 用户还在调整名单就被打断。splitType 是同步字段，不用等异步查询就能确定初始值
-  const [mode, setMode] = useState<'share' | 'personal'>(initial?.splitType === 'none' ? 'personal' : 'share')
+  const [mode, setMode] = useState<'share' | 'itemized' | 'personal'>(
+    initial?.splitType === 'none' ? 'personal' : initial?.splitType === 'itemized' ? 'itemized' : 'share',
+  )
   // "平均分摊/自定义金额"——现实中很多账目不是刚好平分的（比如有人点的菜更贵），
   // 加一种"自己填每个人多少"的分摊方式。customAmounts 用字符串存（输入框原始值），
   // 不用数字，避免用户输入"12."这种还没打完的中间状态被强行转成"12"
   const [splitMode, setSplitMode] = useState<'equal' | 'exact'>(initial?.splitType === 'exact' ? 'exact' : 'equal')
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({})
   const customInitialized = useRef(false)
+
+  // 逐项拆账——每个子项自己的名称+金额+勾选的成员。金额、服务费都用字符串存，
+  // 跟"自定义金额"那处同一个理由：避免"12."这种还没打完的中间态被强行转数字。
+  // 新记账默认一个空子项，不强迫用户先想好要拆几项
+  interface LocalLineItem { id: string; name: string; amount: string; memberIds: string[] }
+  const [lineItems, setLineItems] = useState<LocalLineItem[]>([{ id: crypto.randomUUID(), name: '', amount: '', memberIds: [] }])
+  const [feePercent, setFeePercent] = useState('0')
+  const itemizedInitialized = useRef(false)
+  const existingLineItems = useLiveQuery(
+    () => (initial?.splitType === 'itemized' ? getLineItemsForExpense(initial.id) : Promise.resolve<LoadedLineItem[]>([])),
+    [initial?.id, initial?.splitType],
+  ) ?? []
+
+  // 编辑一笔本来就是逐项拆账的账目时，回填它原本拆的每一项和各自勾选的成员，
+  // 跟"关联行程""跨天分摊"那几处一样要等异步查询真的到数据了再填
+  useEffect(() => {
+    if (itemizedInitialized.current) return
+    if (initial?.splitType !== 'itemized') { itemizedInitialized.current = true; return }
+    if (!existingLineItems.length) return
+    setLineItems(existingLineItems.map((li) => ({ id: li.id, name: li.name, amount: String(li.amount), memberIds: li.memberIds })))
+    setFeePercent(String(initial.itemizedFeePercent ?? 0))
+    itemizedInitialized.current = true
+  }, [initial, existingLineItems])
 
   // 分摊对象：新记账默认勾选全部成员（家庭场景下最常见的就是大家平摊）；
   // 编辑已有账目则要回填它原本的分摊名单。两边都依赖异步查询（members / expenseSplits），
@@ -257,6 +283,36 @@ export function AddExpensePage({
   const usingExactSplit = mode === 'share' && splitMode === 'exact' && splitMemberIds.length >= 2
   const customValid = !usingExactSplit || Math.abs(customDiff) < 0.01
 
+  // 逐项拆账的实时校验：所有子项金额（含服务费）加总必须刚好等于这笔账目的
+  // 总金额，每个填了金额的子项必须至少勾一个人——跟"自定义金额"那处是同一套
+  // "凑不齐/漏勾人"就不让保存的规矩，不重新发明一套提示语气
+  const usingItemized = mode === 'itemized'
+  const itemsAmountTotal = round2(lineItems.reduce((sum, it) => sum + (parseFloat(it.amount) || 0), 0))
+  const itemsFeeAmount = round2((itemsAmountTotal * (parseFloat(feePercent) || 0)) / 100)
+  const itemsGrandTotal = round2(itemsAmountTotal + itemsFeeAmount)
+  const itemizedDiff = round2(homeAmount - itemsGrandTotal)
+  const itemsMissingMembers = lineItems.some((it) => (parseFloat(it.amount) || 0) > 0 && it.memberIds.length === 0)
+  const itemizedValid = !usingItemized || (Math.abs(itemizedDiff) < 0.01 && !itemsMissingMembers && lineItems.length > 0)
+
+  function addLineItem() {
+    setLineItems((prev) => [...prev, { id: crypto.randomUUID(), name: '', amount: '', memberIds: [] }])
+  }
+  function removeLineItem(id: string) {
+    setLineItems((prev) => (prev.length > 1 ? prev.filter((it) => it.id !== id) : prev))
+  }
+  function updateLineItem(id: string, patch: Partial<LocalLineItem>) {
+    setLineItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
+  }
+  function toggleLineItemMember(id: string, memberId: string) {
+    setLineItems((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? { ...it, memberIds: it.memberIds.includes(memberId) ? it.memberIds.filter((m) => m !== memberId) : [...it.memberIds, memberId] }
+          : it,
+      ),
+    )
+  }
+
   // 跨天分摊：切到"每天自定义"、或者改了天数之后，都先按平均填一份当起点。
   // 天数一变总额就要重新分配，留着上一次手填的数字必然对不上账，不如重来一遍
   function seedEqualDayAmounts(dates: string[]) {
@@ -294,7 +350,7 @@ export function AddExpensePage({
   const [saved, setSaved] = useState(false)
 
   async function save() {
-    if (saving || !numAmount || !categoryId || !rateReady || !rateSplitValid || !customValid || !daysValid) return
+    if (saving || !numAmount || !categoryId || !rateReady || !rateSplitValid || !customValid || !itemizedValid || !daysValid) return
     setSaving(true)
     try {
       await doSave()
@@ -351,10 +407,13 @@ export function AddExpensePage({
     // 干脆没勾任何人（"个人开销"模式）才是真正的不分摊。之前用">= 2"判断会把
     // "只勾1个非付款人"也归到"不分摊"，导致这笔钱被错记成付款人自己的开销，
     // 分摊对象欠的钱凭空消失——也让编辑时这笔账会被误判回"个人开销"页签
-    const splitType: SplitType = splitMemberIds.length === 0 ? 'none' : usingExactSplit ? 'exact' : 'equal'
+    const splitType: SplitType = usingItemized
+      ? 'itemized'
+      : splitMemberIds.length === 0 ? 'none' : usingExactSplit ? 'exact' : 'equal'
     const customAmountsForSave = usingExactSplit
       ? Object.fromEntries(splitMemberIds.map((id) => [id, parseFloat(customAmounts[id] ?? '0') || 0]))
       : undefined
+    const itemizedFeePercentForSave = usingItemized ? (parseFloat(feePercent) || 0) : null
     const expenseId = initial?.id ?? crypto.randomUUID()
     const daySpreadMode: DaySpreadMode | null = spreadOpen && spreadDates.length ? dayMode : null
     // 阶段不再是用户手动选的——直接从选中的分类带出来。分类是"either"（比如
@@ -378,6 +437,7 @@ export function AddExpensePage({
         splitType,
         daySpreadMode,
         rateSpread,
+        itemizedFeePercent: itemizedFeePercentForSave,
         updatedAt: Date.now(),
       })
     } else {
@@ -405,12 +465,22 @@ export function AddExpensePage({
         splitType,
         daySpreadMode,
         rateSpread,
+        itemizedFeePercent: itemizedFeePercentForSave,
         createdAt: now,
         updatedAt: now,
       })
     }
 
-    await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIds, payer, customAmountsForSave)
+    if (usingItemized) {
+      const itemsForSave = lineItems
+        .filter((it) => (parseFloat(it.amount) || 0) > 0 && it.memberIds.length > 0)
+        .map((it) => ({ name: it.name.trim() || t('addExpense.itemizedPage.unnamedItem'), amount: parseFloat(it.amount) || 0, memberIds: it.memberIds }))
+      await saveItemizedExpense(expenseId, itemsForSave, parseFloat(feePercent) || 0)
+    } else {
+      // 从"逐项拆账"改成别的分摊方式时，把旧的子项明细清掉，不留占地方的残留数据
+      if (initial?.splitType === 'itemized') await deleteLineItems(expenseId)
+      await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIds, payer, customAmountsForSave)
+    }
 
     // 从"跨多天"改回"单日"时要把旧的每日分摊清掉，否则那几天的当日花费
     // 会一直算着一笔已经不该分摊过去的钱
@@ -468,14 +538,16 @@ export function AddExpensePage({
     )
   }
 
-  const canSave = !saving && !!numAmount && !!categoryId && rateReady && rateSplitValid && customValid && daysValid
+  const canSave = !saving && !!numAmount && !!categoryId && rateReady && rateSplitValid && customValid && itemizedValid && daysValid
 
   const payerName = members.find((m) => m.id === payer)?.displayName ?? t('addExpense.payerFallback')
-  const splitSummary = mode === 'personal'
-    ? t('addExpense.splitSummary.personal', { name: payerName })
-    : splitMemberIds.length === 0
-      ? t('addExpense.splitSummary.noOne')
-      : t(`addExpense.splitSummary.${splitMode === 'exact' && splitMemberIds.length >= 2 ? 'sharedExact' : 'sharedEqual'}`, { name: payerName, count: splitMemberIds.length })
+  const splitSummary = mode === 'itemized'
+    ? t('addExpense.splitSummary.itemized', { count: lineItems.length })
+    : mode === 'personal'
+      ? t('addExpense.splitSummary.personal', { name: payerName })
+      : splitMemberIds.length === 0
+        ? t('addExpense.splitSummary.noOne')
+        : t(`addExpense.splitSummary.${splitMode === 'exact' && splitMemberIds.length >= 2 ? 'sharedExact' : 'sharedEqual'}`, { name: payerName, count: splitMemberIds.length })
   const daysSummary = !spreadOpen || !spreadDates.length
     ? t('addExpense.daysSummary.single')
     : t(`addExpense.daysSummary.${dayMode === 'exact' ? 'multiExact' : 'multiEqual'}`, { count: spreadDates.length })
@@ -796,6 +868,13 @@ export function AddExpensePage({
               </button>
               <button
                 type="button"
+                onClick={() => setMode('itemized')}
+                className={`flex-1 py-2 text-[12.5px] ${mode === 'itemized' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
+              >
+                {t('addExpense.splitPage.itemized')}
+              </button>
+              <button
+                type="button"
                 onClick={() => { setMode('personal'); setSplitMemberIds([]) }}
                 className={`flex-1 py-2 text-[12.5px] ${mode === 'personal' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
               >
@@ -890,6 +969,77 @@ export function AddExpensePage({
                   </>
                 )}
               </>
+            ) : mode === 'itemized' ? (
+              <>
+                <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.itemizedPage.itemsLabel')}</div>
+                <div className="flex flex-col gap-2">
+                  {lineItems.map((item) => (
+                    <div key={item.id} className="bg-card border border-line rounded-xl px-3 py-2.5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          value={item.name}
+                          onChange={(e) => updateLineItem(item.id, { name: e.target.value })}
+                          placeholder={t('addExpense.itemizedPage.namePlaceholder')}
+                          className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[12.5px] outline-none focus:border-plan"
+                        />
+                        <input
+                          value={item.amount}
+                          onChange={(e) => updateLineItem(item.id, { amount: e.target.value })}
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          className="w-[84px] flex-shrink-0 text-right rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[12.5px] tabular outline-none focus:border-plan"
+                        />
+                        {lineItems.length > 1 && (
+                          <button type="button" onClick={() => removeLineItem(item.id)} className="text-faint flex-shrink-0" title={t('addExpense.itemizedPage.removeItem')}>
+                            <X className="w-4 h-4" strokeWidth={1.8} />
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {members.map((m) => {
+                          const checked = item.memberIds.includes(m.id)
+                          return (
+                            <button
+                              type="button"
+                              key={m.id}
+                              onClick={() => toggleLineItemMember(item.id, m.id)}
+                              className={`flex items-center gap-1 rounded-full pl-1 pr-2.5 py-1 text-[11.5px] border ${
+                                checked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-paper border-line text-soft'
+                              }`}
+                            >
+                              <Avatar member={m} size={16} />
+                              {m.displayName}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addLineItem}
+                  className="w-full flex items-center justify-center gap-1 rounded-xl border border-dashed border-line py-2 text-[12.5px] text-plan mt-2"
+                >
+                  <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+                  {t('addExpense.itemizedPage.addItem')}
+                </button>
+
+                <div className="flex items-center gap-3 bg-card border border-line rounded-xl px-3 py-2.5 mt-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12.5px]">{t('addExpense.itemizedPage.feeLabel')}</div>
+                    <div className="text-[10.5px] text-muted mt-0.5">{t('addExpense.itemizedPage.feeHint')}</div>
+                  </div>
+                  <input
+                    value={feePercent}
+                    onChange={(e) => setFeePercent(e.target.value)}
+                    inputMode="decimal"
+                    className="w-[56px] flex-shrink-0 text-right rounded-lg border border-line bg-paper px-2 py-1.5 text-[12.5px] tabular outline-none focus:border-plan"
+                  />
+                  <span className="text-[12.5px] text-muted flex-shrink-0">%</span>
+                </div>
+              </>
             ) : (
               <div className="flex items-center gap-2 mt-3 text-[12px] text-muted bg-card border border-dashed border-line rounded-xl px-3 py-2.5">
                 <Avatar member={members.find((m) => m.id === payer)} size={20} />
@@ -897,6 +1047,18 @@ export function AddExpensePage({
               </div>
             )}
           </div>
+
+          {usingItemized && (
+            <div className={`flex-shrink-0 px-4 py-2.5 border-t border-line text-[12px] ${itemizedValid ? 'text-positive' : 'text-negative'}`}>
+              {itemsMissingMembers
+                ? t('addExpense.itemizedPage.missingMembers')
+                : Math.abs(itemizedDiff) < 0.01
+                  ? t('addExpense.diff.done')
+                  : itemizedDiff > 0
+                    ? t('addExpense.diff.remaining', { amount: itemizedDiff.toFixed(2) })
+                    : t('addExpense.diff.over', { amount: Math.abs(itemizedDiff).toFixed(2) })}
+            </div>
+          )}
 
           {usingExactSplit && (
             <div className={`flex-shrink-0 px-4 py-2.5 border-t border-line text-[12px] ${customValid ? 'text-positive' : 'text-negative'}`}>

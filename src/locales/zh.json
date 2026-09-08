@@ -499,7 +499,9 @@
       "personal": "{{name}}的个人开销",
       "noOne": "未选择分摊对象",
       "sharedEqual": "{{name}}垫付 · {{count}}人平均分摊",
-      "sharedExact": "{{name}}垫付 · {{count}}人自定义分摊"
+      "sharedExact": "{{name}}垫付 · {{count}}人自定义分摊",
+      "itemized_one": "逐项拆账 · {{count}}项",
+      "itemized_other": "逐项拆账 · {{count}}项"
     },
     "daysSummary": {
       "single": "单日",
@@ -515,6 +517,7 @@
       "back": "返回",
       "title": "怎么分",
       "share": "大家分摊",
+      "itemized": "逐项拆账",
       "personal": "个人开销",
       "splitAmongLabel": "分摊给",
       "splitAmongEqualEach": "（各 {{amount}}）",
@@ -523,6 +526,16 @@
       "equalSplit": "平均分摊",
       "exactSplit": "自定义金额",
       "personalNote": "这笔算{{name}}自己的开销，不会出现在\"结算\"里。"
+    },
+    "itemizedPage": {
+      "itemsLabel": "这笔账目分成了几项",
+      "namePlaceholder": "子项名称",
+      "removeItem": "删除这一项",
+      "addItem": "添加一项",
+      "feeLabel": "服务费/税",
+      "feeHint": "按比例摊给以上每一项，不用单独为税费吵",
+      "missingMembers": "有子项还没勾选归属的人",
+      "unnamedItem": "未命名子项"
     },
     "daysPage": {
       "back": "返回",

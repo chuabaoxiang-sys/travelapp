@@ -50,7 +50,26 @@ export function resolveSplitShares(
   }))
 }
 
-// 保存一笔费用的分摊明细：先清掉这笔费用旧的 split 行（编辑场景），再按新的分摊方式重新写入
+// 落地一笔费用最终算出来的每人份额：先清掉这笔费用旧的 split 行（编辑场景），
+// 再写入新的一份。抽成独立函数是因为"怎么算出这份份额"现在有不止一条路径——
+// resolveSplitShares（整单按人数/比例/自定义分）和 domain/lineItems.ts 的
+// 逐项拆账计算——但"写进数据库、怎么同步"这段逻辑两条路径必须完全一致，
+// 不能各写一遍，否则容易出现"逐项拆账忘了走原子推送"这种同步坑
+export async function persistExpenseSplitShares(expenseId: string, shares: { memberId: string; shareAmount: number }[]) {
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) throw new Error('No household found')
+  await db.expenseSplits.where('expenseId').equals(expenseId).delete()
+  const rows = shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount }))
+  await db.expenseSplits.bulkAdd(rows)
+
+  // expenseSplits 不走通用的逐行同步 hook（见 db/dexie.ts 里 SYNCED_TABLES 的注释）——
+  // 这里手动打包成"这笔费用的完整分摊名单"一条 entry，pushOutbox 会整批原子推送，
+  // 不会再被数据库那道"总额必须等于费用总额"的延迟约束卡在中间状态
+  await enqueueOutbox('expenseSplits', expenseId, 'upsert', { expenseId, rows })
+}
+
+// 整单按人数/比例/自定义金额分——最常见的路径，直接调用 resolveSplitShares 算好
+// 份额再交给 persistExpenseSplitShares 落地
 export async function saveExpenseSplits(
   expenseId: string,
   homeAmount: number,
@@ -59,17 +78,8 @@ export async function saveExpenseSplits(
   payerId: string,
   customAmounts?: Record<string, number>,
 ) {
-  const householdId = await getCurrentHouseholdId()
-  if (!householdId) throw new Error('No household found')
-  await db.expenseSplits.where('expenseId').equals(expenseId).delete()
   const shares = resolveSplitShares(homeAmount, splitType, memberIds, payerId, customAmounts)
-  const rows = shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount }))
-  await db.expenseSplits.bulkAdd(rows)
-
-  // expenseSplits 不走通用的逐行同步 hook（见 db/dexie.ts 里 SYNCED_TABLES 的注释）——
-  // 这里手动打包成"这笔费用的完整分摊名单"一条 entry，pushOutbox 会整批原子推送，
-  // 不会再被数据库那道"总额必须等于费用总额"的延迟约束卡在中间状态
-  await enqueueOutbox('expenseSplits', expenseId, 'upsert', { expenseId, rows })
+  await persistExpenseSplitShares(expenseId, shares)
 }
 
 export interface PersonBalance {

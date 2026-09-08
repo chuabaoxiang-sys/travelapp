@@ -22,6 +22,8 @@ import type {
   DiscoveryHint,
   DaySatisfaction,
   ExpenseSatisfaction,
+  ExpenseLineItem,
+  ExpenseLineItemMember,
 } from '../types'
 
 // 会被同步到云端的表——本地写操作会自动记一条 outbox。expenseCategories 不算在内，
@@ -56,6 +58,8 @@ const SYNCED_TABLES = [
   'wishlistPlaceLinks',
   'daySatisfactions',
   'expenseSatisfactions',
+  'expenseLineItems',
+  'expenseLineItemMembers',
 ] as const
 
 export class TripJournalDB extends Dexie {
@@ -80,6 +84,8 @@ export class TripJournalDB extends Dexie {
   discoveryHints!: EntityTable<DiscoveryHint, 'id'>
   daySatisfactions!: EntityTable<DaySatisfaction, 'id'>
   expenseSatisfactions!: EntityTable<ExpenseSatisfaction, 'id'>
+  expenseLineItems!: EntityTable<ExpenseLineItem, 'id'>
+  expenseLineItemMembers!: EntityTable<ExpenseLineItemMember, 'id'>
 
   constructor() {
     super('trip-journal')
@@ -141,6 +147,14 @@ export class TripJournalDB extends Dexie {
     this.version(9).stores({
       daySatisfactions: 'id, tripId, dayId, memberId, [dayId+memberId]',
       expenseSatisfactions: 'id, tripId, expenseId, memberId, [expenseId+memberId]',
+    })
+    // 逐项拆账——一笔账目拆成好几个子项，子项对成员是多对多关系。这两张表只
+    // 负责回显编辑页，不参与结算计算（真正的每人份额算完之后照旧写进
+    // expenseSplits，见domain/lineItems.ts），所以能走通用的逐行同步hook，
+    // 不需要expenseSplits那种"整批原子推送"的特殊处理。全新的表，不影响已有数据
+    this.version(10).stores({
+      expenseLineItems: 'id, expenseId',
+      expenseLineItemMembers: 'id, lineItemId, memberId',
     })
     registerOutboxHooks(this)
   }

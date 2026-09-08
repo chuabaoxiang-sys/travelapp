@@ -10,8 +10,11 @@ export interface Household {
 export type ExpensePhase = 'pre_trip' | 'during_trip'
 export type CategoryPhase = 'pre_trip' | 'during_trip' | 'either'
 // 'exact'：每个人分摊多少钱由用户自己填，不强制平分——数据库的 split_type
-// 枚举从一开始就留了这个值（还有一个'percentage'，暂时没有对应功能，不实现）
-export type SplitType = 'none' | 'equal' | 'exact'
+// 枚举从一开始就留了这个值（还有一个'percentage'，暂时没有对应功能，不实现）。
+// 'itemized'：2026-09-08新增，见下面 ExpenseLineItem——这笔账拆成好几个子项，
+// 每个子项各自勾选归属，最终算出来的每人份额仍然写进 ExpenseSplit（跟'exact'
+// 一样），'itemized'只是个标记，告诉编辑页要用逐项拆账那套UI回显，不是'exact'
+export type SplitType = 'none' | 'equal' | 'exact' | 'itemized'
 
 // 跨天开销怎么摊到每一天：'equal' 平均分（除不尽的零头给第一天），
 // 'exact' 每天的金额由用户自己填。刻意跟 SplitType 用同一套词，
@@ -234,6 +237,10 @@ export interface Expense {
   // rateUsed 改存这笔账的加权平均汇率、homeAmount 改为 expenseRateAllocations 里
   // 各行加总——两者仍是给老代码看的快照，真正构成看 domain/rateAllocations.ts
   rateSpread?: boolean | null
+  // splitType='itemized'时才有意义——按比例摊给每个子项的服务费/税百分比
+  // （比如10表示10%）。只是给编辑页回显用的快照，真正的每人份额已经算进
+  // ExpenseSplit了，这个字段不参与任何结算计算
+  itemizedFeePercent?: number | null
   createdAt: number
   updatedAt: number
 }
@@ -244,6 +251,26 @@ export interface ExpenseSplit {
   expenseId: string
   memberId: string
   shareAmount: number
+}
+
+// 逐项拆账的子项——"这笔账目分成了几项"，每项自己的名称+金额，跟哪些成员
+// 有关系记在 ExpenseLineItemMember。这两张表只负责"回显编辑页"，不参与
+// 结算计算——真正的每人份额永远是算完之后写进 ExpenseSplit（见domain/
+// lineItems.ts），改这两张表不会影响任何已有的按笔结算/谁付了多少逻辑
+export interface ExpenseLineItem {
+  id: string
+  householdId: string
+  expenseId: string
+  name: string
+  amount: number
+  orderIndex: number
+}
+
+export interface ExpenseLineItemMember {
+  id: string
+  householdId: string
+  lineItemId: string
+  memberId: string
 }
 
 // "值/一般/后悔"——每个成员对同一天/同一笔账目各自独立打分，同一个

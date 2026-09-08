@@ -512,7 +512,9 @@
       "personal": "{{name}}'s personal expense",
       "noOne": "No one selected to split with",
       "sharedEqual": "{{name}} paid · split evenly among {{count}}",
-      "sharedExact": "{{name}} paid · custom split among {{count}}"
+      "sharedExact": "{{name}} paid · custom split among {{count}}",
+      "itemized_one": "Itemized · {{count}} item",
+      "itemized_other": "Itemized · {{count}} items"
     },
     "daysSummary": {
       "single": "Single day",
@@ -530,6 +532,7 @@
       "back": "Back",
       "title": "Split",
       "share": "Split with others",
+      "itemized": "Itemized",
       "personal": "Personal",
       "splitAmongLabel": "Split with",
       "splitAmongEqualEach": " ({{amount}} each)",
@@ -538,6 +541,16 @@
       "equalSplit": "Split evenly",
       "exactSplit": "Custom amounts",
       "personalNote": "This counts as {{name}}'s own expense — it won't show up in Settle."
+    },
+    "itemizedPage": {
+      "itemsLabel": "What did this expense break down into?",
+      "namePlaceholder": "Item name",
+      "removeItem": "Remove this item",
+      "addItem": "Add an item",
+      "feeLabel": "Service charge / tax",
+      "feeHint": "Split proportionally across every item above — no need to argue over the tax separately",
+      "missingMembers": "Some items still need at least one person checked",
+      "unnamedItem": "Unnamed item"
     },
     "daysPage": {
       "back": "Back",
