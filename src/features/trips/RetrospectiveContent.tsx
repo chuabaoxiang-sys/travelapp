@@ -4,6 +4,7 @@ import type { Trip } from '../../types'
 import { buildRetrospective, type TripRetrospective } from '../../domain/retrospective'
 import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
+import { useStaggerEntrance } from '../../hooks/useStaggerEntrance'
 import { MoodCurveCard } from '../satisfaction/MoodCurveCard'
 
 // 旅程回顾的内容本体，不含任何"这是一个可关闭弹层"的外壳——这一段现在是
@@ -44,18 +45,7 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
   // 这个tab是条件渲染，每次切回"概览"都是重新mount——挂载后下一帧触发一次
   // 进场动效就够，跟BeforeTrip那套双重RAF一致：等首帧真的画完（数字/占比条
   // 都还在"隐藏"状态），下一帧再翻转，CSS transition才有起点
-  const [entered, setEntered] = useState(false)
-  useEffect(() => {
-    let raf1 = 0
-    let raf2 = 0
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setEntered(true))
-    })
-    return () => {
-      cancelAnimationFrame(raf1)
-      cancelAnimationFrame(raf2)
-    }
-  }, [])
+  const { entered, enterClass, nextDelayMs, delayStyle } = useStaggerEntrance()
 
   // Hook不能在下面两个提前return之后才调用，所以放在这里、用data?.total ?? 0
   // 兜底——data还没查完时hook收到的是0，真实总额一到，会自然从0滚上去，
@@ -78,20 +68,10 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
     )
   }
 
-  // 几张卡片类型都不一样、没法像列表那样直接用index，用一个递增计数器给
-  // "实际渲染出来的第几块"错开时间——跳过没渲染的块，不留空档
-  let step = 0
-  function enterClass() {
-    return `transition-[opacity,transform] duration-300 ease-out ${entered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`
-  }
-  function enterDelay() {
-    return { transitionDelay: `${step++ * 90}ms` }
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {/* 主卡：整趟总花费 */}
-      <div className={`bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark ${enterClass()}`} style={enterDelay()}>
+      <div className={`bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark ${enterClass()}`} style={delayStyle(nextDelayMs())}>
         <div className="text-[11px] tracking-wider text-on-dark/55">{trip.name}</div>
         <div className="font-bold tracking-tight tabular text-[32px] leading-none mt-1.5">{money(animatedTotal)}</div>
         <div className="mt-2.5 text-[11px] text-on-dark/50 leading-relaxed">
@@ -105,7 +85,7 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
 
       {/* 还没结清——放在最前面，因为这是这个APP最不可替代的价值 */}
       {data.unsettledCount > 0 && (
-        <div className={`rounded-2xl border border-spend/60 bg-spend/[.06] px-3.5 py-3 ${enterClass()}`} style={enterDelay()}>
+        <div className={`rounded-2xl border border-spend/60 bg-spend/[.06] px-3.5 py-3 ${enterClass()}`} style={delayStyle(nextDelayMs())}>
           <div className="text-[13px] font-medium text-ink">
             {t('retrospective.unsettledCount', { count: data.unsettledCount })}
           </div>
@@ -115,14 +95,14 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
         </div>
       )}
 
-      <div className={enterClass()} style={enterDelay()}>
+      <div className={enterClass()} style={delayStyle(nextDelayMs())}>
         <MoodCurveCard satisfaction={data.satisfaction} />
       </div>
 
       {data.categories.length > 0 && (() => {
-        const sectionDelay = step++ * 90
+        const sectionDelay = nextDelayMs()
         return (
-          <div className={enterClass()} style={{ transitionDelay: `${sectionDelay}ms` }}>
+          <div className={enterClass()} style={delayStyle(sectionDelay)}>
             <div className="text-[11px] text-muted mb-2">{t('retrospective.whereItWent')}</div>
             <div className="flex flex-col gap-2.5">
               {data.categories.map((c, i) => (
@@ -145,7 +125,7 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
       })()}
 
       {data.topDay && (
-        <div className={`rounded-2xl border border-line bg-card px-3.5 py-2.5 flex items-center ${enterClass()}`} style={enterDelay()}>
+        <div className={`rounded-2xl border border-line bg-card px-3.5 py-2.5 flex items-center ${enterClass()}`} style={delayStyle(nextDelayMs())}>
           <span className="text-[12.5px]">{t('retrospective.priciestDay')}</span>
           <span className="ml-auto text-[12.5px] tabular">
             {data.topDay.date} · {money(data.topDay.total)}
@@ -154,9 +134,9 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
       )}
 
       {data.people.length > 0 && (() => {
-        const sectionDelay = step++ * 90
+        const sectionDelay = nextDelayMs()
         return (
-          <div className={enterClass()} style={{ transitionDelay: `${sectionDelay}ms` }}>
+          <div className={enterClass()} style={delayStyle(sectionDelay)}>
             <div className="text-[11px] text-muted mb-2">{t('retrospective.byPerson')}</div>
             <div className="flex flex-col gap-1.5">
               {data.people.map((p) => (

@@ -14,6 +14,7 @@ import { dateChipParts } from '../../lib/dateChip'
 import type { ResolvedLocale } from '../../lib/locale'
 import { relativeTime } from '../../lib/relativeTime'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
+import { useStaggerEntrance } from '../../hooks/useStaggerEntrance'
 import { Avatar } from '../../components/Avatar'
 import { SpendHero } from '../expenses/SpendHero'
 import { RetrospectiveContent } from './RetrospectiveContent'
@@ -126,18 +127,7 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
   // 动效就够，不用像列表内容变化那样费心判断"要不要重播"。双重RAF跟预算页
   // 那套一致：等首帧真的画完（倒计时数字/还没订/进度条都还在"隐藏"状态），
   // 下一帧再翻转，CSS transition/文字滚动才有起点
-  const [entered, setEntered] = useState(false)
-  useEffect(() => {
-    let raf1 = 0
-    let raf2 = 0
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setEntered(true))
-    })
-    return () => {
-      cancelAnimationFrame(raf1)
-      cancelAnimationFrame(raf2)
-    }
-  }, [])
+  const { entered } = useStaggerEntrance()
 
   const daysNumRef = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -326,29 +316,10 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
   const dayIndex = trip.startDate ? currentDayIndex(todayISO, trip.startDate) : null
 
   // 这个tab是条件渲染，每次切回"概览"都是重新mount——挂载后下一帧触发一次
-  // 进场动效就够，跟BeforeTrip/RetrospectiveContent那套双重RAF一致
-  const [entered, setEntered] = useState(false)
-  useEffect(() => {
-    let raf1 = 0
-    let raf2 = 0
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setEntered(true))
-    })
-    return () => {
-      cancelAnimationFrame(raf1)
-      cancelAnimationFrame(raf2)
-    }
-  }, [])
-
+  // 进场动效就够，跟BeforeTrip/RetrospectiveContent那套双重RAF一致。
   // 下面两组卡片（接下来/最近动态）用同一个递增计数器错开时间，不管哪组
   // 渲染的是真实列表还是"空状态"占位卡，都当一张卡算，连着往下错开
-  let step = 0
-  function enterClass() {
-    return `transition-[opacity,transform] duration-300 ease-out ${entered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`
-  }
-  function enterDelay() {
-    return { transitionDelay: `${step++ * 90}ms` }
-  }
+  const { entered, enterClass, nextDelayMs, delayStyle } = useStaggerEntrance()
 
   return (
     <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full flex flex-col gap-3.5">
@@ -367,7 +338,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
           <div className="flex flex-col gap-2">
             {upcoming.slice(0, 3).map((it) => (
               <Card key={it.id} tone="accent">
-                <div className={`flex items-center gap-2.5 ${enterClass()}`} style={enterDelay()}>
+                <div className={`flex items-center gap-2.5 ${enterClass()}`} style={delayStyle(nextDelayMs())}>
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium truncate">{it.title}</div>
                     {it.locationName && <div className="text-[10.5px] text-muted mt-0.5 truncate">{it.locationName}</div>}
@@ -379,7 +350,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
           </div>
         ) : (
           <Card>
-            <div className={`text-[12.5px] text-muted ${enterClass()}`} style={enterDelay()}>{t('overview.todayDone')}</div>
+            <div className={`text-[12.5px] text-muted ${enterClass()}`} style={delayStyle(nextDelayMs())}>{t('overview.todayDone')}</div>
           </Card>
         )}
       </div>
@@ -399,7 +370,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
               const author = en.authorId ? members.find((m) => m.id === en.authorId) : undefined
               return (
                 <Card key={en.id}>
-                  <div className={`flex items-start gap-2.5 ${enterClass()}`} style={enterDelay()}>
+                  <div className={`flex items-start gap-2.5 ${enterClass()}`} style={delayStyle(nextDelayMs())}>
                     <Avatar member={author} size={22} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -418,7 +389,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
           </div>
         ) : (
           <Card>
-            <div className={`text-[12.5px] text-muted ${enterClass()}`} style={enterDelay()}>{t('overview.emptyDuringTrip')}</div>
+            <div className={`text-[12.5px] text-muted ${enterClass()}`} style={delayStyle(nextDelayMs())}>{t('overview.emptyDuringTrip')}</div>
           </Card>
         )}
       </div>
