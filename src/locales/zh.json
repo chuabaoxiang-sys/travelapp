@@ -718,6 +718,12 @@
       "glass": "夜航玻璃"
     }
   },
+  "sharePage": {
+    "loading": "加载中…",
+    "linkBrokenTitle": "这个链接打不开",
+    "linkBrokenDesc": "可能是分享已经关闭，或者链接不对。跟分享的人确认一下。",
+    "noTemplate": "这个行程还没选好分享模板，请分享的人重新设置一下。"
+  },
   "shareTemplates": {
     "ticket": {
       "badge": "BOARDING · 旅程凭证",
