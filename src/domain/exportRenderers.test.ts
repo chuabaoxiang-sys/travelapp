@@ -83,7 +83,7 @@ describe('buildCsvFile', () => {
   it('English模式下表头翻译成英文，文件名后缀也跟着变', async () => {
     await i18n.changeLanguage('en')
     const file = buildCsvFile(makeBundle(), t)
-    expect(file.name).toContain('TripJournal-export')
+    expect(file.name).toContain('TripNotes-export')
     const lines = (await file.text()).split('\n')
     expect(lines[0]).toBe('Date,Type,Title,Location,Category,Amount,Currency,Converted (MYR),Paid by,Note')
   })

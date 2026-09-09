@@ -1,9 +1,9 @@
 ---
 name: supabase-migration-safety
-description: Use this whenever writing a new supabase/migrations/*.sql file for the 旅记/TripJournal app, or when the user wants to change the database schema, add a column, change RLS policies, or otherwise modify the Postgres structure this app relies on. Also trigger if the user asks to "migrate" data, backfill a column, or run SQL against either the test or production Supabase project. This app holds real family financial data in production — treat every schema change with the same care as the household-isolation migration that established this process.
+description: Use this whenever writing a new supabase/migrations/*.sql file for the 旅记/TripNotes app, or when the user wants to change the database schema, add a column, change RLS policies, or otherwise modify the Postgres structure this app relies on. Also trigger if the user asks to "migrate" data, backfill a column, or run SQL against either the test or production Supabase project. This app holds real family financial data in production — treat every schema change with the same care as the household-isolation migration that established this process.
 ---
 
-# Safe Supabase migrations for 旅记/TripJournal
+# Safe Supabase migrations for 旅记/TripNotes
 
 This project's database changes go through the user manually pasting SQL into Supabase's dashboard SQL Editor — never through an automated connection or a `service_role` key in running code. That's a deliberate, established principle (born from the multi-tenant isolation work): Claude generates exact SQL, explains what it does and why, and the user executes it themselves. Don't try to shortcut this by reaching for a database connection tool even if one is technically available — the user has been explicit that they want to see and run every statement that touches their real data.
 

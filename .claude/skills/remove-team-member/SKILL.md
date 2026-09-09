@@ -1,9 +1,9 @@
 ---
 name: remove-team-member
-description: Use this whenever the user wants to remove, kick out, revoke access for, or delete someone from a 旅记/TripJournal team — including phrases like "把X移除出我的Team", "取消他的访问权", "删除这个成员", "他不该再看到我们的账目", or just pasting an email and saying to take them out. Also use when someone is being moved to a different team, since that requires removing them from the current one first.
+description: Use this whenever the user wants to remove, kick out, revoke access for, or delete someone from a 旅记/TripNotes team — including phrases like "把X移除出我的Team", "取消他的访问权", "删除这个成员", "他不该再看到我们的账目", or just pasting an email and saying to take them out. Also use when someone is being moved to a different team, since that requires removing them from the current one first.
 ---
 
-# Removing someone from a 旅记/TripJournal team
+# Removing someone from a 旅记/TripNotes team
 
 The single most important thing to get right: **"removing someone" is two independent operations, and people usually only think of one of them.**
 

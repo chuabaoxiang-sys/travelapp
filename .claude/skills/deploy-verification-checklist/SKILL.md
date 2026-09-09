@@ -1,9 +1,9 @@
 ---
 name: deploy-verification-checklist
-description: Use this right after pushing to main / triggering a Vercel deploy for the 旅记/TripJournal app, or when the user asks whether a deploy went well, reports something broken right after a deploy, or says things like "部署好了吗" / "线上是不是有问题" / "刚上线的版本" / "手机上还是旧版本". Walks through the specific failure modes this project has actually hit, not generic deploy advice — don't skip it just because "it's probably fine."
+description: Use this right after pushing to main / triggering a Vercel deploy for the 旅记/TripNotes app, or when the user asks whether a deploy went well, reports something broken right after a deploy, or says things like "部署好了吗" / "线上是不是有问题" / "刚上线的版本" / "手机上还是旧版本". Walks through the specific failure modes this project has actually hit, not generic deploy advice — don't skip it just because "it's probably fine."
 ---
 
-# Post-deploy verification for 旅记/TripJournal
+# Post-deploy verification for 旅记/TripNotes
 
 Every item here corresponds to a failure this project actually hit in production, each of which looked fine in code review. Run through all of it, not just the parts that seem related to what changed — several cost nothing to check.
 

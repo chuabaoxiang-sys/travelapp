@@ -9,8 +9,8 @@
     "hoursAgo_other": "{{count}} hours ago",
     "daysAgo_one": "{{count}} day ago",
     "daysAgo_other": "{{count}} days ago",
-    "brand": "TripJournal",
-    "appName": "TripJournal"
+    "brand": "TripNotes",
+    "appName": "TripNotes"
   },
   "datePicker": {
     "placeholder": "Select date",
@@ -290,7 +290,7 @@
     "viewRouteTitle": "View route on map"
   },
   "memberGate": {
-    "brand": "TripJournal",
+    "brand": "TripNotes",
     "title": "Who are you?",
     "subtitle": "Pick your name — expenses you log will be counted under this name (no password needed for now)",
     "addPlaceholder": "Member's name",
@@ -330,7 +330,7 @@
     "regenerateConfirmTitle": "Regenerate the invite code?",
     "regenerateConfirmMessage": "The old code stops working immediately, even copies you already sent out — you'll need to send everyone the new one.",
     "regenerateConfirm": "Regenerate",
-    "shareMessage": "You're invited to join \"TripJournal\" — the tool we use to track trips and expenses together.\nOpen {{origin}}\nTap \"{{buttonLabel}}\", then enter your email + this code to join:\n\n{{code}}\n\n(Step-by-step guide: {{origin}}/join-guide.html)"
+    "shareMessage": "You're invited to join \"TripNotes\" — the tool we use to track trips and expenses together.\nOpen {{origin}}\nTap \"{{buttonLabel}}\", then enter your email + this code to join:\n\n{{code}}\n\n(Step-by-step guide: {{origin}}/join-guide.html)"
   },
   "wishlist": {
     "title": "Saved places",
@@ -587,7 +587,7 @@
     "jsonDesc": "JSON · for feeding an AI tool to write a trip recap or video script",
     "csvDesc": "CSV · flattened into a table, easy to import elsewhere",
     "shareFallbackNote": "Downloaded the file directly instead (sharing didn't open — reason: {{reason}})",
-    "shareTitle": "{{trip}} · TripJournal export",
+    "shareTitle": "{{trip}} · TripNotes export",
     "shareSettings": "Share settings",
     "shareOff": "Read-only sharing isn't on yet",
     "shareOn": "Read-only sharing is on",
@@ -956,20 +956,20 @@
     "hint": "Your home currency is already included — currencies you pick here show up as one-tap options when logging an expense, so you don't have to type them out"
   },
   "installPrompt": {
-    "title": "Add TripJournal to your home screen",
+    "title": "Add TripNotes to your home screen",
     "subtitle": "Opens like an app, works offline",
     "notNow": "Not now",
     "install": "Install",
     "close": "Close",
-    "iosNonSafariHint": "Only <b>Safari</b> can install TripJournal as a standalone app on iOS — this browser doesn't support it. Open this page in Safari instead.",
-    "iosSafariHint": "In Safari, tap the <b>Share</b> icon at the bottom, then \"Add to Home Screen\" — TripJournal will open like an app, with offline support"
+    "iosNonSafariHint": "Only <b>Safari</b> can install TripNotes as a standalone app on iOS — this browser doesn't support it. Open this page in Safari instead.",
+    "iosSafariHint": "In Safari, tap the <b>Share</b> icon at the bottom, then \"Add to Home Screen\" — TripNotes will open like an app, with offline support"
   },
   "export": {
     "unknownCategory": "Unknown",
     "unknownMember": "Unknown",
     "typeItinerary": "Itinerary",
     "typeExpense": "Expense",
-    "fileNameSuffix": "TripJournal-export",
+    "fileNameSuffix": "TripNotes-export",
     "colDate": "Date",
     "colType": "Type",
     "colTitle": "Title",

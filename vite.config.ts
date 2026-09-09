@@ -46,7 +46,7 @@ export default defineConfig({
       devOptions: { enabled: true },
       manifest: {
         id: '/',
-        name: '旅记 · TripJournal',
+        name: '旅记 · TripNotes',
         short_name: '旅记',
         description: '结伴旅行的行程与账目记录',
         lang: 'zh-CN',

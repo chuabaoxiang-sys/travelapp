@@ -1,9 +1,9 @@
 ---
 name: invite-team
-description: Use this whenever the user wants to invite someone (a new team, a tester, a friend/family member) to use the 旅记/TripJournal app, or mentions adding an email/team to household_member, granting someone access, or onboarding a new group. Trigger even if they just paste an email and a team name without spelling out the full request — that's the expected shorthand for this workflow.
+description: Use this whenever the user wants to invite someone (a new team, a tester, a friend/family member) to use the 旅记/TripNotes app, or mentions adding an email/team to household_member, granting someone access, or onboarding a new group. Trigger even if they just paste an email and a team name without spelling out the full request — that's the expected shorthand for this workflow.
 ---
 
-# Inviting someone into 旅记/TripJournal
+# Inviting someone into 旅记/TripNotes
 
 This app is multi-tenant: every team ("household") is isolated by Postgres RLS keyed on `household_id`. Login is per-email — the invitee gets a **6-digit code by email** and types it in; there are no passwords anywhere. Full background on the isolation design lives in `supabase/migrations/0004_household_isolation.sql`; you don't need to re-derive it here, just execute the invite.
 

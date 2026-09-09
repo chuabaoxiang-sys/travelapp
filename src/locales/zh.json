@@ -6,7 +6,7 @@
     "minutesAgo_other": "{{count}}分钟前",
     "hoursAgo_other": "{{count}}小时前",
     "daysAgo_other": "{{count}}天前",
-    "brand": "旅记 · TripJournal",
+    "brand": "旅记 · TripNotes",
     "appName": "旅记"
   },
   "datePicker": {
@@ -280,7 +280,7 @@
     "viewRouteTitle": "在地图中查看路线"
   },
   "memberGate": {
-    "brand": "旅记 · TripJournal",
+    "brand": "旅记 · TripNotes",
     "title": "你是谁？",
     "subtitle": "选择你的名字，之后记的账都会算在这个身份下（暂不需要密码）",
     "addPlaceholder": "添加新成员",
