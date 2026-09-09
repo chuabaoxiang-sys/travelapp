@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { TUTORIALS, stepRing, tutorialImage, type Tutorial } from './tutorialsData'
+import { useBackDismiss } from '../../hooks/useBackDismiss'
 
 // 滑动切页的判定阈值（px）——横向位移超过这个数、且比竖向位移更明显，才算一次滑动，
 // 避免正常点击/竖向滑动被误判
@@ -11,17 +12,15 @@ const SWIPE_THRESHOLD = 40
 // "开/关"，不需要知道用户具体点进了哪一篇、翻到第几步，跟WishlistScreen自己管理
 // "列表/地图"二级视图是同一个思路。
 //
-// 这里刻意不为 activeId 再单独注册一次 useBackDismiss——试过之后发现真会出bug：
-// 挂载这个组件的外层（TripShell/TripPicker）已经为"教程库开着"这件事注册了一次
-// useBackDismiss，如果这里再注册第二层，两个popstate监听器会同时收到同一次
-// history.back()触发的事件，导致"从详情退回首页"这个内层动作，会被外层监听器
-// 误判成"用户按了返回键"，整个教程库跟着一起被关掉。WishlistScreen自己的
-// "列表/地图"切换同样没有再注册一次——这是这个项目里"弹层内部还有二级视图"时
-// 该有的正确写法：安卓返回键统一退出整个弹层，二级视图内的"返回上一级"只通过
-// 界面上的按钮（上面的返回箭头）来做，不接管系统返回键
+// 详情页也注册了一次useBackDismiss，跟挂载这个组件的外层（TripShell/TripPicker）
+// 为"教程库开着"注册的那一层各自独立——真机反馈过"预览完按返回直接退出到APP主页
+// 而不是先退回教程列表"，根因是useBackDismiss以前所有活跃实例共用同一个popstate
+// 事件，两层同时响应会一起关掉。现在useBackDismiss.ts自己维护了一个共享栈，一次
+// 返回键只处理最内层那一个，这里可以放心跟其他弹层一样正常嵌套注册
 export function TutorialLibraryScreen({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const [activeId, setActiveId] = useState<string | null>(null)
+  useBackDismiss(activeId !== null, () => setActiveId(null))
 
   const active = TUTORIALS.find((tut) => tut.id === activeId) ?? null
 
