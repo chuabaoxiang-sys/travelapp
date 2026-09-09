@@ -4,7 +4,7 @@
 // 里的共享密钥——全程不碰service_role密钥，即使这个共享密钥泄露，攻击者能做的
 // 也只是往这一张表塞状态，碰不到数据库里任何其他东西。
 //
-// 定价是终生RM99一次性解锁(不是循环订阅)，所以这里只处理一次性支付模式的
+// 解锁是一次性付费(不是循环订阅)，所以这里只处理一次性支付模式的
 // checkout.session.completed，没有customer.subscription.*这类续费/取消事件
 // 需要处理。
 //
@@ -28,8 +28,12 @@ export interface SubscriptionUpsertPayload {
 // 从Stripe事件里抽取"该往household_subscription写什么"，跟"怎么写"(RPC调用)分开，
 // 方便像api/resolve-maps-link.test.ts那样直接构造假的Stripe.Event对象单测，
 // 不需要真实签名。不认识/不关心的事件类型返回null，调用方对null照样回200，
-// 避免Stripe因为非2xx响应而重试风暴
-export function extractSubscriptionUpsert(event: Stripe.Event): SubscriptionUpsertPayload | null {
+// 避免Stripe因为非2xx响应而重试风暴。
+//
+// priceId由调用方传入，不在这里读环境变量——三档定价上线后不再是"只有一个Price
+// 在卖"，没法靠一个固定环境变量猜出用户买的是哪一档，调用方(handler)会另外调
+// Stripe API查这笔Checkout Session实际用的price id（见下面的listLineItems）
+export function extractSubscriptionUpsert(event: Stripe.Event, priceId: string | null): SubscriptionUpsertPayload | null {
   if (event.type !== 'checkout.session.completed') return null
 
   const session = event.data.object as Stripe.Checkout.Session
@@ -40,16 +44,13 @@ export function extractSubscriptionUpsert(event: Stripe.Event): SubscriptionUpse
   const householdId = session.client_reference_id ?? (session.metadata?.household_id as string | undefined) ?? null
   if (!householdId) return null
 
-  // Checkout Session的webhook payload本身不带line_items(那要另外expand，webhook
-  // 事件不支持)——这个App目前只有一个Price在卖，直接读同一个环境变量就够了，
-  // 不用为了拿一个已知值去多做一次Stripe API调用
   return {
     householdId,
     stripeCustomerId: typeof session.customer === 'string' ? session.customer : (session.customer?.id ?? null),
     stripePaymentIntentId:
       typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent?.id ?? null),
     status: 'active',
-    priceId: process.env.STRIPE_PRICE_ID ?? null,
+    priceId,
   }
 }
 
@@ -98,7 +99,22 @@ export default async function handler(request: Request): Promise<Response> {
     })
   }
 
-  const upsert = extractSubscriptionUpsert(event)
+  // Checkout Session的webhook payload本身不带line_items(要另外expand，webhook
+  // 事件不支持直接带出来)——三档定价下没法再靠一个固定环境变量猜价格，只能
+  // 多这一次API调用去查这笔session实际用的price id。查不到就记null，不阻塞
+  // 解锁本身——price_id只是审计用，不是解锁判断依据
+  let priceId: string | null = null
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session
+    try {
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 })
+      priceId = lineItems.data[0]?.price?.id ?? null
+    } catch (err) {
+      console.error('[stripe-webhook] 查price id失败:', err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const upsert = extractSubscriptionUpsert(event, priceId)
   if (!upsert) {
     // 不认识/不需要处理的事件类型照样回200，不是错误——避免Stripe因为非2xx
     // response而不断重试一个我们本来就不打算处理的事件
