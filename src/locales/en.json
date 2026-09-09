@@ -615,19 +615,23 @@
     "tapToRefresh": "Tap to refresh"
   },
   "subscription": {
-    "title": "Trip Limit",
+    "title": "Trip Allowance",
     "close": "Close",
-    "description": "This app is a one-person side project — no company, no team behind it. To keep it going, you get 1 trip free. Want to plan more than that? A one-time {{price}} unlock removes the limit for good — not a subscription, you only pay once, ever.",
+    "description": "Think of this as a one-person coffee shop: your first trip is on the house. To log a second, third, or more, I'd love for you to order a cup, two, or three — fuel for the developer~ order once, and you can keep logging trips for as long as you like.",
     "loading": "Loading…",
     "loadError": "Couldn't load — try again in a moment",
-    "statusFree": "Not unlocked yet — free plan includes 1 trip",
-    "statusActive": "Unlocked {{date}} — create as many trips as you want",
-    "unlock": "Unlock More Trips (one-time {{price}})",
+    "statusFree": "Not unlocked yet · Your first trip's on the house",
+    "statusActive": "Unlocked · Since {{date}}, log as many trips as you like",
+    "tierLabel_one": "{{count}} cup · {{price}}",
+    "tierLabel_other": "{{count}} cups · {{price}}",
     "redirecting": "Redirecting…",
     "thankYouTitle": "Thank you!",
-    "thankYouBody": "You can now create as many trips as you like — no more 1-trip limit.",
+    "thankYouBody": "Cup received, cheers. From here on, log as many trips as you like — take your time with it.",
+    "tipThankYouTitle": "Thanks for the thought",
+    "tipThankYouBody": "This one's pure kindness — you already have everything the app offers; this cup just tells me you're still thinking of this little coffee shop. Thank you.",
     "limitTitle": "You've used your free trip",
-    "limitBody": "Your one free trip is already taken. Unlock below to add more."
+    "limitBody": "This trip just used up your free one. To keep logging, it's time to place an order~ get a cup, and you're right back in",
+    "tipSectionLede": "You already have full access. If you'd ever like to buy me a coffee, it's here whenever you feel like it — purely a gesture, entirely up to you."
   },
   "syncDetail": {
     "title": "Sync details",
@@ -1069,7 +1073,7 @@
       "desc": "How many trips are free, and how to unlock more",
       "steps": [
         { "title": "Find it under \"More\"", "desc": "Open the \"More\" panel — under \"Other\" you'll see \"Trip Limit\". Tap it to check your current status." },
-        { "title": "1 trip free, unlock more anytime", "desc": "Every household gets 1 trip free, for life. Need more? Tap \"Unlock More Trips\" for a one-time payment — not a monthly or yearly charge." }
+        { "title": "1 trip free, unlock more anytime", "desc": "Every household gets 1 trip free, for life. Need more? Pick 1, 2, or 3 cups of coffee — a one-time payment, not a monthly or yearly charge. All three tiers unlock the exact same thing; it's just how much you'd like to support the developer." }
       ]
     }
   },
