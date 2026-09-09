@@ -742,7 +742,8 @@
     "loading": "Loading…",
     "linkBrokenTitle": "This link isn't working",
     "linkBrokenDesc": "Sharing may have been turned off, or the link isn't right. Check with whoever sent it to you.",
-    "noTemplate": "This trip hasn't had a share template picked yet — ask whoever shared it to set one up."
+    "noTemplate": "This trip hasn't had a share template picked yet — ask whoever shared it to set one up.",
+    "backToApp": "Back"
   },
   "shareTemplates": {
     "ticket": {

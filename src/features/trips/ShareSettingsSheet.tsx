@@ -192,7 +192,10 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
                         {copied ? t('shareSettings.copied') : t('shareSettings.copyLink')}
                       </button>
                       <a
-                        href={buildShareUrl(trip.publicShareToken!)}
+                        // 加?preview=1只是给SharePage一个信号，让它知道这次访问是从APP内部
+                        // 点预览进来的，可以显示悬浮的"返回"按钮——不影响"复制链接"给出的
+                        // 正式分享地址（那个没有这个参数），朋友收到的链接不会看到这个按钮
+                        href={`${buildShareUrl(trip.publicShareToken!)}?preview=1`}
                         // 已安装成独立APP时不能用target="_blank"——真机反馈"预览后按返回
                         // 直接退出整个APP"：standalone模式的PWA通常只有一个窗口，_blank
                         // 打开的新页面自己的浏览历史是空的，按返回等于直接关掉这个唯一的
