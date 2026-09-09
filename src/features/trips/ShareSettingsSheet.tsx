@@ -137,7 +137,11 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
         {sharing && (
           <>
             <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">{t('shareSettings.templateLabel')}</div>
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            {/* 原本是2列网格，10套模板要占5行、把弹层撑得很高，选完模板还得往下滑
+                一大截才摸到"复制链接"。改成横向一排滑动——跟LedgerTab/ItineraryTab
+                里的日期条同一个写法（-mx-5 px-5 让滚动区域吃到卡片的左右padding，
+                内容对齐不受影响），弹层整体矮下来，很多手机屏幕已经不需要再滚动 */}
+            <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 mb-4 pb-0.5">
               {TEMPLATE_PICKER_LIST.map((tpl) => {
                 const active = trip.publicShareTemplate === tpl.id
                 const Thumb = tpl.thumbnail
@@ -146,9 +150,9 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
                     key={tpl.id}
                     onClick={() => selectTemplate(tpl.id)}
                     disabled={syncing}
-                    className={`rounded-xl overflow-hidden border text-left bg-card disabled:opacity-50 ${active ? 'border-plan border-2' : 'border-line'}`}
+                    className={`flex-shrink-0 w-[108px] rounded-xl overflow-hidden border text-left bg-card disabled:opacity-50 ${active ? 'border-plan border-2' : 'border-line'}`}
                   >
-                    <div className="h-[62px] relative">
+                    <div className="h-[58px] relative">
                       <Thumb />
                       {active && (
                         <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-plan text-card flex items-center justify-center">
@@ -156,14 +160,14 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] font-medium px-2 py-1.5 truncate">{t(`shareSettings.templates.${tpl.id}`, { defaultValue: tpl.label })}</div>
+                    <div className="text-[10.5px] font-medium px-2 py-1.5 truncate">{t(`shareSettings.templates.${tpl.id}`, { defaultValue: tpl.label })}</div>
                   </button>
                 )
               })}
               {UPCOMING_TEMPLATES.map((tpl) => (
-                <div key={tpl.id} className="rounded-xl border border-dashed border-line opacity-50 flex flex-col">
-                  <div className="h-[62px] flex items-center justify-center text-[10.5px] text-muted">{t('shareSettings.comingSoon')}</div>
-                  <div className="text-[11px] px-2 py-1.5 truncate">{tpl.label}</div>
+                <div key={tpl.id} className="flex-shrink-0 w-[108px] rounded-xl border border-dashed border-line opacity-50 flex flex-col">
+                  <div className="h-[58px] flex items-center justify-center text-[10.5px] text-muted">{t('shareSettings.comingSoon')}</div>
+                  <div className="text-[10.5px] px-2 py-1.5 truncate">{tpl.label}</div>
                 </div>
               ))}
             </div>
