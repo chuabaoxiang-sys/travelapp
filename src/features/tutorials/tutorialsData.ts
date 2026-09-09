@@ -1,4 +1,4 @@
-import { Compass, Map, Wallet, PiggyBank, Heart, RefreshCw, Settings, type LucideIcon } from 'lucide-react'
+import { Compass, Map, Wallet, PiggyBank, Heart, RefreshCw, Settings, Lock, type LucideIcon } from 'lucide-react'
 
 // 红圈位置——百分比，相对390×844视口，用Playwright量真实DOM boundingBox()算出来的，
 // 不是肉眼估的（见 scripts/capture-tutorial-shots.cjs）。不是每一步都需要圈：纯展示性的
@@ -71,6 +71,11 @@ export const TUTORIALS: Tutorial[] = [
     icon: Settings,
     stepIds: ['settings-1', 'settings-2', 'settings-3', 'settings-4', 'settings-5'],
   },
+  {
+    id: 'tripLimit',
+    icon: Lock,
+    stepIds: ['trip-limit-1', 'trip-limit-2'],
+  },
 ]
 
 // 红圈坐标——scripts/capture-tutorial-shots.cjs 跑完后打印的JSON直接抄进来，中英文
@@ -112,6 +117,8 @@ export const STEP_RINGS_ZH: Record<string, TutorialStepRing> = {
   'settings-3': { left: 6.2, top: 52.7, width: 87.7, height: 7.6 },
   'settings-4': { left: 6.2, top: 59.3, width: 87.7, height: 8.3 },
   'settings-5': { left: 6.2, top: 70.6, width: 87.7, height: 7.4 },
+  'trip-limit-1': { left: 6.2, top: 64.5, width: 87.7, height: 7.4 },
+  'trip-limit-2': { left: 10.5, top: 88.7, width: 79, height: 5.5 },
 }
 
 export const STEP_RINGS_EN: Record<string, TutorialStepRing> = {
@@ -148,6 +155,8 @@ export const STEP_RINGS_EN: Record<string, TutorialStepRing> = {
   'settings-3': { left: 6.2, top: 47.8, width: 87.7, height: 9.1 },
   'settings-4': { left: 6.2, top: 56, width: 87.7, height: 8.3 },
   'settings-5': { left: 6.2, top: 67.2, width: 87.7, height: 7.4 },
+  'trip-limit-1': { left: 6.2, top: 61.2, width: 87.7, height: 7.4 },
+  'trip-limit-2': { left: 10.5, top: 88.7, width: 79, height: 5.5 },
 }
 
 export function stepRing(stepId: string, lang: 'zh' | 'en'): TutorialStepRing | undefined {

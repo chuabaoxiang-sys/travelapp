@@ -577,8 +577,8 @@
     "shareOn": "只读分享链接已开启",
     "settingsArrow": "设置 ›",
     "otherSection": "更多",
-    "subscription": "Pro",
-    "subscriptionDesc": "一次性解锁，永久使用",
+    "subscription": "行程额度",
+    "subscriptionDesc": "免费用1趟，更多行程一次性解锁",
     "subscriptionArrow": "查看 ›",
     "syncDetail": "同步详情",
     "syncViewArrow": "查看 ›",
@@ -597,16 +597,19 @@
     "tapToRefresh": "点击刷新"
   },
   "subscription": {
-    "title": "Pro",
+    "title": "行程额度",
     "close": "关闭",
-    "description": "一次性解锁 Pro，没有月费，买断永久使用",
+    "description": "这个APP是我一个人业余做的，没有公司也没有团队。为了让它能持续维护下去，你可以免费创建1趟行程；如果想记录更多趟旅行，一次性付费{{price}}就能解锁——不是订阅，只付这一次，之后行程数量不再受限。",
     "loading": "加载中…",
     "loadError": "加载失败，稍后再试",
-    "statusFree": "还没解锁",
-    "statusActive": "已解锁 Pro",
-    "purchasedOn": "{{date}} 解锁",
-    "unlock": "解锁 Pro · RM99",
-    "redirecting": "跳转中…"
+    "statusFree": "还没解锁 · 免费额度：1趟行程",
+    "statusActive": "已解锁 · {{date}}，行程想建几个建几个",
+    "unlock": "解锁更多行程（一次性 {{price}}）",
+    "redirecting": "跳转中…",
+    "thankYouTitle": "谢谢你！",
+    "thankYouBody": "以后创建行程的数量不再受限了，想建几趟就建几趟。",
+    "limitTitle": "免费额度用完了",
+    "limitBody": "免费的1趟行程已经用掉啦，想再建新的，解锁一下就可以："
   },
   "syncDetail": {
     "title": "同步详情",
@@ -1031,6 +1034,14 @@
         { "title": "导出行程", "desc": "Excel/JSON/CSV任选一种格式，明细和汇总都在里面。" },
         { "title": "开只读分享链接", "desc": "发给没装APP的亲戚朋友，对方点开就能看，不用注册登录。" },
         { "title": "查看同步详情", "desc": "能看到哪些记录还没同步成功，卡住太久的还能手动放弃同步。" }
+      ]
+    },
+    "tripLimit": {
+      "title": "行程额度",
+      "desc": "免费能建几趟、超过之后怎么解锁",
+      "steps": [
+        { "title": "在\"更多\"里找到入口", "desc": "打开\"更多\"面板，\"其他\"这一栏能看到\"行程额度\"，点进去能看当前状态。" },
+        { "title": "免费1趟，更多一次性解锁", "desc": "每个家庭终生免费建1趟行程；想建更多，点\"解锁更多行程\"一次性付费就好，不是按月/按年扣费。" }
       ]
     }
   },

@@ -593,8 +593,8 @@
     "shareOn": "Read-only sharing is on",
     "settingsArrow": "Settings ›",
     "otherSection": "Other",
-    "subscription": "Pro",
-    "subscriptionDesc": "One-time unlock, yours for good",
+    "subscription": "Trip Limit",
+    "subscriptionDesc": "One trip free — unlock more with a one-time payment",
     "subscriptionArrow": "View ›",
     "syncDetail": "Sync details",
     "syncViewArrow": "View ›",
@@ -615,16 +615,19 @@
     "tapToRefresh": "Tap to refresh"
   },
   "subscription": {
-    "title": "Pro",
+    "title": "Trip Limit",
     "close": "Close",
-    "description": "Unlock Pro with a one-time payment — no subscription, yours for good.",
+    "description": "This app is a one-person side project — no company, no team behind it. To keep it going, you get 1 trip free. Want to plan more than that? A one-time {{price}} unlock removes the limit for good — not a subscription, you only pay once, ever.",
     "loading": "Loading…",
     "loadError": "Couldn't load — try again in a moment",
-    "statusFree": "Not unlocked",
-    "statusActive": "Pro unlocked",
-    "purchasedOn": "Unlocked {{date}}",
-    "unlock": "Unlock Pro · RM99",
-    "redirecting": "Redirecting…"
+    "statusFree": "Not unlocked yet — free plan includes 1 trip",
+    "statusActive": "Unlocked {{date}} — create as many trips as you want",
+    "unlock": "Unlock More Trips (one-time {{price}})",
+    "redirecting": "Redirecting…",
+    "thankYouTitle": "Thank you!",
+    "thankYouBody": "You can now create as many trips as you like — no more 1-trip limit.",
+    "limitTitle": "You've used your free trip",
+    "limitBody": "Your one free trip is already taken. Unlock below to add more."
   },
   "syncDetail": {
     "title": "Sync details",
@@ -1059,6 +1062,14 @@
         { "title": "Export your trip", "desc": "Excel, JSON, or CSV — each includes both the detail and the summary." },
         { "title": "Turn on a read-only share link", "desc": "Send it to family who haven't installed the app — they can view everything, no sign-up needed." },
         { "title": "Check sync status", "desc": "See which records haven't synced yet, and manually give up on ones that are stuck." }
+      ]
+    },
+    "tripLimit": {
+      "title": "Trip Limit",
+      "desc": "How many trips are free, and how to unlock more",
+      "steps": [
+        { "title": "Find it under \"More\"", "desc": "Open the \"More\" panel — under \"Other\" you'll see \"Trip Limit\". Tap it to check your current status." },
+        { "title": "1 trip free, unlock more anytime", "desc": "Every household gets 1 trip free, for life. Need more? Tap \"Unlock More Trips\" for a one-time payment — not a monthly or yearly charge." }
       ]
     }
   },

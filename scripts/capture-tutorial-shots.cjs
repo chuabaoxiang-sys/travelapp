@@ -407,6 +407,24 @@ async function main() {
     await shot(page, 'settings-5', syncRow)
   }
 
+  // ===================== 行程额度 =====================
+  // 本地测试模式下 recordTripCreation() 直接短路跳过限额检查（domain/billing.ts），
+  // 所以"建第2趟被拦下"和"已解锁"这两个状态没法在这个脚本里真实触发——只截
+  // "更多"里的入口和面板本身未解锁时的说明+按钮，跟其他教程分类里同样浅的
+  // settings-* 步骤是同一个深度
+  {
+    const subLabel = topSheet(page).getByText(X('行程额度', 'Trip Limit'), { exact: true }).first()
+    const subRow = subLabel.locator('xpath=ancestor::button[1]')
+    await shot(page, 'trip-limit-1', subRow)
+
+    await subRow.click()
+    await page.waitForTimeout(500)
+    const unlockBtn = topSheet(page).getByText(X('解锁更多行程', 'Unlock More Trips'), { exact: false }).first()
+    await shot(page, 'trip-limit-2', unlockBtn)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+  }
+
   await browser.close()
 
   console.log('\n===== RINGS JSON (' + LANG + ') =====')

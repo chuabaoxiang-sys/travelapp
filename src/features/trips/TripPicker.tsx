@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Pencil, Trash2, X, Check, Plus, Bookmark, BookOpen } from 'lucide-react'
 import { db, deleteTripCascade } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
+import { recordTripCreation, TRIP_LIMIT_REACHED } from '../../domain/billing'
 import { computeTripStatus } from '../../domain/trips'
 import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -13,6 +14,7 @@ import { CurrencyPicker } from '../../components/CurrencyPicker'
 import { countryByCode } from '../../lib/countries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
 import { TutorialLibraryScreen } from '../tutorials/TutorialLibraryScreen'
+import { SubscriptionSheet } from '../billing/SubscriptionSheet'
 import { TeamSwitcher } from '../teams/TeamSwitcher'
 import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { DiscoveryDot } from '../../components/DiscoveryDot'
@@ -48,6 +50,22 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
   useBackDismiss(wishlistOpen, () => setWishlistOpen(false))
   const [tutorialsOpen, setTutorialsOpen] = useState(false)
   useBackDismiss(tutorialsOpen, () => setTutorialsOpen(false))
+  const [subscriptionOpen, setSubscriptionOpen] = useState(false)
+  const [justPurchased, setJustPurchased] = useState(false)
+  const [blockedByLimit, setBlockedByLimit] = useState(false)
+
+  // Stripe Checkout成功后跳回`${origin}/?billing=success`——正常情况下会带着
+  // 记住的tripId直接进TripShell（那边有自己的一份同样处理），但如果用户是从
+  // "切换行程"进到这个没有当前行程的列表页触发的付费墙，跳回来时tripId是空的，
+  // 会落在这个组件而不是TripShell，所以这里也要接一份同样的处理，见
+  // TripShell.tsx里对应的注释
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('billing') !== 'success') return
+    setJustPurchased(true)
+    setSubscriptionOpen(true)
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [])
 
   async function confirmRemoveTrip() {
     if (!pendingDelete) return
@@ -143,6 +161,11 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
               onSelect(id)
             }}
             onCancel={() => setFormState(null)}
+            onLimitReached={() => {
+              setFormState(null)
+              setBlockedByLimit(true)
+              setSubscriptionOpen(true)
+            }}
           />
         ) : (
           !formState && (
@@ -182,6 +205,18 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
       )}
 
       {tutorialsOpen && <TutorialLibraryScreen onClose={() => setTutorialsOpen(false)} />}
+
+      {subscriptionOpen && (
+        <SubscriptionSheet
+          justPurchased={justPurchased}
+          blocked={blockedByLimit}
+          onClose={() => {
+            setSubscriptionOpen(false)
+            setJustPurchased(false)
+            setBlockedByLimit(false)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -191,11 +226,13 @@ function TripForm({
   onDone,
   onCancel,
   onDelete,
+  onLimitReached,
 }: {
   initial?: Trip
   onDone: (id: string) => void
   onCancel: () => void
   onDelete?: () => void
+  onLimitReached?: () => void
 }) {
   const { t } = useTranslation()
   const [name, setName] = useState(initial?.name ?? '')
@@ -206,6 +243,8 @@ function TripForm({
   const [homeCurrency, setHomeCurrency] = useState('MYR')
   const [manualHomeCurrencyOpen, setManualHomeCurrencyOpen] = useState(false)
   const [dateError, setDateError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   // 数据库有 trip_check 约束要求 endDate >= startDate——这里提前拦一次，不让
   // 这类数据存进本地，否则会一直卡在同步队列里报数据库层面的原始错误
@@ -237,6 +276,22 @@ function TripForm({
     } else {
       const householdId = await getCurrentHouseholdId()
       if (!householdId) return
+
+      setSaveError(null)
+      setSaving(true)
+      try {
+        await recordTripCreation()
+      } catch (err) {
+        setSaving(false)
+        const message = err instanceof Error ? err.message : String(err)
+        if (message.includes(TRIP_LIMIT_REACHED)) {
+          onLimitReached?.()
+        } else {
+          setSaveError(message)
+        }
+        return
+      }
+
       const id = crypto.randomUUID()
       const now = Date.now()
       const trip: Trip = {
@@ -256,6 +311,7 @@ function TripForm({
         updatedAt: now,
       }
       await db.trips.add(trip)
+      setSaving(false)
       onDone(id)
     }
   }
@@ -277,6 +333,7 @@ function TripForm({
         <div className="flex-1"><DatePicker value={endDate ?? ''} onChange={handleEndDateChange} placeholder={t('tripPicker.form.endDate')} min={startDate || undefined} /></div>
       </div>
       {dateError && <div className="text-[11.5px] text-negative -mt-1">{dateError}</div>}
+      {saveError && <div className="text-[11.5px] text-negative -mt-1">{saveError}</div>}
       <CountryPicker value={destinationCountries} onChange={setDestinationCountries} />
       {!initial && (
         <div>
@@ -326,7 +383,12 @@ function TripForm({
         <button onClick={onCancel} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title={t('tripPicker.form.cancel')}>
           <X className="w-4 h-4" strokeWidth={1.8} />
         </button>
-        <button onClick={save} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title={initial ? t('tripPicker.form.saveTitle') : t('tripPicker.form.createTitle')}>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center disabled:opacity-50"
+          title={initial ? t('tripPicker.form.saveTitle') : t('tripPicker.form.createTitle')}
+        >
           <Check className="w-4 h-4" strokeWidth={2} />
         </button>
       </div>

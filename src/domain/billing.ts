@@ -13,6 +13,9 @@ export interface HouseholdSubscription {
 
 const NONE_SUBSCRIPTION: HouseholdSubscription = { status: 'none', purchasedAt: null }
 
+// 展示用的价格文案——之后调价只改这一处，不用把价格字符串到处找着改
+export const UNLOCK_PRICE_DISPLAY = 'RM99'
+
 // 没有supabase（没配置云端）、本地测试模式（假household id，查了也只会是
 // "非法uuid"这种误导性的报错）、或查不到当前团队时，统一当成"没买过"——本来就
 // 没有真实household可以购买，不需要调用方再额外判断这几种情况
@@ -61,4 +64,17 @@ async function callBillingEndpoint(path: string): Promise<string> {
 // Stripe会把用户带回create-checkout-session.ts里算好的success_url/cancel_url
 export async function startCheckout(): Promise<void> {
   window.location.href = await callBillingEndpoint('/api/create-checkout-session')
+}
+
+// record_trip_creation（见0032迁移）抛出的异常信息里包含的标记字符串——
+// 用来把"被免费额度拦下"跟网络失败等其他错误区分开
+export const TRIP_LIMIT_REACHED = 'TRIP_LIMIT_REACHED'
+
+// 建行程之前调用一次：免费额度用完且没有有效支持记录时会抛错（错误信息包含
+// TRIP_LIMIT_REACHED），调用方据此弹付费墙，而不是把行程写进本地。本地测试
+// 模式没有真实household，不做这个限制
+export async function recordTripCreation(): Promise<void> {
+  if (!supabase || isLocalTestModeEnabled()) return
+  const { error } = await supabase.rpc('record_trip_creation')
+  if (error) throw error
 }

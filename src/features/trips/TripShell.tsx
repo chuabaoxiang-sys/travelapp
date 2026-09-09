@@ -53,6 +53,7 @@ export function TripShell({
   const [syncDetailOpen, setSyncDetailOpen] = useState(false)
   const [tutorialsOpen, setTutorialsOpen] = useState(false)
   const [subscriptionOpen, setSubscriptionOpen] = useState(false)
+  const [justPurchased, setJustPurchased] = useState(false)
   const [itineraryFormOpen, setItineraryFormOpen] = useState(false)
   // FAB在"行程"tab上被接成"添加行程项"而不是"记一笔"——它没法直接调用ItineraryTab
   // 内部的setFormState，靠这个自增计数器当信号，ItineraryTab自己的effect监听变化
@@ -61,6 +62,18 @@ export function TripShell({
   useEffect(() => {
     if (tripResult === NOT_FOUND) onSwitchTrip()
   }, [tripResult, onSwitchTrip])
+
+  // Stripe Checkout成功后跳回create-checkout-session.ts里算好的
+  // `${origin}/?billing=success`——用这个URL参数触发感谢弹层，然后把参数从
+  // 地址栏清掉（history.replaceState，不留痕迹），避免用户手动刷新页面时
+  // 重复弹出感谢语
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('billing') !== 'success') return
+    setJustPurchased(true)
+    setSubscriptionOpen(true)
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [])
 
   // "更多"从顶部的图标按钮搬进了底部导航，点击时不再走 setTab（'more' 不是一个
   // 会渲染内容的tab，是一个开弹层的动作，跟"记一笔"是同一类东西）——不然
@@ -101,6 +114,7 @@ export function TripShell({
     setSyncDetailOpen(false)
     setTutorialsOpen(false)
     setSubscriptionOpen(false)
+    setJustPurchased(false)
   }
   useBackDismiss(anySheetOpen, closeAllSheets)
 
@@ -212,7 +226,15 @@ export function TripShell({
 
         {inviteCodeOpen && <InviteCodeSheet onClose={() => setInviteCodeOpen(false)} />}
 
-        {subscriptionOpen && <SubscriptionSheet onClose={() => setSubscriptionOpen(false)} />}
+        {subscriptionOpen && (
+          <SubscriptionSheet
+            justPurchased={justPurchased}
+            onClose={() => {
+              setSubscriptionOpen(false)
+              setJustPurchased(false)
+            }}
+          />
+        )}
       </div>
     </div>
   )
