@@ -174,6 +174,49 @@ describe('createRateBookEntry', () => {
 
 })
 
+// 核实#21（见 docs/功能路线图-竞品借鉴版.md 第2节第21条）：money2time反复因为
+// "历史总额随汇率漂移"出过真实的用户信任危机级bug。"旅记"的设计是记账时把
+// rateUsed/homeAmount 当场算好存死在 expense/expenseRateAllocations 表里，
+// 之后编辑汇率簿条目只改这条条目本身，不会去改任何已经记过的账目——下面两个
+// 测试直接锁定这条最关键的不变量，覆盖单一汇率和拆多笔汇率两条独立路径
+describe('汇率簿编辑后，历史账目的快照不受影响（记录时锁定，#21）', () => {
+  beforeEach(async () => {
+    await db.rateBookEntries.clear()
+    await db.expenses.clear()
+    await db.expenseRateAllocations.clear()
+  })
+
+  it('单一汇率的开销：改了汇率簿条目的rate，这笔账已经存好的rateUsed/homeAmount原样不变', async () => {
+    const entry = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '机场换的', rate: 0.03, source: 'manual', createdBy: 'papa',
+    })
+    const e = expense('e1', entry.id, 16500)
+    await db.expenses.add(e) // e.rateUsed=0.03, e.homeAmount=495（记账那一刻按0.03算好存死的）
+
+    await updateRateBookEntry(entry.id, { rate: 0.05, label: entry.label })
+
+    const updatedEntry = await db.rateBookEntries.get(entry.id)
+    const untouchedExpense = await db.expenses.get('e1')
+    expect(updatedEntry?.rate).toBe(0.05) // 汇率簿条目本身确实改了
+    expect(untouchedExpense?.rateUsed).toBe(0.03) // 但历史账目的快照没被追溯改变
+    expect(untouchedExpense?.homeAmount).toBe(e.homeAmount)
+  })
+
+  it('拆多笔汇率的开销：改了汇率簿条目的rate，已存好的expenseRateAllocations那一行原样不变', async () => {
+    const entry = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '银行换的', rate: 0.03, source: 'manual', createdBy: 'papa',
+    })
+    const alloc = allocation('a1', 'e-split', entry.id, 2000) // rateUsed=0.03, homeAmount=60（记账那一刻的快照）
+    await db.expenseRateAllocations.add(alloc)
+
+    await updateRateBookEntry(entry.id, { rate: 0.08, label: entry.label })
+
+    const untouchedAllocation = await db.expenseRateAllocations.get('a1')
+    expect(untouchedAllocation?.rateUsed).toBe(0.03)
+    expect(untouchedAllocation?.homeAmount).toBe(60)
+  })
+})
+
 describe('updateRateBookEntry', () => {
   beforeEach(async () => {
     await db.rateBookEntries.clear()
