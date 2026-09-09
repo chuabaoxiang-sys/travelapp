@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { X, Download } from 'lucide-react'
+import { isStandalone } from '../lib/pwa'
 
 const ANDROID_DISMISS_KEY = 'trip-journal:install-prompt-dismissed'
 const IOS_DISMISS_KEY = 'trip-journal:ios-install-hint-dismissed'
@@ -8,13 +9,6 @@ const IOS_DISMISS_KEY = 'trip-journal:ios-install-hint-dismissed'
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
-
-function isStandalone() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
 }
 
 function isIOS() {

@@ -6,6 +6,7 @@ import { setShareScope, setShareTemplate, regenerateShareToken, buildShareUrl, e
 import { BottomSheet } from '../../components/BottomSheet'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
+import { isStandalone } from '../../lib/pwa'
 import { TEMPLATE_PICKER_LIST, UPCOMING_TEMPLATES } from '../share/templates/pickerList'
 import type { Trip, PublicShareScope } from '../../types'
 
@@ -192,8 +193,13 @@ export function ShareSettingsSheet({ trip, onClose }: { trip: Trip; onClose: () 
                       </button>
                       <a
                         href={buildShareUrl(trip.publicShareToken!)}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        // 已安装成独立APP时不能用target="_blank"——真机反馈"预览后按返回
+                        // 直接退出整个APP"：standalone模式的PWA通常只有一个窗口，_blank
+                        // 打开的新页面自己的浏览历史是空的，按返回等于直接关掉这个唯一的
+                        // 窗口。改成不开新窗口、就在当前窗口跳转，历史栈里有上一页，返回键
+                        // 才能正常回到APP。普通浏览器标签页里没有这个问题，保留新标签页
+                        // 的习惯用法（预览和分享设置可以同时开着对照看）
+                        {...(isStandalone() ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
                         className="rounded-lg border border-line px-3 py-2 text-muted flex items-center justify-center"
                         title={t('shareSettings.previewTitle')}
                       >
