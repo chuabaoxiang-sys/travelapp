@@ -283,6 +283,9 @@ export async function ensureLocalTestSeed() {
   // ---- 汇率簿：出行中/已回来这两趟真的会用到当地货币 ----
   const rateBookEntries: RateBookEntry[] = [
     { id: 'seed-rate-krw', householdId, tripId: tripKorea.id, foreignCurrency: 'KRW', label: '当地刷卡', rate: 0.0032, source: 'manual', createdBy: DAD, lastUsedAt: now, archived: false, createdAt: now },
+    // 同一货币对第二条——现金换汇跟刷卡汇率不一样，「使用教程」的汇率簿分类
+    // 专门演示"同一货币对能记多条"，需要真的有2条才能截到图
+    { id: 'seed-rate-krw-cash', householdId, tripId: tripKorea.id, foreignCurrency: 'KRW', label: '出发前网上换的现金', rate: 0.00305, source: 'manual', createdBy: DAD, lastUsedAt: now, archived: false, createdAt: now },
     { id: 'seed-rate-chf', householdId, tripId: tripSwitzerland.id, foreignCurrency: 'CHF', label: '当地刷卡', rate: 5.35, source: 'manual', createdBy: DAD, lastUsedAt: now, archived: false, createdAt: now },
   ]
 

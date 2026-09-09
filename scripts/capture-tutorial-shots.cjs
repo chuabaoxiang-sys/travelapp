@@ -124,26 +124,29 @@ async function main() {
     await hideDevBanner(page)
   }
 
-  await openTrip('东京5日家族游')
+  // 三趟种子行程分别对应未出行/出行中/已回来三个阶段（见localTestSeed.ts）——
+  // quickstart-1用出行中那趟做"认识底部导航"的通用示范，quickstart-2/3/4
+  // 依次是"出发前/途中/回家后"三种phase各自的真实样子
+  await openTrip('韩国首尔釜山')
   await shot(page, 'quickstart-1', null) // 已经在行程里、底部导航可见——这一步的重点
 
   await backToTripList()
-  await openTrip('周末临时决定的行程')
+  await openTrip('上海7天6夜')
   await shot(page, 'quickstart-2', null)
 
   await backToTripList()
-  await openTrip('东京5日家族游')
+  await openTrip('韩国首尔釜山')
   await shot(page, 'quickstart-3', null)
 
   await backToTripList()
-  await openTrip('老挝行程')
+  await openTrip('瑞士14天13夜')
   await shot(page, 'quickstart-4', null)
 
   await backToTripList()
   await shot(page, 'quickstart-5', page.getByText(X('新建行程', 'New trip'), { exact: true }).first())
 
-  // 回到东京行程做后面大部分截图
-  await openTrip('东京5日家族游')
+  // 回到韩国行程做后面大部分截图——出行中阶段数据最完整（有途中账目、多天行程安排）
+  await openTrip('韩国首尔釜山')
 
   // ===================== 行程规划 =====================
   await clickNavTab(page, X('行程', 'Itinerary'))
@@ -252,16 +255,34 @@ async function main() {
   await page.waitForTimeout(400)
 
   // ===================== 预算管理 =====================
+  // 换到上海（未出行）这趟——种子数据完全没给它设总预算、也没有任何分类预算，
+  // 正是budget-1需要的"全新没配置过"空状态。budget-3/4要圈编辑/删除按钮，
+  // 但种子数据现在不含任何分类预算了（Korea/瑞士两趟只各有一条总预算），
+  // 这里当场设一条总预算+加一条分类预算，才有真实按钮可圈
+  await backToTripList()
+  await openTrip('上海7天6夜')
+  await clickNavTab(page, X('账目', 'Ledger'))
+
   await page.getByText(X('管理预算', 'Manage budget'), { exact: true }).first().click()
   await page.waitForTimeout(600)
 
-  // 种子数据没有设总预算——"改总预算"这个按钮只在已经设过总预算时才出现，
-  // 实际状态是"还没设置"的输入卡片，圈这个卡片而不是一个根本不存在的按钮
   {
     const overallCard = topSheet(page).locator('div.bg-card.border.border-dashed.border-line.rounded-2xl').first()
     await shot(page, 'budget-1', overallCard)
+    await overallCard.locator('input').fill('9000')
+    await overallCard.getByRole('button').first().click()
+    await page.waitForTimeout(400)
   }
+
   await shot(page, 'budget-2', topSheet(page).getByText(X('加分类预算', 'Add category budget'), { exact: true }).first())
+
+  await topSheet(page).getByText(X('加分类预算', 'Add category budget'), { exact: true }).first().click()
+  await page.waitForTimeout(300)
+  await topSheet(page).locator('div.flex-wrap button').first().click() // 随便选第一个可选分类
+  await topSheet(page).locator('input[inputmode="decimal"]').first().fill('600')
+  // 这个保存按钮是纯图标（Check），没有文字节点，只有title属性，不能用getByText找
+  await topSheet(page).locator('button[title="保存"], button[title="Save"]').first().click()
+  await page.waitForTimeout(400)
 
   {
     const editBtn = topSheet(page).locator('button[title="改预算"], button[title="Edit budget"]').first()
@@ -321,13 +342,17 @@ async function main() {
   await page.waitForTimeout(400)
 
   // ===================== 汇率簿 =====================
+  // 换回韩国行程——汇率簿这几步依赖的KRW汇率记录、已经用了汇率簿的KRW途中
+  // 账目，都是种在韩国这趟行程上的，上海那趟没有任何外币数据
+  await backToTripList()
+  await openTrip('韩国首尔釜山')
   await clickNavTab(page, X('账目', 'Ledger'))
   await page.locator('button[title="汇率簿"], button[title="Rate book"]').first().click()
   await page.waitForTimeout(500)
 
   await shot(page, 'rates-1', topSheet(page).locator('button[title="新增"], button[title="Add"]').first())
   {
-    // JPY这个货币对种子数据里正好有2条——圈第一条示范"同一货币对能记多条"
+    // KRW这个货币对种子数据里正好有2条——圈第一条示范"同一货币对能记多条"
     const firstEntry = topSheet(page).locator('div.bg-card.border.border-line.rounded-2xl.p-3').first()
     await shot(page, 'rates-2', firstEntry)
   }
@@ -335,15 +360,15 @@ async function main() {
   await page.keyboard.press('Escape')
   await page.waitForTimeout(400)
 
-  // 打开记一笔，选外币JPY，展示汇率选择区——顺手真的存一笔，这样汇率簿的
-  // "这趟换汇换得怎么样"卡片（需要真的有笔外币账目用了汇率簿条目）才有数据可看
+  // 打开记一笔，选外币KRW（韩国行程的目的地货币，直接是个快捷chip，不用走
+  // "其他"手动输入），展示汇率选择区——种子数据里KRW已经有2条汇率、也已经有
+  // 好几笔途中账目在用这条汇率簿条目，"这趟换汇换得怎么样"卡片本来就有数据，
+  // 这里顺手再真实存一笔，单纯是为了截到"选汇率"那个交互瞬间
   await page.locator('button[title="记一笔"], button[title="Add expense"]').first().click()
   await page.waitForTimeout(500)
   const amountInput = page.locator('div.border-plan input').first()
-  await amountInput.fill('5000')
-  await page.locator('div.border-plan').first().getByText(X('其他', 'Other'), { exact: true }).first().click()
-  await page.waitForTimeout(200)
-  await page.locator('div.border-plan input.uppercase').first().fill('JPY')
+  await amountInput.fill('30000')
+  await page.locator('div.border-plan').first().getByText('KRW', { exact: true }).first().click()
   await page.waitForTimeout(600)
   {
     const rateChip = topSheet(page).getByText('出发前网上换的现金', { exact: false }).first() // 汇率标签是数据，不跟语言走
