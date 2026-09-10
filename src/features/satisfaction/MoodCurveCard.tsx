@@ -3,11 +3,19 @@ import { useTranslation, Trans } from 'react-i18next'
 import type { SatisfactionRetro } from '../../domain/retrospective'
 import type { DayMoodPoint } from '../../domain/satisfaction'
 import type { SatisfactionRating } from '../../types'
+import { DaySatisfactionPicker } from './DaySatisfactionPicker'
 
 // 回顾页的心情曲线——暖色调平滑曲线代替"93%你觉得值"这种百分比文字统计，
 // 横轴永远是"天"（被行程长度天然限制住，不会因为账目笔数多而变挤）。
 // 具体设计定稿见本次会话讨论：mix-blend-mode/直线折线/黑底提示框这几版
 // 尝试过的坑不再重复（暖色曲线本身、postcard风格提示框都是踩过坑之后的结果）。
+//
+// 2026-09-11：这份曲线本来只在"回家后"页面渲染过，行程进行中翻了卡也没地方
+// 回看——翻卡入口一旦翻完当前待翻的天就直接消失（SatisfactionEntryCard
+// 返回null），行程没结束的话完全找不到任何记录。现在"旅途中"页面也接上
+// 同一份组件，两处共用同一份实现，不用维护两份。顺带补上"点已经打过分的
+// 那天能改评分"——之前翻卡片一旦翻过就没有回头路，跟账目页盖章徽标
+// （随时能点开重新标）比起来是个明显的缺口，这次一起补上，接口不变。
 
 const Y_BY_RATING: Record<SatisfactionRating, number> = { worth: 50, neutral: 100, regret: 160 }
 const VIEW_W = 360
@@ -48,7 +56,11 @@ function formatShortDate(iso: string) {
   return parts.length === 3 ? `${Number(parts[1])}/${Number(parts[2])}` : iso
 }
 
-function Curve({ points }: { points: DayMoodPoint[] }) {
+// interactive=true（"我的"视图）时，已经打过分的点才能点开改评分——曲线本来
+// 就只给有评分的天画点（没打过分/跳过的天压根没有circle），所以这里不用
+// 另外过滤"是不是已经过去"：未来的天不可能有daySatisfactions记录，天然不会
+// 出现在这里
+function Curve({ points, interactive, onPointClick }: { points: DayMoodPoint[]; interactive: boolean; onPointClick: (p: DayMoodPoint) => void }) {
   const { t } = useTranslation()
   const xs = xPositions(points.length)
   const ratedIdx = points.map((p, i) => (p.rating ? i : -1)).filter((i) => i >= 0)
@@ -78,18 +90,28 @@ function Curve({ points }: { points: DayMoodPoint[] }) {
       {lineD && <path d={lineD} fill="none" stroke="var(--color-spend)" strokeWidth={3} strokeLinecap="round" />}
 
       {linePts.map((p, i) => {
+        const point = points[ratedIdx[i]]
         const isPeak = p.y === minY
         const isValley = p.y === maxY
-        if (isPeak || isValley) {
-          const color = isValley ? 'var(--color-negative)' : 'var(--color-positive)'
-          return (
-            <g key={i}>
-              <circle cx={p.x} cy={p.y} r={9} fill={color} opacity={0.15} />
-              <circle cx={p.x} cy={p.y} r={5.5} fill={color} />
-            </g>
-          )
-        }
-        return <circle key={i} cx={p.x} cy={p.y} r={4.5} fill="var(--color-card)" stroke="var(--color-spend)" strokeWidth={2.5} />
+        const color = isValley ? 'var(--color-negative)' : isPeak ? 'var(--color-positive)' : null
+        return (
+          <g
+            key={i}
+            onClick={interactive ? () => onPointClick(point) : undefined}
+            style={interactive ? { cursor: 'pointer' } : undefined}
+          >
+            {/* 透明大圆只是为了扩大点击/触摸命中范围，视觉上看不到，跟真正画出来的点分开 */}
+            {interactive && <circle cx={p.x} cy={p.y} r={14} fill="transparent" />}
+            {color ? (
+              <>
+                <circle cx={p.x} cy={p.y} r={9} fill={color} opacity={0.15} />
+                <circle cx={p.x} cy={p.y} r={5.5} fill={color} />
+              </>
+            ) : (
+              <circle cx={p.x} cy={p.y} r={4.5} fill="var(--color-card)" stroke="var(--color-spend)" strokeWidth={2.5} />
+            )}
+          </g>
+        )
       })}
 
       {points.map((p, i) => (
@@ -101,9 +123,18 @@ function Curve({ points }: { points: DayMoodPoint[] }) {
   )
 }
 
-export function MoodCurveCard({ satisfaction }: { satisfaction: SatisfactionRetro }) {
+export function MoodCurveCard({
+  satisfaction,
+  tripId,
+  currentMemberId,
+}: {
+  satisfaction: SatisfactionRetro
+  tripId: string
+  currentMemberId: string
+}) {
   const { t } = useTranslation()
   const [view, setView] = useState<'me' | 'all'>('me')
+  const [editingPoint, setEditingPoint] = useState<DayMoodPoint | null>(null)
   const points = view === 'me' ? satisfaction.moodCurveMe : satisfaction.moodCurveAll
   const stat = view === 'me' ? satisfaction.expenseStatMe : satisfaction.expenseStatAll
   const hasAnyMood = satisfaction.moodCurveMe.some((p) => p.rating) || satisfaction.moodCurveAll.some((p) => p.rating)
@@ -125,7 +156,7 @@ export function MoodCurveCard({ satisfaction }: { satisfaction: SatisfactionRetr
           </button>
         ))}
       </div>
-      <Curve points={points} />
+      <Curve points={points} interactive={view === 'me'} onPointClick={setEditingPoint} />
       {stat.taggedCount > 0 && (
         <div className="text-[13px] leading-relaxed mt-3 pt-3 border-t border-line">
           <Trans
@@ -134,6 +165,17 @@ export function MoodCurveCard({ satisfaction }: { satisfaction: SatisfactionRetr
             components={{ b: <b className="font-serif-sc" /> }}
           />
         </div>
+      )}
+      {editingPoint && (
+        <DaySatisfactionPicker
+          tripId={tripId}
+          dayId={editingPoint.dayId}
+          date={formatShortDate(editingPoint.date)}
+          title={editingPoint.title}
+          currentMemberId={currentMemberId}
+          currentRating={editingPoint.rating}
+          onClose={() => setEditingPoint(null)}
+        />
       )}
     </div>
   )

@@ -96,7 +96,7 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
       )}
 
       <div className={enterClass()} style={delayStyle(nextDelayMs())}>
-        <MoodCurveCard satisfaction={data.satisfaction} />
+        <MoodCurveCard satisfaction={data.satisfaction} tripId={trip.id} currentMemberId={currentMemberId} />
       </div>
 
       {data.categories.length > 0 && (() => {

@@ -83,6 +83,7 @@ export function majorityRating(ratings: SatisfactionRating[]): SatisfactionRatin
 }
 
 export interface DayMoodPoint {
+  dayId: string
   date: string
   title: string | null
   rating: SatisfactionRating | null
@@ -105,7 +106,7 @@ export async function dayMoodCurve(tripId: string, view: { kind: 'me'; memberId:
   return days.map((d) => {
     const ratings = byDay.get(d.id) ?? []
     const rating = view.kind === 'me' ? (ratings[0] ?? null) : majorityRating(ratings)
-    return { date: d.date, title: d.title, rating }
+    return { dayId: d.id, date: d.date, title: d.title, rating }
   })
 }
 

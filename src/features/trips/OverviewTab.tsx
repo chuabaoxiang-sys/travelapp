@@ -23,6 +23,8 @@ import { WishlistScreen } from '../wishlist/WishlistScreen'
 import { ActivityFeed } from '../activity/ActivityFeed'
 import { SatisfactionEntryCard } from '../satisfaction/SatisfactionEntryCard'
 import { SatisfactionFlipDeck } from '../satisfaction/SatisfactionFlipDeck'
+import { MoodCurveCard } from '../satisfaction/MoodCurveCard'
+import { dayMoodCurve, expenseSatisfactionStat } from '../../domain/satisfaction'
 
 // 「概览」——四个功能tab时代根本不存在的东西。这个APP一直假设用户"想用某个功能"，
 // 但真实情况是用户处在某个时刻：出发前、旅途中、回家后，而这三个时刻需要看的东西
@@ -316,6 +318,16 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
   const now = Date.now()
   const dayIndex = trip.startDate ? currentDayIndex(todayISO, trip.startDate) : null
 
+  // 心情曲线——之前只在"回家后"（RetrospectiveContent）渲染过，行程进行中
+  // 翻了卡完全没地方回看（SatisfactionEntryCard翻完待翻的天就return null，
+  // 2026-09-11讨论确认的缺口）。这几个都是纯函数，直接用useLiveQuery接，
+  // 翻卡/改评分写库后自动重新算，不需要RetrospectiveContent那边"关闭翻卡后
+  // 手动bump一个key强制重查"的额外处理
+  const moodCurveMe = useLiveQuery(() => dayMoodCurve(trip.id, { kind: 'me', memberId: currentMemberId }), [trip.id, currentMemberId]) ?? []
+  const moodCurveAll = useLiveQuery(() => dayMoodCurve(trip.id, { kind: 'all' }), [trip.id]) ?? []
+  const expenseStatMe = useLiveQuery(() => expenseSatisfactionStat(trip.id, { kind: 'me', memberId: currentMemberId }), [trip.id, currentMemberId]) ?? { taggedCount: 0, worthCount: 0 }
+  const expenseStatAll = useLiveQuery(() => expenseSatisfactionStat(trip.id, { kind: 'all' }), [trip.id]) ?? { taggedCount: 0, worthCount: 0 }
+
   // 这个tab是条件渲染，每次切回"概览"都是重新mount——挂载后下一帧触发一次
   // 进场动效就够，跟BeforeTrip/RetrospectiveContent那套双重RAF一致。
   // 下面两组卡片（接下来/最近动态）用同一个递增计数器错开时间，不管哪组
@@ -332,6 +344,12 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
       </div>
 
       <SatisfactionEntryCard trip={trip} currentMemberId={currentMemberId} onOpen={onOpenFlipDeck} />
+
+      <MoodCurveCard
+        satisfaction={{ moodCurveMe, moodCurveAll, expenseStatMe, expenseStatAll }}
+        tripId={trip.id}
+        currentMemberId={currentMemberId}
+      />
 
       <div>
         <SectionLabel>{t('overview.upNext')}</SectionLabel>
