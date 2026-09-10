@@ -130,7 +130,7 @@ function ManualSettleModal({
 export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
   const { t } = useTranslation()
   const members = useLiveQuery(() => db.members.toArray()) ?? []
-  const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const expenses = (useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((e) => !e.deletedAt)
   const settlements = useLiveQuery(() => getSettlements(trip.id), [trip.id]) ?? []
   // computeBalances 本身查库，依赖 expenses/expenseSplits/settlements 变化时要重新算，
   // 用这几张表的变化间接触发重新查询

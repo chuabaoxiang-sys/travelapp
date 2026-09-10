@@ -3,7 +3,7 @@ import { getCurrentHouseholdId } from './household'
 import type { Settlement } from '../types'
 
 export async function getSettlements(tripId: string): Promise<Settlement[]> {
-  const all = await db.settlements.where('tripId').equals(tripId).toArray()
+  const all = (await db.settlements.where('tripId').equals(tripId).toArray()).filter((s) => !s.deletedAt)
   return all.sort((a, b) => b.createdAt - a.createdAt)
 }
 
@@ -33,6 +33,7 @@ export async function createSettlement(params: {
     createdBy: params.createdBy ?? null,
     expenseId: params.expenseId ?? null,
     isPrepayment: params.isPrepayment ?? false,
+    deletedAt: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -55,6 +56,6 @@ export async function deleteSettlement(id: string) {
 // 就不能再改、也不能删除这笔账目，避免跟已经记录的结算对不上。现查不缓存，
 // 删掉对应的结算记录之后这笔账目会自动重新变回可编辑
 export async function isExpenseSettled(expenseId: string): Promise<boolean> {
-  const count = await db.settlements.where('expenseId').equals(expenseId).count()
-  return count > 0
+  const rows = await db.settlements.where('expenseId').equals(expenseId).filter((s) => !s.deletedAt).toArray()
+  return rows.length > 0
 }

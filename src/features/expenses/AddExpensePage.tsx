@@ -47,8 +47,8 @@ export function AddExpensePage({
   const { t } = useTranslation()
   const categories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
   const allMembers = useLiveQuery(() => db.members.toArray()) ?? []
-  const itineraryDays = useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
-  const itineraryItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const itineraryDays = (useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((d) => !d.deletedAt)
+  const itineraryItems = (useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((it) => !it.deletedAt)
   const tripDates = trip.startDate && trip.endDate ? dateRange(trip.startDate, trip.endDate) : []
   const todayISO = new Date().toLocaleDateString('sv-SE')
 
@@ -467,6 +467,7 @@ export function AddExpensePage({
         daySpreadMode,
         rateSpread,
         itemizedFeePercent: itemizedFeePercentForSave,
+        deletedAt: null,
         createdAt: now,
         updatedAt: now,
       })

@@ -96,10 +96,12 @@ export interface RateEntryUsage {
 // 换汇金额（exchangedForeignAmount 有值）的条目，"进度"这件事才有意义，但这个
 // 函数对所有条目都算，有没有意义由调用方决定要不要显示
 export async function usageByEntry(tripId: string): Promise<Map<string, RateEntryUsage>> {
-  const [expenses, allocations] = await Promise.all([
+  const [expensesRaw, allocationsRaw] = await Promise.all([
     db.expenses.where('tripId').equals(tripId).toArray(),
     db.expenseRateAllocations.where('tripId').equals(tripId).toArray(),
   ])
+  const expenses = expensesRaw.filter((e) => !e.deletedAt)
+  const allocations = allocationsRaw.filter((a) => !a.deletedAt)
   const usage = new Map<string, RateEntryUsage>()
   function add(entryId: string, amount: number) {
     const cur = usage.get(entryId) ?? { count: 0, foreignAmount: 0 }

@@ -27,6 +27,7 @@ async function upsertDaySatisfaction(tripId: string, dayId: string, memberId: st
     dayId,
     memberId,
     rating,
+    deletedAt: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   })
@@ -51,6 +52,7 @@ async function upsertExpenseSatisfaction(tripId: string, expenseId: string, memb
     expenseId,
     memberId,
     rating,
+    deletedAt: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   })
@@ -62,8 +64,8 @@ export const setExpenseSatisfaction = upsertExpenseSatisfaction
 // 翻卡片用：这个成员还没打过分、日期已经过去（含今天）的那些天，按日期从早到晚排。
 // 未来的天直接不在这个列表里——不是"锁住但看得到"，是压根不出现，翻完就是翻完了
 export async function pendingDaysForMember(tripId: string, memberId: string, todayISO: string): Promise<ItineraryDay[]> {
-  const days = await db.itineraryDays.where('tripId').equals(tripId).filter((d) => d.date <= todayISO).sortBy('date')
-  const rated = await db.daySatisfactions.where('tripId').equals(tripId).filter((s) => s.memberId === memberId).toArray()
+  const days = await db.itineraryDays.where('tripId').equals(tripId).filter((d) => d.date <= todayISO && !d.deletedAt).sortBy('date')
+  const rated = await db.daySatisfactions.where('tripId').equals(tripId).filter((s) => s.memberId === memberId && !s.deletedAt).toArray()
   const ratedDayIds = new Set(rated.map((r) => r.dayId))
   return days.filter((d) => !ratedDayIds.has(d.id))
 }
@@ -90,8 +92,8 @@ export interface DayMoodPoint {
 // 每天用多数决合并所有人的打分。没人打过分的那天 rating 是 null，UI 只连接
 // 有值的点，不会为了凑一条完整的线瞎编数据
 export async function dayMoodCurve(tripId: string, view: { kind: 'me'; memberId: string } | { kind: 'all' }): Promise<DayMoodPoint[]> {
-  const days = await db.itineraryDays.where('tripId').equals(tripId).sortBy('date')
-  const allRatings = await db.daySatisfactions.where('tripId').equals(tripId).toArray()
+  const days = (await db.itineraryDays.where('tripId').equals(tripId).sortBy('date')).filter((d) => !d.deletedAt)
+  const allRatings = (await db.daySatisfactions.where('tripId').equals(tripId).toArray()).filter((r) => !r.deletedAt)
   const byDay = new Map<string, SatisfactionRating[]>()
   for (const r of allRatings) {
     if (r.rating === null) continue // 跳过=这行只用来退出待翻队列，不算一次表态，不进曲线/多数决
@@ -116,7 +118,7 @@ export interface ExpenseSatisfactionStat {
 // 数全家所有人标过的次数（同一笔账目被2个人标，算2次——这是"大家的态度"的
 // 汇总，不是"这笔账目最终算不算值"的裁决，跟"天"的多数决是两种不同的呈现）
 export async function expenseSatisfactionStat(tripId: string, view: { kind: 'me'; memberId: string } | { kind: 'all' }): Promise<ExpenseSatisfactionStat> {
-  const all = await db.expenseSatisfactions.where('tripId').equals(tripId).toArray()
+  const all = (await db.expenseSatisfactions.where('tripId').equals(tripId).toArray()).filter((s) => !s.deletedAt)
   const filtered = view.kind === 'me' ? all.filter((s) => s.memberId === view.memberId) : all
   return {
     taggedCount: filtered.length,
@@ -126,7 +128,7 @@ export async function expenseSatisfactionStat(tripId: string, view: { kind: 'me'
 
 // 一笔账目上，谁标了什么——账目卡片盖章要用，按创建时间从早到晚排（先标的章在下面）
 export async function expenseSatisfactionsFor(expenseId: string) {
-  return db.expenseSatisfactions.where('expenseId').equals(expenseId).sortBy('createdAt')
+  return (await db.expenseSatisfactions.where('expenseId').equals(expenseId).sortBy('createdAt')).filter((s) => !s.deletedAt)
 }
 
 // 我自己有没有标过这天/这笔账目——翻卡片界面判断"这张卡是不是已经翻过了"用不上

@@ -106,7 +106,7 @@ export interface WishlistUsage {
 // usageByEntry），因为存起来的标记会在引用行被删除/改动后跟事实脱节——这里从一开始就
 // 不重蹈覆辙
 export async function usageByWishlistEntry(): Promise<Map<string, WishlistUsage>> {
-  const items = await db.itineraryItems.toArray()
+  const items = (await db.itineraryItems.toArray()).filter((it) => !it.deletedAt)
   const tripIdsByWishlistId = new Map<string, Set<string>>()
   for (const it of items) {
     if (!it.sourceWishlistId) continue

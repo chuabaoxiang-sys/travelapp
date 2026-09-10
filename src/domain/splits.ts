@@ -59,7 +59,7 @@ export async function persistExpenseSplitShares(expenseId: string, shares: { mem
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('No household found')
   await db.expenseSplits.where('expenseId').equals(expenseId).delete()
-  const rows = shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount }))
+  const rows = shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount, deletedAt: null }))
   await db.expenseSplits.bulkAdd(rows)
 
   // expenseSplits 不走通用的逐行同步 hook（见 db/dexie.ts 里 SYNCED_TABLES 的注释）——
@@ -93,10 +93,13 @@ export interface PersonBalance {
 }
 
 export async function computeBalances(tripId: string): Promise<PersonBalance[]> {
-  const expenses = await db.expenses.where('tripId').equals(tripId).toArray()
+  // splits/settlements 不额外按各自的 deletedAt 过滤——splits 只看它归属的
+  // expense 还在不在（expenseIds 已经先排掉了软删的账目，anyOf 天然跟着排掉），
+  // settlements 单独按 tripId 查，要自己过滤
+  const expenses = (await db.expenses.where('tripId').equals(tripId).toArray()).filter((e) => !e.deletedAt)
   const expenseIds = expenses.map((e) => e.id)
   const splits = expenseIds.length ? await db.expenseSplits.where('expenseId').anyOf(expenseIds).toArray() : []
-  const settlements = await db.settlements.where('tripId').equals(tripId).toArray()
+  const settlements = (await db.settlements.where('tripId').equals(tripId).toArray()).filter((s) => !s.deletedAt)
 
   const paidMap = new Map<string, { amount: number; count: number }>()
   for (const e of expenses) {
@@ -152,11 +155,11 @@ export interface PrepaymentBalance {
 // prepaymentBalances 需要的是同一份计算结果的两个切面（前者要抵扣后的账目
 // 清单，后者要抵扣剩下的池子），放一起算避免两份逻辑各写一遍、口径跑偏
 async function computeOpenDebtsAndPools(tripId: string) {
-  const expenses = await db.expenses.where('tripId').equals(tripId).toArray()
+  const expenses = (await db.expenses.where('tripId').equals(tripId).toArray()).filter((e) => !e.deletedAt)
   const expenseById = new Map(expenses.map((e) => [e.id, e]))
   const expenseIds = expenses.map((e) => e.id)
   const splits = expenseIds.length ? await db.expenseSplits.where('expenseId').anyOf(expenseIds).toArray() : []
-  const settlements = await db.settlements.where('tripId').equals(tripId).toArray()
+  const settlements = (await db.settlements.where('tripId').equals(tripId).toArray()).filter((s) => !s.deletedAt)
 
   const settledMap = new Map<string, number>()
   for (const s of settlements) {

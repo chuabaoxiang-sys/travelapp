@@ -47,6 +47,10 @@ export interface Trip {
   // 金额旁边的币种chip从这个列表+本位币生成，不用每次手动打字。老行程没有
   // 这个字段时按空数组处理，跟 destinationCountries 是同一个套路
   currencies?: string[]
+  // 软删除时间戳——非null表示这趟行程已被删除，从"我的行程"等所有列表里隐藏，
+  // 但数据本身还在（数据库层面，没有对用户开放任何恢复入口）。见2026-09-10讨论：
+  // 删除行程原本是级联硬删，风险太大又没有任何找回的余地，改成打时间戳
+  deletedAt: number | null
   createdAt: number
   updatedAt: number
 }
@@ -99,6 +103,7 @@ export interface TripMember {
   id: string
   tripId: string
   memberId: string
+  deletedAt: number | null
 }
 
 export interface ExpenseCategory {
@@ -118,6 +123,7 @@ export interface ItineraryDay {
   date: string
   title: string | null
   notes: string | null
+  deletedAt: number | null
   createdAt: number
   updatedAt: number
 }
@@ -150,6 +156,7 @@ export interface ItineraryItem {
   // "这条想去的地点有没有被排入过行程"要现查这个字段，不能反过来在 WishlistPlace
   // 上存一个标记（那种存法会跟 rateBookEntries.useCount 一样，引用行变化后跟事实脱节）
   sourceWishlistId?: string | null
+  deletedAt: number | null
   createdAt: number
   updatedAt: number
 }
@@ -245,6 +252,7 @@ export interface Expense {
   // 一样是"谁"，不是"改了什么"；轻量版的变更归属，讨论时明确选了这个而不是
   // 完整的逐字段修改历史快照，成本低很多）
   lastEditedBy?: string | null
+  deletedAt: number | null
   createdAt: number
   updatedAt: number
 }
@@ -255,6 +263,7 @@ export interface ExpenseSplit {
   expenseId: string
   memberId: string
   shareAmount: number
+  deletedAt: number | null
 }
 
 // 逐项拆账的子项——"这笔账目分成了几项"，每项自己的名称+金额，跟哪些成员
@@ -268,6 +277,7 @@ export interface ExpenseLineItem {
   name: string
   amount: number
   orderIndex: number
+  deletedAt: number | null
 }
 
 export interface ExpenseLineItemMember {
@@ -275,6 +285,7 @@ export interface ExpenseLineItemMember {
   householdId: string
   lineItemId: string
   memberId: string
+  deletedAt: number | null
 }
 
 // "值/一般/后悔"——每个成员对同一天/同一笔账目各自独立打分，同一个
@@ -296,6 +307,7 @@ export interface DaySatisfaction {
   dayId: string
   memberId: string
   rating: SatisfactionRating | null
+  deletedAt: number | null
   createdAt: number
   updatedAt: number
 }
@@ -307,6 +319,7 @@ export interface ExpenseSatisfaction {
   expenseId: string
   memberId: string
   rating: SatisfactionRating
+  deletedAt: number | null
   createdAt: number
   updatedAt: number
 }
@@ -320,6 +333,7 @@ export interface ExpenseDayAllocation {
   tripId: string
   date: string // YYYY-MM-DD
   amount: number
+  deletedAt: number | null
 }
 
 // 一笔开销拆给不止一个汇率簿条目时，每一批分到多少。存的是外币金额（跟开销本身
@@ -335,6 +349,7 @@ export interface ExpenseRateAllocation {
   foreignAmount: number
   rateUsed: number
   homeAmount: number
+  deletedAt: number | null
 }
 
 export interface Budget {
@@ -345,6 +360,7 @@ export interface Budget {
   phase: ExpensePhase | null
   amount: number
   alertThresholdPct: number
+  deletedAt: number | null
 }
 
 export interface Settlement {
@@ -366,6 +382,7 @@ export interface Settlement {
   // 会被"按笔结算"自动拿去抵扣这两人之间后续的具体账目；false（含"结算建议"接受时
   // 生成的）不参与自动抵扣——避免把不对应真实账目的简化转账错误核销到具体账目上
   isPrepayment: boolean
+  deletedAt: number | null
   createdAt: number
   updatedAt: number
 }

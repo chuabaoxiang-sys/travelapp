@@ -92,7 +92,7 @@ function BudgetRing({
 
 export function BudgetTab({ trip }: { trip: Trip }) {
   const { t } = useTranslation()
-  const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const expenses = (useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((e) => !e.deletedAt)
   const categories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
   const overallBudget = useLiveQuery(() => getOverallBudget(trip.id), [trip.id])
   const categoryBudgets = useLiveQuery(() => getCategoryBudgets(trip.id), [trip.id]) ?? []

@@ -7,12 +7,12 @@ function expense(id: string, categoryId: string, homeAmount: number, expenseDate
     id, householdId: 'h1', tripId: 't1', categoryId, phase: 'during_trip', description: null,
     expenseCurrency: 'MYR', expenseAmount: homeAmount, rateBookEntryId: null, rateUsed: 1, homeAmount,
     paidBy: 'papa', recordedBy: 'papa', expenseDate, itineraryDayId: null, itineraryItemId: null,
-    splitType: 'equal', daySpreadMode, createdAt: 0, updatedAt: 0,
+    splitType: 'equal', daySpreadMode, deletedAt: null, createdAt: 0, updatedAt: 0,
   }
 }
 
 function allocation(expenseId: string, date: string, amount: number): ExpenseDayAllocation {
-  return { id: `${expenseId}-${date}`, householdId: 'h1', expenseId, tripId: 't1', date, amount }
+  return { id: `${expenseId}-${date}`, householdId: 'h1', expenseId, tripId: 't1', date, amount, deletedAt: null }
 }
 
 describe('categoryBreakdown', () => {

@@ -290,34 +290,52 @@ export async function ensureSeedData() {
 // 那一天在 itineraryDays 里可能还没有记录（用户还没在时间线加过行程项），
 // ItineraryTab 和 AddExpensePage 都要用到，所以提到这里共用一份
 export async function ensureItineraryDay(tripId: string, date: string) {
-  const existing = await db.itineraryDays.where({ tripId, date }).first()
+  const existing = await db.itineraryDays.where({ tripId, date }).filter((d) => !d.deletedAt).first()
   if (existing) return existing
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('No household found')
   const id = crypto.randomUUID()
   const now = Date.now()
-  const day: ItineraryDay = { id, householdId, tripId, date, title: null, notes: null, createdAt: now, updatedAt: now }
+  const day: ItineraryDay = { id, householdId, tripId, date, title: null, notes: null, deletedAt: null, createdAt: now, updatedAt: now }
   await db.itineraryDays.add(day)
   return day
 }
 
-// 删除一趟行程时级联清理其名下的行程记录/账目数据，避免留下孤儿数据
+// 删除一趟行程——2026-09-10改成软删除：之前是级联硬删，一键点掉就真的清空
+// 名下所有行程安排/账目/分摊/预算/结算，没有任何二次保护也没有恢复余地，是
+// 全APP风险最大的一处删除操作。现在改成给每张关联表打deletedAt时间戳，数据
+// 本身还在——不面向用户开放恢复入口（不加"回收站"UI，见讨论），只是万一
+// 真出事，后台还能找回来。顺带把 daySatisfactions/expenseSatisfactions/
+// expenseLineItems/expenseLineItemMembers 这四张表也一起处理：这四张表以前
+// 完全没被cascade碰过，行程硬删后这些行会变成孤儿数据一直留在本地/云端，
+// 现在统一走同一套软删，孤儿数据问题顺带解决
 export async function deleteTripCascade(tripId: string) {
+  const now = Date.now()
   await db.transaction(
     'rw',
-    [db.trips, db.tripMembers, db.itineraryDays, db.itineraryItems, db.expenses, db.expenseSplits, db.expenseDayAllocations, db.expenseRateAllocations, db.budgets, db.settlements],
+    [
+      db.trips, db.tripMembers, db.itineraryDays, db.itineraryItems, db.expenses, db.expenseSplits,
+      db.expenseDayAllocations, db.expenseRateAllocations, db.budgets, db.settlements,
+      db.daySatisfactions, db.expenseSatisfactions, db.expenseLineItems, db.expenseLineItemMembers,
+    ],
     async () => {
       const expenseIds = await db.expenses.where('tripId').equals(tripId).primaryKeys()
-      await db.expenseSplits.where('expenseId').anyOf(expenseIds).delete()
-      await db.expenseDayAllocations.where('tripId').equals(tripId).delete()
-      await db.expenseRateAllocations.where('tripId').equals(tripId).delete()
-      await db.expenses.where('tripId').equals(tripId).delete()
-      await db.itineraryItems.where('tripId').equals(tripId).delete()
-      await db.itineraryDays.where('tripId').equals(tripId).delete()
-      await db.budgets.where('tripId').equals(tripId).delete()
-      await db.settlements.where('tripId').equals(tripId).delete()
-      await db.tripMembers.where('tripId').equals(tripId).delete()
-      await db.trips.delete(tripId)
+      const lineItemIds = await db.expenseLineItems.where('expenseId').anyOf(expenseIds).primaryKeys()
+
+      await db.expenseSplits.where('expenseId').anyOf(expenseIds).modify({ deletedAt: now })
+      await db.expenseDayAllocations.where('tripId').equals(tripId).modify({ deletedAt: now })
+      await db.expenseRateAllocations.where('tripId').equals(tripId).modify({ deletedAt: now })
+      await db.expenseSatisfactions.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
+      await db.expenseLineItemMembers.where('lineItemId').anyOf(lineItemIds).modify({ deletedAt: now })
+      await db.expenseLineItems.where('expenseId').anyOf(expenseIds).modify({ deletedAt: now })
+      await db.expenses.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
+      await db.daySatisfactions.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
+      await db.itineraryItems.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
+      await db.itineraryDays.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
+      await db.budgets.where('tripId').equals(tripId).modify({ deletedAt: now })
+      await db.settlements.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
+      await db.tripMembers.where('tripId').equals(tripId).modify({ deletedAt: now })
+      await db.trips.where('id').equals(tripId).modify({ deletedAt: now, updatedAt: now })
     },
   )
 }

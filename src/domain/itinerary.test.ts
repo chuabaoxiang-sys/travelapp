@@ -9,7 +9,7 @@ function item(id: string, time: string | null, orderIndex: number): ItineraryIte
   return {
     id, householdId: 'h1', dayId: 'day-1', tripId: 't1', orderIndex, time, title: id,
     locationName: null, lat: null, lng: null, notes: null, createdBy: null, sourceWishlistId: null,
-    createdAt: 0, updatedAt: 0,
+    deletedAt: null, createdAt: 0, updatedAt: 0,
   }
 }
 
@@ -25,7 +25,7 @@ function expense(id: string, itineraryItemId: string | null, daySpreadMode?: 'eq
     id, householdId: 'h1', tripId: 't1', categoryId: 'cat-food', phase: 'during_trip', description: null,
     expenseCurrency: 'MYR', expenseAmount: 100, rateBookEntryId: null, rateUsed: 1, homeAmount: 100,
     paidBy: 'papa', recordedBy: 'papa', expenseDate: '2026-08-26', itineraryDayId: 'day-1', itineraryItemId,
-    splitType: 'equal', daySpreadMode: daySpreadMode ?? null, createdAt: 0, updatedAt: 0,
+    splitType: 'equal', daySpreadMode: daySpreadMode ?? null, deletedAt: null, createdAt: 0, updatedAt: 0,
   }
 }
 
@@ -34,7 +34,7 @@ describe('hasLinkedDaySpreadExpense / resolveDayForItemMove（真实走Dexie）'
     await db.itineraryDays.clear()
     await db.itineraryItems.clear()
     await db.expenses.clear()
-    await db.itineraryDays.add({ id: 'day-1', householdId: 'h1', tripId: 't1', date: '2026-08-26', title: null, notes: null, createdAt: 0, updatedAt: 0 })
+    await db.itineraryDays.add({ id: 'day-1', householdId: 'h1', tripId: 't1', date: '2026-08-26', title: null, notes: null, deletedAt: null, createdAt: 0, updatedAt: 0 })
   })
 
   it('没有关联账目时返回false', async () => {

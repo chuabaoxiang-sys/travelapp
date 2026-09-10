@@ -23,12 +23,12 @@ function expense(id: string, rateBookEntryId: string | null, expenseAmount: numb
     id, householdId: 'h1', tripId: 't1', categoryId: 'cat-food', phase: 'during_trip', description: null,
     expenseCurrency: 'JPY', expenseAmount, rateBookEntryId, rateUsed: 0.03, homeAmount: expenseAmount * 0.03,
     paidBy: 'papa', recordedBy: 'papa', expenseDate: '2026-08-21', itineraryDayId: null, itineraryItemId: null,
-    splitType: 'equal', rateSpread: rateSpread ?? null, createdAt: 0, updatedAt: 0,
+    splitType: 'equal', rateSpread: rateSpread ?? null, deletedAt: null, createdAt: 0, updatedAt: 0,
   }
 }
 
 function allocation(id: string, expenseId: string, rateBookEntryId: string, foreignAmount: number) {
-  return { id, householdId: 'h1', expenseId, tripId: 't1', rateBookEntryId, foreignAmount, rateUsed: 0.03, homeAmount: foreignAmount * 0.03 }
+  return { id, householdId: 'h1', expenseId, tripId: 't1', rateBookEntryId, foreignAmount, rateUsed: 0.03, homeAmount: foreignAmount * 0.03, deletedAt: null }
 }
 
 describe('usageByEntry（真实走Dexie）', () => {

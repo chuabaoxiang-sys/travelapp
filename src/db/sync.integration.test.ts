@@ -83,7 +83,7 @@ function outboxEntry(overrides: Partial<OutboxEntry>): OutboxEntry {
 }
 
 function splitRow(overrides: Partial<ExpenseSplit>): ExpenseSplit {
-  return { id: crypto.randomUUID(), householdId: 'h1', expenseId: 'exp-1', memberId: 'm1', shareAmount: 0, ...overrides }
+  return { id: crypto.randomUUID(), householdId: 'h1', expenseId: 'exp-1', memberId: 'm1', shareAmount: 0, deletedAt: null, ...overrides }
 }
 
 describe('pushOutbox / pullAll / runSync（真实mock网络层）', () => {

@@ -41,7 +41,9 @@ const HOME_CURRENCY_QUICK_PICKS = ['MYR', 'SGD', 'CNY', 'USD', 'THB']
 
 export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: string) => void; currentMemberId: string }) {
   const { t, i18n } = useTranslation()
-  const trips = useLiveQuery(() => db.trips.orderBy('createdAt').reverse().toArray()) ?? []
+  // 软删除的行程（deletedAt非null）从这份列表里过滤掉——不面向用户开放恢复入口，
+  // 数据本身还在，只是在这里"消失"，见2026-09-10讨论
+  const trips = (useLiveQuery(() => db.trips.orderBy('createdAt').reverse().toArray()) ?? []).filter((trip) => !trip.deletedAt)
   // null=不显示表单；'new'=新建（表单出现在列表最下面）；具体id=正在编辑该行程
   // （编辑表单原地替换那张卡片，不要跑到列表底部，否则行程一多就分不清在改哪个）
   const [formState, setFormState] = useState<'new' | string | null>(null)
@@ -307,6 +309,7 @@ function TripForm({
         publicShareTemplate: null,
         destinationCountries,
         currencies,
+        deletedAt: null,
         createdAt: now,
         updatedAt: now,
       }

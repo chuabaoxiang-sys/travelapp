@@ -25,6 +25,7 @@ function makeExpense(overrides: Partial<Expense>): Expense {
     itineraryDayId: null,
     itineraryItemId: null,
     splitType: 'none',
+    deletedAt: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,

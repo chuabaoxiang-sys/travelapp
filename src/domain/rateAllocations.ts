@@ -44,7 +44,7 @@ export async function saveRateAllocations(expenseId: string, tripId: string, inp
   const shares = resolveRateShares(inputs)
   if (!shares.length) return
   await db.expenseRateAllocations.bulkAdd(
-    shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, tripId, ...s })),
+    shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, tripId, ...s, deletedAt: null })),
   )
 }
 

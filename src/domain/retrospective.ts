@@ -59,10 +59,11 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
   const bundle = await assembleExportBundle(tripId, t)
   const { trip, daySummary, categorySummary, personSummary } = bundle
 
-  const [items, allCategories] = await Promise.all([
+  const [itemsRaw, allCategories] = await Promise.all([
     db.itineraryItems.where('tripId').equals(tripId).toArray(),
     db.expenseCategories.toArray(),
   ])
+  const items = itemsRaw.filter((i) => !i.deletedAt)
 
   // 按名字对回分类对象，用来查颜色、也用来查翻译后的显示名（export.ts的
   // CategorySummary只带原始中文名，因为Excel/CSV导出要的就是这个原始值）。

@@ -56,11 +56,12 @@ export async function saveItemizedExpense(expenseId: string, items: LineItemInpu
     name: item.name,
     amount: item.amount,
     orderIndex: i,
+    deletedAt: null,
   }))
   await db.expenseLineItems.bulkAdd(itemRows)
 
   const memberRows = itemRows.flatMap((row, i) =>
-    items[i].memberIds.map((memberId) => ({ id: crypto.randomUUID(), householdId, lineItemId: row.id, memberId })),
+    items[i].memberIds.map((memberId) => ({ id: crypto.randomUUID(), householdId, lineItemId: row.id, memberId, deletedAt: null })),
   )
   if (memberRows.length) await db.expenseLineItemMembers.bulkAdd(memberRows)
 
@@ -88,10 +89,10 @@ export interface LoadedLineItem {
 
 // 编辑一笔已有的逐项拆账账目时，回显原来的子项+每项勾选的成员
 export async function getLineItemsForExpense(expenseId: string): Promise<LoadedLineItem[]> {
-  const items = await db.expenseLineItems.where('expenseId').equals(expenseId).sortBy('orderIndex')
+  const items = (await db.expenseLineItems.where('expenseId').equals(expenseId).sortBy('orderIndex')).filter((i) => !i.deletedAt)
   if (!items.length) return []
   const itemIds = items.map((i) => i.id)
-  const memberRows = await db.expenseLineItemMembers.where('lineItemId').anyOf(itemIds).toArray()
+  const memberRows = (await db.expenseLineItemMembers.where('lineItemId').anyOf(itemIds).toArray()).filter((m) => !m.deletedAt)
   return items.map((item) => ({
     id: item.id,
     name: item.name,

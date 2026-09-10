@@ -53,13 +53,18 @@ export async function assembleExportBundle(tripId: string, t: TFunction): Promis
   const trip = await db.trips.get(tripId)
   if (!trip) throw new Error('Trip not found')
 
-  const [members, categories, itineraryDays, itineraryItems, expenses] = await Promise.all([
+  const [members, categories, itineraryDaysRaw, itineraryItemsRaw, expensesRaw] = await Promise.all([
     db.members.toArray(),
     db.expenseCategories.toArray(),
     db.itineraryDays.where('tripId').equals(tripId).toArray(),
     db.itineraryItems.where('tripId').equals(tripId).toArray(),
     db.expenses.where('tripId').equals(tripId).toArray(),
   ])
+  // 软删除的行不该出现在导出/回顾这类汇总里——deleteTripCascade现在打的是
+  // deletedAt时间戳，不是真删，这里必须自己过滤一遍
+  const itineraryDays = itineraryDaysRaw.filter((d) => !d.deletedAt)
+  const itineraryItems = itineraryItemsRaw.filter((it) => !it.deletedAt)
+  const expenses = expensesRaw.filter((e) => !e.deletedAt)
 
   const dayById = new Map(itineraryDays.map((d) => [d.id, d]))
   const memberName = (id: string) => members.find((m) => m.id === id)?.displayName ?? t('export.unknownMember')

@@ -47,7 +47,7 @@ export async function saveDayAllocations(
   const shares = resolveDayShares(homeAmount, mode, dates, customAmounts)
   if (!shares.length) return
   await db.expenseDayAllocations.bulkAdd(
-    shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, tripId, date: s.date, amount: s.amount })),
+    shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, tripId, date: s.date, amount: s.amount, deletedAt: null })),
   )
 }
 

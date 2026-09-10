@@ -19,7 +19,7 @@ describe('分享设置改动后会立刻推送同步（真机复现过的race co
       id: tripId, householdId: 'h1', name: '测试行程', homeCurrency: 'MYR',
       startDate: null, endDate: null, status: 'planning',
       publicShareScope: 'none', publicShareToken: null, publicShareTemplate: null,
-      createdAt: 0, updatedAt: 0,
+      deletedAt: null, createdAt: 0, updatedAt: 0,
     }
   }
 

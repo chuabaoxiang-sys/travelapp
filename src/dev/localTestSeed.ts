@@ -56,6 +56,7 @@ export async function ensureLocalTestSeed() {
     publicShareTemplate: null,
     destinationCountries: ['cn'],
     currencies: ['CNY'],
+    deletedAt: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -75,6 +76,7 @@ export async function ensureLocalTestSeed() {
     publicShareTemplate: 'editorial',
     destinationCountries: ['kr'],
     currencies: ['KRW'],
+    deletedAt: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -94,6 +96,7 @@ export async function ensureLocalTestSeed() {
     publicShareTemplate: 'collage',
     destinationCountries: ['ch'],
     currencies: ['CHF'],
+    deletedAt: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -101,7 +104,7 @@ export async function ensureLocalTestSeed() {
   const trips = [tripShanghai, tripKorea, tripSwitzerland]
 
   const tripMembers: TripMember[] = trips.flatMap((t) =>
-    FAMILY.map((memberId, i) => ({ id: `seed-tm-${t.id}-${i}`, tripId: t.id, memberId })),
+    FAMILY.map((memberId, i) => ({ id: `seed-tm-${t.id}-${i}`, tripId: t.id, memberId, deletedAt: null })),
   )
 
   // ---- 行程安排：每趟行程按"第几天"给一份真实地点，orderIndex按数组顺序自动算 ----
@@ -120,6 +123,7 @@ export async function ensureLocalTestSeed() {
         date: isoDaysFromNow(startOffset + spec.n - 1),
         title: spec.title,
         notes: null,
+        deletedAt: null,
         createdAt: now,
         updatedAt: now,
       })
@@ -137,6 +141,7 @@ export async function ensureLocalTestSeed() {
           lng: it.lng,
           notes: null,
           createdBy: null,
+          deletedAt: null,
           createdAt: now,
           updatedAt: now,
         })
@@ -290,8 +295,8 @@ export async function ensureLocalTestSeed() {
   ]
 
   const budgets: Budget[] = [
-    { id: 'seed-budget-kr', householdId, tripId: tripKorea.id, categoryId: null, phase: null, amount: 8000, alertThresholdPct: 85 },
-    { id: 'seed-budget-ch', householdId, tripId: tripSwitzerland.id, categoryId: null, phase: null, amount: 18000, alertThresholdPct: 90 },
+    { id: 'seed-budget-kr', householdId, tripId: tripKorea.id, categoryId: null, phase: null, amount: 8000, alertThresholdPct: 85, deletedAt: null },
+    { id: 'seed-budget-ch', householdId, tripId: tripSwitzerland.id, categoryId: null, phase: null, amount: 18000, alertThresholdPct: 90, deletedAt: null },
   ]
 
   function makeExpense(
@@ -329,6 +334,7 @@ export async function ensureLocalTestSeed() {
       itineraryDayId,
       itineraryItemId: null,
       splitType,
+      deletedAt: null,
       createdAt: now,
       updatedAt: now,
     }
@@ -337,6 +343,7 @@ export async function ensureLocalTestSeed() {
       id: `${id}-split-${i}`,
       householdId,
       expenseId: expense.id,
+      deletedAt: null,
       memberId: s.memberId,
       shareAmount: s.shareAmount,
     }))

@@ -22,7 +22,7 @@ function trip(id: string, name: string): Trip {
   return {
     id, householdId: 'h1', name, homeCurrency: 'MYR', startDate: null, endDate: null,
     status: 'planning', publicShareScope: 'none', publicShareToken: null, publicShareTemplate: null,
-    createdAt: 0, updatedAt: 0,
+    deletedAt: null, createdAt: 0, updatedAt: 0,
   }
 }
 
@@ -30,7 +30,7 @@ function itineraryItem(id: string, tripId: string, sourceWishlistId: string | nu
   return {
     id, householdId: 'h1', dayId: 'day-1', tripId, orderIndex: 0, time: null, title: '某个行程项',
     locationName: null, lat: null, lng: null, notes: null, createdBy: null, sourceWishlistId,
-    createdAt: 0, updatedAt: 0,
+    deletedAt: null, createdAt: 0, updatedAt: 0,
   }
 }
 

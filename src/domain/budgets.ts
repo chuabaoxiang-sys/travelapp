@@ -7,12 +7,12 @@ function round2(n: number) {
 }
 
 export async function getOverallBudget(tripId: string): Promise<Budget | undefined> {
-  return db.budgets.where({ tripId }).filter((b) => b.categoryId === null).first()
+  return db.budgets.where({ tripId }).filter((b) => b.categoryId === null && !b.deletedAt).first()
 }
 
 export async function getCategoryBudgets(tripId: string): Promise<Budget[]> {
   const all = await db.budgets.where('tripId').equals(tripId).toArray()
-  return all.filter((b) => b.categoryId !== null)
+  return all.filter((b) => b.categoryId !== null && !b.deletedAt)
 }
 
 export async function upsertBudget(params: {
@@ -25,7 +25,7 @@ export async function upsertBudget(params: {
   const existing = await db.budgets
     .where('tripId')
     .equals(params.tripId)
-    .filter((b) => b.categoryId === params.categoryId)
+    .filter((b) => b.categoryId === params.categoryId && !b.deletedAt)
     .first()
   if (existing) {
     await db.budgets.update(existing.id, { amount: params.amount, alertThresholdPct: params.alertThresholdPct ?? existing.alertThresholdPct })
@@ -42,6 +42,7 @@ export async function upsertBudget(params: {
     phase: params.phase ?? null,
     amount: params.amount,
     alertThresholdPct: params.alertThresholdPct ?? 90,
+    deletedAt: null,
   }
   await db.budgets.add(budget)
   return id

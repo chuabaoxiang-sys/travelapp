@@ -33,9 +33,9 @@ export const ACTIVITY_KIND_CLASS: Record<ActivityKind, string> = {
 
 export function useActivityEntries(trip: Trip): { entries: ActivityEntry[]; members: Member[] } {
   const { t } = useTranslation()
-  const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
-  const items = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
-  const settlements = useLiveQuery(() => db.settlements.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const expenses = (useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((e) => !e.deletedAt)
+  const items = (useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((it) => !it.deletedAt)
+  const settlements = (useLiveQuery(() => db.settlements.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((s) => !s.deletedAt)
   const members = useLiveQuery(() => db.members.toArray()) ?? []
   const categories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
 

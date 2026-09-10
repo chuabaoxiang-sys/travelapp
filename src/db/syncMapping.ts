@@ -15,6 +15,14 @@ function num(v: unknown): number {
 function numOrNull(v: unknown): number | null {
   return v === null || v === undefined ? null : num(v)
 }
+// 软删除时间戳——本地是毫秒数或null，远端是timestamptz或null，跟createdAt/
+// updatedAt用同一套iso()/ms()转换，只是要额外处理null（没删=null，两边都是）
+function isoOrNull(msValue: number | null | undefined): string | null {
+  return msValue === null || msValue === undefined ? null : iso(msValue)
+}
+function msOrNull(isoValue: unknown): number | null {
+  return isoValue === null || isoValue === undefined ? null : ms(String(isoValue))
+}
 
 export interface TableSyncConfig {
   remoteTable: string
@@ -46,6 +54,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       public_share_template: t.publicShareTemplate,
       destination_countries: t.destinationCountries ?? null,
       currencies: t.currencies ?? null,
+      deleted_at: isoOrNull(t.deletedAt),
       created_at: iso(t.createdAt),
       updated_at: iso(t.updatedAt),
     }),
@@ -62,6 +71,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       publicShareTemplate: r.public_share_template,
       destinationCountries: r.destination_countries ?? undefined,
       currencies: r.currencies ?? undefined,
+      deletedAt: msOrNull(r.deleted_at),
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
     }),
@@ -97,8 +107,8 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     remoteTable: 'trip_member',
     conflictColumns: 'trip_id,member_id',
     hasUpdatedAt: false,
-    toRemote: (tm) => ({ trip_id: tm.tripId, member_id: tm.memberId }),
-    fromRemote: (r) => ({ id: `${r.trip_id}:${r.member_id}`, tripId: r.trip_id, memberId: r.member_id }),
+    toRemote: (tm) => ({ trip_id: tm.tripId, member_id: tm.memberId, deleted_at: isoOrNull(tm.deletedAt) }),
+    fromRemote: (r) => ({ id: `${r.trip_id}:${r.member_id}`, tripId: r.trip_id, memberId: r.member_id, deletedAt: msOrNull(r.deleted_at) }),
   },
 
   itineraryDays: {
@@ -112,6 +122,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       day_date: d.date,
       title: d.title,
       notes: d.notes,
+      deleted_at: isoOrNull(d.deletedAt),
       created_at: iso(d.createdAt),
       updated_at: iso(d.updatedAt),
     }),
@@ -122,6 +133,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       date: r.day_date,
       title: r.title,
       notes: r.notes,
+      deletedAt: msOrNull(r.deleted_at),
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
     }),
@@ -148,6 +160,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       booking_deadline: it.bookingDeadline ?? null,
       created_by: it.createdBy ?? null,
       source_wishlist_id: it.sourceWishlistId ?? null,
+      deleted_at: isoOrNull(it.deletedAt),
       created_at: iso(it.createdAt),
       updated_at: iso(it.updatedAt),
     }),
@@ -168,6 +181,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       bookingDeadline: r.booking_deadline ?? null,
       createdBy: r.created_by ?? null,
       sourceWishlistId: r.source_wishlist_id ?? null,
+      deletedAt: msOrNull(r.deleted_at),
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
     }),
@@ -236,6 +250,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       itinerary_item_id: e.itineraryItemId,
       // 本地字段叫 description，远端表这一列叫 notes——纯粹是命名不统一，不是语义差异
       notes: e.description,
+      deleted_at: isoOrNull(e.deletedAt),
       created_at: iso(e.createdAt),
       updated_at: iso(e.updatedAt),
     }),
@@ -259,11 +274,20 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       itineraryDayId: r.itinerary_day_id,
       itineraryItemId: r.itinerary_item_id,
       description: r.notes,
+      deletedAt: msOrNull(r.deleted_at),
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
     }),
   },
 
+  // 这张表的deleted_at映射对pullAll()有效（别的设备/软删的行拉下来时能带上
+  // 这个标记），但对推送无效——expenseSplits不走下面这份toRemote去push，
+  // pushOutbox对这张表整个是特殊处理：按expenseId分组，调replace_expense_splits
+  // RPC整批原子替换（见sync.ts），那个RPC目前不接收/不写deleted_at这一列。
+  // 这不构成实际问题：domain/splits.ts等所有读取分摊数据的地方，判断"这笔账
+  // 还算不算数"看的都是它挂靠的expense自己的deletedAt（expenseIds先排掉软删
+  // 的账目，splits天然跟着排掉），没有任何地方单独依赖expenseSplits.deletedAt
+  // 这个字段做判断——真要补全，需要连着改这个RPC，成本换不来实际收益，先不做
   expenseSplits: {
     remoteTable: 'expense_split',
     conflictColumns: 'id',
@@ -274,6 +298,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       expense_id: s.expenseId,
       member_id: s.memberId,
       share_amount: s.shareAmount,
+      deleted_at: isoOrNull(s.deletedAt),
     }),
     fromRemote: (r) => ({
       id: r.id,
@@ -281,6 +306,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       expenseId: r.expense_id,
       memberId: r.member_id,
       shareAmount: num(r.share_amount),
+      deletedAt: msOrNull(r.deleted_at),
     }),
   },
 
@@ -295,6 +321,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       trip_id: a.tripId,
       day_date: a.date,
       amount: a.amount,
+      deleted_at: isoOrNull(a.deletedAt),
     }),
     fromRemote: (r) => ({
       id: r.id,
@@ -303,6 +330,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       tripId: r.trip_id,
       date: r.day_date,
       amount: num(r.amount),
+      deletedAt: msOrNull(r.deleted_at),
     }),
   },
 
@@ -319,6 +347,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       foreign_amount: a.foreignAmount,
       rate_used: a.rateUsed,
       home_amount: a.homeAmount,
+      deleted_at: isoOrNull(a.deletedAt),
     }),
     fromRemote: (r) => ({
       id: r.id,
@@ -329,6 +358,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       foreignAmount: num(r.foreign_amount),
       rateUsed: num(r.rate_used),
       homeAmount: num(r.home_amount),
+      deletedAt: msOrNull(r.deleted_at),
     }),
   },
 
@@ -343,6 +373,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       category_id: b.categoryId,
       amount: b.amount,
       alert_threshold_pct: b.alertThresholdPct,
+      deleted_at: isoOrNull(b.deletedAt),
     }),
     fromRemote: (r) => ({
       id: r.id,
@@ -353,6 +384,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       phase: null,
       amount: num(r.amount),
       alertThresholdPct: num(r.alert_threshold_pct),
+      deletedAt: msOrNull(r.deleted_at),
     }),
   },
 
@@ -372,6 +404,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       created_by: s.createdBy ?? null,
       expense_id: s.expenseId ?? null,
       is_prepayment: s.isPrepayment ?? false,
+      deleted_at: isoOrNull(s.deletedAt),
       created_at: iso(s.createdAt),
       updated_at: iso(s.updatedAt),
     }),
@@ -387,6 +420,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       createdBy: r.created_by ?? null,
       expenseId: r.expense_id ?? null,
       isPrepayment: r.is_prepayment ?? false,
+      deletedAt: msOrNull(r.deleted_at),
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
     }),
@@ -470,6 +504,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       day_id: s.dayId,
       member_id: s.memberId,
       rating: s.rating,
+      deleted_at: isoOrNull(s.deletedAt),
       created_at: iso(s.createdAt),
       updated_at: iso(s.updatedAt),
     }),
@@ -480,6 +515,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       dayId: r.day_id,
       memberId: r.member_id,
       rating: r.rating,
+      deletedAt: msOrNull(r.deleted_at),
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
     }),
@@ -496,6 +532,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       expense_id: s.expenseId,
       member_id: s.memberId,
       rating: s.rating,
+      deleted_at: isoOrNull(s.deletedAt),
       created_at: iso(s.createdAt),
       updated_at: iso(s.updatedAt),
     }),
@@ -506,6 +543,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       expenseId: r.expense_id,
       memberId: r.member_id,
       rating: r.rating,
+      deletedAt: msOrNull(r.deleted_at),
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
     }),
@@ -524,6 +562,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       name: i.name,
       amount: i.amount,
       order_index: i.orderIndex,
+      deleted_at: isoOrNull(i.deletedAt),
     }),
     fromRemote: (r) => ({
       id: r.id,
@@ -532,6 +571,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       name: r.name,
       amount: num(r.amount),
       orderIndex: r.order_index,
+      deletedAt: msOrNull(r.deleted_at),
     }),
   },
 
@@ -544,12 +584,14 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       household_id: m.householdId,
       line_item_id: m.lineItemId,
       member_id: m.memberId,
+      deleted_at: isoOrNull(m.deletedAt),
     }),
     fromRemote: (r) => ({
       id: r.id,
       householdId: r.household_id,
       lineItemId: r.line_item_id,
       memberId: r.member_id,
+      deletedAt: msOrNull(r.deleted_at),
     }),
   },
 

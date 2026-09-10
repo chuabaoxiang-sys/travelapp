@@ -96,8 +96,8 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
   // 的话会直接退出整个APP而不是关掉这个页面
   useBackDismiss(wishlistOpen, () => setWishlistOpen(false))
 
-  const items = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
-  const itineraryDays = useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const items = (useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((it) => !it.deletedAt)
+  const itineraryDays = (useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((d) => !d.deletedAt)
   const wishlist = useLiveQuery(() => listWishlistPlaces()) ?? []
   const wishlistUsage = useLiveQuery(() => usageByWishlistEntry()) ?? new Map()
 
@@ -290,8 +290,8 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
   // 按返回键会直接退出APP，跟上面BeforeTrip里想去的地点是同一类问题
   useBackDismiss(activityOpen, () => setActivityOpen(false))
 
-  const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
-  const dayAllocations = useLiveQuery(() => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const expenses = (useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((e) => !e.deletedAt)
+  const dayAllocations = (useLiveQuery(() => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((a) => !a.deletedAt)
   const overallBudget = useLiveQuery(() => getOverallBudget(trip.id), [trip.id])
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
   const todaySpent = spentOnDate(expenses, dayAllocations, todayISO)
@@ -300,11 +300,12 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
   })
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
 
-  const itineraryDays = useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const itineraryDays = (useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((d) => !d.deletedAt)
   const todayDay = itineraryDays.find((d) => d.date === todayISO)
   const todayItems = useLiveQuery(async () => {
     if (!todayDay) return []
-    return db.itineraryItems.where('dayId').equals(todayDay.id).toArray()
+    const raw = await db.itineraryItems.where('dayId').equals(todayDay.id).toArray()
+    return raw.filter((it) => !it.deletedAt)
   }, [todayDay?.id]) ?? []
   const nowHM = new Date().toTimeString().slice(0, 5)
   const upcoming = [...todayItems]

@@ -105,11 +105,11 @@ describe('spendByDate', () => {
       id, householdId: 'h1', tripId: 't1', categoryId: 'cat-food', phase: 'during_trip', description: null,
       expenseCurrency: 'MYR', expenseAmount: homeAmount, rateBookEntryId: null, rateUsed: 1, homeAmount,
       paidBy: 'papa', recordedBy: 'papa', expenseDate: '2026-08-21', itineraryDayId, itineraryItemId: null,
-      splitType: 'equal', daySpreadMode: daySpreadMode ?? null, createdAt: 0, updatedAt: 0,
+      splitType: 'equal', daySpreadMode: daySpreadMode ?? null, deletedAt: null, createdAt: 0, updatedAt: 0,
     }
   }
   function alloc(expenseId: string, date: string, amount: number): ExpenseDayAllocation {
-    return { id: `${expenseId}-${date}`, householdId: 'h1', expenseId, tripId: 't1', date, amount }
+    return { id: `${expenseId}-${date}`, householdId: 'h1', expenseId, tripId: 't1', date, amount, deletedAt: null }
   }
 
   it('单日开销整笔算在它关联的那一天', () => {
@@ -160,11 +160,11 @@ describe('spentOnDate（和 spendByDate 是不同口径，别混用）', () => {
       id, householdId: 'h1', tripId: 't1', categoryId: 'cat-food', phase: 'during_trip', description: null,
       expenseCurrency: 'MYR', expenseAmount: homeAmount, rateBookEntryId: null, rateUsed: 1, homeAmount,
       paidBy: 'papa', recordedBy: 'papa', expenseDate, itineraryDayId, itineraryItemId: null,
-      splitType: 'equal', daySpreadMode: daySpreadMode ?? null, createdAt: 0, updatedAt: 0,
+      splitType: 'equal', daySpreadMode: daySpreadMode ?? null, deletedAt: null, createdAt: 0, updatedAt: 0,
     }
   }
   const alloc = (expenseId: string, date: string, amount: number): ExpenseDayAllocation =>
-    ({ id: `${expenseId}-${date}`, householdId: 'h1', expenseId, tripId: 't1', date, amount })
+    ({ id: `${expenseId}-${date}`, householdId: 'h1', expenseId, tripId: 't1', date, amount, deletedAt: null })
 
   // 这条是这个函数存在的全部理由：关联行程是可选的，绝大多数账目 itineraryDayId 都是
   // null。曾经"今天已花"错用了 spendByDate，导致这类账目一律不计，额度一整天显示满的

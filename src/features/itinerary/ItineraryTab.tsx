@@ -55,17 +55,19 @@ export function ItineraryTab({
   const [wishlistOpen, setWishlistOpen] = useState(false)
   useBackDismiss(wishlistOpen, () => setWishlistOpen(false))
 
-  const itineraryDays = useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  // 软删除的天/行程项过滤掉——deleteTripCascade现在打的是deletedAt时间戳，
+  // 不是真删，这里不过滤的话被删的行程还硬删过一次的历史数据会重新冒出来
+  const itineraryDays = (useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((d) => !d.deletedAt)
   const currentDay = itineraryDays.find((d) => d.date === selected)
 
   // 时间线只需要当天的行程项；日历/地图视图要看到整趟行程所有天的行程项，所以两份查询都留着
   const items = useLiveQuery(async () => {
     if (!currentDay) return []
     const raw = await db.itineraryItems.where('dayId').equals(currentDay.id).toArray()
-    return sortItineraryItems(raw)
+    return sortItineraryItems(raw.filter((it) => !it.deletedAt))
   }, [currentDay?.id]) ?? []
 
-  const allItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const allItems = (useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((it) => !it.deletedAt)
 
   // "反向提醒"：想去的地点里，哪些离**当前这一天**已经排上时间线的点足够近——
   // 距离锚点故意只用当前这一天的行程项（items），不是整趟行程的（allItems）：
@@ -98,6 +100,7 @@ export function ItineraryTab({
       notes: place.notes,
       bookingStatus: null,
       sourceWishlistId: place.id,
+      deletedAt: null,
       createdAt: now,
       updatedAt: now,
     })
@@ -105,8 +108,8 @@ export function ItineraryTab({
 
   const routeLegs = useDayRouteLegs(currentDay?.id, items)
 
-  const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
-  const dayAllocations = useLiveQuery(() => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const expenses = (useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((e) => !e.deletedAt)
+  const dayAllocations = (useLiveQuery(() => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((a) => !a.deletedAt)
   // 住宿/周游券这类跨天开销只算它分摊到今天的那部分，不整笔算在某一天头上
   const dayTotal = useMemo(() => {
     if (!currentDay) return 0
@@ -591,6 +594,7 @@ export function ItineraryTab({
               notes: notes || null,
               bookingStatus,
               sourceWishlistId,
+              deletedAt: null,
               createdAt: now,
               updatedAt: now,
             })

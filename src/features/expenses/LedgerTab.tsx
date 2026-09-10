@@ -43,10 +43,10 @@ export function LedgerTab({
   const locale: ResolvedLocale = i18n.language === 'en' ? 'en' : 'zh'
   // 排序刻意不用Dexie的sortBy——要按"行程日期"分组、组内再按记账时间排，
   // 这是个两层排序键，不如查回来直接用JS一次排完
-  const expenses = useLiveQuery(
+  const expenses = (useLiveQuery(
     () => db.expenses.where('tripId').equals(trip.id).toArray(),
     [trip.id],
-  ) ?? []
+  ) ?? []).filter((e) => !e.deletedAt)
   const expenseIds = expenses.map((e) => e.id)
   const splits = useLiveQuery(
     () => (expenseIds.length ? db.expenseSplits.where('expenseId').anyOf(expenseIds).toArray() : Promise.resolve<ExpenseSplit[]>([])),
@@ -57,7 +57,7 @@ export function LedgerTab({
   // 关联行程项的名字——没写备注、又关联了具体某个行程项（比如"Toya Sun Palace"）
   // 的账目，标题不该退到分类名（"住宿现付"），那样好几笔同分类账目会长得一模
   // 一样，只能靠金额分辨；关联行程项本身就是比分类名更具体的名字
-  const itineraryItems = useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []
+  const itineraryItems = (useLiveQuery(() => db.itineraryItems.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((it) => !it.deletedAt)
   const overallBudget = useLiveQuery(() => getOverallBudget(trip.id), [trip.id])
   const categoryBudgets = useLiveQuery(() => getCategoryBudgets(trip.id), [trip.id]) ?? []
   // "管理预算"入口只负责报"这趟已花"深色大卡没说的事——具体哪个分类超支了。
@@ -112,9 +112,9 @@ export function LedgerTab({
   // 用 spentOnDate（按 expenseDate 归日）而不是行程页那个 spendByDate（按
   // itineraryDayId 归日）——两者口径不同，详见 dayAllocations.ts 里的说明。
   // 这里要的是"今天从口袋里出去多少钱"，关联没关联行程都得算
-  const dayAllocations = useLiveQuery(
+  const dayAllocations = (useLiveQuery(
     () => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id],
-  ) ?? []
+  ) ?? []).filter((a) => !a.deletedAt)
   const todayISO = new Date().toLocaleDateString('sv-SE') // sv-SE 的格式刚好就是 YYYY-MM-DD，且按本地时区
   const todaySpent = spentOnDate(expenses, dayAllocations, todayISO)
   const allowance = resolveAllowance({

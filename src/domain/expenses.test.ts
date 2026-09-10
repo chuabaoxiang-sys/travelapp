@@ -7,12 +7,12 @@ function expense(id: string, paidBy: string): Expense {
     id, householdId: 'h1', tripId: 't1', categoryId: 'cat-food', phase: 'during_trip', description: null,
     expenseCurrency: 'MYR', expenseAmount: 100, rateBookEntryId: null, rateUsed: 1, homeAmount: 100,
     paidBy, recordedBy: paidBy, expenseDate: '2026-09-02', itineraryDayId: null, itineraryItemId: null,
-    splitType: 'equal', createdAt: 0, updatedAt: 0,
+    splitType: 'equal', deletedAt: null, createdAt: 0, updatedAt: 0,
   }
 }
 
 function split(expenseId: string, memberId: string, shareAmount: number): ExpenseSplit {
-  return { id: `${expenseId}-${memberId}`, householdId: 'h1', expenseId, memberId, shareAmount }
+  return { id: `${expenseId}-${memberId}`, householdId: 'h1', expenseId, memberId, shareAmount, deletedAt: null }
 }
 
 describe('myRelatedExpenseIds', () => {

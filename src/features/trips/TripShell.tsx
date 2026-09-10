@@ -41,7 +41,12 @@ export function TripShell({
   // 不存在的行程（换设备、行程被删、本地数据被重置……），APP会永远卡在空白页，
   // 没有任何提示，也不会自动跳回选行程界面
   const { t } = useTranslation()
-  const tripResult = useLiveQuery(async () => (await db.trips.get(tripId)) ?? NOT_FOUND, [tripId])
+  // 软删除的行程（deletedAt非null）也算进"这个已经不存在了"——这正是这里
+  // 已经在处理的"本地存的当前行程ID指向一个不存在的行程"这类场景之一
+  const tripResult = useLiveQuery(async () => {
+    const trip = await db.trips.get(tripId)
+    return trip && !trip.deletedAt ? trip : NOT_FOUND
+  }, [tripId])
   // "概览"取代"行程"成为默认首页——四个功能tab时代默认停在"行程"，但概览才是
   // 回答"我现在该看什么"的地方，行程/账目都是从这里再点进去的具体功能
   const [tab, setTab] = useState<TabKey>('overview')
@@ -120,7 +125,7 @@ export function TripShell({
 
   // 未读提示：家里别人记的账，进"账目"tab之前先在tab上点个红点。只有账目能做到这件事，
   // 因为只有 expense 存了作者（recordedBy）；行程项和结算记录还没有作者字段
-  const expenses = useLiveQuery(() => db.expenses.where('tripId').equals(tripId).toArray(), [tripId]) ?? []
+  const expenses = (useLiveQuery(() => db.expenses.where('tripId').equals(tripId).toArray(), [tripId]) ?? []).filter((e) => !e.deletedAt)
   const { seenAt: ledgerSeenAt, markSeen: markLedgerSeen } = useLastSeen(tripId, 'ledger')
   const unseenLedger = countUnseen(expenses, ledgerSeenAt, currentMemberId, (e) => e.recordedBy)
   // 进tab时把"上次看到哪"作为高亮基准记下来，同时把这一刻标成已看过。

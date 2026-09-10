@@ -111,22 +111,22 @@ describe('computeBalances（真实走一遍Dexie，用fake-indexeddb）', () => 
         id: 'exp-test-1', householdId: 'h1', tripId, categoryId: 'cat-food', phase: 'during_trip', description: null,
         expenseCurrency: 'MYR', expenseAmount: 300, rateBookEntryId: null, rateUsed: 1, homeAmount: 300,
         paidBy: 'papa', recordedBy: 'papa', expenseDate: '2026-09-02', itineraryDayId: null, itineraryItemId: null,
-        splitType: 'equal', createdAt: now, updatedAt: now,
+        splitType: 'equal', deletedAt: null, createdAt: now, updatedAt: now,
       },
       {
         id: 'exp-test-2', householdId: 'h1', tripId, categoryId: 'cat-shop', phase: 'during_trip', description: null,
         expenseCurrency: 'MYR', expenseAmount: 90, rateBookEntryId: null, rateUsed: 1, homeAmount: 90,
         paidBy: 'mama', recordedBy: 'mama', expenseDate: '2026-09-02', itineraryDayId: null, itineraryItemId: null,
-        splitType: 'equal', createdAt: now, updatedAt: now,
+        splitType: 'equal', deletedAt: null, createdAt: now, updatedAt: now,
       },
     ])
     await db.expenseSplits.bulkAdd([
-      { id: 'split-1', householdId: 'h1', expenseId: 'exp-test-1', memberId: 'papa', shareAmount: 100 },
-      { id: 'split-2', householdId: 'h1', expenseId: 'exp-test-1', memberId: 'mama', shareAmount: 100 },
-      { id: 'split-3', householdId: 'h1', expenseId: 'exp-test-1', memberId: 'aming', shareAmount: 100 },
-      { id: 'split-4', householdId: 'h1', expenseId: 'exp-test-2', memberId: 'papa', shareAmount: 30 },
-      { id: 'split-5', householdId: 'h1', expenseId: 'exp-test-2', memberId: 'mama', shareAmount: 30 },
-      { id: 'split-6', householdId: 'h1', expenseId: 'exp-test-2', memberId: 'aming', shareAmount: 30 },
+      { id: 'split-1', householdId: 'h1', expenseId: 'exp-test-1', memberId: 'papa', shareAmount: 100, deletedAt: null },
+      { id: 'split-2', householdId: 'h1', expenseId: 'exp-test-1', memberId: 'mama', shareAmount: 100, deletedAt: null },
+      { id: 'split-3', householdId: 'h1', expenseId: 'exp-test-1', memberId: 'aming', shareAmount: 100, deletedAt: null },
+      { id: 'split-4', householdId: 'h1', expenseId: 'exp-test-2', memberId: 'papa', shareAmount: 30, deletedAt: null },
+      { id: 'split-5', householdId: 'h1', expenseId: 'exp-test-2', memberId: 'mama', shareAmount: 30, deletedAt: null },
+      { id: 'split-6', householdId: 'h1', expenseId: 'exp-test-2', memberId: 'aming', shareAmount: 30, deletedAt: null },
     ])
 
     let balances = await computeBalances(tripId)
@@ -139,7 +139,7 @@ describe('computeBalances（真实走一遍Dexie，用fake-indexeddb）', () => 
     // 阿明先还50给爸爸
     await db.settlements.add({
       id: 'settle-1', householdId: 'h1', tripId, fromMemberId: 'aming', toMemberId: 'papa', amount: 50,
-      settledDate: '2026-09-04', note: '转账', createdBy: 'aming', expenseId: null, isPrepayment: false, createdAt: now, updatedAt: now,
+      settledDate: '2026-09-04', note: '转账', createdBy: 'aming', expenseId: null, isPrepayment: false, deletedAt: null, createdAt: now, updatedAt: now,
     })
 
     balances = await computeBalances(tripId)
@@ -163,16 +163,16 @@ describe('openExpenseDebts（按笔结算用的清单，真实走Dexie）', () =
       id, householdId: 'h1', tripId, categoryId: 'cat-food', phase: 'during_trip' as const, description: '测试账目',
       expenseCurrency: 'MYR', expenseAmount: homeAmount, rateBookEntryId: null, rateUsed: 1, homeAmount,
       paidBy, recordedBy: paidBy, expenseDate: '2026-09-02', itineraryDayId: null, itineraryItemId: null,
-      splitType: 'equal' as const, createdAt: 0, updatedAt: 0,
+      splitType: 'equal' as const, deletedAt: null, createdAt: 0, updatedAt: 0,
     }
   }
 
   it('只列真正欠别人钱的那部分，付款人自己的那一份不算欠款', async () => {
     await db.expenses.add(expense('exp2-test-1', 'papa', 300))
     await db.expenseSplits.bulkAdd([
-      { id: 'split2-1', householdId: 'h1', expenseId: 'exp2-test-1', memberId: 'papa', shareAmount: 100 },
-      { id: 'split2-2', householdId: 'h1', expenseId: 'exp2-test-1', memberId: 'mama', shareAmount: 100 },
-      { id: 'split2-3', householdId: 'h1', expenseId: 'exp2-test-1', memberId: 'aming', shareAmount: 100 },
+      { id: 'split2-1', householdId: 'h1', expenseId: 'exp2-test-1', memberId: 'papa', shareAmount: 100, deletedAt: null },
+      { id: 'split2-2', householdId: 'h1', expenseId: 'exp2-test-1', memberId: 'mama', shareAmount: 100, deletedAt: null },
+      { id: 'split2-3', householdId: 'h1', expenseId: 'exp2-test-1', memberId: 'aming', shareAmount: 100, deletedAt: null },
     ])
 
     const debts = await openExpenseDebts(tripId)
@@ -184,14 +184,14 @@ describe('openExpenseDebts（按笔结算用的清单，真实走Dexie）', () =
   it('打了标签(expenseId)的结算会扣减对应那一笔的剩余欠款；没打标签的聚合结算不影响这个清单', async () => {
     await db.expenses.add(expense('exp2-test-2', 'papa', 200))
     await db.expenseSplits.bulkAdd([
-      { id: 'split2-4', householdId: 'h1', expenseId: 'exp2-test-2', memberId: 'papa', shareAmount: 100 },
-      { id: 'split2-5', householdId: 'h1', expenseId: 'exp2-test-2', memberId: 'mama', shareAmount: 100 },
+      { id: 'split2-4', householdId: 'h1', expenseId: 'exp2-test-2', memberId: 'papa', shareAmount: 100, deletedAt: null },
+      { id: 'split2-5', householdId: 'h1', expenseId: 'exp2-test-2', memberId: 'mama', shareAmount: 100, deletedAt: null },
     ])
     await db.settlements.bulkAdd([
       // 打了标签的部分结清——mama对这笔账还剩40没还
-      { id: 'settle2-1', householdId: 'h1', tripId, fromMemberId: 'mama', toMemberId: 'papa', amount: 60, settledDate: '2026-09-03', note: null, createdBy: 'mama', expenseId: 'exp2-test-2', isPrepayment: false, createdAt: 0, updatedAt: 0 },
+      { id: 'settle2-1', householdId: 'h1', tripId, fromMemberId: 'mama', toMemberId: 'papa', amount: 60, settledDate: '2026-09-03', note: null, createdBy: 'mama', expenseId: 'exp2-test-2', isPrepayment: false, deletedAt: null, createdAt: 0, updatedAt: 0 },
       // 没打标签、也不是预付款的聚合结算（"结算建议"接受时那种）——不应该影响这一笔的剩余欠款
-      { id: 'settle2-2', householdId: 'h1', tripId, fromMemberId: 'mama', toMemberId: 'papa', amount: 500, settledDate: '2026-09-03', note: null, createdBy: 'mama', expenseId: null, isPrepayment: false, createdAt: 0, updatedAt: 0 },
+      { id: 'settle2-2', householdId: 'h1', tripId, fromMemberId: 'mama', toMemberId: 'papa', amount: 500, settledDate: '2026-09-03', note: null, createdBy: 'mama', expenseId: null, isPrepayment: false, deletedAt: null, createdAt: 0, updatedAt: 0 },
     ])
 
     const debts = await openExpenseDebts(tripId)
@@ -201,10 +201,10 @@ describe('openExpenseDebts（按笔结算用的清单，真实走Dexie）', () =
 
   it('打了标签的结算刚好还清整笔时，这笔账从清单里消失', async () => {
     await db.expenses.add(expense('exp2-test-3', 'papa', 220))
-    await db.expenseSplits.add({ id: 'split2-6', householdId: 'h1', expenseId: 'exp2-test-3', memberId: 'kn', shareAmount: 220 })
+    await db.expenseSplits.add({ id: 'split2-6', householdId: 'h1', expenseId: 'exp2-test-3', memberId: 'kn', shareAmount: 220, deletedAt: null })
     await db.settlements.add({
       id: 'settle2-3', householdId: 'h1', tripId, fromMemberId: 'kn', toMemberId: 'papa', amount: 220,
-      settledDate: '2026-09-03', note: null, createdBy: 'kn', expenseId: 'exp2-test-3', isPrepayment: false, createdAt: 0, updatedAt: 0,
+      settledDate: '2026-09-03', note: null, createdBy: 'kn', expenseId: 'exp2-test-3', isPrepayment: false, deletedAt: null, createdAt: 0, updatedAt: 0,
     })
 
     const debts = await openExpenseDebts(tripId)
@@ -214,12 +214,12 @@ describe('openExpenseDebts（按笔结算用的清单，真实走Dexie）', () =
   it('已经还清的账目会出现在closedExpenseDebts里，标注是按笔结算还清的；没还清的不会出现', async () => {
     await db.expenses.bulkAdd([expense('exp2-test-4', 'papa', 220), expense('exp2-test-5', 'papa', 90)])
     await db.expenseSplits.bulkAdd([
-      { id: 'split2-7', householdId: 'h1', expenseId: 'exp2-test-4', memberId: 'kn', shareAmount: 220 },
-      { id: 'split2-8', householdId: 'h1', expenseId: 'exp2-test-5', memberId: 'kn', shareAmount: 90 },
+      { id: 'split2-7', householdId: 'h1', expenseId: 'exp2-test-4', memberId: 'kn', shareAmount: 220, deletedAt: null },
+      { id: 'split2-8', householdId: 'h1', expenseId: 'exp2-test-5', memberId: 'kn', shareAmount: 90, deletedAt: null },
     ])
     await db.settlements.add({
       id: 'settle2-4', householdId: 'h1', tripId, fromMemberId: 'kn', toMemberId: 'papa', amount: 220,
-      settledDate: '2026-09-03', note: null, createdBy: 'kn', expenseId: 'exp2-test-4', isPrepayment: false, createdAt: 0, updatedAt: 0,
+      settledDate: '2026-09-03', note: null, createdBy: 'kn', expenseId: 'exp2-test-4', isPrepayment: false, deletedAt: null, createdAt: 0, updatedAt: 0,
     })
 
     const closed = await closedExpenseDebts(tripId)
@@ -245,13 +245,13 @@ describe('预付款自动抵扣"按笔结算"（真实走Dexie）', () => {
       id, householdId: 'h1', tripId, categoryId: 'cat-food', phase: 'during_trip' as const, description: '测试账目',
       expenseCurrency: 'MYR', expenseAmount: homeAmount, rateBookEntryId: null, rateUsed: 1, homeAmount,
       paidBy, recordedBy: paidBy, expenseDate, itineraryDayId: null, itineraryItemId: null,
-      splitType: 'equal' as const, createdAt: 0, updatedAt: 0,
+      splitType: 'equal' as const, deletedAt: null, createdAt: 0, updatedAt: 0,
     }
   }
   function prepayment(id: string, fromMemberId: string, toMemberId: string, amount: number) {
     return {
       id, householdId: 'h1', tripId, fromMemberId, toMemberId, amount, settledDate: '2026-09-01',
-      note: '预付', createdBy: fromMemberId, expenseId: null, isPrepayment: true, createdAt: 0, updatedAt: 0,
+      note: '预付', createdBy: fromMemberId, expenseId: null, isPrepayment: true, deletedAt: null, createdAt: 0, updatedAt: 0,
     }
   }
 
@@ -261,8 +261,8 @@ describe('预付款自动抵扣"按笔结算"（真实走Dexie）', () => {
       expense('exp3-test-2', 'papa', 100, '2026-09-05'),
     ])
     await db.expenseSplits.bulkAdd([
-      { id: 'split3-1', householdId: 'h1', expenseId: 'exp3-test-1', memberId: 'kn', shareAmount: 150 },
-      { id: 'split3-2', householdId: 'h1', expenseId: 'exp3-test-2', memberId: 'kn', shareAmount: 100 },
+      { id: 'split3-1', householdId: 'h1', expenseId: 'exp3-test-1', memberId: 'kn', shareAmount: 150, deletedAt: null },
+      { id: 'split3-2', householdId: 'h1', expenseId: 'exp3-test-2', memberId: 'kn', shareAmount: 100, deletedAt: null },
     ])
     // 预付200：先把9-02那笔150全额抵掉，剩下50抵9-05那笔（还剩50没抵）
     await db.settlements.add(prepayment('prepay-1', 'kn', 'papa', 200))
@@ -280,7 +280,7 @@ describe('预付款自动抵扣"按笔结算"（真实走Dexie）', () => {
 
   it('聚合结算不是预付款（isPrepayment=false）时不参与自动抵扣，哪怕金额一样', async () => {
     await db.expenses.add(expense('exp3-test-3', 'papa', 150, '2026-09-02'))
-    await db.expenseSplits.add({ id: 'split3-3', householdId: 'h1', expenseId: 'exp3-test-3', memberId: 'kn', shareAmount: 150 })
+    await db.expenseSplits.add({ id: 'split3-3', householdId: 'h1', expenseId: 'exp3-test-3', memberId: 'kn', shareAmount: 150, deletedAt: null })
     await db.settlements.add({ ...prepayment('settle3-suggestion', 'kn', 'papa', 200), isPrepayment: false })
 
     const debts = await openExpenseDebts(tripId)
@@ -290,7 +290,7 @@ describe('预付款自动抵扣"按笔结算"（真实走Dexie）', () => {
 
   it('预付款只抵扣同一对"谁欠谁"方向，不会抵扣到反方向或不相关的人', async () => {
     await db.expenses.add(expense('exp3-test-4', 'kn', 80, '2026-09-02')) // 这笔是papa欠kn，方向相反
-    await db.expenseSplits.add({ id: 'split3-4', householdId: 'h1', expenseId: 'exp3-test-4', memberId: 'papa', shareAmount: 80 })
+    await db.expenseSplits.add({ id: 'split3-4', householdId: 'h1', expenseId: 'exp3-test-4', memberId: 'papa', shareAmount: 80, deletedAt: null })
     await db.settlements.add(prepayment('prepay-2', 'kn', 'papa', 200)) // kn→papa方向的预付款
 
     const debts = await openExpenseDebts(tripId)
@@ -300,7 +300,7 @@ describe('预付款自动抵扣"按笔结算"（真实走Dexie）', () => {
 
   it('预付款还没花完的部分，能用prepaymentBalances查到', async () => {
     await db.expenses.add(expense('exp3-test-5', 'papa', 60, '2026-09-02'))
-    await db.expenseSplits.add({ id: 'split3-5', householdId: 'h1', expenseId: 'exp3-test-5', memberId: 'kn', shareAmount: 60 })
+    await db.expenseSplits.add({ id: 'split3-5', householdId: 'h1', expenseId: 'exp3-test-5', memberId: 'kn', shareAmount: 60, deletedAt: null })
     await db.settlements.add(prepayment('prepay-3', 'kn', 'papa', 500))
 
     const balances = await prepaymentBalances(tripId)
@@ -309,7 +309,7 @@ describe('预付款自动抵扣"按笔结算"（真实走Dexie）', () => {
 
   it('删掉预付款结算后，被它抵扣掉的账目立刻重新出现在按笔结算清单里', async () => {
     await db.expenses.add(expense('exp3-test-6', 'papa', 60, '2026-09-02'))
-    await db.expenseSplits.add({ id: 'split3-6', householdId: 'h1', expenseId: 'exp3-test-6', memberId: 'kn', shareAmount: 60 })
+    await db.expenseSplits.add({ id: 'split3-6', householdId: 'h1', expenseId: 'exp3-test-6', memberId: 'kn', shareAmount: 60, deletedAt: null })
     await db.settlements.add(prepayment('prepay-4', 'kn', 'papa', 60))
 
     expect(await openExpenseDebts(tripId)).toHaveLength(0)
