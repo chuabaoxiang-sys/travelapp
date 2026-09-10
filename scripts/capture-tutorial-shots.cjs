@@ -178,6 +178,17 @@ async function main() {
   await page.waitForTimeout(400)
   await shot(page, 'itinerary-6', page.locator('button[title="想去的地点"], button[title="Saved places"]').first())
 
+  // 这一天的标题——种子数据里第一天本来就带了手动标题（"抵达仁川 · 明洞"），
+  // 截图重点是标题所在这一整行（含铅笔图标）的位置，不强求展示"自动生成"
+  // 那种斜体视觉（生产环境里没写过标题的新行程会自动出现，跟这里的位置一致）
+  await shot(page, 'itinerary-7', page.locator('div.font-serif-sc[class*="text-sm"][class*="min-w-0"]').first())
+
+  await page.locator('button[title="编辑标题"], button[title="Edit title"]').first().click()
+  await page.waitForTimeout(300)
+  await shot(page, 'itinerary-8', page.locator('[class*="border-plan/40"]').first())
+  await page.getByText(X('取消', 'Cancel'), { exact: true }).first().click()
+  await page.waitForTimeout(300)
+
   // ===================== 记账与分账 =====================
   await clickNavTab(page, X('账目', 'Ledger'))
 

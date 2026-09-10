@@ -33,3 +33,23 @@ export async function resolveDayForItemMove(tripId: string, newDate: string, ite
   }
   return day.id
 }
+
+// 自动生成的行程日标题——没手动写过标题时，从这天行程记录的地点字段猜一个。
+// 2026-09-10出图讨论定的算法：取当天第一条、最后一条填了地点的记录，两个地点
+// 一样就只显示一个（"一整天都在同一个地方"），不一样就拼成"A → B"（"这天挪了地方"）。
+// 特意不用记录标题本身（比如"退房"）——那类纯过渡记录没有代表性，讨论时明确排除过
+export function deriveDayTitle(items: ItineraryItem[]): string | null {
+  const withLocation = sortItineraryItems(items).filter((it) => it.locationName)
+  if (withLocation.length === 0) return null
+  const first = withLocation[0].locationName!
+  const last = withLocation[withLocation.length - 1].locationName!
+  return first === last ? first : `${first} → ${last}`
+}
+
+// 这一天最终显示的标题——用户手动编辑过（ItineraryDay.title非空）就优先用那个，
+// 没编辑过就退到自动生成的。翻卡回顾/行程页头部等所有要展示"这天标题"的地方
+// 都要走这个函数，不要直接读 day.title，不然两处会显示不一致的结果
+export function resolveDayTitle(day: { title: string | null }, items: ItineraryItem[]): string | null {
+  const manual = day.title?.trim()
+  return manual ? manual : deriveDayTitle(items)
+}

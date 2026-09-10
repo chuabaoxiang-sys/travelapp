@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Cancel",
+    "save": "Save",
     "delete": "Delete",
     "justNow": "Just now",
     "minutesAgo_one": "{{count}} minute ago",
@@ -243,7 +244,9 @@
     "moveConfirmTitle": "This item's linked expense is spread across days",
     "moveConfirmMessage": "Moving it to a new date won't automatically update which days that expense is spread across — you'll need to adjust that yourself on the Ledger tab. Move it anyway?",
     "moveConfirmButton": "Move it",
-    "mapLoading": "Loading map…"
+    "mapLoading": "Loading map…",
+    "editDayTitle": "Edit title",
+    "dayTitleAutoHint": "Clear it and save to go back to the auto-generated title"
   },
   "itemForm": {
     "editTitle": "Edit item",
@@ -1014,7 +1017,9 @@
         { "title": "Edit or delete one", "desc": "Tap an existing card to expand it into an editor — save your changes, or delete it from there." },
         { "title": "Pull from your wishlist", "desc": "When adding a plan, \"Pick from your wishlist\" at the top fills in the name and location for you." },
         { "title": "See wishlist spots on the map", "desc": "The heart icon top-right on the map shows places you've saved but haven't scheduled yet." },
-        { "title": "Nearby wishlist reminders", "desc": "When a saved place is close to that day's plans, a number badge shows up on the bookmark icon." }
+        { "title": "Nearby wishlist reminders", "desc": "When a saved place is close to that day's plans, a number badge shows up on the bookmark icon." },
+        { "title": "Every day gets a title", "desc": "The date shows a title next to it automatically, pulled from that day's locations if you haven't set one yourself — like \"Incheon Airport → Myeongdong.\"" },
+        { "title": "Make it your own", "desc": "Tap the pencil to edit it right there. Save your own text and it sticks; clear it and save to go back to the auto-generated version." }
       ]
     },
     "ledgerSettle": {

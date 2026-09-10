@@ -33,7 +33,7 @@ export const TUTORIALS: Tutorial[] = [
   {
     id: 'itinerary',
     icon: Map,
-    stepIds: ['itinerary-1', 'itinerary-2', 'itinerary-3', 'itinerary-4', 'itinerary-5', 'itinerary-6'],
+    stepIds: ['itinerary-1', 'itinerary-2', 'itinerary-3', 'itinerary-4', 'itinerary-5', 'itinerary-6', 'itinerary-7', 'itinerary-8'],
   },
   {
     id: 'ledgerSettle',
@@ -90,6 +90,8 @@ export const STEP_RINGS_ZH: Record<string, TutorialStepRing> = {
   'itinerary-4': { left: 5.1, top: 75.1, width: 42.3, height: 5.1 },
   'itinerary-5': { left: 86.7, top: 19.7, width: 11.8, height: 5.5 },
   'itinerary-6': { left: 75.4, top: 13.6, width: 11.3, height: 5.2 },
+  'itinerary-7': { left: 3.6, top: 28.7, width: 54.4, height: 3.8 },
+  'itinerary-8': { left: 3.6, top: 28.7, width: 92.8, height: 14 },
   'ledger-settle-1': { left: 42.8, top: 90.8, width: 14.4, height: 6.9 },
   'ledger-settle-2': { left: 5.1, top: 60, width: 89.7, height: 12.8 },
   'ledger-settle-3': { left: 9, top: 66.6, width: 82.1, height: 4.8 },
@@ -128,6 +130,8 @@ export const STEP_RINGS_EN: Record<string, TutorialStepRing> = {
   'itinerary-4': { left: 5.1, top: 71.3, width: 46.6, height: 5.1 },
   'itinerary-5': { left: 86.7, top: 19.7, width: 11.8, height: 5.5 },
   'itinerary-6': { left: 75.4, top: 13.6, width: 11.3, height: 5.2 },
+  'itinerary-7': { left: 3.6, top: 28.7, width: 54.4, height: 3.8 },
+  'itinerary-8': { left: 3.6, top: 28.7, width: 92.8, height: 14 },
   'ledger-settle-1': { left: 42.8, top: 90.8, width: 14.4, height: 6.9 },
   'ledger-settle-2': { left: 5.1, top: 55.4, width: 89.7, height: 12.8 },
   'ledger-settle-3': { left: 9, top: 62.1, width: 82.1, height: 4.8 },

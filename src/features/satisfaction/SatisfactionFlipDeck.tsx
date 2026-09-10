@@ -3,7 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import { X, SkipForward } from 'lucide-react'
 import type { Trip, SatisfactionRating } from '../../types'
+import { db } from '../../db/dexie'
 import { pendingDaysForMember, setDaySatisfaction } from '../../domain/satisfaction'
+import { resolveDayTitle } from '../../domain/itinerary'
 import { Stamp } from './SatisfactionStampBadge'
 import { RATING_COLOR, RATING_STAMP_KEY } from './stampVisuals'
 
@@ -31,6 +33,13 @@ export function SatisfactionFlipDeck({ trip, currentMemberId, onClose }: { trip:
     [trip.id, currentMemberId, todayISO],
   ) ?? []
   const top = pending[0]
+  // 标题跟行程页头部走同一个resolveDayTitle——没手动编辑过就用行程记录的地点
+  // 自动拼一个，两处不会显示不一致的结果（见2026-09-10讨论）
+  const topItems = useLiveQuery(async () => {
+    if (!top) return []
+    return db.itineraryItems.where('dayId').equals(top.id).toArray()
+  }, [top?.id]) ?? []
+  const topTitle = top ? resolveDayTitle(top, topItems) : null
   // 选了值/一般/后悔之后不立刻写库——先播落章动效，播完了才真正提交。
   // 用ref记住动效开始那一刻是给哪一天评分的，不依赖动效播放期间top有没有
   // 变化（正常不会变，因为按钮在动效期间是禁用的，但commit的时候用当时
@@ -85,7 +94,7 @@ export function SatisfactionFlipDeck({ trip, currentMemberId, onClose }: { trip:
               <div className="text-[11px] text-muted mb-1.5">{t('satisfaction.askDay')}</div>
               <div className="font-serif-sc text-[16px]">
                 {formatShortDate(top.date)}
-                {top.title ? ` · ${top.title}` : ''}
+                {topTitle ? ` · ${topTitle}` : ''}
               </div>
               {/* 落章动效——只在选完评分、动效还没播完的这段时间存在。旋转角度
                   由Stamp组件自己的inline transform负责，这层absolute容器只管

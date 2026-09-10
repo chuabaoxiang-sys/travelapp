@@ -1,10 +1,10 @@
 import { Fragment, Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { Trash2, Filter, Bookmark, MapPin } from 'lucide-react'
+import { Trash2, Filter, Bookmark, MapPin, Pencil } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
-import { sortItineraryItems, hasLinkedDaySpreadExpense, resolveDayForItemMove } from '../../domain/itinerary'
+import { sortItineraryItems, hasLinkedDaySpreadExpense, resolveDayForItemMove, deriveDayTitle, resolveDayTitle } from '../../domain/itinerary'
 import { spendByDate } from '../../domain/dayAllocations'
 import { toggleBookingStatus } from '../../domain/booking'
 import { listWishlistPlaces, nearbyWishlistSuggestions } from '../../domain/wishlist'
@@ -211,6 +211,25 @@ export function ItineraryTab({
   function selectDate(d: string) {
     setSelected(d)
     setFormState(null)
+    setEditingDayTitle(false)
+  }
+
+  // 编辑"这一天标题"——跟行程项的表单是两回事，故意不共用formState，
+  // 不然切换编辑对象时要处理"两种表单谁盖过谁"这类没必要的交叉状态
+  const [editingDayTitle, setEditingDayTitle] = useState(false)
+  const [dayTitleDraft, setDayTitleDraft] = useState('')
+  const autoDayTitle = useMemo(() => deriveDayTitle(items), [items])
+  const displayDayTitle = currentDay ? resolveDayTitle(currentDay, items) : null
+
+  function openDayTitleEditor() {
+    setDayTitleDraft(currentDay?.title ?? '')
+    setEditingDayTitle(true)
+  }
+
+  async function saveDayTitle() {
+    const day = await ensureDay(selected)
+    await db.itineraryDays.update(day.id, { title: dayTitleDraft.trim() || null, updatedAt: Date.now() })
+    setEditingDayTitle(false)
   }
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -402,10 +421,38 @@ export function ItineraryTab({
               </div>
             )}
 
-            <div className="flex items-baseline justify-between mb-3">
-              <div className="font-serif-sc text-sm">{selected} {currentDay?.title ? `· ${currentDay.title}` : ''}</div>
-              <div className="text-[11.5px] text-muted tabular">{t('itinerary.dayTotalLabel')} {formatMoney(dayTotal)}</div>
-            </div>
+            {editingDayTitle ? (
+              <div className="rounded-2xl border border-plan/40 bg-card overflow-hidden flex flex-col pt-2.5 mb-3">
+                <div className="flex items-center justify-between px-3.5 pb-2">
+                  <button onClick={() => setEditingDayTitle(false)} className="text-[11.5px] text-muted">{t('common.cancel')}</button>
+                  <span className="font-serif-sc text-[11.5px] font-semibold">{t('itinerary.editDayTitle')}</span>
+                  <button onClick={saveDayTitle} className="text-[11.5px] text-plan font-semibold">{t('common.save')}</button>
+                </div>
+                <div className="px-3.5 pb-3">
+                  <input
+                    autoFocus
+                    value={dayTitleDraft}
+                    onChange={(e) => setDayTitleDraft(e.target.value)}
+                    placeholder={autoDayTitle ?? ''}
+                    className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
+                  />
+                  <div className="text-[10.5px] text-faint mt-1.5 leading-relaxed">{t('itinerary.dayTitleAutoHint')}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-baseline justify-between mb-3">
+                <div className="font-serif-sc text-sm flex items-center gap-1.5 min-w-0">
+                  <span className="flex-shrink-0">{selected}</span>
+                  {displayDayTitle && (
+                    <span className={`truncate ${currentDay?.title ? '' : 'italic text-soft'}`}>· {displayDayTitle}</span>
+                  )}
+                  <button onClick={openDayTitleEditor} className="text-plan flex-shrink-0" title={t('itinerary.editDayTitle')}>
+                    <Pencil className="w-3 h-3" strokeWidth={2.2} />
+                  </button>
+                </div>
+                <div className="text-[11.5px] text-muted tabular flex-shrink-0">{t('itinerary.dayTotalLabel')} {formatMoney(dayTotal)}</div>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               {items.map((it, i) => {
