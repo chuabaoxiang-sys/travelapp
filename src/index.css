@@ -346,6 +346,20 @@ html.sheet-open .nav-blur {
   .shake {
     animation: none;
   }
+  /* 落章动效退化成瞬间显示最终状态，不是干脆不显示——.stamp-slam的0%是
+     opacity:0，animation:none会让它卡在看不见的起始帧，必须手动补final state */
+  .stamp-slam {
+    animation: none;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .stamp-jolt {
+    animation: none;
+  }
+  .stamp-ripple {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 /* 验证码输错时的轻微抖动提示——比单纯变红边框更明显地传达"这次不对，重试" */
@@ -356,6 +370,42 @@ html.sheet-open .nav-blur {
 }
 .shake {
   animation: shake 0.3s;
+}
+
+/* 翻卡回顾选完评分后的"盖章"落章动效——一枚印章从卡片上方"啪"地砸到正中间，
+   带一点回弹。旋转角度由被套着的Stamp组件自己的inline transform负责（见
+   SatisfactionStampBadge.tsx），这层只管位置和缩放，两层transform天然叠加，
+   不用在这份keyframes里重复写rotate。跟账目盖章共用同一个Stamp视觉组件，
+   这里补的是"选完之后真的看到它盖下去"这个反馈动作 */
+@keyframes stamp-slam {
+  0%   { transform: translate(-50%, -50%) scale(2.4) translateY(-46px); opacity: 0; }
+  45%  { transform: translate(-50%, -50%) scale(0.92) translateY(0); opacity: 1; }
+  62%  { transform: translate(-50%, -50%) scale(1.08); }
+  80%  { transform: translate(-50%, -50%) scale(0.97); }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+.stamp-slam {
+  animation: stamp-slam 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+}
+/* 印章落下的瞬间卡片本身也轻轻震一下——用setTimeout跟stamp-slam动画的落地
+   时刻（45%处，约260ms）对上，不是跟它同时触发 */
+@keyframes stamp-jolt {
+  0%, 42% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+  58% { transform: translateY(-1.5px); }
+  100% { transform: translateY(0); }
+}
+.stamp-jolt {
+  animation: stamp-jolt 0.5s ease;
+}
+/* 印章周围一圈墨渍扩散——延迟到跟落章动作同一时刻才开始播，不是从选中那一刻
+   就开始 */
+@keyframes stamp-ripple {
+  0% { opacity: 0.35; transform: translate(-50%, -50%) scale(0.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(6); }
+}
+.stamp-ripple {
+  animation: stamp-ripple 0.5s ease-out 0.22s forwards;
 }
 
 /* iOS Safari 有个规则：聚焦的输入框如果字体小于16px，会自动放大整个页面。

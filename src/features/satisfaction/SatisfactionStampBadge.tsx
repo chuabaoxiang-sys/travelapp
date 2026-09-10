@@ -6,26 +6,12 @@ import { db } from '../../db/dexie'
 import type { SatisfactionRating } from '../../types'
 import { expenseSatisfactionsFor, setExpenseSatisfaction } from '../../domain/satisfaction'
 import { CenteredModal } from '../../components/CenteredModal'
-
-const RATING_COLOR: Record<SatisfactionRating, string> = {
-  worth: 'var(--color-positive)',
-  neutral: 'var(--color-muted)',
-  regret: 'var(--color-negative)',
-}
-const RATING_ROTATE: Record<SatisfactionRating, string> = { worth: '-9deg', neutral: '6deg', regret: '-4deg' }
-// 章上刻的字要够短才塞得进一个40px的小圆章——跟按钮下面的完整文案
-// （t('satisfaction.ratingWorth')="Worth it"这类，给提示文字/曲线轴标签用，
-// 空间够）是两套不同用途的文案，不能共用同一个key
-const RATING_STAMP_KEY: Record<SatisfactionRating, string> = {
-  worth: 'satisfaction.stampWorth',
-  neutral: 'satisfaction.stampNeutral',
-  regret: 'satisfaction.stampRegret',
-}
+import { RATING_COLOR, RATING_ROTATE, RATING_STAMP_KEY } from './stampVisuals'
 
 // 盖章视觉——双环+旋转+衬线粗体短词，不是图标。双环用两层div实现
 // （外层的border+内层absolute定位的一圈inset border），不是CSS
 // ::before伪元素，React行内样式没法干净地写伪元素
-function Stamp({ rating, size, wordSize, word }: { rating: SatisfactionRating; size: number; wordSize: number; word: string }) {
+export function Stamp({ rating, size, wordSize, word }: { rating: SatisfactionRating; size: number; wordSize: number; word: string }) {
   const color = RATING_COLOR[rating]
   return (
     <div
