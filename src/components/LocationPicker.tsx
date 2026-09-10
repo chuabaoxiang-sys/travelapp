@@ -111,7 +111,12 @@ export function LocationPicker({
 
   function pickMapsLink(r: ResolvedMapsLink) {
     requestIdRef.current++
-    const name = r.name ?? query
+    // 跟上面搜索选点的pick()同一个处理——Google Maps链接解析出来的name有时候
+    // 是完整地址（比如用户分享的是一个坐标点而不是具体商家），取逗号前第一段
+    // 至少比整段地址短。2026-09-10确认过这个折衷：地址顺序是"国家在前"的
+    // 地区（比如日本地址的英文写法）切出来的第一段会没有意义（比如"Japan"），
+    // 但比起每次都接受一整条地址，多数情况下还是切出来的更好
+    const name = (r.name ?? query).split(',')[0]
     setQuery(name)
     onChange({ name, lat: r.lat, lng: r.lng })
     setMapsLink(null)
