@@ -1076,13 +1076,19 @@
     "skip": "跳过",
     "viewMe": "我的回顾",
     "viewAll": "全家整体",
-    "expenseStatMe": "你标记的 <b>{{count}}</b> 笔账目里，<b>{{worth}}</b> 笔你觉得值",
-    "expenseStatAll": "全家一共标记了 <b>{{count}}</b> 次账目，其中 <b>{{worth}}</b> 次觉得值",
     "stampZoneTitle": "点一下标记这笔账目的满意度",
     "stampWorth": "值!",
     "stampNeutral": "一般",
     "stampRegret": "后悔",
     "pickerTitle": "这笔账目花得值吗？",
-    "clearMine": "清除我的标记"
+    "clearMine": "清除我的标记",
+    "tripExperience": "行程体验",
+    "expenseValue": "花销价值",
+    "tripShort": "行程",
+    "expenseShort": "花销",
+    "noDaysRated": "还没有天数打过分",
+    "dayBreakdownSummary": "{{total}}天里 {{worth}}天觉得值",
+    "noExpensesRated": "还没有账目打过分",
+    "expenseBreakdownSummary": "{{total}}笔里 {{worth}}笔觉得值"
   }
 }

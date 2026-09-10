@@ -110,21 +110,60 @@ export async function dayMoodCurve(tripId: string, view: { kind: 'me'; memberId:
   })
 }
 
-export interface ExpenseSatisfactionStat {
-  taggedCount: number
-  worthCount: number
+// "值/一般/后悔"各多少次的统计——行程天数用这个、账目笔数也用这个，
+// 2026-09-11新增的"并列对比"/"按人对比"两处统计都基于同一个形状拼出来，
+// 不用为天和账目各写一份计数逻辑
+export interface RatingBreakdown {
+  worth: number
+  neutral: number
+  regret: number
 }
 
-// 回顾页账目那句文字统计。view='me' 只数当前成员自己标过的那些，view='all'
+export function ratingBreakdown(ratings: (SatisfactionRating | null)[]): RatingBreakdown {
+  return {
+    worth: ratings.filter((r) => r === 'worth').length,
+    neutral: ratings.filter((r) => r === 'neutral').length,
+    regret: ratings.filter((r) => r === 'regret').length,
+  }
+}
+
+export function totalOf(b: RatingBreakdown): number {
+  return b.worth + b.neutral + b.regret
+}
+
+export type ExpenseSatisfactionStat = RatingBreakdown
+
+// 回顾页账目统计。view='me' 只数当前成员自己标过的那些，view='all'
 // 数全家所有人标过的次数（同一笔账目被2个人标，算2次——这是"大家的态度"的
 // 汇总，不是"这笔账目最终算不算值"的裁决，跟"天"的多数决是两种不同的呈现）
 export async function expenseSatisfactionStat(tripId: string, view: { kind: 'me'; memberId: string } | { kind: 'all' }): Promise<ExpenseSatisfactionStat> {
   const all = (await db.expenseSatisfactions.where('tripId').equals(tripId).toArray()).filter((s) => !s.deletedAt)
   const filtered = view.kind === 'me' ? all.filter((s) => s.memberId === view.memberId) : all
-  return {
-    taggedCount: filtered.length,
-    worthCount: filtered.filter((s) => s.rating === 'worth').length,
-  }
+  return ratingBreakdown(filtered.map((s) => s.rating))
+}
+
+export interface MemberSatisfactionSummary {
+  memberId: string
+  days: RatingBreakdown
+  expenses: RatingBreakdown
+}
+
+// "全家整体"的按人对比——每个人各自的行程体验+花销价值分开算，不是"天"那种
+// 多数决合并成一个结果。只返回真的标过点什么（天或账目任一）的成员，从没
+// 用过这两个功能的人不出现在列表里，不然会是一整行空白的0/0/0
+export async function satisfactionByMember(tripId: string): Promise<MemberSatisfactionSummary[]> {
+  const members = await db.members.filter((m) => m.isActive).toArray()
+  const [dayRows, expenseRows] = await Promise.all([
+    db.daySatisfactions.where('tripId').equals(tripId).filter((r) => !r.deletedAt && r.rating !== null).toArray(),
+    db.expenseSatisfactions.where('tripId').equals(tripId).filter((r) => !r.deletedAt).toArray(),
+  ])
+  return members
+    .map((m) => ({
+      memberId: m.id,
+      days: ratingBreakdown(dayRows.filter((r) => r.memberId === m.id).map((r) => r.rating)),
+      expenses: ratingBreakdown(expenseRows.filter((r) => r.memberId === m.id).map((r) => r.rating)),
+    }))
+    .filter((s) => totalOf(s.days) + totalOf(s.expenses) > 0)
 }
 
 // 一笔账目上，谁标了什么——账目卡片盖章要用，按创建时间从早到晚排（先标的章在下面）

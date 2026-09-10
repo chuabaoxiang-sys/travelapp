@@ -325,8 +325,8 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
   // 手动bump一个key强制重查"的额外处理
   const moodCurveMe = useLiveQuery(() => dayMoodCurve(trip.id, { kind: 'me', memberId: currentMemberId }), [trip.id, currentMemberId]) ?? []
   const moodCurveAll = useLiveQuery(() => dayMoodCurve(trip.id, { kind: 'all' }), [trip.id]) ?? []
-  const expenseStatMe = useLiveQuery(() => expenseSatisfactionStat(trip.id, { kind: 'me', memberId: currentMemberId }), [trip.id, currentMemberId]) ?? { taggedCount: 0, worthCount: 0 }
-  const expenseStatAll = useLiveQuery(() => expenseSatisfactionStat(trip.id, { kind: 'all' }), [trip.id]) ?? { taggedCount: 0, worthCount: 0 }
+  const expenseStatMe = useLiveQuery(() => expenseSatisfactionStat(trip.id, { kind: 'me', memberId: currentMemberId }), [trip.id, currentMemberId]) ?? { worth: 0, neutral: 0, regret: 0 }
+  const expenseStatAll = useLiveQuery(() => expenseSatisfactionStat(trip.id, { kind: 'all' }), [trip.id]) ?? { worth: 0, neutral: 0, regret: 0 }
 
   // 这个tab是条件渲染，每次切回"概览"都是重新mount——挂载后下一帧触发一次
   // 进场动效就够，跟BeforeTrip/RetrospectiveContent那套双重RAF一致。

@@ -1,9 +1,13 @@
 import { useState } from 'react'
-import { useTranslation, Trans } from 'react-i18next'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
+import { db } from '../../db/dexie'
 import type { SatisfactionRetro } from '../../domain/retrospective'
-import type { DayMoodPoint } from '../../domain/satisfaction'
+import { satisfactionByMember, ratingBreakdown, totalOf, type DayMoodPoint } from '../../domain/satisfaction'
 import type { SatisfactionRating } from '../../types'
 import { DaySatisfactionPicker } from './DaySatisfactionPicker'
+import { SatisfactionCompareCard } from './SatisfactionCompareCard'
+import { SatisfactionByMemberCard } from './SatisfactionByMemberCard'
 
 // 回顾页的心情曲线——暖色调平滑曲线代替"93%你觉得值"这种百分比文字统计，
 // 横轴永远是"天"（被行程长度天然限制住，不会因为账目笔数多而变挤）。
@@ -136,10 +140,16 @@ export function MoodCurveCard({
   const [view, setView] = useState<'me' | 'all'>('me')
   const [editingPoint, setEditingPoint] = useState<DayMoodPoint | null>(null)
   const points = view === 'me' ? satisfaction.moodCurveMe : satisfaction.moodCurveAll
-  const stat = view === 'me' ? satisfaction.expenseStatMe : satisfaction.expenseStatAll
   const hasAnyMood = satisfaction.moodCurveMe.some((p) => p.rating) || satisfaction.moodCurveAll.some((p) => p.rating)
+  const noExpenseData = totalOf(satisfaction.expenseStatMe) === 0 && totalOf(satisfaction.expenseStatAll) === 0
 
-  if (!hasAnyMood && stat.taggedCount === 0 && satisfaction.expenseStatAll.taggedCount === 0) return null
+  // 2026-09-11新增：并列对比（"我的"）+ 按人对比（"全家整体"），取代原来那句
+  // 单纯的账目文字统计——两块都是从已有数据直接算出来的，不需要新的写库逻辑
+  const byMember = useLiveQuery(() => satisfactionByMember(tripId), [tripId]) ?? []
+  const members = useLiveQuery(() => db.members.toArray()) ?? []
+  const dayBreakdownMe = ratingBreakdown(satisfaction.moodCurveMe.map((p) => p.rating))
+
+  if (!hasAnyMood && noExpenseData) return null
 
   return (
     <div className="rounded-2xl border border-line bg-card p-3.5">
@@ -157,15 +167,13 @@ export function MoodCurveCard({
         ))}
       </div>
       <Curve points={points} interactive={view === 'me'} onPointClick={setEditingPoint} />
-      {stat.taggedCount > 0 && (
-        <div className="text-[13px] leading-relaxed mt-3 pt-3 border-t border-line">
-          <Trans
-            i18nKey={view === 'me' ? 'satisfaction.expenseStatMe' : 'satisfaction.expenseStatAll'}
-            values={{ count: stat.taggedCount, worth: stat.worthCount }}
-            components={{ b: <b className="font-serif-sc" /> }}
-          />
-        </div>
-      )}
+      <div className="mt-3 pt-3 border-t border-line">
+        {view === 'me' ? (
+          <SatisfactionCompareCard days={dayBreakdownMe} expenses={satisfaction.expenseStatMe} />
+        ) : (
+          <SatisfactionByMemberCard summaries={byMember} members={members} />
+        )}
+      </div>
       {editingPoint && (
         <DaySatisfactionPicker
           tripId={tripId}
