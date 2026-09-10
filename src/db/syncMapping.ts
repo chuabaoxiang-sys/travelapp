@@ -449,6 +449,110 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       updatedAt: ms(r.updated_at),
     }),
   },
+  // 2026-09-10修复：这张表和下面三张（expenseSatisfactions/expenseLineItems/
+  // expenseLineItemMembers）之前一直没有出现在这份配置里——本地会正常记进
+  // outbox（在SYNCED_TABLES里），但pushOutbox查不到配置，直接把这类未知表名
+  // 的outbox条目标记成"已同步"跳过，实际从来没有真的推上云端；pullAll同理
+  // 也没拉过。云端表（0029/0031迁移）结构一直是齐的，纯粹是这份映射漏掉了
+  // 四张新表，不是设计如此。见docs/功能路线图 相关记录和2026-09-10的讨论。
+  //
+  // rating为null（翻卡片"跳过"）的行正常同步——0030迁移已经把day_satisfaction
+  // .rating改成允许null，跳过状态本身也值得跨设备一致（同一个人用手机+
+  // 平板各翻一半，跳过的那天不该在另一台设备上还显示"待翻"）
+  daySatisfactions: {
+    remoteTable: 'day_satisfaction',
+    conflictColumns: 'id',
+    hasUpdatedAt: true,
+    toRemote: (s) => ({
+      id: s.id,
+      household_id: s.householdId,
+      trip_id: s.tripId,
+      day_id: s.dayId,
+      member_id: s.memberId,
+      rating: s.rating,
+      created_at: iso(s.createdAt),
+      updated_at: iso(s.updatedAt),
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      householdId: r.household_id,
+      tripId: r.trip_id,
+      dayId: r.day_id,
+      memberId: r.member_id,
+      rating: r.rating,
+      createdAt: ms(r.created_at),
+      updatedAt: ms(r.updated_at),
+    }),
+  },
+
+  expenseSatisfactions: {
+    remoteTable: 'expense_satisfaction',
+    conflictColumns: 'id',
+    hasUpdatedAt: true,
+    toRemote: (s) => ({
+      id: s.id,
+      household_id: s.householdId,
+      trip_id: s.tripId,
+      expense_id: s.expenseId,
+      member_id: s.memberId,
+      rating: s.rating,
+      created_at: iso(s.createdAt),
+      updated_at: iso(s.updatedAt),
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      householdId: r.household_id,
+      tripId: r.trip_id,
+      expenseId: r.expense_id,
+      memberId: r.member_id,
+      rating: r.rating,
+      createdAt: ms(r.created_at),
+      updatedAt: ms(r.updated_at),
+    }),
+  },
+
+  // 没有updatedAt：逐项拆账的子项/成员关联永远整份替换（改一笔就是删旧的
+  // 重新写一份新的），不支持编辑单个字段，见migration 0031的说明
+  expenseLineItems: {
+    remoteTable: 'expense_line_item',
+    conflictColumns: 'id',
+    hasUpdatedAt: false,
+    toRemote: (i) => ({
+      id: i.id,
+      household_id: i.householdId,
+      expense_id: i.expenseId,
+      name: i.name,
+      amount: i.amount,
+      order_index: i.orderIndex,
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      householdId: r.household_id,
+      expenseId: r.expense_id,
+      name: r.name,
+      amount: num(r.amount),
+      orderIndex: r.order_index,
+    }),
+  },
+
+  expenseLineItemMembers: {
+    remoteTable: 'expense_line_item_member',
+    conflictColumns: 'id',
+    hasUpdatedAt: false,
+    toRemote: (m) => ({
+      id: m.id,
+      household_id: m.householdId,
+      line_item_id: m.lineItemId,
+      member_id: m.memberId,
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      householdId: r.household_id,
+      lineItemId: r.line_item_id,
+      memberId: r.member_id,
+    }),
+  },
+
   // 没有updatedAt：链接只有增/删，不支持编辑，见migration 0027的说明
   wishlistPlaceLinks: {
     remoteTable: 'wishlist_place_link',

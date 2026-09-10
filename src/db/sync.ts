@@ -1,6 +1,8 @@
 import { db, withoutOutboxTracking } from './dexie'
 import { supabase } from '../api/supabaseClient'
 import { SYNC_CONFIG } from './syncMapping'
+import { getCurrentHouseholdId } from '../domain/household'
+import { readPerTeam, writePerTeam } from '../lib/perTeamStorage'
 
 // 表的拉取顺序有讲究：itineraryItems 拉回来时要用 itineraryDays 已经落地的
 // day->trip 映射去补 tripId（远端 itinerary_item 表本身没有 trip_id 列），
@@ -11,15 +13,20 @@ const TABLE_ORDER = [
   'tripMembers',
   'itineraryDays',
   'itineraryItems',
+  'daySatisfactions',
   'rateBookEntries',
   'expenses',
   'expenseSplits',
+  'expenseSatisfactions',
+  'expenseLineItems',
+  'expenseLineItemMembers',
   'expenseDayAllocations',
   'expenseRateAllocations',
   'budgets',
   'settlements',
   'feedback',
   'wishlistPlaces',
+  'wishlistPlaceLinks',
 ] as const
 
 // Supabase 的错误是普通对象（PostgrestError：message/details/hint/code），不是 Error 实例，
@@ -237,6 +244,39 @@ export async function runSync(): Promise<void> {
   }
 }
 
+// 2026-09-10修复：daySatisfactions/expenseSatisfactions/expenseLineItems/
+// expenseLineItemMembers 这四张表之前从没被这份同步配置真正认识过（见
+// syncMapping.ts 顶部说明），本地已经攒了一批只存在这台设备上的历史数据——
+// 光修好以后的同步配置，不会让这些历史数据自动补上去，outbox里对应的条目
+// 早就被误标成"已同步"，不会重试。每个团队第一次跑同步时，把这四张表现有的
+// 全部本地行整批 upsert 一遍（含 daySatisfactions 里 rating=null 的"跳过"行——
+// 0030迁移已经把这一列改成允许null，不需要特殊处理），即使某一行之前已经
+// 推过也没关系——upsert 天然幂等，推的是"当下这一刻本地的值"，不是攒着的
+// 旧快照，多推一次不会把新数据覆盖成旧的
+const BACKFILL_DONE_KEY = 'satisfactionLineItemSyncBackfillDone'
+const BACKFILL_TABLES = ['daySatisfactions', 'expenseSatisfactions', 'expenseLineItems', 'expenseLineItemMembers'] as const
+
+export async function backfillMissingSync(): Promise<void> {
+  if (!supabase) return
+  const householdId = await getCurrentHouseholdId()
+  if (!householdId) return
+  if (readPerTeam(BACKFILL_DONE_KEY, householdId) === 'done') return
+
+  try {
+    for (const tableName of BACKFILL_TABLES) {
+      const config = SYNC_CONFIG[tableName]
+      const rows = await db.table(tableName).toArray()
+      const remoteRows = rows.map((r) => config.toRemote(r))
+      if (!remoteRows.length) continue
+      const { error } = await supabase.from(config.remoteTable).upsert(remoteRows, { onConflict: config.conflictColumns })
+      if (error) throw error
+    }
+    writePerTeam(BACKFILL_DONE_KEY, householdId, 'done')
+  } catch {
+    // 网络问题/偶发失败：不标记完成，下次启动会整批重新再试一次
+  }
+}
+
 // outbox里status='synced'的行只是"这条已经推送成功"的历史记录，本身不再有任何
 // 用途（连"同步详情"页面都只看pending的），但一直没有任何机制会删掉它们——
 // 从产生的那一刻起就永久留在本地，用得越久这张表就越大。这里每天检查一次，把
@@ -285,6 +325,7 @@ export function startAutoSync() {
   if (!supabase) return
   void runSync()
   void pruneSyncedOutbox()
+  void backfillMissingSync()
   window.addEventListener('online', () => void runSync())
   if (syncTimer) return
 
