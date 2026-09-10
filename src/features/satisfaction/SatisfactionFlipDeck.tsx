@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import { X, SkipForward } from 'lucide-react'
@@ -8,18 +7,12 @@ import { pendingDaysForMember, setDaySatisfaction } from '../../domain/satisfact
 import { resolveDayTitle } from '../../domain/itinerary'
 import { Stamp } from './SatisfactionStampBadge'
 import { RATING_COLOR, RATING_STAMP_KEY } from './stampVisuals'
+import { useStampSlam } from '../../hooks/useStampSlam'
 
 function formatShortDate(iso: string) {
   const parts = iso.split('-')
   return parts.length === 3 ? `${Number(parts[1])}/${Number(parts[2])}` : iso
 }
-
-// 选完评分之后到真正写进数据库之间，先播一段"盖章"落章动效——时间轴跟
-// 出图确认过的原型一致：260ms时卡片震一下，1050ms时落章动作播完才提交，
-// 提交完立刻清掉动效状态，露出live query带出来的下一天
-const JOLT_START_MS = 260
-const JOLT_DURATION_MS = 500
-const COMMIT_DELAY_MS = 1050
 
 // 翻卡片仪式——只翻"天"，不翻账目（账目笔数可能有几百笔，翻不完会把仪式感
 // 变成家务事，见本次会话讨论）。只操作"当前身份"自己的队列，不是在一个界面
@@ -40,13 +33,12 @@ export function SatisfactionFlipDeck({ trip, currentMemberId, onClose }: { trip:
     return db.itineraryItems.where('dayId').equals(top.id).toArray()
   }, [top?.id]) ?? []
   const topTitle = top ? resolveDayTitle(top, topItems) : null
-  // 选了值/一般/后悔之后不立刻写库——先播落章动效，播完了才真正提交。
-  // 用ref记住动效开始那一刻是给哪一天评分的，不依赖动效播放期间top有没有
-  // 变化（正常不会变，因为按钮在动效期间是禁用的，但commit的时候用当时
-  // 捕获的dayId比重新读一遍闭包里的top更可靠）
-  const [animatingRating, setAnimatingRating] = useState<SatisfactionRating | null>(null)
-  const [jolt, setJolt] = useState(false)
-  const animatingDayIdRef = useRef<string | null>(null)
+  // 选了值/一般/后悔之后不立刻写库——先播落章动效（useStampSlam），播完了才
+  // 真正提交。commit闭包里的top是effect真正跑起来那一刻捕获的那个值，不受
+  // 动效播放期间后续渲染影响（跟原来用ref记day id是同一个考虑）
+  const { animating: animatingRating, jolt, trigger } = useStampSlam<SatisfactionRating>((r) => {
+    if (top) void setDaySatisfaction(trip.id, top.id, currentMemberId, r)
+  })
 
   // 跳过不用等，直接提交——跳过本来就不代表"盖了一个章"，没有落章这个动作
   async function skip() {
@@ -55,26 +47,9 @@ export function SatisfactionFlipDeck({ trip, currentMemberId, onClose }: { trip:
   }
 
   function selectRating(r: SatisfactionRating) {
-    if (!top || animatingRating) return
-    animatingDayIdRef.current = top.id
-    setAnimatingRating(r)
+    if (!top) return
+    trigger(r)
   }
-
-  useEffect(() => {
-    if (!animatingRating) return
-    const dayId = animatingDayIdRef.current
-    const joltOnTimer = setTimeout(() => setJolt(true), JOLT_START_MS)
-    const joltOffTimer = setTimeout(() => setJolt(false), JOLT_START_MS + JOLT_DURATION_MS)
-    const commitTimer = setTimeout(() => {
-      if (dayId) void setDaySatisfaction(trip.id, dayId, currentMemberId, animatingRating)
-      setAnimatingRating(null)
-    }, COMMIT_DELAY_MS)
-    return () => {
-      clearTimeout(joltOnTimer)
-      clearTimeout(joltOffTimer)
-      clearTimeout(commitTimer)
-    }
-  }, [animatingRating, trip.id, currentMemberId])
 
   return (
     <div className="absolute inset-0 z-30 bg-paper flex flex-col">

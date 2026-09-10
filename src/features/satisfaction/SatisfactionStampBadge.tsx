@@ -6,6 +6,7 @@ import { db } from '../../db/dexie'
 import type { SatisfactionRating } from '../../types'
 import { expenseSatisfactionsFor, setExpenseSatisfaction } from '../../domain/satisfaction'
 import { CenteredModal } from '../../components/CenteredModal'
+import { useStampSlam } from '../../hooks/useStampSlam'
 import { RATING_COLOR, RATING_ROTATE, RATING_STAMP_KEY } from './stampVisuals'
 
 // 盖章视觉——双环+旋转+衬线粗体短词，不是图标。双环用两层div实现
@@ -42,8 +43,15 @@ export function SatisfactionStampBadge({ expenseId, tripId, currentMemberId }: {
   const members = useLiveQuery(() => db.members.toArray()) ?? []
   const mine = stamps.find((s) => s.memberId === currentMemberId)
 
-  async function pick(rating: SatisfactionRating | null) {
-    await setExpenseSatisfaction(tripId, expenseId, currentMemberId, rating)
+  // 2026-09-11：选完之后接上跟翻卡回顾同一套落章动效（useStampSlam），不再
+  // 选完立刻写库关弹层。"清除我的标记"不算盖章这个动作，跳过动效直接提交，
+  // 跟翻卡回顾的"跳过"是同一个道理
+  const { animating, jolt, trigger } = useStampSlam<SatisfactionRating>((r) => {
+    void setExpenseSatisfaction(tripId, expenseId, currentMemberId, r).then(() => setPickerOpen(false))
+  })
+
+  async function clearMine() {
+    await setExpenseSatisfaction(tripId, expenseId, currentMemberId, null)
     setPickerOpen(false)
   }
 
@@ -87,32 +95,51 @@ export function SatisfactionStampBadge({ expenseId, tripId, currentMemberId }: {
         // 改公共组件的行为
         <div onClick={(e) => e.stopPropagation()}>
           <CenteredModal onClose={() => setPickerOpen(false)}>
-            <div className="text-[14px] font-semibold text-center mb-3">{t('satisfaction.pickerTitle')}</div>
-            <div className="flex justify-center gap-3.5 mb-2">
-              {(['worth', 'neutral', 'regret'] as const).map((r) => {
-                // 还没标过时（mine不存在）三个选项都用满亮度，不无端压暗——
-                // 只有已经选过一个之后，才把没选中的两个压暗，用来衬托选中的那个
-                const active = !mine || mine.rating === r
-                return (
-                  <button
-                    key={r}
-                    onClick={() => pick(r)}
-                    className="flex flex-col items-center gap-1.5 transition-opacity"
-                    style={{ opacity: active ? 1 : 0.45 }}
-                  >
-                    <Stamp rating={r} size={52} wordSize={13} word={t(RATING_STAMP_KEY[r])} />
-                    <span className={`text-[10.5px] ${active ? 'text-ink font-semibold' : 'text-muted'}`}>
-                      {t(`satisfaction.rating${r.charAt(0).toUpperCase()}${r.slice(1)}`)}
-                    </span>
-                  </button>
-                )
-              })}
+            <div className={`relative ${jolt ? 'stamp-jolt' : ''}`}>
+              <div className="text-[14px] font-semibold text-center mb-3">{t('satisfaction.pickerTitle')}</div>
+              <div className={`flex justify-center gap-3.5 mb-2 transition-opacity ${animating ? 'opacity-0 pointer-events-none' : ''}`}>
+                {(['worth', 'neutral', 'regret'] as const).map((r) => {
+                  // 还没标过时（mine不存在）三个选项都用满亮度，不无端压暗——
+                  // 只有已经选过一个之后，才把没选中的两个压暗，用来衬托选中的那个
+                  const active = !mine || mine.rating === r
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => trigger(r)}
+                      className="flex flex-col items-center gap-1.5 transition-opacity"
+                      style={{ opacity: active ? 1 : 0.45 }}
+                    >
+                      <Stamp rating={r} size={52} wordSize={13} word={t(RATING_STAMP_KEY[r])} />
+                      <span className={`text-[10.5px] ${active ? 'text-ink font-semibold' : 'text-muted'}`}>
+                        {t(`satisfaction.rating${r.charAt(0).toUpperCase()}${r.slice(1)}`)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              {mine && (
+                <button
+                  onClick={clearMine}
+                  className={`block mx-auto mt-2 text-[12px] text-muted underline transition-opacity ${animating ? 'opacity-0 pointer-events-none' : ''}`}
+                >
+                  {t('satisfaction.clearMine')}
+                </button>
+              )}
+              {/* 落章动效——位置对准上面的印章选择那一排（题目行下方约六成高度处），
+                  跟翻卡回顾同一份.stamp-slam/.stamp-ripple，只是这里的"信息卡"
+                  换成了整个弹层内容区 */}
+              {animating && (
+                <>
+                  <div className="absolute left-1/2 top-[58%] stamp-slam">
+                    <Stamp rating={animating} size={64} wordSize={15} word={t(RATING_STAMP_KEY[animating])} />
+                  </div>
+                  <div
+                    className="absolute left-1/2 top-[58%] w-5 h-5 rounded-full stamp-ripple pointer-events-none"
+                    style={{ backgroundColor: RATING_COLOR[animating], transform: 'translate(-50%, -50%)' }}
+                  />
+                </>
+              )}
             </div>
-            {mine && (
-              <button onClick={() => pick(null)} className="block mx-auto mt-2 text-[12px] text-muted underline">
-                {t('satisfaction.clearMine')}
-              </button>
-            )}
           </CenteredModal>
         </div>
       )}

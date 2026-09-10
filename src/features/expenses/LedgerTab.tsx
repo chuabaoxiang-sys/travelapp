@@ -383,12 +383,14 @@ export function LedgerTab({
                       )}
                     </div>
                     <SatisfactionStampBadge expenseId={e.id} tripId={trip.id} currentMemberId={currentMemberId} />
-                    {/* min-w固定住这块的最小宽度——没有它，外币账目多一行"JPY 63300"这种
-                        换算行，这块的实际渲染宽度会比纯本位币账目（比如"RM133.12"单行）宽，
-                        挤占前面盖章徽标的位置，导致同一列表里"+"图标一行一个位置、完全对不齐
-                        （真机截图反馈过的真bug）。固定最小宽度后，盖章徽标的横向位置在外币/
-                        本位币账目之间保持一致，金额本身还是靠右对齐、超宽时也能正常撑开 */}
-                    <div className="text-right flex-shrink-0 min-w-[76px]">
+                    {/* 2026-09-11修复：上一版用min-width（76px）没有真的解决对齐问题——
+                        它只是个下限，外币账目"RM1,666.50"+"JPY 63300"两行的实际渲染宽度
+                        （量出来约84px）本来就超过了76px，min-width不生效，照样把前面的
+                        盖章徽标往左挤，跟单行本位币账目的徽标对不上（真机反馈过的真bug，
+                        上一版修复没修干净）。改成真正的固定宽度w-[100px]——量过"RM99,999.99"
+                        这种现实中不太会出现的大额单笔账目也只要93px，100px留了余量，能稳稳
+                        盖住这个APP实际会出现的所有金额，徽标位置不再随金额宽度变化 */}
+                    <div className="text-right flex-shrink-0 w-[100px]">
                       <div className="text-[15px] tabular">{formatMoney(e.homeAmount, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}</div>
                       {e.expenseCurrency !== trip.homeCurrency && (
                         <div className="text-[10px] text-muted tabular">{e.expenseCurrency} {e.expenseAmount}</div>
