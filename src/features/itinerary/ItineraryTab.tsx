@@ -439,21 +439,26 @@ export function ItineraryTab({
                     placeholder={autoDayTitle ?? ''}
                     className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
                   />
-                  <div className="text-[10.5px] text-faint mt-1.5 leading-relaxed">{t('itinerary.dayTitleAutoHint')}</div>
+                  <div className="text-[10.5px] text-faint mt-1.5 leading-relaxed">{t('itinerary.dayTitleLengthHint')}</div>
+                  <div className="text-[10.5px] text-faint mt-1 leading-relaxed">{t('itinerary.dayTitleAutoHint')}</div>
                 </div>
               </div>
             ) : (
-              <div className="flex items-baseline justify-between mb-3">
-                <div className="font-serif-sc text-sm flex items-center gap-1.5 min-w-0">
-                  <span className="flex-shrink-0">{selected}</span>
-                  {displayDayTitle && (
-                    <span className={`truncate ${currentDay?.title ? '' : 'italic text-soft'}`}>· {displayDayTitle}</span>
-                  )}
-                  <button onClick={openDayTitleEditor} className="text-plan flex-shrink-0" title={t('itinerary.editDayTitle')}>
-                    <Pencil className="w-3 h-3" strokeWidth={2.2} />
-                  </button>
+              <div className="mb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-serif-sc text-sm flex items-center gap-1.5 flex-shrink-0">
+                    <span>{selected}</span>
+                    <button onClick={openDayTitleEditor} className="text-plan flex-shrink-0" title={t('itinerary.editDayTitle')}>
+                      <Pencil className="w-3 h-3" strokeWidth={2.2} />
+                    </button>
+                  </div>
+                  <div className="text-[11.5px] text-muted tabular flex-shrink-0">{t('itinerary.dayTotalLabel')} {formatMoney(dayTotal)}</div>
                 </div>
-                <div className="text-[11.5px] text-muted tabular flex-shrink-0">{t('itinerary.dayTotalLabel')} {formatMoney(dayTotal)}</div>
+                {displayDayTitle && (
+                  <div className={`font-serif-sc text-sm mt-1 leading-snug ${currentDay?.title ? '' : 'italic text-soft'}`}>
+                    · {displayDayTitle}
+                  </div>
+                )}
               </div>
             )}
 

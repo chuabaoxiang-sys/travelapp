@@ -246,6 +246,7 @@
     "moveConfirmButton": "Move it",
     "mapLoading": "Loading map…",
     "editDayTitle": "Edit title",
+    "dayTitleLengthHint": "Keep it short — a long title makes this day's card noticeably taller",
     "dayTitleAutoHint": "Clear it and save to go back to the auto-generated title"
   },
   "itemForm": {

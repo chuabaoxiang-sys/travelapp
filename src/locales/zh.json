@@ -236,6 +236,7 @@
     "moveConfirmButton": "确定换",
     "mapLoading": "地图加载中…",
     "editDayTitle": "编辑标题",
+    "dayTitleLengthHint": "建议简短一些，写太长的话这天的卡片会被顶得比较高",
     "dayTitleAutoHint": "清空后保存，会恢复成自动生成的标题"
   },
   "itemForm": {
