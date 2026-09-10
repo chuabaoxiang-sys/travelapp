@@ -383,7 +383,12 @@ export function LedgerTab({
                       )}
                     </div>
                     <SatisfactionStampBadge expenseId={e.id} tripId={trip.id} currentMemberId={currentMemberId} />
-                    <div className="text-right flex-shrink-0">
+                    {/* min-w固定住这块的最小宽度——没有它，外币账目多一行"JPY 63300"这种
+                        换算行，这块的实际渲染宽度会比纯本位币账目（比如"RM133.12"单行）宽，
+                        挤占前面盖章徽标的位置，导致同一列表里"+"图标一行一个位置、完全对不齐
+                        （真机截图反馈过的真bug）。固定最小宽度后，盖章徽标的横向位置在外币/
+                        本位币账目之间保持一致，金额本身还是靠右对齐、超宽时也能正常撑开 */}
+                    <div className="text-right flex-shrink-0 min-w-[76px]">
                       <div className="text-[15px] tabular">{formatMoney(e.homeAmount, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}</div>
                       {e.expenseCurrency !== trip.homeCurrency && (
                         <div className="text-[10px] text-muted tabular">{e.expenseCurrency} {e.expenseAmount}</div>
