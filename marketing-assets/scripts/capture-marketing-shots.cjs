@@ -191,7 +191,43 @@ async function main() {
     await page.waitForTimeout(400)
   })
 
+  await tryStep('成员管理', async () => {
+    await clickNavTab(page, '概览')
+    await page.getByText('爸爸', { exact: true }).first().click()
+    await page.waitForTimeout(400)
+    await shot(page, '09-成员管理', '成员列表')
+    const inactiveToggle = page.getByText('已停用的成员', { exact: false }).first()
+    if (await inactiveToggle.isVisible().catch(() => false)) {
+      await inactiveToggle.click()
+      await page.waitForTimeout(300)
+      await shot(page, '09-成员管理', '成员列表-含已停用')
+    }
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+  })
+
+  // "邀请新成员"面板本地测试模式下没有真实后端生成邀请码，截出来是"拿不到邀请码，
+  // 请稍后重试"的报错状态，宣传用不了——不截，08-账单与团队 这一类留在INDEX.md
+  // 里标"待补拍"，得连真实账号才能截到能看的邀请码
+
+  await tryStep('满意度翻卡回顾', async () => {
+    const entry = page.getByText('可以翻卡回顾了', { exact: false }).first()
+    await entry.scrollIntoViewIfNeeded()
+    await entry.click()
+    await page.waitForTimeout(600)
+    await shot(page, '11-体验满意度盖章', '翻卡回顾-卡片正面')
+    // 这个弹层没接useEscapeKey，只有一颗带title的×按钮能关——Escape点了没用，
+    // 会一直卡在这个全屏层上，把后面所有底部导航点击全部挡住（真实翻车过）
+    await page.locator('button[title="关闭"]').first().click({ timeout: 5000 }).catch(async () => {
+      await page.getByRole('button').filter({ has: page.locator('svg') }).first().click().catch(() => {})
+    })
+    await page.waitForTimeout(300)
+  })
+
   await tryStep('韩国-预算', async () => {
+    // 前面几步（成员管理/邀请/翻卡回顾）把页面带去了概览tab，这里不能假设
+    // 还停在账目tab上——真实翻车过，后面三步全部连带超时失败
+    await clickNavTab(page, '账目')
     await page.getByText('管理预算', { exact: true }).first().click()
     await page.waitForTimeout(600)
     await shot(page, '05-预算', '预算面板-已设置')
