@@ -32,9 +32,12 @@ function topSheet(page) {
   return page.locator('div.z-30').last()
 }
 async function hideDevBanner(page) {
+  // 只匹配"点击退出"——登录页上"本地测试模式（跳过登录…）"那颗入口按钮文案里
+  // 同样含有"本地测试模式"几个字，用短的那个子串匹配会把登录页自己的按钮也
+  // 藏起来，后面就点不到了（真实翻车过）
   await page.evaluate(() => {
     document.querySelectorAll('button').forEach((b) => {
-      if (b.textContent && b.textContent.includes('本地测试模式')) b.style.display = 'none'
+      if (b.textContent && b.textContent.includes('点击退出')) b.style.display = 'none'
     })
   })
 }
@@ -59,6 +62,10 @@ async function shot(page, folder, name) {
   const file = path.join(dir, `${name}${SUFFIX}.png`)
   try {
     await page.waitForTimeout(200)
+    // 每次真正落笔前都重新隐藏一遍——这个悬浮按钮是React组件，导航/切tab
+    // 都会让它重新渲染出一个新DOM节点，之前调用hideDevBanner()隐藏的是
+    // 旧节点，不会持续生效（真实翻车过：好几张成品图右下角都带着它）
+    await hideDevBanner(page)
     await page.screenshot({ path: file })
     done.push(`${folder}/${name}${SUFFIX}.png`)
     console.log('OK  ', `${folder}/${name}${SUFFIX}.png`)
