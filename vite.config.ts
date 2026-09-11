@@ -26,6 +26,10 @@ export default defineConfig({
   server: {
     port: Number(process.env.PORT) || 5173,
     strictPort: !!process.env.PORT,
+    // marketing-assets/ 放的是截图生产脚本+产物（含一个曾经用过的浏览器profile，
+    // 里面的Cookies文件会被Chrome锁住），不是源码，纳入watch会导致文件监听在
+    // Windows上报EBUSY直接把dev server崩掉（真实踩过）
+    watch: { ignored: ['**/marketing-assets/**'] },
   },
   define: {
     __APP_COMMIT__: JSON.stringify(getCommitSha()),

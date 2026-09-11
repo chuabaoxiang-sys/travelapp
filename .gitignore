@@ -16,6 +16,13 @@ dev-dist
 # 数据库备份导出（含真实家庭财务数据，绝不能进版本库）
 旅记备份-*/
 
+# 宣传素材截图/录屏——二进制文件，不适合进代码仓库版本历史
+# 清单文件 marketing-assets/screenshots/INDEX.md 不受影响，照常追踪
+marketing-assets/screenshots/**/*.png
+marketing-assets/screenshots/**/*.jpg
+marketing-assets/screenshots/**/*.gif
+marketing-assets/screenshots/**/*.mp4
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
