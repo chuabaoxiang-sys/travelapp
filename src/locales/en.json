@@ -1077,7 +1077,7 @@
         { "title": "Switch dark mode", "desc": "Light, dark, or follow system — your choice is remembered." },
         { "title": "Switch language", "desc": "Follow system, 中文, or English — this follows you, not the device, even after switching phones." },
         { "title": "Export your trip", "desc": "Excel, JSON, or CSV — each includes both the detail and the summary." },
-        { "title": "Turn on a read-only share link", "desc": "Send it to family who haven't installed the app — they can view everything, no sign-up needed." },
+        { "title": "Turn on a read-only share link", "desc": "Send it to friends or family who haven't installed the app — they can view everything, no sign-up needed." },
         { "title": "Check sync status", "desc": "See which records haven't synced yet, and manually give up on ones that are stuck." }
       ]
     },
@@ -1086,7 +1086,7 @@
       "desc": "How many trips are free, and how to unlock more",
       "steps": [
         { "title": "Find it under \"More\"", "desc": "Open the \"More\" panel — under \"Other\" you'll see \"Trip Limit\". Tap it to check your current status." },
-        { "title": "1 trip free, unlock more anytime", "desc": "Every household gets 1 trip free, for life. Need more? Pick 1, 2, or 3 cups of coffee — a one-time payment, not a monthly or yearly charge. All three tiers unlock the exact same thing; it's just how much you'd like to support the developer." }
+        { "title": "1 trip free, unlock more anytime", "desc": "Every team gets 1 trip free, for life. Need more? Pick 1, 2, or 3 cups of coffee — a one-time payment, not a monthly or yearly charge. All three tiers unlock the exact same thing; it's just how much you'd like to support the developer." }
       ]
     }
   },
@@ -1104,7 +1104,7 @@
     "ratingRegret": "Regret it",
     "skip": "Skip",
     "viewMe": "My review",
-    "viewAll": "Whole family",
+    "viewAll": "Everyone",
     "stampZoneTitle": "Tap to rate this expense",
     "stampWorth": "YES!",
     "stampNeutral": "MEH",
