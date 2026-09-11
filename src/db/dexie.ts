@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
-import { getCurrentHouseholdId } from '../domain/household'
+import { getCurrentHouseholdId, getCachedHouseholdIdSync } from '../domain/household'
+import { getCurrentMemberIdSync } from '../features/members/useCurrentMemberId'
 import type {
   Trip,
   Member,
@@ -15,6 +16,7 @@ import type {
   Budget,
   Settlement,
   OutboxEntry,
+  AuditLogEntry,
   Feedback,
   RouteLegCacheEntry,
   WishlistPlace,
@@ -60,6 +62,9 @@ const SYNCED_TABLES = [
   'expenseSatisfactions',
   'expenseLineItems',
   'expenseLineItemMembers',
+  // auditLog自己的写入也要走这套逐行推送hook（这样审计记录本身才能同步到
+  // Supabase），但它只推不拉——见sync.ts的TABLE_ORDER注释
+  'auditLog',
 ] as const
 
 export class TripJournalDB extends Dexie {
@@ -86,6 +91,7 @@ export class TripJournalDB extends Dexie {
   expenseSatisfactions!: EntityTable<ExpenseSatisfaction, 'id'>
   expenseLineItems!: EntityTable<ExpenseLineItem, 'id'>
   expenseLineItemMembers!: EntityTable<ExpenseLineItemMember, 'id'>
+  auditLog!: EntityTable<AuditLogEntry, 'id'>
 
   constructor() {
     super('trip-journal')
@@ -156,6 +162,12 @@ export class TripJournalDB extends Dexie {
       expenseLineItems: 'id, expenseId',
       expenseLineItemMembers: 'id, lineItemId, memberId',
     })
+    // 粗粒度审计日志——2026-09-11新增，见types/index.ts的AuditLogEntry。全新的表，
+    // 不影响已有数据。只推不拉（sync.ts的TABLE_ORDER里没有它），本地这张表只会
+    // 越攒越多这台设备自己写过的记录，不会因为拉取而膨胀成全家所有设备的完整历史
+    this.version(11).stores({
+      auditLog: 'id, householdId, tripId, tableName, createdAt',
+    })
     registerOutboxHooks(this)
   }
 }
@@ -214,28 +226,61 @@ export async function clearLocalTeamData() {
   })
 }
 
+// 审计日志本身也是SYNCED_TABLES的一员（这样它自己的写入才能被推上云端），
+// 但绝对不能对它自己的写入再记一条审计——那样每写一行都会连锁再写一行，
+// 无限循环下去。整个函数体包一层try/catch——这是纯粹的安全网功能，绝不能
+// 反过来影响主写入操作本身（真机复现过的教训：单测环境下没有真实
+// localStorage，getCachedHouseholdIdSync内部链路会抛错，如果不吞掉，
+// 68个原本无关的测试会跟着一起挂掉）
+function recordAuditLog(tableName: string, recordId: string, operation: AuditLogEntry['operation'], obj: unknown) {
+  if (tableName === 'auditLog') return
+  try {
+    const householdId = getCachedHouseholdIdSync()
+    if (!householdId) return
+    const tripId = (obj as { tripId?: string } | null)?.tripId ?? (tableName === 'trips' ? recordId : null)
+    const entry: AuditLogEntry = {
+      id: crypto.randomUUID(),
+      householdId,
+      tripId: tripId ?? null,
+      tableName,
+      recordId,
+      operation,
+      actorId: getCurrentMemberIdSync(householdId),
+      createdAt: Date.now(),
+    }
+    void db.auditLog.add(entry)
+  } catch {
+    // 审计日志写不成功也不该影响正常使用，静默跳过
+  }
+}
+
 function registerOutboxHooks(db: TripJournalDB) {
   for (const tableName of SYNCED_TABLES) {
     const table = db.table(tableName)
 
     table.hook('creating', (primKey, obj) => {
       if (suppressOutboxDepth > 0) return
+      const recordId = String(primKey ?? (obj as { id: string }).id)
       Dexie.ignoreTransaction(() => {
-        void enqueueOutbox(tableName, String(primKey ?? (obj as { id: string }).id), 'upsert', obj)
+        void enqueueOutbox(tableName, recordId, 'upsert', obj)
+        recordAuditLog(tableName, recordId, 'insert', obj)
       })
     })
 
     table.hook('updating', (modifications, primKey, obj) => {
       if (suppressOutboxDepth > 0) return
+      const merged = { ...obj, ...modifications }
       Dexie.ignoreTransaction(() => {
-        void enqueueOutbox(tableName, String(primKey), 'upsert', { ...obj, ...modifications })
+        void enqueueOutbox(tableName, String(primKey), 'upsert', merged)
+        recordAuditLog(tableName, String(primKey), 'update', merged)
       })
     })
 
-    table.hook('deleting', (primKey) => {
+    table.hook('deleting', (primKey, obj) => {
       if (suppressOutboxDepth > 0) return
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, String(primKey), 'delete', null)
+        recordAuditLog(tableName, String(primKey), 'delete', obj)
       })
     })
   }

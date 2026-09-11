@@ -623,4 +623,33 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       createdAt: ms(r.created_at),
     }),
   },
+
+  // 2026-09-11新增的粗粒度审计日志——只推不拉（sync.ts的TABLE_ORDER里没有它，
+  // pullAll不会处理这张表），fromRemote实际上永远不会被调用，写在这里只是
+  // 满足TableSyncConfig的类型要求、给以后万一要拉取留一份现成的映射
+  auditLog: {
+    remoteTable: 'audit_log',
+    conflictColumns: 'id',
+    hasUpdatedAt: false,
+    toRemote: (a) => ({
+      id: a.id,
+      household_id: a.householdId,
+      trip_id: a.tripId,
+      table_name: a.tableName,
+      record_id: a.recordId,
+      operation: a.operation,
+      actor_id: a.actorId,
+      created_at: iso(a.createdAt),
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      householdId: r.household_id,
+      tripId: r.trip_id,
+      tableName: r.table_name,
+      recordId: r.record_id,
+      operation: r.operation,
+      actorId: r.actor_id,
+      createdAt: ms(r.created_at),
+    }),
+  },
 }

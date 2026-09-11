@@ -27,6 +27,10 @@ const TABLE_ORDER = [
   'feedback',
   'wishlistPlaces',
   'wishlistPlaceLinks',
+  // auditLog故意不在这个列表里——它只推不拉，纯后台安全网，没有任何设备
+  // 需要把全家的审计记录同步回本地。这跟当年wishlistPlaceLinks那次"漏配
+  // 导致拉取从没发生过"的真事故不是一回事：那次是疏忽，这次是设计如此，
+  // 见db/dexie.ts的SYNCED_TABLES和syncMapping.ts的auditLog配置
 ] as const
 
 // Supabase 的错误是普通对象（PostgrestError：message/details/hint/code），不是 Error 实例，

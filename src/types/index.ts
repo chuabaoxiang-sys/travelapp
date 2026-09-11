@@ -402,6 +402,22 @@ export interface OutboxEntry {
   createdAt: number
 }
 
+// 粗粒度审计日志——2026-09-11讨论定的方案：不存改动前后的字段快照，只记
+// "谁在什么时候对哪张表的哪条记录做了新增/改动/删除"。纯后台安全网，APP里
+// 没有给用户看的界面，出事了直接去Supabase查。见db/dexie.ts的registerOutboxHooks，
+// 这张表的写入是跟所有同步表共用的那个hook自动触发的，不需要在每个功能
+// 文件里手动记一条
+export interface AuditLogEntry {
+  id: string
+  householdId: string
+  tripId: string | null
+  tableName: string
+  recordId: string
+  operation: 'insert' | 'update' | 'delete'
+  actorId: string | null
+  createdAt: number
+}
+
 // 相邻行程项之间的真实步行路线段——由 OpenRouteService 计算，按天缓存在本地（见 lib/routeLegs.ts）。
 // 'missing-coords'：这一段里有一个地点没有经纬度，不去调用路线API，也没法生成地图链接；
 // 'unavailable'：两边都有坐标，但调用过API失败/超额——仍然带着坐标，让这一行降级成一个

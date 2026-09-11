@@ -99,6 +99,18 @@ export function clearHouseholdCache() {
   cachedHouseholdId = null
 }
 
+// 给db/dexie.ts的审计日志hook用——那个hook是同步的（Dexie的creating/updating/
+// deleting回调不能await），没法调上面那个异步版本。复刻getCurrentHouseholdId()
+// 里两条本来就是同步的判断（已缓存的值、本地测试模式的固定假值），跳过那条
+// 真正需要await的Supabase RPC兜底路径——真实登录用户在触发任何写操作之前，
+// 正常使用流程里早就该走过一次上面那个异步函数、把值填进缓存了；万一还没填好
+// （理论上不会发生），审计日志这行就跳过不记，不应该为了这个去阻塞用户的正常操作
+export function getCachedHouseholdIdSync(): string | null {
+  if (cachedHouseholdId) return cachedHouseholdId
+  if (!supabase || isLocalTestModeEnabled()) return LOCAL_TEST_HOUSEHOLD_ID
+  return null
+}
+
 export interface MyHousehold {
   id: string
   name: string

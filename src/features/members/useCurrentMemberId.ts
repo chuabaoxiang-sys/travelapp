@@ -25,3 +25,9 @@ export function useCurrentMemberId(householdId: string | null) {
 
   return [id, set] as const
 }
+
+// 给db/dexie.ts的审计日志hook用——纯读localStorage，不涉及React，可以在
+// Dexie的同步hook里直接调用，不用像上面那样包一层组件状态
+export function getCurrentMemberIdSync(householdId: string): string | null {
+  return readPerTeam(CURRENT_MEMBER_KEY, householdId)
+}
