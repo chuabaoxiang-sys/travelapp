@@ -226,6 +226,29 @@
   .app-divider { border-top: 1px solid var(--app-line); margin: 12px 0 10px; }
   .app-note { font-size: 11px; color: var(--app-muted); margin-top: 9px; }
 
+  /* 邮箱登录页顶部新加的"用 Google 账号继续"按钮 + "或"分割线——
+     照抄 EmailLogin.tsx 实际的按钮和分割线样式，不是另外发明的 */
+  .app-btn.google {
+    background: var(--app-card);
+    border: 1px solid var(--app-line);
+    color: var(--app-ink);
+    margin-bottom: 12px;
+  }
+  .app-or {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    font-size: 10.5px;
+    color: var(--app-muted);
+  }
+  .app-or::before, .app-or::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--app-line);
+  }
+
   /* 被指向的控件：标出来。
      用 outline 而不是绝对定位的 ::after —— outline 不参与布局，
      不会像外扩的伪元素那样把示意图的可滚动宽度撑出去 */
@@ -335,12 +358,17 @@
         <div class="num">2</div>
         <h2 class="step-title">点「有邀请码？点这里输入」</h2>
       </div>
-      <p class="step-body">这行小字在<strong>蓝紫色按钮的下面</strong>，容易看漏。先点它，不要直接点「发送验证码」——没走邀请码这一步，会提示邮箱还没被邀请。</p>
+      <p class="step-body">这一屏现在多了一个「用 Google 账号继续」——<strong>先别点它</strong>，跟着下面这份教程用邮箱那条路更省事。这行小字在<strong>蓝紫色按钮的下面</strong>，容易看漏。先点它，不要直接点「发送验证码」——没走邀请码这一步，会提示邮箱还没被邀请。</p>
       <div class="shot">
         <div class="app-card">
           <div class="app-eyebrow">旅记 · TripNotes</div>
           <div class="app-h1">先登录一下</div>
-          <p class="app-sub">输入邮箱，我们发一个6位验证码过去，填进去就能进（不用记密码）</p>
+          <p class="app-sub">用 Google 账号一键登录，或者用邮箱收验证码</p>
+          <div class="app-btn google">
+            <svg width="12" height="12" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.1 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.4 5.7C43.9 37.6 46.5 31.6 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 19.3c-.5 1.5-.8 3-.8 4.7s.3 3.2.8 4.7l-7.9 6.1C1 31.6 0 28.1 0 24s1-7.6 2.6-10.8l7.9 6.1z"/><path fill="#34A853" d="M24 48c6.4 0 11.9-2.1 15.9-5.7l-7.4-5.7c-2.1 1.4-4.9 2.3-8.5 2.3-6.3 0-11.6-3.6-13.5-9.3l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+            用 Google 账号继续
+          </div>
+          <div class="app-or">或</div>
           <div class="app-field">你的邮箱</div>
           <div class="app-btn">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
@@ -363,6 +391,11 @@
         <div class="app-card">
           <div class="app-eyebrow">旅记 · TripNotes</div>
           <div class="app-h1">先登录一下</div>
+          <div class="app-btn google">
+            <svg width="12" height="12" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.1 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.4 5.7C43.9 37.6 46.5 31.6 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 19.3c-.5 1.5-.8 3-.8 4.7s.3 3.2.8 4.7l-7.9 6.1C1 31.6 0 28.1 0 24s1-7.6 2.6-10.8l7.9 6.1z"/><path fill="#34A853" d="M24 48c6.4 0 11.9-2.1 15.9-5.7l-7.4-5.7c-2.1 1.4-4.9 2.3-8.5 2.3-6.3 0-11.6-3.6-13.5-9.3l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+            用 Google 账号继续
+          </div>
+          <div class="app-or">或</div>
           <div class="app-field" style="color:var(--app-ink)">你的邮箱 ←填这里</div>
           <div class="app-btn">发送验证码</div>
           <div class="app-divider"></div>

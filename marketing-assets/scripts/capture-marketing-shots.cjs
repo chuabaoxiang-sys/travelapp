@@ -4,7 +4,10 @@
 // 教程里那种带红圈坐标的局部裁剪图。
 //
 // 用法：node marketing-assets/scripts/capture-marketing-shots.cjs [light|dark]（默认light）
-// 要求本地 `npm run dev` 已经跑在5173端口。
+// 要求本地 `npm run dev` 已经跑起来，默认端口5173；如果5173被别的会话占用
+// （多个Claude Code会话同时开着这个仓库时会发生），可以设
+// MARKETING_SHOT_BASE_URL=http://localhost:<实际端口> 环境变量指向别的端口，
+// 不用为了截图去抢占/关掉别人正在用的开发服务器。
 // 每张图存到 marketing-assets/screenshots/<分类目录>/<文件名>[-dark].png
 //
 // 每一步都包了try/catch——单个选择器失效不该拖垮整个批次，跑完在终端打印
@@ -16,7 +19,7 @@ const fs = require('fs')
 const THEME = process.argv[2] === 'dark' ? 'dark' : 'light'
 const SUFFIX = THEME === 'dark' ? '-dark' : ''
 const ROOT = path.resolve(__dirname, '..', 'screenshots')
-const BASE_URL = 'http://localhost:5173'
+const BASE_URL = process.env.MARKETING_SHOT_BASE_URL || 'http://localhost:5173'
 
 const done = []
 const failed = []
