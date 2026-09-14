@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { detectDeviceLocale, resolveLocale } from './locale'
+import { detectDeviceLocale, resolveLocale, captureLocaleFromUrl, resolvePreLoginLocale } from './locale'
 
 function mockNavigatorLanguages(languages: string[]) {
   vi.spyOn(navigator, 'languages', 'get').mockReturnValue(languages)
@@ -43,5 +43,32 @@ describe('resolveLocale', () => {
     expect(resolveLocale(null)).toBe('zh')
     mockNavigatorLanguages(['en-US'])
     expect(resolveLocale(null)).toBe('en')
+  })
+})
+
+describe('captureLocaleFromUrl + resolvePreLoginLocale', () => {
+  const KEY = 'trip-journal:pre-login-locale'
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    localStorage.removeItem(KEY)
+  })
+
+  it('URL带?lang=en时记下来，登录前的语言优先读这份，不看设备语言', () => {
+    mockNavigatorLanguages(['zh-CN'])
+    captureLocaleFromUrl('?lang=en')
+    expect(resolvePreLoginLocale()).toBe('en')
+  })
+
+  it('没有?lang参数时不写入，落回设备语言', () => {
+    mockNavigatorLanguages(['zh-CN'])
+    captureLocaleFromUrl('')
+    expect(localStorage.getItem(KEY)).toBeNull()
+    expect(resolvePreLoginLocale()).toBe('zh')
+  })
+
+  it('?lang参数不是zh/en这两个值之一时忽略，不写入', () => {
+    captureLocaleFromUrl('?lang=fr')
+    expect(localStorage.getItem(KEY)).toBeNull()
   })
 })
