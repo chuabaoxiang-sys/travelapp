@@ -181,6 +181,15 @@ export function EmailLogin() {
             </button>
             {googleError && <div className="mt-1.5 text-[12px] text-negative">{googleError}</div>}
 
+            {/* Google审核OAuth登录时会检查登录流程里有没有隐私政策链接，
+                不是单纯的UX习惯——public/privacy.html 是给这个用的 */}
+            <p className="mt-2 text-[11px] text-muted text-center">
+              <Trans
+                i18nKey="emailLogin.privacyNotice"
+                components={{ a: <a href="/privacy.html" target="_blank" rel="noopener" className="underline" /> }}
+              />
+            </p>
+
             <div className="flex items-center gap-2.5 my-4 text-[11.5px] text-muted">
               <div className="flex-1 h-px bg-line" />
               {t('emailLogin.or')}

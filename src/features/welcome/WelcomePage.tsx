@@ -262,7 +262,12 @@ export function WelcomePage() {
         <div className="font-serif-sc font-bold text-[0.95rem]">
           旅记<span className="font-sans-sc font-medium text-soft text-[0.85rem] ml-2">TripNotes</span>
         </div>
-        <div>{t('welcome.footer')}</div>
+        <div className="flex items-center gap-4">
+          <a href="/privacy.html" target="_blank" rel="noopener" className="underline">
+            {t('welcome.privacyLink')}
+          </a>
+          <span>{t('welcome.footer')}</span>
+        </div>
       </footer>
     </div>
   )

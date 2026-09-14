@@ -46,7 +46,8 @@
       "sub": "行程和账本一起管，旅记现在就能开始用。",
       "button": "免费开始使用"
     },
-    "footer": "© 2026 旅记"
+    "footer": "© 2026 旅记",
+    "privacyLink": "隐私政策"
   },
   "datePicker": {
     "placeholder": "选择日期",
@@ -882,6 +883,7 @@
     "continueWithGoogle": "用 Google 账号继续",
     "googleConnecting": "跳转中…",
     "googleFailed": "跳转失败，请稍后重试",
+    "privacyNotice": "继续即代表同意<a>《隐私政策》</a>",
     "or": "或",
     "emailPlaceholder": "你的邮箱",
     "sending": "发送中…",
