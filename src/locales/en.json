@@ -13,6 +13,44 @@
     "brand": "TripNotes",
     "appName": "TripNotes"
   },
+  "welcome": {
+    "header": { "cta": "Start free" },
+    "hero": {
+      "eyebrow": "Itinerary meets ledger",
+      "headline": "Trips are better when the math isn't a fight",
+      "lede": "TripNotes keeps your itinerary and shared expenses — splits, exchange rates, all of it — in one app. However you're travelling, everyone stays on the same page.",
+      "ctaPrimary": "Start free",
+      "ctaSecondary": "See what it does"
+    },
+    "features": {
+      "ledger": {
+        "eyebrow": "Itinerary × Ledger",
+        "heading": "One app, not three",
+        "body": "Plan the itinerary, log every expense, split the bill, convert the currency — all without leaving the app. No switching tools mid-trip, no reconciling two different records once everyone's home."
+      },
+      "calendar": {
+        "eyebrow": "Calendar × Timeline",
+        "heading": "Real dates, not \"Day 3\"",
+        "body": "Your itinerary lives on a real calendar — every stop has an actual date and time, not a vague \"Day 3.\" Always clear what's happening today, and when."
+      },
+      "satisfaction": {
+        "eyebrow": "Every day × a stamp",
+        "heading": "Relive the best parts, after you're home",
+        "body": "Stamp your satisfaction on every day and every expense as you go. Afterwards, flip through a deck of highlights — so the trip you remember is more than a pile of receipts."
+      },
+      "split": {
+        "eyebrow": "Splitting × Exchange rates",
+        "heading": "Who owes who — done automatically",
+        "body": "Splitting the bill, covering for each other, converting currencies mid-trip — TripNotes works it all out automatically, visible any time, not just after everyone's home."
+      }
+    },
+    "cta": {
+      "heading": "This trip is worth keeping track of",
+      "sub": "Itinerary and expenses, together, starting now.",
+      "button": "Start free"
+    },
+    "footer": "© 2026 TripNotes"
+  },
   "datePicker": {
     "placeholder": "Select date",
     "clear": "Clear",

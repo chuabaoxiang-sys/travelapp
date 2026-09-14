@@ -71,7 +71,9 @@ export default defineConfig({
         // 使用教程里的真实截图不预缓存——39步×中英两份，体积比现在整个APP外壳
         // 预缓存的1.6MB还大好几倍，塞进去会让首次安装/更新体积暴涨。这些图只在
         // 用户真的点开某篇教程时才按需网络加载
-        globIgnores: ['tutorial-shots/**'],
+        // welcome-shots同理：只有走/welcome这条公开落地页的陌生访客才会看到，
+        // 绝大多数已经装了PWA的真实用户永远用不到，不该占他们的离线包体积
+        globIgnores: ['tutorial-shots/**', 'welcome-shots/**'],
         // 真实bug教训：默认（false）生成的sw.js会把skipWaiting做成"要等一条
         // SKIP_WAITING消息才触发"，但一直没有代码在发这条消息——新版本永远卡在
         // "装完了、没人叫它接管"，不管用户怎么刷新都没用。这里改成无条件自动跳过等待
