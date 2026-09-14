@@ -905,7 +905,11 @@
   },
   "emailLogin": {
     "title": "Let's log you in",
-    "subtitle": "Enter your email and we'll send a 6-digit code — no password to remember",
+    "subtitle": "Sign in with Google in one tap, or use your email to get a code",
+    "continueWithGoogle": "Continue with Google",
+    "googleConnecting": "Redirecting…",
+    "googleFailed": "Couldn't redirect — try again shortly",
+    "or": "or",
     "emailPlaceholder": "Your email",
     "sending": "Sending…",
     "sendCode": "Send code",
@@ -932,14 +936,19 @@
   },
   "noHousehold": {
     "title": "This email hasn't joined a group yet",
-    "subtitle": "You can log in with a different email, or skip waiting for an invite and create a new group yourself.",
-    "switchEmail": "Log in with a different email",
+    "subtitle": "Join with an invite code if you have one, or skip waiting and create a new group yourself.",
+    "switchEmail": "Switch email",
+    "haveInviteCode": "Invite code",
+    "inviteCodePlaceholder": "Invite code",
+    "joining": "Joining…",
+    "joinByCode": "Join with invite code",
+    "invalidCode": "That invite code isn't valid — check it and try again",
+    "joinFailed": "Couldn't join — try again shortly",
     "namePrompt": "Give your group a name (e.g. \"Weekend Wanderers\") — you'll be its first member once it's created.",
     "namePlaceholder": "Group name",
     "creating": "Creating…",
     "createGroup": "Create group",
-    "createFailed": "Couldn't create it — this feature might not be turned on yet, or it could be a network issue. Try again shortly.",
-    "orCreateNew": "Or create a new group"
+    "createFailed": "Couldn't create it — this feature might not be turned on yet, or it could be a network issue. Try again shortly."
   },
   "tripPicker": {
     "myTrips": "My trips",

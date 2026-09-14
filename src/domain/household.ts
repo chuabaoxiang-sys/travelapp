@@ -45,6 +45,28 @@ export async function verifyLoginCode(email: string, code: string): Promise<void
   if (error) throw error
 }
 
+// Google一键登录——跳到Google授权页，成功后跳回本页。这里特意不在跳转前
+// 查is_invited_email：OAuth的重定向发生在浏览器整页跳转，客户端拿不到"提前拦截"
+// 的时机，只能等跳回来、session建立之后，交给App.tsx已有的getCurrentHouseholdId()
+// 判断有没有加入团队——查不到就是NoHouseholdScreen，跟邮箱验证码登录到这一步
+// 是同一条路径，不用另外写一套逻辑
+export async function signInWithGoogle(): Promise<void> {
+  if (!supabase) throw new Error('Cloud service isn\'t configured')
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  })
+  if (error) throw error
+}
+
+// 给NoHouseholdScreen用——这一步用户已经登录（不管是邮箱验证码还是Google），
+// 邀请码只需要邮箱配合，邮箱直接从session里读，不用再让用户手打一遍
+export async function getCurrentUserEmail(): Promise<string | null> {
+  if (!supabase) return null
+  const { data } = await supabase.auth.getUser()
+  return data.user?.email ?? null
+}
+
 export async function getSession() {
   if (!supabase) return null
   const { data } = await supabase.auth.getSession()

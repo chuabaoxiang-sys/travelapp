@@ -1,13 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { Mail, KeyRound } from 'lucide-react'
-import { sendLoginCode, verifyLoginCode, joinHouseholdByInviteCode, NotInvitedError } from '../../domain/household'
+import { sendLoginCode, verifyLoginCode, joinHouseholdByInviteCode, signInWithGoogle, NotInvitedError } from '../../domain/household'
 import { enableLocalTestMode } from '../../dev/localTestMode'
 
 const CODE_LENGTH = 6
 const RESEND_SECONDS = 30
 
 type CodeStatus = 'idle' | 'checking' | 'error' | 'success'
+
+// lucide-react没有Google的多色logo，这里单独画一个，画法照抄Google官方品牌指南的
+// 四色G——只在这一个按钮上用，不值得为它建一个共享图标文件
+function GoogleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.1 17.7 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.4 5.7C43.9 37.6 46.5 31.6 46.5 24.5z" />
+      <path fill="#FBBC05" d="M10.5 19.3c-.5 1.5-.8 3-.8 4.7s.3 3.2.8 4.7l-7.9 6.1C1 31.6 0 28.1 0 24s1-7.6 2.6-10.8l7.9 6.1z" />
+      <path fill="#34A853" d="M24 48c6.4 0 11.9-2.1 15.9-5.7l-7.4-5.7c-2.1 1.4-4.9 2.3-8.5 2.3-6.3 0-11.6-3.6-13.5-9.3l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
+    </svg>
+  )
+}
 
 export function EmailLogin() {
   const { t } = useTranslation()
@@ -21,6 +34,8 @@ export function EmailLogin() {
   const [inviteCode, setInviteCode] = useState('')
   const [joinBusy, setJoinBusy] = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
+  const [googleBusy, setGoogleBusy] = useState(false)
+  const [googleError, setGoogleError] = useState<string | null>(null)
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''))
   const [codeStatus, setCodeStatus] = useState<CodeStatus>('idle')
@@ -57,6 +72,19 @@ export function EmailLogin() {
       setError(err instanceof NotInvitedError ? t('emailLogin.notInvited') : t('emailLogin.sendFailed'))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleGoogleLogin() {
+    setGoogleBusy(true)
+    setGoogleError(null)
+    try {
+      // 成功之后浏览器会整页跳到Google再跳回来，这个函数本身不会"返回"——
+      // 不需要在这里处理后续步骤，App.tsx的onAuthStateChange会接管
+      await signInWithGoogle()
+    } catch {
+      setGoogleError(t('emailLogin.googleFailed'))
+      setGoogleBusy(false)
     }
   }
 
@@ -142,7 +170,24 @@ export function EmailLogin() {
           <>
             <h1 className="font-serif-sc text-2xl mt-2 text-ink">{t('emailLogin.title')}</h1>
             <p className="text-sm text-muted mt-1">{t('emailLogin.subtitle')}</p>
-            <div className="mt-5 flex flex-col gap-2.5">
+
+            <button
+              onClick={handleGoogleLogin}
+              disabled={googleBusy}
+              className="mt-5 w-full rounded-xl border border-line bg-card text-ink py-2.5 text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2"
+            >
+              <GoogleIcon />
+              {googleBusy ? t('emailLogin.googleConnecting') : t('emailLogin.continueWithGoogle')}
+            </button>
+            {googleError && <div className="mt-1.5 text-[12px] text-negative">{googleError}</div>}
+
+            <div className="flex items-center gap-2.5 my-4 text-[11.5px] text-muted">
+              <div className="flex-1 h-px bg-line" />
+              {t('emailLogin.or')}
+              <div className="flex-1 h-px bg-line" />
+            </div>
+
+            <div className="flex flex-col gap-2.5">
               <input
                 type="email"
                 value={email}

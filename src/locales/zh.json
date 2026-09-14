@@ -878,7 +878,11 @@
   },
   "emailLogin": {
     "title": "先登录一下",
-    "subtitle": "输入邮箱，我们发一个6位验证码过去，填进去就能进（不用记密码）",
+    "subtitle": "用 Google 账号一键登录，或者用邮箱收验证码",
+    "continueWithGoogle": "用 Google 账号继续",
+    "googleConnecting": "跳转中…",
+    "googleFailed": "跳转失败，请稍后重试",
+    "or": "或",
     "emailPlaceholder": "你的邮箱",
     "sending": "发送中…",
     "sendCode": "发送验证码",
@@ -905,14 +909,19 @@
   },
   "noHousehold": {
     "title": "这个邮箱还没加入团队",
-    "subtitle": "可以换一个邮箱重新登录，或者不等被邀请，直接自己建一个新团队。",
-    "switchEmail": "换个邮箱重新登录",
+    "subtitle": "如果有邀请码可以直接加入，或者不等被邀请，自己建一个新团队。",
+    "switchEmail": "换邮箱",
+    "haveInviteCode": "邀请码",
+    "inviteCodePlaceholder": "邀请码",
+    "joining": "加入中…",
+    "joinByCode": "用邀请码加入",
+    "invalidCode": "邀请码无效，请确认后重试",
+    "joinFailed": "加入失败，请稍后重试",
     "namePrompt": "给团队起个名字（比如「五人穷游小队」），建好之后你就是里面第一个成员。",
     "namePlaceholder": "团队名",
     "creating": "创建中…",
-    "createGroup": "创建团队",
-    "createFailed": "创建失败，可能是这个功能还没开放，也可能是网络问题，稍后再试试",
-    "orCreateNew": "或者，创建一个新团队"
+    "createGroup": "建团队",
+    "createFailed": "创建失败，可能是这个功能还没开放，也可能是网络问题，稍后再试试"
   },
   "tripPicker": {
     "myTrips": "我的行程",
