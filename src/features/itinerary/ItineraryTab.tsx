@@ -550,7 +550,7 @@ export function ItineraryTab({
                       )}
                       {it.flightNumber && (
                         <a
-                          href={`https://www.flightaware.com/live/flight/${encodeURIComponent(it.flightNumber)}`}
+                          href={`https://www.flightradar24.com/data/flights/${encodeURIComponent(it.flightNumber.replace(/\s+/g, ''))}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -701,6 +701,9 @@ const ItemForm = forwardRef<ItemFormHandle, {
   // 贴地图链接）之后就不再对应那条来源了，要跟着清空，不然徽章会挂着错的来源
   const [sourceWishlistId, setSourceWishlistId] = useState<string | null>(initial?.sourceWishlistId ?? null)
   const [flightNumber, setFlightNumber] = useState(initial?.flightNumber ?? '')
+  // 航班号默认收起成一个小按钮——大部分行程项都用不到，天天展开"其他设置"
+  // 扫过一个空输入框很碍事。已经填过的话直接展开，不用用户再点一次才看到
+  const [flightFieldOpen, setFlightFieldOpen] = useState(!!initial?.flightNumber)
   // "其他设置"（换日期/从想去的地点选/备注/预约状态）折叠——这几项编辑时
   // 常常要看/改，新增时大多数情况用不到，跟AddExpensePage的detailsOpen是
   // 同一个套路：编辑默认展开，新增默认收起
@@ -838,27 +841,42 @@ const ItemForm = forwardRef<ItemFormHandle, {
               <DatePicker value={date} onChange={setDate} />
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => setWishlistPickerOpen(true)}
-            className="flex items-center gap-1 text-[11.5px] text-plan font-semibold border border-dashed border-plan/40 rounded-lg px-2.5 py-1.5 w-fit"
-          >
-            <Bookmark className="w-3 h-3" strokeWidth={2.2} />
-            {t('itemForm.pickFromWishlist')}
-          </button>
-          <div>
-            <div className="text-[10px] tracking-widest uppercase text-muted mb-1 flex items-center gap-1">
-              <Plane className="w-2.5 h-2.5" strokeWidth={2.2} />
-              {t('itemForm.flightNumberLabel')}
-            </div>
-            <input
-              value={flightNumber}
-              onChange={(e) => setFlightNumber(e.target.value)}
-              placeholder={t('itemForm.flightNumberPlaceholder')}
-              autoComplete="off"
-              className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
-            />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setWishlistPickerOpen(true)}
+              className="flex items-center gap-1 text-[11.5px] text-plan font-semibold border border-dashed border-plan/40 rounded-lg px-2.5 py-1.5 w-fit"
+            >
+              <Bookmark className="w-3 h-3" strokeWidth={2.2} />
+              {t('itemForm.pickFromWishlist')}
+            </button>
+            {!flightFieldOpen && (
+              <button
+                type="button"
+                onClick={() => setFlightFieldOpen(true)}
+                className="flex items-center gap-1 text-[11.5px] text-plan font-semibold border border-dashed border-plan/40 rounded-lg px-2.5 py-1.5 w-fit"
+              >
+                <Plane className="w-3 h-3" strokeWidth={2.2} />
+                {t('itemForm.addFlightNumber')}
+              </button>
+            )}
           </div>
+          {flightFieldOpen && (
+            <div>
+              <div className="text-[10px] tracking-widest uppercase text-muted mb-1 flex items-center gap-1">
+                <Plane className="w-2.5 h-2.5" strokeWidth={2.2} />
+                {t('itemForm.flightNumberLabel')}
+              </div>
+              <input
+                value={flightNumber}
+                onChange={(e) => setFlightNumber(e.target.value)}
+                placeholder={t('itemForm.flightNumberPlaceholder')}
+                autoComplete="off"
+                autoFocus={!initial?.flightNumber}
+                className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
+              />
+            </div>
+          )}
           <div>
             <textarea
               value={notes}
