@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, CheckCheck, Trash2, Lock, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X } from 'lucide-react'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
@@ -904,7 +904,7 @@ export function AddExpensePage({
                     </button>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-x-3.5 gap-y-2">
                   {members.map((m) => {
                     const checked = splitMemberIds.includes(m.id)
                     return (
@@ -914,12 +914,22 @@ export function AddExpensePage({
                         onClick={() =>
                           setSplitMemberIds((prev) => (checked ? prev.filter((id) => id !== m.id) : [...prev, m.id]))
                         }
-                        className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[12.5px] border ${
-                          checked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-soft'
-                        }`}
+                        className="flex flex-col items-center gap-1 w-14"
                       >
-                        <Avatar member={m} size={20} />
-                        {m.displayName} {checked ? '✓' : ''}
+                        <span
+                          className={`relative rounded-full ${checked ? 'opacity-100' : 'opacity-40'}`}
+                          style={checked ? { boxShadow: '0 0 0 2px var(--color-card), 0 0 0 4.5px var(--color-plan)' } : undefined}
+                        >
+                          <Avatar member={m} size={40} />
+                          {checked && (
+                            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-plan text-card flex items-center justify-center ring-2 ring-card">
+                              <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                            </span>
+                          )}
+                        </span>
+                        <span className={`text-[10.5px] truncate max-w-full ${checked ? 'text-ink font-medium' : 'text-muted'}`}>
+                          {m.displayName}
+                        </span>
                       </button>
                     )
                   })}
