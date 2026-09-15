@@ -149,6 +149,8 @@ export interface ItineraryItem {
   // 预约截止日期（YYYY-MM-DD）。这次先不做提醒功能，字段先加上，
   // 免得以后做提醒时又要一次迁移
   bookingDeadline?: string | null
+  // 可选航班号，例如 CA981。填了之后卡片上会多一个跳转到外部查询页的按钮
+  flightNumber?: string | null
   // 谁加的这一项。可空：这个字段是后加的（迁移0012），之前的历史数据没有归属信息，
   // "行程动态"遇到 null 时会退化成"有人加了…"
   createdBy: string | null

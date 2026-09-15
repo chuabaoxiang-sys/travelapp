@@ -1,7 +1,7 @@
 import { Fragment, Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { Trash2, Filter, Bookmark, MapPin, Pencil } from 'lucide-react'
+import { Trash2, Filter, Bookmark, MapPin, Pencil, Plane } from 'lucide-react'
 import { db, ensureItineraryDay } from '../../db/dexie'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { sortItineraryItems, hasLinkedDaySpreadExpense, resolveDayForItemMove, deriveDayTitle, resolveDayTitle } from '../../domain/itinerary'
@@ -253,6 +253,7 @@ export function ItineraryTab({
     notes: string
     bookingStatus: BookingStatus | null
     sourceWishlistId: string | null
+    flightNumber: string | null
   }
 
   // 换日期的确认框只在"关联的账目用了跨天分摊"时才需要弹出（见domain/itinerary.ts
@@ -271,6 +272,7 @@ export function ItineraryTab({
       notes: fields.notes || null,
       bookingStatus: fields.bookingStatus,
       sourceWishlistId: fields.sourceWishlistId,
+      flightNumber: fields.flightNumber,
       updatedAt: Date.now(),
     })
   }
@@ -476,8 +478,8 @@ export function ItineraryTab({
                         countryCodes={trip.destinationCountries}
                         onCancel={() => setFormState(null)}
                         onDelete={() => setPendingDeleteId(it.id)}
-                        onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId, date) => {
-                          const fields = { title, time, location, notes, bookingStatus, sourceWishlistId }
+                        onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId, date, flightNumber) => {
+                          const fields = { title, time, location, notes, bookingStatus, sourceWishlistId, flightNumber }
                           if (date !== selected && (await hasLinkedDaySpreadExpense(it.id))) {
                             setPendingDaySpreadMove({ itemId: it.id, newDate: date, fields })
                             return
@@ -546,6 +548,19 @@ export function ItineraryTab({
                           {it.locationName}
                         </div>
                       )}
+                      {it.flightNumber && (
+                        <a
+                          href={`https://www.flightaware.com/live/flight/${encodeURIComponent(it.flightNumber)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-semibold text-cat-flight bg-cat-flight/10 rounded-full px-2.5 py-1"
+                          title={t('itinerary.trackFlightTitle')}
+                        >
+                          <Plane className="w-3 h-3" strokeWidth={2.5} />
+                          {it.flightNumber} · {t('itinerary.trackFlight')}
+                        </a>
+                      )}
                       {it.notes && (
                         <div className="text-[11px] text-muted mt-1.5 pt-1.5 border-t border-dashed border-line whitespace-pre-line leading-relaxed">
                           {it.notes}
@@ -578,7 +593,7 @@ export function ItineraryTab({
           currentDate={selected}
           countryCodes={trip.destinationCountries}
           onCancel={() => setFormState(null)}
-          onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId) => {
+          onSave={async (title, time, location, notes, bookingStatus, sourceWishlistId, _date, flightNumber) => {
             const day = await ensureDay(selected)
             const householdId = await getCurrentHouseholdId()
             if (!householdId) return
@@ -599,6 +614,7 @@ export function ItineraryTab({
               notes: notes || null,
               bookingStatus,
               sourceWishlistId,
+              flightNumber,
               deletedAt: null,
               createdAt: now,
               updatedAt: now,
@@ -651,6 +667,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
     bookingStatus: BookingStatus | null,
     sourceWishlistId: string | null,
     date: string,
+    flightNumber: string | null,
   ) => void
   onCancel: () => void
   onDelete?: () => void
@@ -683,6 +700,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
   // 这一项是不是从"想去的地点"一键选出来的——纯追溯用途。手动改地点（重新搜索/
   // 贴地图链接）之后就不再对应那条来源了，要跟着清空，不然徽章会挂着错的来源
   const [sourceWishlistId, setSourceWishlistId] = useState<string | null>(initial?.sourceWishlistId ?? null)
+  const [flightNumber, setFlightNumber] = useState(initial?.flightNumber ?? '')
   // "其他设置"（换日期/从想去的地点选/备注/预约状态）折叠——这几项编辑时
   // 常常要看/改，新增时大多数情况用不到，跟AddExpensePage的detailsOpen是
   // 同一个套路：编辑默认展开，新增默认收起
@@ -716,7 +734,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
   // 标题还是空的就当作取消（新建时点开又反悔不填，直接放弃更符合直觉）
   function finishEditing() {
     if (title.trim()) {
-      onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId, date)
+      onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId, date, flightNumber.trim() || null)
     } else {
       onCancel()
     }
@@ -744,7 +762,7 @@ const ItemForm = forwardRef<ItemFormHandle, {
 
   const canSave = !!title.trim()
   function handleSave() {
-    if (canSave) onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId, date)
+    if (canSave) onSave(title.trim(), time, location, notes.trim(), bookingStatus, sourceWishlistId, date, flightNumber.trim() || null)
   }
   const bookingLabel = bookingStatus === 'needed' ? t('itemForm.bookingNeeded') : bookingStatus === 'booked' ? t('itemForm.bookingBooked') : t('itemForm.bookingNone')
   // 折叠状态的一行摘要，跟AddExpensePage的"其他设置"摘要是同一个思路——
@@ -828,6 +846,19 @@ const ItemForm = forwardRef<ItemFormHandle, {
             <Bookmark className="w-3 h-3" strokeWidth={2.2} />
             {t('itemForm.pickFromWishlist')}
           </button>
+          <div>
+            <div className="text-[10px] tracking-widest uppercase text-muted mb-1 flex items-center gap-1">
+              <Plane className="w-2.5 h-2.5" strokeWidth={2.2} />
+              {t('itemForm.flightNumberLabel')}
+            </div>
+            <input
+              value={flightNumber}
+              onChange={(e) => setFlightNumber(e.target.value)}
+              placeholder={t('itemForm.flightNumberPlaceholder')}
+              autoComplete="off"
+              className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
+            />
+          </div>
           <div>
             <textarea
               value={notes}
