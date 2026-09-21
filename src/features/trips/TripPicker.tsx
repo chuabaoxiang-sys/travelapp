@@ -54,7 +54,10 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
   useBackDismiss(tutorialsOpen, () => setTutorialsOpen(false))
   const [subscriptionOpen, setSubscriptionOpen] = useState(false)
   const [justPurchased, setJustPurchased] = useState(false)
-  const [blockedByLimit, setBlockedByLimit] = useState(false)
+  const [pastFreeLimit, setPastFreeLimit] = useState(false)
+  // 超额度时行程已经建好了，只是还没跳进去——关掉"请喝咖啡"面板（不管有没有真的
+  // 点单）才导航过去，不管走哪条路这趟行程都已经在db.trips里了，不会丢
+  const [pendingLimitTripId, setPendingLimitTripId] = useState<string | null>(null)
 
   // Stripe Checkout成功后跳回`${origin}/?billing=success`——正常情况下会带着
   // 记住的tripId直接进TripShell（那边有自己的一份同样处理），但如果用户是从
@@ -163,9 +166,10 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
               onSelect(id)
             }}
             onCancel={() => setFormState(null)}
-            onLimitReached={() => {
+            onLimitReached={(id) => {
               setFormState(null)
-              setBlockedByLimit(true)
+              setPendingLimitTripId(id)
+              setPastFreeLimit(true)
               setSubscriptionOpen(true)
             }}
           />
@@ -211,11 +215,16 @@ export function TripPicker({ onSelect, currentMemberId }: { onSelect: (id: strin
       {subscriptionOpen && (
         <SubscriptionSheet
           justPurchased={justPurchased}
-          blocked={blockedByLimit}
+          pastFreeLimit={pastFreeLimit}
           onClose={() => {
             setSubscriptionOpen(false)
             setJustPurchased(false)
-            setBlockedByLimit(false)
+            setPastFreeLimit(false)
+            if (pendingLimitTripId) {
+              const id = pendingLimitTripId
+              setPendingLimitTripId(null)
+              onSelect(id)
+            }
           }}
         />
       )}
@@ -234,7 +243,7 @@ function TripForm({
   onDone: (id: string) => void
   onCancel: () => void
   onDelete?: () => void
-  onLimitReached?: () => void
+  onLimitReached?: (id: string) => void
 }) {
   const { t } = useTranslation()
   const [name, setName] = useState(initial?.name ?? '')
@@ -281,17 +290,20 @@ function TripForm({
 
       setSaveError(null)
       setSaving(true)
+      // 超过免费额度不再拦下建行程——只是记一下，行程照样建好，建完之后改叫
+      // onLimitReached 而不是 onDone，让调用方弹"请喝咖啡"而不是直接跳进去
+      let pastLimit = false
       try {
         await recordTripCreation()
       } catch (err) {
-        setSaving(false)
         const message = err instanceof Error ? err.message : String(err)
         if (message.includes(TRIP_LIMIT_REACHED)) {
-          onLimitReached?.()
+          pastLimit = true
         } else {
+          setSaving(false)
           setSaveError(message)
+          return
         }
-        return
       }
 
       const id = crypto.randomUUID()
@@ -315,7 +327,8 @@ function TripForm({
       }
       await db.trips.add(trip)
       setSaving(false)
-      onDone(id)
+      if (pastLimit) onLimitReached?.(id)
+      else onDone(id)
     }
   }
 

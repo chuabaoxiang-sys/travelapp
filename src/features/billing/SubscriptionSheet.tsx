@@ -108,19 +108,21 @@ function TierButton({
   )
 }
 
-// 免费1趟、第2趟起要点单解锁的真付费墙——不是订阅，锁头图标就是这个状态最直接
-// 的隐喻：没解锁时锁着，解锁成功那一刻会真的"弹开"（见下面的动画effect），之后
-// 再打开这个弹层锁头直接是开着的，不会每次都重放一遍。blocked为true时（从
-// TripPicker建第2趟被拦下那里进来）多显示一句"你已经用掉免费额度了"，跟从
-// "更多"菜单点进来的一般浏览场景区分开
+// 不是订阅，锁头图标就是这个状态最直接的隐喻：没解锁时锁着，解锁成功那一刻会
+// 真的"弹开"（见下面的动画effect），之后再打开这个弹层锁头直接是开着的，不会
+// 每次都重放一遍。2026-09起免费额度用完不再拦人建行程——pastFreeLimit为true时
+// （从TripPicker建第2趟触发免费额度那里进来，行程已经建好了）换一版"帮你建好了，
+// 请我喝一杯"的轻松文案，同时藏起下面常驻的状态条和"咖啡馆"说明文字——那两处
+// 平时从"更多"菜单点进来的一般浏览场景该留着，但在这个场景下会跟正文重复/矛盾
+// （都过了第一趟了，"第一趟算我请客"没有意义）
 export function SubscriptionSheet({
   onClose,
   justPurchased = false,
-  blocked = false,
+  pastFreeLimit = false,
 }: {
   onClose: () => void
   justPurchased?: boolean
-  blocked?: boolean
+  pastFreeLimit?: boolean
 }) {
   const { t } = useTranslation()
   const [sub, setSub] = useState<HouseholdSubscription | null | undefined>(undefined)
@@ -269,35 +271,37 @@ export function SubscriptionSheet({
 
           {sub && (
             <>
-              {!isActive && blocked && (
+              {!isActive && pastFreeLimit && (
                 <div className="mb-3">
                   <div className="text-[12.5px] font-semibold mb-1">{t('subscription.limitTitle')}</div>
                   <div className="text-[11.5px] text-muted leading-relaxed">{t('subscription.limitBody')}</div>
                 </div>
               )}
 
-              {!isActive && (
+              {!isActive && !pastFreeLimit && (
                 <div className="text-[11.5px] text-muted leading-relaxed mb-4">{t('subscription.description')}</div>
               )}
 
-              <div className="bg-card border border-line rounded-xl p-4">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
-                    {isActive ? (
-                      <Unlock className="w-[15px] h-[15px]" strokeWidth={1.8} />
-                    ) : (
-                      <Lock className="w-[15px] h-[15px]" strokeWidth={1.8} />
-                    )}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[12.5px] font-medium">
-                      {isActive
-                        ? t('subscription.statusActive', { date: sub.purchasedAt?.slice(0, 10) })
-                        : t('subscription.statusFree')}
+              {!pastFreeLimit && (
+                <div className="bg-card border border-line rounded-xl p-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+                      {isActive ? (
+                        <Unlock className="w-[15px] h-[15px]" strokeWidth={1.8} />
+                      ) : (
+                        <Lock className="w-[15px] h-[15px]" strokeWidth={1.8} />
+                      )}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12.5px] font-medium">
+                        {isActive
+                          ? t('subscription.statusActive', { date: sub.purchasedAt?.slice(0, 10) })
+                          : t('subscription.statusFree')}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {isActive && (
                 <div className="text-[11.5px] text-muted leading-relaxed mt-4 mb-3">
@@ -305,7 +309,7 @@ export function SubscriptionSheet({
                 </div>
               )}
 
-              <div className={`flex gap-2 ${isActive ? '' : 'mt-3'}`}>
+              <div className={`flex gap-2 ${isActive || pastFreeLimit ? '' : 'mt-3'}`}>
                 {PRICE_TIERS.map(({ tier, cups, display }) => (
                   <TierButton
                     key={tier}
