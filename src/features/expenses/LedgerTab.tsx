@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, CircleDollarSign, Wallet } from 'lucide-react'
+import { ChevronRight, Wallet } from 'lucide-react'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
@@ -27,6 +27,32 @@ import { markHintSeen } from '../../domain/discoveryHints'
 import { BudgetSheet } from '../budget/BudgetSheet'
 import { SplitTab } from '../split/SplitTab'
 import { SatisfactionStampBadge } from '../satisfaction/SatisfactionStampBadge'
+
+// lucide库里没有"循环箭头+货币符号"的换汇图标——库里只有单独的箭头或单独的货币
+// 符号，这个是拼出来的：循环弧线取自lucide的RefreshCw，中间的$取自lucide的
+// DollarSign（等比缩小、对齐到圆心），描边风格（线宽/圆角端点/currentColor）
+// 跟其他lucide图标保持一致。项目里唯一一个不是直接从lucide库拿的图标，以后
+// lucide整体样式若有调整，这个不会跟着自动更新
+function CurrencyExchangeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+      <path d="M8 16H3v5" />
+      <line x1="12" x2="12" y1="7" y2="17" />
+      <path d="M14.5 8.5H10.75a1.75 1.75 0 0 0 0 3.5h2.5a1.75 1.75 0 0 1 0 3.5H9" />
+    </svg>
+  )
+}
 
 export function LedgerTab({
   trip,
@@ -176,10 +202,10 @@ export function LedgerTab({
           {hasForeignCurrencyUsage && (
             <button
               onClick={() => { setRateBookOpen(true); markHintSeen(currentMemberId, 'rateBook') }}
-              className="relative w-8 h-8 rounded-[10px] bg-card border border-line flex items-center justify-center text-plan"
+              className="relative w-9 h-9 rounded-[11px] bg-card border border-line flex items-center justify-center text-plan"
               title={t('ledger.rateBookTitle')}
             >
-              <CircleDollarSign className="w-[15px] h-[15px]" strokeWidth={1.8} />
+              <CurrencyExchangeIcon className="w-[19px] h-[19px]" />
               <DiscoveryDot memberId={currentMemberId} hintKey="rateBook" />
             </button>
           )}
