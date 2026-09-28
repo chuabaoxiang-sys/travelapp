@@ -642,7 +642,85 @@
     "checkUpdate": "检查更新",
     "currentVersion": "当前版本 {{version}}",
     "refreshing": "刷新中…",
-    "tapToRefresh": "点击刷新"
+    "tapToRefresh": "点击刷新",
+    "adminDashboard": "数据后台",
+    "adminDashboardDesc": "注册、团队、行程进展，只有你看得到",
+    "adminDashboardArrow": "查看 ›"
+  },
+  "admin": {
+    "title": "数据后台",
+    "close": "关闭",
+    "onlyYou": "只有你的账号看得到",
+    "updatedAt": "更新于 {{time}}",
+    "loading": "正在加载数据…",
+    "errorForbidden": "这个账号没有查看数据后台的权限",
+    "errorGeneric": "数据没加载出来，检查一下网络再试",
+    "retry": "重试",
+    "hero": {
+      "label": "到目前为止（已排除测试账号）",
+      "accounts": "注册账号",
+      "households": "团队",
+      "trips": "行程",
+      "supported": "打赏",
+      "last7Days": "近7天 +{{n}}"
+    },
+    "funnel": {
+      "title": "新人走到哪一步",
+      "subtitle": "按人数",
+      "steps": {
+        "registered": "注册账号",
+        "inHousehold": "进了团队",
+        "householdHasTrip": "团队建过行程",
+        "householdHasExpense": "团队记过账",
+        "householdSupported": "团队打赏过"
+      },
+      "dropPair": "{{from}} → {{to}}",
+      "dropSeparator": "、",
+      "biggestDrop_other": "掉人最多的一步：{{steps}}，少了 {{count}} 人",
+      "biggestDropTied_other": "掉人最多的几步：{{steps}}，各少了 {{count}} 人",
+      "noDrop": "每一步都没掉人",
+      "empty": "还没有人注册"
+    },
+    "chart": {
+      "title": "每天新增",
+      "range7d": "7天",
+      "range30d": "30天",
+      "rangeAll": "全部",
+      "ariaLabel": "每天新增注册账号与新行程",
+      "legendAccounts": "新注册账号",
+      "legendTrips": "新行程",
+      "legendTestAccounts": "测试账号（不计入）",
+      "empty": "还没有数据"
+    },
+    "stuck": {
+      "title": "注册了但还没进团队",
+      "followUp_other": "{{count}} 人需要跟进",
+      "none": "暂时没有",
+      "onlyTest": "都是测试账号",
+      "empty": "注册的人都进了团队",
+      "providerGoogle": "Google 登录",
+      "providerEmail": "邮箱登录",
+      "signedUp": "{{provider}} · {{time}} 注册",
+      "neverCameBack": "，之后没再回来",
+      "lastSeen": "，最近打开 {{date}}"
+    },
+    "households": {
+      "title": "所有团队",
+      "subtitle": "按最近活跃排序",
+      "empty": "还没有团队",
+      "createdNoActivity": "{{created}} 建 · 还没有任何动作",
+      "createdWithActivity": "最近活跃 {{active}} · {{created}} 建",
+      "noMemberSignedIn": " · 成员还没登录过",
+      "members_other": "<b>{{count}}</b>人",
+      "trips_other": "<b>{{count}}</b>趟",
+      "expenses_other": "<b>{{count}}</b>笔"
+    },
+    "pill": {
+      "new": "新",
+      "test": "测试",
+      "exempt": "豁免",
+      "supported": "已打赏"
+    }
   },
   "subscription": {
     "title": "行程额度",
@@ -899,8 +977,6 @@
     "inviteCodePlaceholder": "邀请码",
     "joining": "加入中…",
     "joinByCode": "用邀请码加入",
-    "invalidCode": "邀请码无效，请确认后重试",
-    "joinFailed": "加入失败，请稍后重试",
     "haveInviteCode": "有邀请码？点这里输入",
     "verifySuccess": "验证成功",
     "enteringApp": "正在进入旅记…",

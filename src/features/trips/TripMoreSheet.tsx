@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { X, Link2, RefreshCw, BookOpen, ListChecks, MoonStar, Languages, Lock } from 'lucide-react'
+import { X, Link2, RefreshCw, BookOpen, ListChecks, MoonStar, Languages, Lock, ChartColumn } from 'lucide-react'
 import { assembleExportBundle } from '../../domain/export'
 import { shareReadyFile, downloadFile } from '../../lib/share'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -25,6 +25,7 @@ export function TripMoreSheet({
   onOpenSyncDetail,
   onOpenTutorials,
   onOpenSubscription,
+  onOpenAdminDashboard,
 }: {
   trip: Trip
   currentMemberId: string
@@ -34,6 +35,8 @@ export function TripMoreSheet({
   onOpenSyncDetail: () => void
   onOpenTutorials: () => void
   onOpenSubscription: () => void
+  // 只有管理员账号才会传进来——不传就连这一行都不渲染，其他用户完全看不到入口
+  onOpenAdminDashboard?: () => void
 }) {
   const { t } = useTranslation()
 
@@ -278,7 +281,23 @@ export function TripMoreSheet({
 
         <div className="text-[10px] font-bold text-muted tracking-wide mt-4 mb-1.5">{t('more.otherSection')}</div>
 
-        <button onClick={onOpenSubscription} className="w-full flex items-center gap-2.5 py-2 text-left">
+        {onOpenAdminDashboard && (
+          <button onClick={onOpenAdminDashboard} className="w-full flex items-center gap-2.5 py-2 text-left">
+            <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
+              <ChartColumn className="w-[15px] h-[15px]" strokeWidth={1.8} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-medium">{t('more.adminDashboard')}</div>
+              <div className="text-[9.5px] text-muted mt-0.5">{t('more.adminDashboardDesc')}</div>
+            </div>
+            <span className="text-[10.5px] text-plan flex-shrink-0">{t('more.adminDashboardArrow')}</span>
+          </button>
+        )}
+
+        <button
+          onClick={onOpenSubscription}
+          className={`w-full flex items-center gap-2.5 py-2 text-left ${onOpenAdminDashboard ? 'border-t border-line' : ''}`}
+        >
           <span className="w-[30px] h-[30px] rounded-[9px] bg-plan/[0.06] flex items-center justify-center text-plan flex-shrink-0">
             <Lock className="w-[15px] h-[15px]" strokeWidth={1.8} />
           </span>

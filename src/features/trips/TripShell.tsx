@@ -22,6 +22,8 @@ import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { useLastSeen, countUnseen } from './useLastSeen'
 import { SyncDetailSheet } from '../../components/SyncDetailSheet'
 import { TutorialLibraryScreen } from '../tutorials/TutorialLibraryScreen'
+import { AdminDashboardScreen } from '../admin/AdminDashboardScreen'
+import { isAppAdmin } from '../../domain/adminStats'
 
 const NOT_FOUND = Symbol('trip-not-found')
 
@@ -58,6 +60,8 @@ export function TripShell({
   const [syncDetailOpen, setSyncDetailOpen] = useState(false)
   const [tutorialsOpen, setTutorialsOpen] = useState(false)
   const [subscriptionOpen, setSubscriptionOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [justPurchased, setJustPurchased] = useState(false)
   const [itineraryFormOpen, setItineraryFormOpen] = useState(false)
   // FAB在"行程"tab上被接成"添加行程项"而不是"记一笔"——它没法直接调用ItineraryTab
@@ -67,6 +71,16 @@ export function TripShell({
   useEffect(() => {
     if (tripResult === NOT_FOUND) onSwitchTrip()
   }, [tripResult, onSwitchTrip])
+
+  useEffect(() => {
+    let cancelled = false
+    void isAppAdmin().then((ok) => {
+      if (!cancelled) setIsAdmin(ok)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Stripe Checkout成功后跳回create-checkout-session.ts里算好的
   // `${origin}/?billing=success`——用这个URL参数触发感谢弹层，然后把参数从
@@ -109,7 +123,8 @@ export function TripShell({
     inviteCodeOpen ||
     syncDetailOpen ||
     tutorialsOpen ||
-    subscriptionOpen
+    subscriptionOpen ||
+    adminOpen
   function closeAllSheets() {
     setSheetOpen(false)
     setMoreOpen(false)
@@ -119,6 +134,7 @@ export function TripShell({
     setSyncDetailOpen(false)
     setTutorialsOpen(false)
     setSubscriptionOpen(false)
+    setAdminOpen(false)
     setJustPurchased(false)
   }
   useBackDismiss(anySheetOpen, closeAllSheets)
@@ -214,12 +230,15 @@ export function TripShell({
             onOpenSyncDetail={() => { setMoreOpen(false); setSyncDetailOpen(true) }}
             onOpenTutorials={() => { setMoreOpen(false); setTutorialsOpen(true) }}
             onOpenSubscription={() => { setMoreOpen(false); setSubscriptionOpen(true) }}
+            onOpenAdminDashboard={isAdmin ? () => { setMoreOpen(false); setAdminOpen(true) } : undefined}
           />
         )}
 
         {syncDetailOpen && <SyncDetailSheet onClose={() => setSyncDetailOpen(false)} />}
 
         {tutorialsOpen && <TutorialLibraryScreen onClose={() => setTutorialsOpen(false)} />}
+
+        {adminOpen && <AdminDashboardScreen onClose={() => setAdminOpen(false)} />}
 
         {feedbackOpen && (
           <FeedbackSheet tripId={trip.id} currentMemberId={currentMemberId} onClose={() => setFeedbackOpen(false)} />

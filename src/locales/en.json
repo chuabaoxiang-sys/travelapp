@@ -660,7 +660,91 @@
     "checkUpdate": "Check for updates",
     "currentVersion": "Current version {{version}}",
     "refreshing": "Refreshing…",
-    "tapToRefresh": "Tap to refresh"
+    "tapToRefresh": "Tap to refresh",
+    "adminDashboard": "Data dashboard",
+    "adminDashboardDesc": "Sign-ups, teams and trip activity — only visible to you",
+    "adminDashboardArrow": "View ›"
+  },
+  "admin": {
+    "title": "Data dashboard",
+    "close": "Close",
+    "onlyYou": "Only visible to you",
+    "updatedAt": "Last updated: {{time}}",
+    "loading": "Loading data…",
+    "errorForbidden": "This account doesn't have access to the dashboard",
+    "errorGeneric": "Couldn't load the data — check your connection and try again",
+    "retry": "Try again",
+    "hero": {
+      "label": "All-time totals (test accounts excluded)",
+      "accounts": "Sign-ups",
+      "households": "Teams",
+      "trips": "Trips",
+      "supported": "Supporters",
+      "last7Days": "+{{n}} last 7d"
+    },
+    "funnel": {
+      "title": "Activation funnel",
+      "subtitle": "By person",
+      "steps": {
+        "registered": "Signed up",
+        "inHousehold": "In a team",
+        "householdHasTrip": "Has a trip",
+        "householdHasExpense": "Has expenses",
+        "householdSupported": "Supported"
+      },
+      "dropPair": "{{from}} → {{to}}",
+      "dropSeparator": "; ",
+      "biggestDrop_one": "Biggest drop-off: {{steps}}, {{count}} person lost",
+      "biggestDrop_other": "Biggest drop-off: {{steps}}, {{count}} people lost",
+      "biggestDropTied_one": "Biggest drop-offs (tied): {{steps}}, {{count}} person lost at each",
+      "biggestDropTied_other": "Biggest drop-offs (tied): {{steps}}, {{count}} people lost at each",
+      "noDrop": "No one has dropped off at any step",
+      "empty": "No sign-ups yet"
+    },
+    "chart": {
+      "title": "New each day",
+      "range7d": "7D",
+      "range30d": "30D",
+      "rangeAll": "All",
+      "ariaLabel": "New sign-ups and new trips per day",
+      "legendAccounts": "New sign-ups",
+      "legendTrips": "New trips",
+      "legendTestAccounts": "Test accounts (excluded)",
+      "empty": "No data yet"
+    },
+    "stuck": {
+      "title": "Signed up, no team yet",
+      "followUp_one": "{{count}} to follow up",
+      "followUp_other": "{{count}} to follow up",
+      "none": "None right now",
+      "onlyTest": "Test accounts only",
+      "empty": "Everyone who signed up is in a team",
+      "providerGoogle": "Google",
+      "providerEmail": "Email",
+      "signedUp": "{{provider}} · signed up {{time}}",
+      "neverCameBack": ", never came back",
+      "lastSeen": ", last opened the app {{date}}"
+    },
+    "households": {
+      "title": "All teams",
+      "subtitle": "Most recently active first",
+      "empty": "No teams yet",
+      "createdNoActivity": "Created {{created}} · no activity yet",
+      "createdWithActivity": "Active {{active}} · created {{created}}",
+      "noMemberSignedIn": " · no member has signed in yet",
+      "members_one": "<b>{{count}}</b> member",
+      "members_other": "<b>{{count}}</b> members",
+      "trips_one": "<b>{{count}}</b> trip",
+      "trips_other": "<b>{{count}}</b> trips",
+      "expenses_one": "<b>{{count}}</b> expense",
+      "expenses_other": "<b>{{count}}</b> expenses"
+    },
+    "pill": {
+      "new": "New",
+      "test": "Test",
+      "exempt": "Exempt",
+      "supported": "Supporter"
+    }
   },
   "subscription": {
     "title": "Trip Allowance",
@@ -926,8 +1010,6 @@
     "inviteCodePlaceholder": "Invite code",
     "joining": "Joining…",
     "joinByCode": "Join with invite code",
-    "invalidCode": "That invite code isn't valid — check it and try again",
-    "joinFailed": "Couldn't join — try again shortly",
     "haveInviteCode": "Have an invite code? Tap here",
     "verifySuccess": "Verified",
     "enteringApp": "Taking you in…",
