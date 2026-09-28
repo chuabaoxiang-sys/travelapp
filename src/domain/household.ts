@@ -59,14 +59,6 @@ export async function signInWithGoogle(): Promise<void> {
   if (error) throw error
 }
 
-// 给NoHouseholdScreen用——这一步用户已经登录（不管是邮箱验证码还是Google），
-// 邀请码只需要邮箱配合，邮箱直接从session里读，不用再让用户手打一遍
-export async function getCurrentUserEmail(): Promise<string | null> {
-  if (!supabase) return null
-  const { data } = await supabase.auth.getUser()
-  return data.user?.email ?? null
-}
-
 export async function getSession() {
   if (!supabase) return null
   const { data } = await supabase.auth.getSession()
@@ -189,16 +181,68 @@ export async function regenerateHouseholdInviteCode(): Promise<string | null> {
   return data
 }
 
-// 未登录也能调用——用邀请码把邮箱加入对应团队。邀请码本身不区分大小写
-// （数据库存的都是大写），这里统一转大写，方便对方直接复制粘贴或手打
-export async function joinHouseholdByInviteCode(email: string, code: string): Promise<boolean> {
-  if (!supabase) return false
-  const { data, error } = await supabase.rpc('join_household_by_invite_code', {
-    p_email: email.trim(),
-    p_code: code.trim().toUpperCase(),
+// 邀请码本身不区分大小写（数据库存的都是大写），统一转大写，方便对方直接复制粘贴或手打
+export function normalizeInviteCode(code: string): string {
+  return code.trim().toUpperCase()
+}
+
+// 'invalid' = 数据库明确说码不对；'error' = 网络/服务出错，码本身可能是对的——
+// 两种要给用户不同的提示，不能把网络抖动说成"邀请码无效"
+export type JoinResult = 'joined' | 'invalid' | 'error'
+
+// 必须在登录之后调用：数据库（0039）只会把"当前登录的本人、已验证的邮箱"加入团队，
+// 不再接受替某个邮箱加入——那正是冒名漏洞（别人拿自己的邀请码把你的邮箱塞进他的
+// 团队，你以后记的账就全落在他那里）。加入不会切换当前团队，已有团队的人要去
+// 团队切换器里切（那边会先确认同步队列清空、清掉本地旧团队数据）
+export async function joinHouseholdByInviteCode(code: string): Promise<JoinResult> {
+  if (!supabase) return 'error'
+  try {
+    const { data, error } = await supabase.rpc('join_household_by_invite_code', {
+      p_code: normalizeInviteCode(code),
+    })
+    if (error) return 'error'
+    if (data !== true) return 'invalid'
+    clearHouseholdCache()
+    return 'joined'
+  } catch {
+    return 'error'
+  }
+}
+
+// 登录页"有邀请码？"填的码：登录前没法加入（见上），先记下来，等这次验证码登录成功、
+// 有了自己的身份再由App自动加入。
+// - 只放内存、不放sessionStorage/localStorage：存储里的码会留给"这个标签页/这台设备
+//   下一个登录的人"，共用设备时别人可以先填好自己团队的码，等你来登录就把你拉进去
+// - 绑定填码时的邮箱：实际登录的账号对不上（中途换了邮箱、改用Google）就作废
+// 验证码登录全程不刷新页面，内存够用；万一页面被刷新，会落到"还没加入团队"页，可以再填
+let pendingInvite: { code: string; email: string } | null = null
+
+export function setPendingInviteCode(code: string, email: string): void {
+  pendingInvite = { code: normalizeInviteCode(code), email: email.trim().toLowerCase() }
+}
+
+export function clearPendingInviteCode(): void {
+  pendingInvite = null
+}
+
+export type PendingInviteResult = 'none' | JoinResult
+
+let pendingRedeem: Promise<PendingInviteResult> | null = null
+
+// App每次登录状态变化都会先调这个，再查当前团队。同一次登录会连着来好几个auth事件，
+// 共用同一个进行中的promise——保证"先加入、再查团队"，不会有另一个事件抢先查到
+// "还没有团队"、把人甩到"还没加入团队"页
+export function redeemPendingInviteCode(sessionEmail: string | null | undefined): Promise<PendingInviteResult> {
+  if (pendingRedeem) return pendingRedeem
+  const invite = pendingInvite
+  pendingInvite = null
+  if (!invite || !sessionEmail || invite.email !== sessionEmail.trim().toLowerCase()) {
+    return Promise.resolve('none')
+  }
+  pendingRedeem = joinHouseholdByInviteCode(invite.code).finally(() => {
+    pendingRedeem = null
   })
-  if (error) return false
-  return data === true
+  return pendingRedeem
 }
 
 // 自助创建一个全新团队（0022）——只在 self_serve_signup_enabled() 开关打开时数据库

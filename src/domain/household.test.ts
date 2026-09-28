@@ -3,8 +3,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const rpcMock = vi.fn()
 vi.mock('../api/supabaseClient', () => ({ supabase: { rpc: (...args: unknown[]) => rpcMock(...args) } }))
 
-const { getHouseholdInviteCode, regenerateHouseholdInviteCode, joinHouseholdByInviteCode, createHousehold } =
-  await import('./household')
+const {
+  getHouseholdInviteCode,
+  regenerateHouseholdInviteCode,
+  joinHouseholdByInviteCode,
+  createHousehold,
+  setPendingInviteCode,
+  clearPendingInviteCode,
+  redeemPendingInviteCode,
+} = await import('./household')
 
 // 这几个函数本身只是薄薄一层RPC调用包装——真正的邀请码生成/校验逻辑在
 // supabase/migrations 里的数据库函数，现有测试基础设施没有pgTAP、没有本地/
@@ -43,28 +50,98 @@ describe('household 邀请码客户端包装函数（真实的SQL函数逻辑无
   })
 
   describe('joinHouseholdByInviteCode', () => {
-    it('邮箱去掉首尾空格、邀请码转大写去空格后再传给RPC', async () => {
+    // 0039之后绝对不能再把邮箱传给数据库——"替某个邮箱加入"正是冒名漏洞
+    it('只传转大写、去空格的邀请码，不传任何邮箱', async () => {
       rpcMock.mockResolvedValue({ data: true, error: null })
-      await joinHouseholdByInviteCode('  test@example.com  ', ' ab12cd ')
-      expect(rpcMock).toHaveBeenCalledWith('join_household_by_invite_code', {
-        p_email: 'test@example.com',
-        p_code: 'AB12CD',
-      })
+      await joinHouseholdByInviteCode(' ab12cd ')
+      expect(rpcMock).toHaveBeenCalledWith('join_household_by_invite_code', { p_code: 'AB12CD' })
     })
 
-    it('成功加入时返回true', async () => {
+    it('成功加入时返回joined', async () => {
       rpcMock.mockResolvedValue({ data: true, error: null })
-      expect(await joinHouseholdByInviteCode('a@b.com', 'CODE1')).toBe(true)
+      expect(await joinHouseholdByInviteCode('CODE1')).toBe('joined')
     })
 
-    it('邀请码错误（RPC返回false）时返回false', async () => {
+    it('邀请码错误（RPC返回false）时返回invalid', async () => {
       rpcMock.mockResolvedValue({ data: false, error: null })
-      expect(await joinHouseholdByInviteCode('a@b.com', 'WRONG')).toBe(false)
+      expect(await joinHouseholdByInviteCode('WRONG')).toBe('invalid')
     })
 
-    it('RPC报错时返回false，而不是抛出异常', async () => {
+    // 网络抖动不能说成"邀请码无效"，码本身可能是对的
+    it('RPC报错时返回error，而不是invalid，也不抛出异常', async () => {
       rpcMock.mockResolvedValue({ data: null, error: { message: '出错了' } })
-      expect(await joinHouseholdByInviteCode('a@b.com', 'CODE1')).toBe(false)
+      expect(await joinHouseholdByInviteCode('CODE1')).toBe('error')
+    })
+
+    it('网络请求本身抛异常时返回error', async () => {
+      rpcMock.mockRejectedValue(new Error('network down'))
+      expect(await joinHouseholdByInviteCode('CODE1')).toBe('error')
+    })
+  })
+
+  describe('登录页邀请码：先记着，本人登录后再加入', () => {
+    beforeEach(() => {
+      clearPendingInviteCode()
+    })
+
+    it('没有记过邀请码时什么都不做', async () => {
+      expect(await redeemPendingInviteCode('a@b.com')).toBe('none')
+      expect(rpcMock).not.toHaveBeenCalled()
+    })
+
+    it('填码时的邮箱登录后用这个码加入，码只用一次；邮箱大小写/空格不影响', async () => {
+      rpcMock.mockResolvedValue({ data: true, error: null })
+      setPendingInviteCode(' ab12cd ', '  Friend@Example.com ')
+      expect(await redeemPendingInviteCode('friend@example.com')).toBe('joined')
+      expect(rpcMock).toHaveBeenCalledWith('join_household_by_invite_code', { p_code: 'AB12CD' })
+      expect(await redeemPendingInviteCode('friend@example.com')).toBe('none')
+      expect(rpcMock).toHaveBeenCalledTimes(1)
+    })
+
+    // 共用设备：别人先填好自己团队的码，接着登录的是另一个人——绝对不能把后者拉进去
+    it('实际登录的账号跟填码时的邮箱不一致，码作废、不调用加入', async () => {
+      setPendingInviteCode('CODE1', 'someone@example.com')
+      expect(await redeemPendingInviteCode('victim@example.com')).toBe('none')
+      expect(rpcMock).not.toHaveBeenCalled()
+      // 作废之后，就算原来那个邮箱后来登录也不会再用这个码
+      expect(await redeemPendingInviteCode('someone@example.com')).toBe('none')
+    })
+
+    it('拿不到登录邮箱时不加入', async () => {
+      setPendingInviteCode('CODE1', 'a@b.com')
+      expect(await redeemPendingInviteCode(undefined)).toBe('none')
+      expect(rpcMock).not.toHaveBeenCalled()
+    })
+
+    it('clearPendingInviteCode之后不再加入（改走普通登录/Google/换邮箱）', async () => {
+      setPendingInviteCode('CODE1', 'a@b.com')
+      clearPendingInviteCode()
+      expect(await redeemPendingInviteCode('a@b.com')).toBe('none')
+      expect(rpcMock).not.toHaveBeenCalled()
+    })
+
+    it('码不对返回invalid，网络出错返回error', async () => {
+      rpcMock.mockResolvedValueOnce({ data: false, error: null })
+      setPendingInviteCode('WRONG', 'a@b.com')
+      expect(await redeemPendingInviteCode('a@b.com')).toBe('invalid')
+
+      rpcMock.mockRejectedValueOnce(new Error('network down'))
+      setPendingInviteCode('CODE1', 'a@b.com')
+      expect(await redeemPendingInviteCode('a@b.com')).toBe('error')
+    })
+
+    // 同一次登录会连着触发好几个auth事件，都会调到这里——必须共用同一次加入，
+    // 不能第二个调用拿到'none'之后抢先去查"当前团队"
+    it('加入进行中再次调用，拿到的是同一个结果', async () => {
+      let resolve: (v: { data: boolean; error: null }) => void = () => {}
+      rpcMock.mockReturnValue(new Promise((r) => { resolve = r }))
+      setPendingInviteCode('CODE1', 'a@b.com')
+      const first = redeemPendingInviteCode('a@b.com')
+      const second = redeemPendingInviteCode('a@b.com')
+      resolve({ data: true, error: null })
+      expect(await first).toBe('joined')
+      expect(await second).toBe('joined')
+      expect(rpcMock).toHaveBeenCalledTimes(1)
     })
   })
 

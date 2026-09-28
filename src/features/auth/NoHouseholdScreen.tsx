@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Users, RefreshCw, KeyRound } from 'lucide-react'
-import { createHousehold, joinHouseholdByInviteCode, getCurrentUserEmail, getCurrentHouseholdId, signOut } from '../../domain/household'
+import { createHousehold, joinHouseholdByInviteCode, getCurrentHouseholdId, signOut } from '../../domain/household'
 
 // 三个操作平级并列，一次只展开一个——跟EmailLogin.tsx"有邀请码？点这里输入"
 // 是同一份表单逻辑，只是这里多了"邀请码"这一条（原来没有，Google登录跳过了
@@ -12,12 +12,16 @@ type Panel = 'none' | 'code' | 'create'
 export function NoHouseholdScreen({
   onHouseholdCreated,
   onSignOut,
+  inviteProblem = null,
 }: {
   onHouseholdCreated: (id: string) => void
   onSignOut: () => void
+  // 登录页填的邀请码在登录后自动加入时没成功（码不对/网络出错）——直接展开邀请码
+  // 面板并提示重填
+  inviteProblem?: 'invalid' | 'error' | null
 }) {
   const { t } = useTranslation()
-  const [panel, setPanel] = useState<Panel>('none')
+  const [panel, setPanel] = useState<Panel>(inviteProblem ? 'code' : 'none')
 
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -25,7 +29,9 @@ export function NoHouseholdScreen({
 
   const [inviteCode, setInviteCode] = useState('')
   const [joinBusy, setJoinBusy] = useState(false)
-  const [joinError, setJoinError] = useState<string | null>(null)
+  const [joinError, setJoinError] = useState<string | null>(
+    inviteProblem === 'invalid' ? t('noHousehold.invalidCode') : inviteProblem === 'error' ? t('noHousehold.joinFailed') : null,
+  )
 
   function togglePanel(p: Panel) {
     setPanel((current) => (current === p ? 'none' : p))
@@ -55,14 +61,9 @@ export function NoHouseholdScreen({
     setJoinBusy(true)
     setJoinError(null)
     try {
-      const email = await getCurrentUserEmail()
-      if (!email) {
-        setJoinError(t('noHousehold.joinFailed'))
-        return
-      }
-      const joined = await joinHouseholdByInviteCode(email, inviteCode)
-      if (!joined) {
-        setJoinError(t('noHousehold.invalidCode'))
+      const result = await joinHouseholdByInviteCode(inviteCode)
+      if (result !== 'joined') {
+        setJoinError(result === 'invalid' ? t('noHousehold.invalidCode') : t('noHousehold.joinFailed'))
         return
       }
       // 加入成功后household_member多了一行，但这个页面手上的householdId还是null——

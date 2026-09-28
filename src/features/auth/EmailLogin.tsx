@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { Mail, KeyRound } from 'lucide-react'
-import { sendLoginCode, verifyLoginCode, joinHouseholdByInviteCode, signInWithGoogle, NotInvitedError } from '../../domain/household'
+import {
+  sendLoginCode,
+  verifyLoginCode,
+  setPendingInviteCode,
+  clearPendingInviteCode,
+  signInWithGoogle,
+  NotInvitedError,
+} from '../../domain/household'
 import { enableLocalTestMode } from '../../dev/localTestMode'
 
 const CODE_LENGTH = 6
@@ -63,6 +70,8 @@ export function EmailLogin() {
 
   async function handleSend() {
     if (!email.trim()) return
+    // 走的是普通登录，不是"用邀请码加入"——之前如果填过邀请码又退回来，不再替他加入
+    clearPendingInviteCode()
     setBusy(true)
     setError(null)
     try {
@@ -76,6 +85,7 @@ export function EmailLogin() {
   }
 
   async function handleGoogleLogin() {
+    clearPendingInviteCode()
     setGoogleBusy(true)
     setGoogleError(null)
     try {
@@ -88,20 +98,20 @@ export function EmailLogin() {
     }
   }
 
+  // 登录前不能直接加入团队（数据库只认已登录的本人，见household.ts的
+  // joinHouseholdByInviteCode）：先把邀请码存起来、照常发验证码，登录成功后App会
+  // 自动用它加入；码不对的话会在"还没加入团队"页提示重填
   async function handleJoinByCode() {
     if (!email.trim() || !inviteCode.trim()) return
     setJoinBusy(true)
     setJoinError(null)
     try {
-      const joined = await joinHouseholdByInviteCode(email, inviteCode)
-      if (!joined) {
-        setJoinError(t('emailLogin.invalidCode'))
-        return
-      }
+      setPendingInviteCode(inviteCode, email)
       await sendLoginCode(email)
       enterCodeStep()
-    } catch {
-      setJoinError(t('emailLogin.joinFailed'))
+    } catch (err) {
+      clearPendingInviteCode()
+      setJoinError(err instanceof NotInvitedError ? t('emailLogin.notInvited') : t('emailLogin.sendFailed'))
     } finally {
       setJoinBusy(false)
     }
@@ -294,7 +304,13 @@ export function EmailLogin() {
               </button>
               {resendNotice && <div className="text-[11.5px] text-positive">{t('emailLogin.resentNotice')}</div>}
             </div>
-            <button onClick={() => setStep('email')} className="mt-3 text-[12px] text-muted text-left">
+            <button
+              onClick={() => {
+                clearPendingInviteCode()
+                setStep('email')
+              }}
+              className="mt-3 text-[12px] text-muted text-left"
+            >
               {t('emailLogin.changeEmail')}
             </button>
           </>

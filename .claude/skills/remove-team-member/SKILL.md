@@ -24,9 +24,17 @@ Target the **production** Supabase project (`pivhpufmgmcazztlshfw`), not the tes
 delete from household_member
 where email = '<邮箱>'
   and household_id = (select id from household where name = '<团队名>');
+
+-- 同一步里一定要作废这个团队的旧邀请码：被移出的人手上很可能还留着当初收到的
+-- 邀请码，不换的话他登录后在"还没加入团队"页一填就又回来了，而且没人会收到通知
+-- （2026-09-28安全审核发现）。设成null即可，下次有成员打开"邀请新成员"时会自动
+-- 生成一个新的
+update household set invite_code = null
+where id = (select id from household where name = '<团队名>');
 ```
 
 Tell the user plainly:
+- **The team's invite code was reset.** Anyone who was invited but hasn't joined yet needs the new code — a remaining member gets it from 顶部身份切换 → "邀请新成员加入团队".
 - This is **fully reversible** — re-inserting the row restores access.
 - If that was their **only** team, this email can no longer log in *at all* (login requires the email to already be invited — see `0005_invite_check_rpc.sql`). That is correct for a real removal, and it resolves itself if you later add them to a different team.
 - Other family members' devices self-heal on the next sync (`pullAll`'s orphan deletion drops rows the server no longer returns). Nobody needs to do anything manually.

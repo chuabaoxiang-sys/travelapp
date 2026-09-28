@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, ensureSeedData } from './db/dexie'
 import { startAutoSync } from './db/sync'
 import { supabase } from './api/supabaseClient'
-import { getCurrentHouseholdId } from './domain/household'
+import { getCurrentHouseholdId, redeemPendingInviteCode } from './domain/household'
 import { ensureLocalTestSeed } from './dev/localTestSeed'
 import { isLocalTestModeEnabled } from './dev/localTestMode'
 import { LocalTestModeBanner } from './dev/LocalTestModeBanner'
@@ -29,6 +29,8 @@ type AuthState = 'checking' | 'signed-out' | 'no-household' | 'ready'
 function App() {
   const [ready, setReady] = useState(false)
   const [authState, setAuthState] = useState<AuthState>('checking')
+  // 登录页填的邀请码在登录后自动加入时没成功——交给"还没加入团队"页提示重填
+  const [inviteProblem, setInviteProblem] = useState<'invalid' | 'error' | null>(null)
   // 当前团队ID在这里解析一次并持有：下面"当前身份"和"当前行程"两个记忆值都要按团队
   // 分开存，而它们在首次渲染时就要同步读到值，来不及等异步查询。切换团队后这个值会变，
   // 那两个记忆值也会跟着切到新团队记住的那份
@@ -71,11 +73,17 @@ function App() {
     async function checkSession(session: import('@supabase/supabase-js').Session | null) {
       if (!session) {
         setHouseholdId(null)
+        setInviteProblem(null)
         setAuthState('signed-out')
         return
       }
+      // 登录页填过邀请码的话，先用刚登录的身份加入，再查当前团队——顺序不能反，
+      // 否则会先查到"还没有团队"。只有这次真的试过加入才改提示状态，同一次登录
+      // 后面接着来的auth事件（拿到'none'）不能把刚设的提示冲掉
+      const invite = await redeemPendingInviteCode(session.user.email)
       const resolved = await getCurrentHouseholdId()
       setHouseholdId(resolved)
+      if (invite !== 'none') setInviteProblem(invite === 'joined' ? null : invite)
       setAuthState(resolved ? 'ready' : 'no-household')
       if (resolved) startAutoSync()
     }
@@ -101,8 +109,10 @@ function App() {
   } else if (authState === 'no-household') {
     content = (
       <NoHouseholdScreen
+        inviteProblem={inviteProblem}
         onSignOut={() => setAuthState('signed-out')}
         onHouseholdCreated={(id) => {
+          setInviteProblem(null)
           setHouseholdId(id)
           setAuthState('ready')
           startAutoSync()
