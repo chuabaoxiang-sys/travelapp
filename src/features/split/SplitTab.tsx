@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { X, CircleCheck, Pencil, Trash2, Check, Plus, ChevronDown, ArrowLeftRight } from 'lucide-react'
+import { X, CircleCheck, Pencil, Trash2, Check, Plus, ChevronDown, ArrowLeftRight, Copy } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { computeBalances, simplifyDebts, openExpenseDebts, closedExpenseDebts, prepaymentBalances, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
 import { getSettlements, createSettlement, updateSettlement, deleteSettlement } from '../../domain/settlements'
 import { formatMoney } from '../../lib/money'
+import { buildSettlementText } from '../../domain/settlementText'
 import { toLocalDateString } from '../../lib/dates'
 import { Avatar } from '../../components/Avatar'
 import { DatePicker } from '../../components/DatePicker'
@@ -303,6 +304,31 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   }
 
   const transfers = simplifyDebts(balances)
+
+  // 一键复制一段能直接贴进群里的结算文案。图标变成勾+底部小提示，2秒后恢复；
+  // 剪贴板被浏览器拒绝时（没有用户手势、权限被关）给失败提示，不假装成功
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  async function copySettlementText() {
+    const text = buildSettlementText(
+      {
+        tripName: trip.name,
+        currencySymbol: trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency,
+        balances,
+        transfers,
+        settledCount: settlements.length,
+        nameOf,
+        appHost: window.location.host,
+      },
+      t,
+    )
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyState('copied')
+    } catch {
+      setCopyState('failed')
+    }
+    setTimeout(() => setCopyState('idle'), 2000)
+  }
   // 有结算记录（哪怕是一笔还没对应任何账目的预付款）也算"有money活动"——
   // 不然KN提前打了一笔预付款，账目还一笔没记，这个页面会一直显示"还没有
   // 可以结算的账目"，看不到这笔预付款，也没地方能再管理它
@@ -391,7 +417,32 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
 
   return (
     <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full">
-      <div className="font-serif-sc text-sm font-semibold mb-3">{t('split.title')}</div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-serif-sc text-sm font-semibold">{t('split.title')}</span>
+        <button
+          type="button"
+          onClick={copySettlementText}
+          className={`w-9 h-9 rounded-[11px] bg-card border border-line flex items-center justify-center ${
+            copyState === 'copied' ? 'text-positive' : 'text-plan'
+          }`}
+          title={t('split.copyButton')}
+          aria-label={t('split.copyButton')}
+        >
+          {copyState === 'copied' ? (
+            <Check className="w-[18px] h-[18px]" strokeWidth={2} />
+          ) : (
+            <Copy className="w-[18px] h-[18px]" strokeWidth={1.8} />
+          )}
+        </button>
+      </div>
+      {copyState !== 'idle' && (
+        <div className="fixed inset-x-0 bottom-safe-fab z-40 flex justify-center pointer-events-none">
+          <div className="bg-ink text-paper text-[12px] px-3.5 py-2 rounded-full shadow-lg flex items-center gap-1.5">
+            {copyState === 'copied' && <Check className="w-3.5 h-3.5" strokeWidth={2.2} />}
+            {copyState === 'copied' ? t('split.copied') : t('split.copyFailed')}
+          </div>
+        </div>
+      )}
 
       <div className="bg-card border border-line rounded-2xl p-4 mb-4">
         <div className="text-[11px] tracking-widest uppercase text-muted text-center mb-3">
