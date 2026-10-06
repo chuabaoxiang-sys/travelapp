@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { db } from './dexie'
-import type { ExpenseSplit, OutboxEntry } from '../types'
+import { db, withoutOutboxTracking } from './dexie'
+import type { Expense, ExpenseSplit, OutboxEntry, RateBookEntry } from '../types'
 
 // pushOutbox/pullAll/runSync 一直没有自动化测试，根本原因是它们一开头就判断
 // `if (!supabase) return`——测试环境没配Supabase环境变量，supabase 本来就是 null，
@@ -34,6 +34,8 @@ function makeSupabaseMock() {
   const selectResults = new Map<string, { data: unknown[]; error: unknown }>()
   const selectCalls: string[] = []
   const upsertCalls: { table: string; row: unknown }[] = []
+  const upsertErrors = new Map<string, unknown>()
+  const deleteCalls: { table: string; id: unknown }[] = []
   const rpcCalls: { name: string; args: unknown }[] = []
   let rpcResult: { error: unknown } = { error: null }
 
@@ -44,10 +46,13 @@ function makeSupabaseMock() {
     }),
     upsert: vi.fn(async (row: unknown) => {
       upsertCalls.push({ table, row })
-      return { error: null }
+      return { error: upsertErrors.get(table) ?? null }
     }),
     delete: vi.fn(() => ({
-      eq: vi.fn(async () => ({ error: null })),
+      eq: vi.fn(async (_col: string, id: unknown) => {
+        deleteCalls.push({ table, id })
+        return { error: null }
+      }),
       match: vi.fn(async () => ({ error: null })),
     })),
   }))
@@ -61,8 +66,10 @@ function makeSupabaseMock() {
     client: { from, rpc },
     selectCalls,
     upsertCalls,
+    deleteCalls,
     rpcCalls,
     setSelect: (table: string, result: { data: unknown[]; error: unknown }) => selectResults.set(table, result),
+    setUpsertError: (table: string, error: unknown) => upsertErrors.set(table, error),
     setRpcResult: (result: { error: unknown }) => { rpcResult = result },
   }
 }
@@ -84,6 +91,29 @@ function outboxEntry(overrides: Partial<OutboxEntry>): OutboxEntry {
 
 function splitRow(overrides: Partial<ExpenseSplit>): ExpenseSplit {
   return { id: crypto.randomUUID(), householdId: 'h1', expenseId: 'exp-1', memberId: 'm1', shareAmount: 0, deletedAt: null, ...overrides }
+}
+
+// 10-06事故里的那条重名汇率和那笔账目（Banana Milk）的形状
+function rateRow(overrides: Partial<RateBookEntry>): RateBookEntry {
+  return {
+    id: 'rate-dup', householdId: 'h1', tripId: 't1', foreignCurrency: 'KRW', label: 'rate', rate: 0.00304,
+    source: 'api_accepted', createdBy: 'm1', lastUsedAt: 1, archived: false, createdAt: 1,
+    exchangedHomeAmount: null, exchangedForeignAmount: null, ...overrides,
+  }
+}
+
+function expenseRow(overrides: Partial<Expense>): Expense {
+  return {
+    id: 'exp-banana', householdId: 'h1', tripId: 't1', categoryId: 'c1', expenseDate: '2026-10-06', phase: 'during_trip',
+    expenseCurrency: 'KRW', expenseAmount: 1800, rateBookEntryId: 'rate-dup', rateUsed: 0.00304, homeAmount: 5.47,
+    paidBy: 'm2', recordedBy: 'm1', splitType: 'equal', itineraryDayId: null, itineraryItemId: null,
+    description: 'Banana Milk', deletedAt: null, createdAt: 1000, updatedAt: 1000, ...overrides,
+  } as Expense
+}
+
+// 测试里直接摆本地数据，不能让 hook 顺手再记一条 outbox，打乱精心布置的队列
+function seedLocal(fn: () => Promise<unknown>) {
+  return withoutOutboxTracking(fn)
 }
 
 describe('pushOutbox / pullAll / runSync（真实mock网络层）', () => {
@@ -189,5 +219,92 @@ describe('pushOutbox / pullAll / runSync（真实mock网络层）', () => {
     await Promise.all([p1, p2])
 
     expect(mock.selectCalls).toHaveLength(ALL_TABLES.length)
+  })
+
+  it('10-06事故回归：卡了一小时的旧记录终于推通时，推的是本地现在的样子——不能把用户' +
+    '后来改好的汇率盖回去，也不能把已经删掉的汇率推上去"复活"', async () => {
+    // 本地现在的样子：这笔账已经改用 Eddy change，重名的 "rate" 已经删掉
+    await seedLocal(() => db.expenses.put(expenseRow({ rateBookEntryId: 'rate-eddy', rateUsed: 0.00293, homeAmount: 5.27, updatedAt: 2000 })))
+    await db.outbox.bulkAdd([
+      // 卡住的旧快照：新建 "rate" 被重名拒收，引用它的账目跟着卡住
+      outboxEntry({ id: 'ob-rate-insert', tableName: 'rateBookEntries', recordId: 'rate-dup', payload: rateRow({}), attempts: 25, createdAt: 100 }),
+      outboxEntry({ id: 'ob-exp-insert', tableName: 'expenses', recordId: 'exp-banana', payload: expenseRow({}), attempts: 25, createdAt: 101 }),
+      // 升级前的旧版本逐条推：后来的修改和删除早就单独推成功了
+      outboxEntry({ id: 'ob-exp-edit', tableName: 'expenses', recordId: 'exp-banana', payload: expenseRow({ rateBookEntryId: 'rate-eddy' }), status: 'synced', createdAt: 200 }),
+      outboxEntry({ id: 'ob-rate-delete', tableName: 'rateBookEntries', recordId: 'rate-dup', operation: 'delete', status: 'synced', createdAt: 300 }),
+    ])
+
+    await pushOutbox()
+
+    expect(mock.upsertCalls.filter((c) => c.table === 'rate_book_entry')).toHaveLength(0)
+    expect(mock.deleteCalls).toEqual([{ table: 'rate_book_entry', id: 'rate-dup' }])
+    const expenseUpserts = mock.upsertCalls.filter((c) => c.table === 'expense')
+    expect(expenseUpserts).toHaveLength(1)
+    expect(expenseUpserts[0].row).toMatchObject({ rate_book_entry_id: 'rate-eddy', rate_used: 0.00293, home_amount: 5.27 })
+    const entries = await db.outbox.bulkGet(['ob-rate-insert', 'ob-exp-insert'])
+    expect(entries.map((e) => e?.status)).toEqual(['synced', 'synced'])
+  })
+
+  it('本地已经删掉、删除也还在排队：只推删除，删之前排着的新增/修改不再推', async () => {
+    await db.outbox.bulkAdd([
+      outboxEntry({ id: 'ob-1', tableName: 'rateBookEntries', recordId: 'rate-dup', payload: rateRow({}), createdAt: 100 }),
+      outboxEntry({ id: 'ob-2', tableName: 'rateBookEntries', recordId: 'rate-dup', payload: rateRow({ lastUsedAt: 5 }), createdAt: 101 }),
+      outboxEntry({ id: 'ob-3', tableName: 'rateBookEntries', recordId: 'rate-dup', operation: 'delete', createdAt: 102 }),
+    ])
+
+    const result = await pushOutbox()
+
+    expect(mock.upsertCalls).toHaveLength(0)
+    expect(mock.deleteCalls).toEqual([{ table: 'rate_book_entry', id: 'rate-dup' }])
+    expect(result).toEqual({ pushed: 3, failed: 0 })
+    const entries = await db.outbox.bulkGet(['ob-1', 'ob-2', 'ob-3'])
+    expect(entries.every((e) => e?.status === 'synced')).toBe(true)
+  })
+
+  it('同一条记录排了好几次修改：只推一次，推的是本地现在的内容，几条一起标记synced', async () => {
+    await seedLocal(() => db.expenses.put(expenseRow({ description: '第三次改的', updatedAt: 3000 })))
+    await db.outbox.bulkAdd([
+      outboxEntry({ id: 'ob-1', tableName: 'expenses', recordId: 'exp-banana', payload: expenseRow({ description: '第一次' }), createdAt: 100 }),
+      outboxEntry({ id: 'ob-2', tableName: 'expenses', recordId: 'exp-banana', payload: expenseRow({ description: '第二次' }), createdAt: 101 }),
+      outboxEntry({ id: 'ob-3', tableName: 'expenses', recordId: 'exp-banana', payload: expenseRow({ description: '第三次改的' }), createdAt: 102 }),
+    ])
+
+    const result = await pushOutbox()
+
+    expect(mock.upsertCalls).toHaveLength(1)
+    expect(mock.upsertCalls[0].row).toMatchObject({ id: 'exp-banana', notes: '第三次改的' })
+    expect(result).toEqual({ pushed: 3, failed: 0 })
+    const entries = await db.outbox.bulkGet(['ob-1', 'ob-2', 'ob-3'])
+    expect(entries.every((e) => e?.status === 'synced')).toBe(true)
+  })
+
+  it('推失败时这一组全部留在pending、attempts各自加1，报错原样记下来给同步详情看', async () => {
+    await seedLocal(() => db.rateBookEntries.put(rateRow({})))
+    await db.outbox.bulkAdd([
+      outboxEntry({ id: 'ob-1', tableName: 'rateBookEntries', recordId: 'rate-dup', payload: rateRow({}), attempts: 3, createdAt: 100 }),
+      outboxEntry({ id: 'ob-2', tableName: 'rateBookEntries', recordId: 'rate-dup', payload: rateRow({}), attempts: 0, createdAt: 101 }),
+    ])
+    mock.setUpsertError('rate_book_entry', { message: 'duplicate key value violates unique constraint', code: '23505' })
+
+    const result = await pushOutbox()
+
+    expect(result).toEqual({ pushed: 0, failed: 2 })
+    const entries = await db.outbox.bulkGet(['ob-1', 'ob-2'])
+    expect(entries.map((e) => e?.status)).toEqual(['pending', 'pending'])
+    expect(entries.map((e) => e?.attempts)).toEqual([4, 1])
+    expect(entries[0]?.lastError).toContain('23505')
+  })
+
+  it('保底：本地找不到这一行、也从没删过（写入失败回滚之类）时，照旧推排队里最新的那份内容，不漏推', async () => {
+    await db.outbox.bulkAdd([
+      outboxEntry({ id: 'ob-1', tableName: 'expenses', recordId: 'exp-banana', payload: expenseRow({ description: '旧' }), createdAt: 100 }),
+      outboxEntry({ id: 'ob-2', tableName: 'expenses', recordId: 'exp-banana', payload: expenseRow({ description: '新' }), createdAt: 101 }),
+    ])
+
+    await pushOutbox()
+
+    expect(mock.deleteCalls).toHaveLength(0)
+    expect(mock.upsertCalls).toHaveLength(1)
+    expect(mock.upsertCalls[0].row).toMatchObject({ id: 'exp-banana', notes: '新' })
   })
 })

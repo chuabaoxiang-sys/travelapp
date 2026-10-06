@@ -3,6 +3,7 @@ import { supabase } from '../api/supabaseClient'
 import { SYNC_CONFIG } from './syncMapping'
 import { getCurrentHouseholdId } from '../domain/household'
 import { readPerTeam, writePerTeam } from '../lib/perTeamStorage'
+import type { OutboxEntry } from '../types'
 
 // 表的拉取顺序有讲究：itineraryItems 拉回来时要用 itineraryDays 已经落地的
 // day->trip 映射去补 tripId（远端 itinerary_item 表本身没有 trip_id 列），
@@ -79,43 +80,86 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
     }
   }
 
+  // 其他表也跟 expenseSplits 一样：同一条记录攒下的多条待推送合并成一组，推的是
+  // 这条记录"现在本地的样子"，不是每条 entry 入队那一刻存下的 payload 快照。
+  // 真实事故（2026-10-06）：一条汇率因为重名被服务器拒收，引用它的几笔账目跟着
+  // 卡了一个多小时；期间用户把这几笔改用别的汇率（新改动正常推上去了），又删掉了
+  // 那条汇率。等重名冲突消失，卡住的旧 entry 一口气推通——推的是一小时前的快照，
+  // 把用户已经改好的账目盖回旧汇率，删掉的汇率也"复活"了，拉取又把这份旧数据
+  // 带回了手机。按组推当前状态之后，旧 entry 推通时推的就是最新内容
+  const groups = new Map<string, OutboxEntry[]>()
   for (const entry of otherEntries) {
-    const config = SYNC_CONFIG[entry.tableName]
+    // pending 已按 createdAt 排好序，组按"最早一条"的位置排队——父记录（行程、汇率）
+    // 一般比引用它的子记录先入队，外键依赖的先后顺序跟以前一样
+    const key = `${entry.tableName}:${entry.recordId}`
+    const group = groups.get(key)
+    if (group) group.push(entry)
+    else groups.set(key, [entry])
+  }
+
+  for (const group of groups.values()) {
+    const { tableName, recordId } = group[0]
+    const config = SYNC_CONFIG[tableName]
     if (!config) {
       // 理论上不会出现未知表名；出现了也不能让它卡住队列，直接跳过
-      await db.outbox.update(entry.id, { status: 'synced' })
+      await Promise.all(group.map((e) => db.outbox.update(e.id, { status: 'synced' })))
       continue
     }
 
     try {
-      if (entry.operation === 'delete') {
+      // 读当前行不会读到写入一半的状态：outbox 是在那次写操作的事务里（hook）
+      // 才入队的，这里的只读事务创建得更晚，IndexedDB 保证它要等那次写事务提交
+      const currentRow = await db.table(tableName).get(recordId)
+      // "本地删过这条"不能只看这一组：升级前是逐条推的，删除可能早就单独推成功
+      // （已标成synced），只剩更早的旧快照卡在pending里——组里看不到删除，但它
+      // 一样不该被推上去复活
+      const deletedLocally = currentRow === undefined && (await db.outbox
+        .where('tableName').equals(tableName)
+        .filter((e) => e.recordId === recordId && e.operation === 'delete')
+        .count()) > 0
+      const action = resolvePushAction(group, currentRow, deletedLocally)
+      if (action.kind === 'delete') {
         if (config.conflictColumns === 'id') {
-          const { error } = await supabase.from(config.remoteTable).delete().eq('id', entry.recordId)
+          const { error } = await supabase.from(config.remoteTable).delete().eq('id', recordId)
           if (error) throw error
         } else {
           // 目前只有 tripMembers 用复合键，而这张表从未被真正写入过，这个分支是为
           // 将来万一启用而准备的占位实现：recordId 约定成 "tripId:memberId" 格式
-          const [tripId, memberId] = entry.recordId.split(':')
+          const [tripId, memberId] = recordId.split(':')
           const { error } = await supabase.from(config.remoteTable).delete().match({ trip_id: tripId, member_id: memberId })
           if (error) throw error
         }
       } else {
-        const remoteRow = config.toRemote(entry.payload)
+        const remoteRow = config.toRemote(action.row)
         const { error } = await supabase.from(config.remoteTable).upsert(remoteRow, { onConflict: config.conflictColumns })
         if (error) throw error
       }
-      await db.outbox.update(entry.id, { status: 'synced' })
-      pushed++
+      // 只标记这一轮开头读到的这几条——推送途中新入队的改动不在 group 里，
+      // 留着下一轮再推
+      await Promise.all(group.map((e) => db.outbox.update(e.id, { status: 'synced' })))
+      pushed += group.length
     } catch (err) {
-      failed++
-      await db.outbox.update(entry.id, {
-        attempts: entry.attempts + 1,
-        lastError: describeError(err),
-      })
+      failed += group.length
+      const lastError = describeError(err)
+      await Promise.all(group.map((e) => db.outbox.update(e.id, { attempts: e.attempts + 1, lastError })))
     }
   }
 
   return { pushed, failed }
+}
+
+export type PushAction = { kind: 'upsert'; row: unknown } | { kind: 'delete' }
+
+// 一组待推送（同一条记录）最终该推什么——单独抽成纯函数，不用连supabase就能测。
+//   - 本地现在还有这一行：推这一行现在的样子
+//   - 本地已经没有了、而且本地删过它：推删除，不再把删之前的旧快照推上去"复活"它
+//   - 本地没有、也从没删过（正常不会发生，可能是写入失败回滚了）：退回原来的
+//     做法，推组里最新一条快照——原本会推上去的内容，不会因为这次改动被漏掉
+export function resolvePushAction(group: OutboxEntry[], currentRow: unknown, deletedLocally: boolean): PushAction {
+  if (currentRow !== undefined && currentRow !== null) return { kind: 'upsert', row: currentRow }
+  if (deletedLocally) return { kind: 'delete' }
+  const latestUpsert = [...group].reverse().find((e) => e.operation === 'upsert')
+  return { kind: 'upsert', row: latestUpsert?.payload }
 }
 
 // 哪些本地行该当成"远端已删除"清掉——单独抽成纯函数，不用连supabase就能测。
