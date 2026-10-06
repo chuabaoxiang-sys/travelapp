@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X, AlertTriangle } from 'lucide-react'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
@@ -33,6 +33,17 @@ import type { Trip, ExpensePhase, Expense, SplitType, ExpenseSplit, DaySpreadMod
 // 顶栏"保存"用文字而不是图标：汇率簿页面已经用一个紫色✓表示"完成、自动保存"，
 // 这里如果也用✓图标，会被误读成同一种"点了就存好、随时能退出"，但这里的保存和
 // 取消是两个不同的、有后果的动作，需要文字把它们分清楚。
+
+// 点了保存之后，没填好的地方下面那一行红字（见 save() 里 showProblems 的说明）
+function ProblemLine({ text }: { text: string }) {
+  return (
+    <div className="text-[11px] text-negative mt-1.5 flex gap-1 leading-snug">
+      <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" strokeWidth={2.2} />
+      <span>{text}</span>
+    </div>
+  )
+}
+
 export function AddExpensePage({
   trip,
   currentMemberId,
@@ -345,6 +356,18 @@ export function AddExpensePage({
   const usingExactDays = spreadOpen && dayMode === 'exact' && spreadDates.length > 0
   const daysValid = !spreadOpen || (spreadDates.length > 0 && (!usingExactDays || Math.abs(dayDiff) < 0.01))
 
+  // "怎么分"/"花在几天"没对平时，详情那一行直接显示的那句话——跟分摊页、分天页
+  // 底部那行红字是同一个判断同一句话，不另写一套
+  function diffMessage(diff: number) {
+    return diff > 0
+      ? t('addExpense.diff.remaining', { amount: diff.toFixed(2) })
+      : t('addExpense.diff.over', { amount: Math.abs(diff).toFixed(2) })
+  }
+  const splitProblem = !itemizedValid
+    ? (itemsMissingMembers ? t('addExpense.itemizedPage.missingMembers') : diffMessage(itemizedDiff))
+    : !customValid ? diffMessage(customDiff) : null
+  const daysProblem = daysValid ? null : spreadDates.length === 0 ? t('addExpense.daysPage.needAtLeastOne') : diffMessage(dayDiff)
+
   // 防止快速连续点两下"保存"/"删除"触发两次并发的写操作——之前这两个函数
   // 没有任何防抖手段，纯靠"手气好没人真的点这么快"撑着
   const [saving, setSaving] = useState(false)
@@ -353,8 +376,39 @@ export function AddExpensePage({
   // 没有任何确认——记账是这个APP里最高频的操作，值得有一个明确的"成交"信号
   const [saved, setSaved] = useState(false)
 
+  // 点了保存但还有没填好的：以前是"保存"灰掉、点了没反应，用户根本不知道差什么
+  // （2026-10-07 用户反馈：外币没选汇率就是这样卡住的）。现在"保存"一直能点，点了
+  // 就把所有没填好的地方同时标红、滚到最上面那一处。红字只在点过保存之后才出现——
+  // 刚打开还在填的时候不该满屏都是红的
+  const [showProblems, setShowProblems] = useState(false)
+  const amountRef = useRef<HTMLDivElement>(null)
+  const rateRef = useRef<HTMLDivElement>(null)
+  const categoryRef = useRef<HTMLDivElement>(null)
+  const detailsRef = useRef<HTMLDivElement>(null)
+
   async function save() {
-    if (saving || !numAmount || !categoryId || !rateReady || !rateSplitValid || !customValid || !itemizedValid || !daysValid) return
+    if (saving) return
+    // 按页面从上到下的顺序找第一处——滚到它，其余的一起标红就够了
+    const firstProblem = !numAmount
+      ? amountRef
+      : !rateReady || !rateSplitValid
+        ? rateRef
+        : !categoryId
+          ? categoryRef
+          : splitProblem || daysProblem
+            ? detailsRef
+            : null
+    if (firstProblem) {
+      setShowProblems(true)
+      // "怎么分"/"花在几天"在折叠起来的"其他设置"里，不展开用户看不到红字
+      if (splitProblem || daysProblem) setDetailsOpen(true)
+      // 等展开的内容渲染出来再滚
+      requestAnimationFrame(() => {
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+        firstProblem.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+      })
+      return
+    }
     setSaving(true)
     try {
       await doSave()
@@ -544,8 +598,6 @@ export function AddExpensePage({
     )
   }
 
-  const canSave = !saving && !!numAmount && !!categoryId && rateReady && rateSplitValid && customValid && itemizedValid && daysValid
-
   const payerName = members.find((m) => m.id === payer)?.displayName ?? t('addExpense.payerFallback')
   const splitSummary = mode === 'itemized'
     ? t('addExpense.splitSummary.itemized', { count: lineItems.length })
@@ -591,7 +643,7 @@ export function AddExpensePage({
               )}
               <button
                 onClick={save}
-                disabled={!canSave}
+                disabled={saving}
                 className="text-plan text-[12.5px] font-semibold disabled:opacity-40"
               >
                 {t('addExpense.save')}
@@ -606,7 +658,10 @@ export function AddExpensePage({
             {t('addExpense.settledBanner')}
           </div>
         )}
-        <div className="rounded-2xl border-[1.5px] border-plan bg-card px-3.5 py-2.5">
+        <div
+          ref={amountRef}
+          className={`rounded-2xl border-[1.5px] bg-card px-3.5 py-2.5 ${showProblems && !numAmount ? 'border-negative' : 'border-plan'}`}
+        >
           <input
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -652,9 +707,10 @@ export function AddExpensePage({
             />
           )}
         </div>
+        {showProblems && !numAmount && <ProblemLine text={t('addExpense.needAmount')} />}
 
         {isForeign && (
-          <div className={`mt-2 ${settled ? 'pointer-events-none opacity-60' : ''}`}>
+          <div ref={rateRef} className={`mt-2 ${settled ? 'pointer-events-none opacity-60' : ''}`}>
             <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">
               {t('addExpense.chooseRate', { from: currency, to: trip.homeCurrency })}
             </div>
@@ -668,14 +724,27 @@ export function AddExpensePage({
               onLabelConflictChange={setRateLabelConflict}
             />
             {(rateSelection.mode !== 'split' || rateSplitValid) && (
-              <div className="text-[11px] text-muted mt-1.5">
-                {numRate > 0 ? t('addExpense.rateApprox', { currency: trip.homeCurrency, amount: homeAmount.toFixed(2) }) : t('addExpense.rateMissing')}
-              </div>
+              // 名字重名时 RateChipRow 自己已经在名字下面标红了，这里不再叠一句"还没选汇率"
+              numRate <= 0 && showProblems && !rateLabelConflict ? (
+                <ProblemLine text={t('addExpense.needRate')} />
+              ) : (
+                <div className="text-[11px] text-muted mt-1.5">
+                  {numRate > 0 ? t('addExpense.rateApprox', { currency: trip.homeCurrency, amount: homeAmount.toFixed(2) }) : t('addExpense.rateMissing')}
+                </div>
+              )
             )}
           </div>
         )}
 
-        <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.categoryLabel')}</div>
+        <div ref={categoryRef} className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1 flex items-center gap-2">
+          {t('addExpense.categoryLabel')}
+          {showProblems && !categoryId && (
+            <span className="normal-case tracking-normal text-[11px] text-negative inline-flex items-center gap-1">
+              <AlertTriangle className="w-[11px] h-[11px]" strokeWidth={2.2} />
+              {t('addExpense.needCategory')}
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap gap-1.5">
           {visibleCategories.map((c) => {
             const color = categoryColor(c)
@@ -817,7 +886,12 @@ export function AddExpensePage({
             )}
 
             <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.detailsLabel')}</div>
-            <div className="border border-line bg-card rounded-xl overflow-hidden">
+            <div
+              ref={detailsRef}
+              className={`border bg-card rounded-xl overflow-hidden ${
+                showProblems && (splitProblem || daysProblem) ? 'border-negative/55' : 'border-line'
+              }`}
+            >
               <button
                 type="button"
                 onClick={() => setActiveDetail('split')}
@@ -825,8 +899,8 @@ export function AddExpensePage({
                 className="w-full flex items-center justify-between px-3.5 py-2.5 border-b border-line text-left disabled:opacity-60"
               >
                 <span className="text-[12.5px] text-muted">{t('addExpense.splitRow')}</span>
-                <span className="text-[12.5px] flex items-center gap-1">
-                  {splitSummary}
+                <span className={`text-[12.5px] flex items-center gap-1 ${showProblems && splitProblem ? 'text-negative font-semibold' : ''}`}>
+                  {showProblems && splitProblem ? splitProblem : splitSummary}
                   {!settled && <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={1.8} />}
                 </span>
               </button>
@@ -837,8 +911,8 @@ export function AddExpensePage({
                   className="w-full flex items-center justify-between px-3.5 py-2.5 text-left"
                 >
                   <span className="text-[12.5px] text-muted">{t('addExpense.daysRow')}</span>
-                  <span className="text-[12.5px] flex items-center gap-1">
-                    {daysSummary}
+                  <span className={`text-[12.5px] flex items-center gap-1 ${showProblems && daysProblem ? 'text-negative font-semibold' : ''}`}>
+                    {showProblems && daysProblem ? daysProblem : daysSummary}
                     <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={1.8} />
                   </span>
                 </button>
