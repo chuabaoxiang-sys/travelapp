@@ -76,6 +76,11 @@ function humanizeSyncError(raw: string, t: TFunction): string | null {
   // 不是这条记录本身有问题，等依赖项同步好了会自动跟着重试成功
   if (code === '23503') return t('syncDetail.dependencyWaiting')
 
+  // 汇率重名——保存时已经会拦（见 domain/rates.ts 的 findRateLabelConflict），还能
+  // 撞上的只剩两台手机离线时各建了一个同名的这种情况。不会自己好，要用户去改名；
+  // 改完之后推送的是本地改名后的样子（见 sync.ts 的 resolvePushAction），就能推上去了
+  if (code === '23505' && raw.includes('idx_rate_book_entry_trip_currency_label')) return t('syncDetail.rateLabelTaken')
+
   if (code === '23514') {
     const constraint = raw.match(/constraint "([^"]+)"/)?.[1]
     if (constraint && (KNOWN_CONSTRAINTS as readonly string[]).includes(constraint)) {

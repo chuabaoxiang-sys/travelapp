@@ -261,7 +261,11 @@ export function AddExpensePage({
       ? (splitTotalForeign > 0 ? splitHomeTotal / splitTotalForeign : 0)
       : rateSelection.mode !== 'none' ? rateSelection.rate : initial?.rateUsed ?? 0
   const homeAmount = rateSelection.mode === 'split' ? splitHomeTotal : round2(numAmount * numRate)
-  const rateReady = !isForeign || numRate > 0
+  // 新汇率的名字跟已有的重名（见 RateChipRow 的 onLabelConflictChange）——这种汇率
+  // 同步时会被服务器拒收，不能让它存下来。只在外币时生效：切回本位币后汇率那一栏
+  // 整个不显示，残留的状态不该继续挡着保存
+  const [rateLabelConflict, setRateLabelConflict] = useState(false)
+  const rateReady = (!isForeign || numRate > 0) && !(isForeign && rateLabelConflict)
   // 拆分模式下，各批填的外币总额必须刚好等于这笔开销的外币总额才能保存——
   // 跟"怎么分"/"花在几天"那两处的实时校验是同一套规矩
   const rateSplitValid = rateSelection.mode !== 'split' || Math.abs(numAmount - splitTotalForeign) < 0.01
@@ -661,6 +665,7 @@ export function AddExpensePage({
               expenseAmount={numAmount}
               value={rateSelection}
               onChange={setRateSelection}
+              onLabelConflictChange={setRateLabelConflict}
             />
             {(rateSelection.mode !== 'split' || rateSplitValid) && (
               <div className="text-[11px] text-muted mt-1.5">

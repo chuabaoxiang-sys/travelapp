@@ -2,9 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import { Plus, AlertTriangle, ChevronRight, ChevronLeft } from 'lucide-react'
-import { getRateBookEntries, suggestLabels, usageByEntry, deriveRateFromExchangeAmounts, type RateEntryUsage } from '../../domain/rates'
+import {
+  getRateBookEntries,
+  getAllRateBookEntries,
+  findRateLabelConflict,
+  usageByEntry,
+  deriveRateFromExchangeAmounts,
+  type RateEntryUsage,
+} from '../../domain/rates'
 import { fetchReferenceRate } from '../../api/fx'
 import { ExchangeAmountFields } from './ExchangeAmountFields'
+import { RateLabelConflictNote } from './RateLabelConflictNote'
 
 export type RateSplitAllocation = { rateBookEntryId: string; foreignAmount: number; rate: number }
 
@@ -28,6 +36,7 @@ export function RateChipRow({
   expenseAmount,
   value,
   onChange,
+  onLabelConflictChange,
 }: {
   tripId: string
   currency: string
@@ -36,17 +45,21 @@ export function RateChipRow({
   expenseAmount: number
   value: RateSelection
   onChange: (v: RateSelection) => void
+  // 新汇率的名字跟已有的重名时通知父组件把"保存"变灰——光把 value 置成 none 不够：
+  // 编辑已有账目时 none 会退回原来的汇率，保存按钮依然能点
+  onLabelConflictChange?: (conflict: boolean) => void
 }) {
   const { t } = useTranslation()
   const entries = useLiveQuery(() => getRateBookEntries(tripId, currency), [tripId, currency]) ?? []
   const topEntries = entries.slice(0, 4)
   const usageMap = useLiveQuery(() => usageByEntry(tripId), [tripId]) ?? new Map<string, RateEntryUsage>()
+  // 判断重名要连已归档的一起看（上面的 entries 不含已归档的），见 findRateLabelConflict
+  const allEntries = useLiveQuery(() => getAllRateBookEntries(tripId), [tripId]) ?? []
 
   const [showNewForm, setShowNewForm] = useState(value.mode === 'new')
   const [newLabel, setNewLabel] = useState(value.mode === 'new' ? value.label : '')
   const [newRate, setNewRate] = useState(value.mode === 'new' ? String(value.rate) : '')
   const [prefillTouched, setPrefillTouched] = useState(value.mode === 'new' && value.source !== 'api_accepted')
-  const [suggestions, setSuggestions] = useState<string[]>([])
   const [fetchingRef, setFetchingRef] = useState(false)
   const [exchangeHome, setExchangeHome] = useState(
     value.mode === 'new' && value.exchangedHomeAmount != null ? String(value.exchangedHomeAmount) : ''
@@ -76,9 +89,19 @@ export function RateChipRow({
     splitBackfilled.current = true
   }, [value])
 
+  const labelConflict = showNewForm ? findRateLabelConflict(allEntries, currency, newLabel) : null
+  const hasLabelConflict = !!labelConflict
+  // allEntries 是异步查出来的：名字先打好、汇率簿后到的那一帧，commitNewRate 当时
+  // 还看不出重名，已经提交成 mode:'new' 了——这里补一刀撤回
   useEffect(() => {
-    suggestLabels(tripId, currency).then(setSuggestions)
-  }, [tripId, currency])
+    onLabelConflictChange?.(hasLabelConflict)
+    if (hasLabelConflict && value.mode === 'new') onChange({ mode: 'none' })
+  }, [hasLabelConflict, value.mode, onChange, onLabelConflictChange])
+
+  function pickConflictingEntry(entry: { id: string; rate: number }) {
+    setShowNewForm(false)
+    onChange({ mode: 'existing', entryId: entry.id, rate: entry.rate })
+  }
 
   function openNewForm() {
     setShowNewForm(true)
@@ -100,7 +123,7 @@ export function RateChipRow({
 
   function commitNewRate(label: string, rateStr: string, touched: boolean, home: string, foreign: string) {
     const r = parseFloat(rateStr)
-    if (!label.trim() || !r) {
+    if (!label.trim() || !r || findRateLabelConflict(allEntries, currency, label)) {
       onChange({ mode: 'none' })
       return
     }
@@ -250,13 +273,14 @@ export function RateChipRow({
                 setNewLabel(e.target.value)
                 commitNewRate(e.target.value, newRate, prefillTouched, exchangeHome, exchangeForeign)
               }}
-              list="rate-label-suggestions"
               placeholder={t('rateChip.labelPlaceholder')}
-              className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
+              className={`w-full rounded-lg border bg-paper px-2.5 py-1.5 text-sm outline-none ${
+                labelConflict ? 'border-negative' : 'border-line focus:border-plan'
+              }`}
             />
-            <datalist id="rate-label-suggestions">
-              {suggestions.map((s) => <option key={s} value={s} />)}
-            </datalist>
+            {labelConflict && (
+              <RateLabelConflictNote conflict={labelConflict} onUse={() => pickConflictingEntry(labelConflict)} />
+            )}
           </div>
           <div>
             <input

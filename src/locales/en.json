@@ -181,6 +181,12 @@
     "splitOver": "{{amount}} {{currency}} over",
     "weightedAverage": "Weighted average rate ≈ {{rate}}"
   },
+  "rateLabel": {
+    "taken": "You already have a {{currency}} rate called \"{{label}}\". Pick another name.",
+    "takenOrUse": "You already have a {{currency}} rate called \"{{label}}\". Pick another name, or use that one.",
+    "takenArchived": "You already have a {{currency}} rate called \"{{label}}\" (archived). Pick another name.",
+    "use": "Use \"{{label}}\" {{rate}}"
+  },
   "exchangeFields": {
     "toggle": "Record what you actually exchanged (optional)",
     "gave": "Gave ({{currency}})",
@@ -799,7 +805,8 @@
     "discardConfirmTitle": "Discard this record?",
     "discardConfirmMessage": "This won't delete the data on your phone — but this change will stop syncing to other devices or teammates, and won't be retried again. Discard it?",
     "discardConfirm": "Discard",
-    "dependencyWaiting": "This depends on another record that hasn't synced yet — once that one's done, this will automatically retry. No need to do anything.",
+    "dependencyWaiting": "This uses another record that hasn't synced yet. If that one is stuck in this list too, sort it out first and this one will follow.",
+    "rateLabelTaken": "There's already a rate with this name in your rate book, so this one can't upload. Rename it in the rate book and it'll sync again automatically.",
     "tables": {
       "trips": "Trip",
       "members": "Members",

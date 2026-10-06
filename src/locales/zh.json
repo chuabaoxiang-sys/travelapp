@@ -177,6 +177,12 @@
     "splitOver": "超出了 {{amount}} {{currency}}",
     "weightedAverage": "加权平均汇率 ≈ {{rate}}"
   },
+  "rateLabel": {
+    "taken": "已经有一个叫「{{label}}」的 {{currency}} 汇率了，换个名字",
+    "takenOrUse": "已经有一个叫「{{label}}」的 {{currency}} 汇率了，换个名字，或者直接用它",
+    "takenArchived": "已经有一个叫「{{label}}」的 {{currency}} 汇率（已归档），换个名字",
+    "use": "用「{{label}}」{{rate}}"
+  },
   "exchangeFields": {
     "toggle": "记录实际换汇金额（可选）",
     "gave": "给出（{{currency}}）",
@@ -771,7 +777,8 @@
     "discardConfirmTitle": "放弃同步这条记录？",
     "discardConfirmMessage": "本地这条数据不会被删除，还在你手机上——但这次改动以后不会再同步给其他设备/团队成员，也不会再重试。确定要放弃吗？",
     "discardConfirm": "放弃同步",
-    "dependencyWaiting": "这条数据依赖的另一条记录还没同步成功，等它同步好之后这条会自动跟着重试，不用手动处理",
+    "dependencyWaiting": "这条用到的另一条记录还没同步上去。如果列表里那一条也卡住了，先处理那一条，这条会自动跟着同步。",
+    "rateLabelTaken": "汇率簿里已经有一个同名的汇率，这条传不上去。到汇率簿把它改个名字，改完会自动重新同步。",
     "tables": {
       "trips": "行程",
       "members": "成员",

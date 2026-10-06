@@ -162,18 +162,22 @@ export async function tripBlendedRates(tripId: string): Promise<TripBlendedRate[
     .sort((a, b) => a.foreignCurrency.localeCompare(b.foreignCurrency))
 }
 
-// 输入新标签时的自动补全候选——取这趟行程里这个币种曾经用过的所有标签
-// （含已归档的，方便用户沿用命名习惯），按最近使用排序去重
-export async function suggestLabels(tripId: string, currency: string): Promise<string[]> {
-  const all = await db.rateBookEntries.where({ tripId, foreignCurrency: currency }).toArray()
-  const sorted = all.sort((a, b) => b.lastUsedAt - a.lastUsedAt)
-  const seen = new Set<string>()
-  const labels: string[] = []
-  for (const r of sorted) {
-    if (!seen.has(r.label)) {
-      seen.add(r.label)
-      labels.push(r.label)
-    }
-  }
-  return labels
+// "同一趟行程、同一币种下标签不能重名"是数据库的唯一约束（0001_init.sql 的
+// idx_rate_book_entry_trip_currency_label），本地 Dexie 没有这条约束——重名的一条
+// 在手机上能存，同步时却会被服务器永远拒收，用它记的账也跟着卡住（2026-10-06 真实
+// 事故：输入框的自动补全推荐的恰好全是这个币种已用过的名字，点哪个都必然重名，
+// 所以那个自动补全也一起拿掉了）。保存前用这里拦下来。
+//
+// 比数据库更严一点：不分大小写、忽略前后空格，免得 "rate" 和 "Rate" 这种看起来
+// 一模一样的两条并存、记账时分不清。已归档的也算，因为数据库也算。
+// excludeId 给改名用——名字跟自己原来的一样不算重名
+export function findRateLabelConflict(
+  entries: RateBookEntry[],
+  currency: string,
+  label: string,
+  excludeId?: string,
+): RateBookEntry | null {
+  const key = label.trim().toLowerCase()
+  if (!key) return null
+  return entries.find((e) => e.foreignCurrency === currency && e.id !== excludeId && e.label.trim().toLowerCase() === key) ?? null
 }
