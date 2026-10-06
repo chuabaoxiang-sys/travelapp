@@ -18,14 +18,21 @@ import {
   formatDateKeyMonthDay,
   formatMonthDay,
   formatMonthDayTime,
+  stuckSyncHouseholdCount,
+  syncReason,
+  usesOldVersion,
+  resolvedAfter,
   type AdminDashboardStats,
   type AdminDailyRow,
   type AdminFunnel,
   type AdminHousehold,
   type AdminStuckAccount,
+  type AdminSyncProblem,
+  type AdminSyncProblemItem,
   type ChartRange,
 } from '../../domain/adminStats'
 import { relativeTime } from '../../lib/relativeTime'
+import { APP_COMMIT } from '../../lib/appVersion'
 
 type LoadState =
   | { status: 'loading' }
@@ -101,6 +108,9 @@ function DashboardBody({ stats }: { stats: AdminDashboardStats }) {
   return (
     <div className="flex flex-col gap-3.5">
       <HeroTotals stats={stats} />
+      {/* 放在总数下面第一张：有人同步卡住是要马上处理的事，其他卡片都只是"看看趋势"。
+          ?? [] 是给 0041 迁移还没跑到的数据库留的退路 */}
+      <SyncProblemsCard problems={stats.syncProblems ?? []} />
       <FunnelCard funnel={stats.funnel} />
       <DailyChartCard daily={stats.daily} />
       <StuckAccountsCard accounts={stats.stuckAccounts} now={now} />
@@ -321,12 +331,15 @@ function DailyChart({ rows, ariaLabel }: { rows: AdminDailyRow[]; ariaLabel: str
   )
 }
 
-function Pill({ tone, children }: { tone: 'new' | 'test' | 'exempt' | 'supported'; children: ReactNode }) {
+function Pill({ tone, children }: { tone: 'new' | 'test' | 'exempt' | 'supported' | 'stuck' | 'resolved' | 'oldVersion'; children: ReactNode }) {
   const toneClass = {
     new: 'bg-positive/[0.12] text-positive',
     test: 'bg-segment text-muted',
     exempt: 'bg-plan/[0.1] text-plan',
     supported: 'bg-spend/[0.12] text-spend-text',
+    stuck: 'bg-negative/[0.11] text-negative',
+    resolved: 'bg-positive/[0.12] text-positive',
+    oldVersion: 'bg-spend/[0.12] text-spend-text',
   }[tone]
   return (
     <span className={`inline-block text-[9.5px] font-semibold rounded-full px-[7px] py-px ml-[5px] align-[1px] ${toneClass}`}>
@@ -347,6 +360,82 @@ function ListRow({ name, pills, meta, side }: { name: string; pills: ReactNode; 
       </div>
       {side}
     </div>
+  )
+}
+
+// 一种卡住原因一小段："汇率簿 汇率重名 ×1"，表名加粗——跟设计稿一致
+function SyncItem({ item }: { item: AdminSyncProblemItem }) {
+  const { t } = useTranslation()
+  const reason = syncReason(item)
+  return (
+    <span>
+      <Trans
+        i18nKey="admin.sync.item"
+        values={{
+          table: t(`syncDetail.tables.${item.table}`, { defaultValue: item.table }),
+          reason: 'text' in reason ? reason.text : t(reason.key, reason.values),
+          n: item.count,
+        }}
+        components={{ b: <b className="text-ink font-semibold" /> }}
+      />
+    </span>
+  )
+}
+
+function syncProblemMeta(p: AdminSyncProblem, t: TFunction): string {
+  const version = p.appVersions.join(' / ')
+  if (p.stuck) {
+    return t('admin.sync.metaStuck', { since: formatMonthDayTime(p.since), n: p.maxAttempts, version })
+  }
+  const after = resolvedAfter(p.since, p.resolvedAt ?? p.lastReportedAt)
+  return t('admin.sync.metaResolved', {
+    since: formatMonthDayTime(p.since),
+    after: t(`admin.sync.after.${after.unit}`, { count: after.count }),
+    version,
+  })
+}
+
+function SyncProblemsCard({ problems }: { problems: AdminSyncProblem[] }) {
+  const { t } = useTranslation()
+  const stuckHouseholds = stuckSyncHouseholdCount(problems)
+  const anyStuck = problems.some((p) => p.stuck)
+  return (
+    <Card
+      title={t('admin.sync.title')}
+      aside={
+        stuckHouseholds > 0 ? (
+          <CardAside className="text-negative font-semibold">{t('admin.sync.stuckHouseholds', { count: stuckHouseholds })}</CardAside>
+        ) : (
+          <CardAside>{anyStuck ? t('admin.sync.onlyTest') : t('admin.sync.allGood')}</CardAside>
+        )
+      }
+    >
+      {problems.length === 0 ? (
+        <div className="text-[11px] text-muted mt-2">{t('admin.sync.empty')}</div>
+      ) : (
+        <div className="mt-2 flex flex-col">
+          {problems.map((p) => (
+            <div
+              key={`${p.householdName}-${p.email}`}
+              className={`py-[9px] border-t border-line first:border-t-0 flex flex-col gap-[3px] ${p.stuck ? '' : 'opacity-75'}`}
+            >
+              <div className="text-[12.5px] font-medium break-words">
+                {[p.householdName ?? t('admin.sync.noHousehold'), p.email].filter(Boolean).join(' · ')}
+                {p.stuck ? <Pill tone="stuck">{t('admin.sync.pillStuck')}</Pill> : <Pill tone="resolved">{t('admin.sync.pillResolved')}</Pill>}
+                {usesOldVersion(p, APP_COMMIT) && <Pill tone="oldVersion">{t('admin.sync.pillOldVersion')}</Pill>}
+                {p.isTest && <Pill tone="test">{t('admin.pill.test')}</Pill>}
+              </div>
+              <div className="text-[11px] text-soft flex flex-wrap gap-x-2.5 gap-y-0.5">
+                {p.items.map((item) => (
+                  <SyncItem key={`${item.table}-${item.code}-${item.label}`} item={item} />
+                ))}
+              </div>
+              <div className="text-[10.5px] text-muted tabular">{syncProblemMeta(p, t)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   )
 }
 

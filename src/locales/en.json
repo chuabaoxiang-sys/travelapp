@@ -773,6 +773,38 @@
       "test": "Test",
       "exempt": "Exempt",
       "supported": "Supporter"
+    },
+    "sync": {
+      "title": "Stuck syncs",
+      "stuckHouseholds_one": "{{count}} household stuck",
+      "stuckHouseholds_other": "{{count}} households stuck",
+      "onlyTest": "Only test accounts stuck",
+      "allGood": "All clear for the last 7 days",
+      "empty": "When a record on someone's phone fails to sync 10 times in a row, it shows up here.",
+      "noHousehold": "(no household yet)",
+      "pillStuck": "Stuck",
+      "pillResolved": "Recovered",
+      "pillOldVersion": "Old version",
+      "item": "<b>{{table}}</b> {{reason}} ×{{n}}",
+      "metaStuck": "Stuck since {{since}} · up to {{n}} retries · version {{version}}",
+      "metaResolved": "Stuck at {{since}}, recovered {{after}} · version {{version}}",
+      "after": {
+        "minutes_one": "{{count}} minute later",
+        "minutes_other": "{{count}} minutes later",
+        "hours_one": "{{count}} hour later",
+        "hours_other": "{{count}} hours later",
+        "days_one": "{{count}} day later",
+        "days_other": "{{count}} days later"
+      },
+      "reason": {
+        "rateLabelTaken": "duplicate rate name",
+        "duplicate": "duplicate data",
+        "dependency": "waiting on another record",
+        "check": "failed a data check ({{rule}})",
+        "permission": "permission denied",
+        "network": "network problem",
+        "other": "error {{code}}"
+      }
     }
   },
   "subscription": {

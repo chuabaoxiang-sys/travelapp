@@ -4,6 +4,22 @@ import { SYNC_CONFIG } from './syncMapping'
 import { getCurrentHouseholdId } from '../domain/household'
 import { readPerTeam, writePerTeam } from '../lib/perTeamStorage'
 import type { OutboxEntry } from '../types'
+import { STUCK_THRESHOLD, shouldReportStuck, reportStuckSync, reportSyncResolved } from '../domain/syncProblems'
+
+// 一组（同一条记录）推送失败之后：重试次数刚好跨过"卡住"门槛就向服务器报一声，
+// 好让开发者在数据后台先看到（2026-10-06 CE 那次是看用户截图才知道的，见0041）
+function noteGroupFailure(group: OutboxEntry[], lastError: string) {
+  const attempts = Math.max(...group.map((e) => e.attempts + 1))
+  if (shouldReportStuck(attempts)) reportStuckSync(group, lastError, attempts)
+}
+
+// 一组推送成功之后：如果之前报过"卡住"，再报一声已恢复，数据后台上就不会一直挂着
+function noteGroupSuccess(group: OutboxEntry[]) {
+  if (group.some((e) => e.attempts >= STUCK_THRESHOLD)) {
+    const { tableName, recordId } = group[0]
+    reportSyncResolved(tableName, recordId, 'resolved')
+  }
+}
 
 // 表的拉取顺序有讲究：itineraryItems 拉回来时要用 itineraryDays 已经落地的
 // day->trip 映射去补 tripId（远端 itinerary_item 表本身没有 trip_id 列），
@@ -73,10 +89,12 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
       if (error) throw error
       await Promise.all(group.map((e) => db.outbox.update(e.id, { status: 'synced' })))
       pushed += group.length
+      noteGroupSuccess(group)
     } catch (err) {
       failed += group.length
       const lastError = describeError(err)
       await Promise.all(group.map((e) => db.outbox.update(e.id, { attempts: e.attempts + 1, lastError })))
+      noteGroupFailure(group, lastError)
     }
   }
 
@@ -138,10 +156,12 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
       // 留着下一轮再推
       await Promise.all(group.map((e) => db.outbox.update(e.id, { status: 'synced' })))
       pushed += group.length
+      noteGroupSuccess(group)
     } catch (err) {
       failed += group.length
       const lastError = describeError(err)
       await Promise.all(group.map((e) => db.outbox.update(e.id, { attempts: e.attempts + 1, lastError })))
+      noteGroupFailure(group, lastError)
     }
   }
 

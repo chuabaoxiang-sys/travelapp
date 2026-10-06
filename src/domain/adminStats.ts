@@ -48,6 +48,27 @@ export interface AdminHousehold {
   isTest: boolean
 }
 
+// 同步卡住的上报（0041），按"团队 + 上报账号"一行
+export interface AdminSyncProblemItem {
+  table: string // 本地表名，比如 rateBookEntries——前端拿 syncDetail.tables.* 翻成中文
+  code: string | null // Postgres 错误码，或者 'network'
+  label: string | null // 约束名，或者 P0001 的那句中文提示
+  count: number
+}
+
+export interface AdminSyncProblem {
+  householdName: string | null
+  email: string | null
+  isTest: boolean
+  stuck: boolean // 还有记录卡着；false 表示最近7天内已经全部恢复或被丢弃
+  since: string
+  lastReportedAt: string
+  resolvedAt: string | null
+  maxAttempts: number
+  appVersions: string[]
+  items: AdminSyncProblemItem[]
+}
+
 export interface AdminDashboardStats {
   generatedAt: string
   totals: AdminCounts
@@ -56,6 +77,7 @@ export interface AdminDashboardStats {
   daily: AdminDailyRow[]
   stuckAccounts: AdminStuckAccount[]
   households: AdminHousehold[]
+  syncProblems: AdminSyncProblem[]
 }
 
 // 入口藏不藏只是体验问题，真正挡人的是数据库函数自己的权限判断——所以这里
@@ -168,6 +190,44 @@ export function neverCameBack(account: Pick<AdminStuckAccount, 'createdAt' | 'la
 
 export function followUpCount(accounts: AdminStuckAccount[]): number {
   return accounts.filter((a) => !a.isTest).length
+}
+
+// 卡片右上角"N 个团队卡住中"：只数真实团队，测试账号/测试团队照样列在下面但不计数。
+// 同一个团队几个人都卡住只算一个——要联系的是这个团队
+export function stuckSyncHouseholdCount(problems: AdminSyncProblem[]): number {
+  return new Set(problems.filter((p) => p.stuck && !p.isTest).map((p) => p.householdName ?? p.email)).size
+}
+
+// 一种卡住原因翻成哪句人话。返回 i18n key + 参数，或者原样显示的文字（P0001 本身
+// 就是我们数据库函数里写好的中文提示）
+export type SyncReason = { key: string; values?: Record<string, string> } | { text: string }
+
+export function syncReason(item: Pick<AdminSyncProblemItem, 'code' | 'label'>): SyncReason {
+  const { code, label } = item
+  if (code === 'P0001' && label) return { text: label }
+  if (code === '23505') {
+    return label === 'idx_rate_book_entry_trip_currency_label' ? { key: 'admin.sync.reason.rateLabelTaken' } : { key: 'admin.sync.reason.duplicate' }
+  }
+  if (code === '23503') return { key: 'admin.sync.reason.dependency' }
+  if (code === '23514') return { key: 'admin.sync.reason.check', values: { rule: label ?? '' } }
+  if (code === '42501') return { key: 'admin.sync.reason.permission' }
+  if (code === 'network') return { key: 'admin.sync.reason.network' }
+  return { key: 'admin.sync.reason.other', values: { code: code ?? '?' } }
+}
+
+// 上报时用的 APP 版本跟现在看后台的这个版本不一样——对方大概率还没更新，
+// 很多问题更新一下就好了，值得在名字旁边标出来
+export function usesOldVersion(problem: Pick<AdminSyncProblem, 'appVersions'>, currentCommit: string): boolean {
+  return problem.appVersions.some((v) => v !== currentCommit)
+}
+
+// "卡了多久才恢复"：不到1小时按分钟，不到2天按小时，再久按天
+export function resolvedAfter(sinceIso: string, resolvedIso: string): { unit: 'minutes' | 'hours' | 'days'; count: number } {
+  const minutes = Math.max(1, Math.round((Date.parse(resolvedIso) - Date.parse(sinceIso)) / 60_000))
+  if (minutes < 60) return { unit: 'minutes', count: minutes }
+  const hours = Math.round(minutes / 60)
+  if (hours < 48) return { unit: 'hours', count: hours }
+  return { unit: 'days', count: Math.round(hours / 24) }
 }
 
 export function householdHasNoActivity(h: Pick<AdminHousehold, 'tripCount' | 'expenseCount' | 'lastActivityAt'>): boolean {

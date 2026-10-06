@@ -14,6 +14,11 @@ import {
   formatMonthDay,
   formatMonthDayTime,
   isNotAuthorizedError,
+  stuckSyncHouseholdCount,
+  syncReason,
+  usesOldVersion,
+  resolvedAfter,
+  type AdminSyncProblem,
   type AdminDailyRow,
   type AdminFunnel,
 } from './adminStats'
@@ -205,5 +210,46 @@ describe('isNotAuthorizedError', () => {
   it('网络错误不算', () => {
     expect(isNotAuthorizedError(new TypeError('Failed to fetch'))).toBe(false)
     expect(isNotAuthorizedError(null)).toBe(false)
+  })
+})
+
+describe('同步卡住卡片（0041）', () => {
+  function problem(overrides: Partial<AdminSyncProblem>): AdminSyncProblem {
+    return {
+      householdName: 'Chi En', email: 'ce@example.com', isTest: false, stuck: true,
+      since: '2026-10-06T02:23:26Z', lastReportedAt: '2026-10-06T02:30:00Z', resolvedAt: null,
+      maxAttempts: 25, appVersions: ['e160f92'], items: [], ...overrides,
+    }
+  }
+
+  it('右上角只数还卡着的真实团队，同一个团队几个人卡住只算一个，测试的不算', () => {
+    expect(stuckSyncHouseholdCount([
+      problem({ email: 'a@example.com' }),
+      problem({ email: 'b@example.com' }),
+      problem({ householdName: 'Bao Xiang', stuck: false }),
+      problem({ householdName: 'Test', isTest: true }),
+    ])).toBe(1)
+    expect(stuckSyncHouseholdCount([])).toBe(0)
+  })
+
+  it('卡住原因翻成人话：汇率重名单独认出来，P0001 原样显示，认不出的带上错误码', () => {
+    expect(syncReason({ code: '23505', label: 'idx_rate_book_entry_trip_currency_label' })).toEqual({ key: 'admin.sync.reason.rateLabelTaken' })
+    expect(syncReason({ code: '23505', label: 'some_other_unique' })).toEqual({ key: 'admin.sync.reason.duplicate' })
+    expect(syncReason({ code: '23503', label: 'expense_rate_book_entry_id_fkey' })).toEqual({ key: 'admin.sync.reason.dependency' })
+    expect(syncReason({ code: 'P0001', label: '无权操作这笔费用的分摊记录' })).toEqual({ text: '无权操作这笔费用的分摊记录' })
+    expect(syncReason({ code: 'network', label: null })).toEqual({ key: 'admin.sync.reason.network' })
+    expect(syncReason({ code: null, label: null })).toEqual({ key: 'admin.sync.reason.other', values: { code: '?' } })
+  })
+
+  it('上报时的版本跟现在不一样才标"旧版本"', () => {
+    expect(usesOldVersion(problem({ appVersions: ['e160f92'] }), 'e160f92')).toBe(false)
+    expect(usesOldVersion(problem({ appVersions: ['95cb722'] }), 'e160f92')).toBe(true)
+    expect(usesOldVersion(problem({ appVersions: [] }), 'e160f92')).toBe(false)
+  })
+
+  it('卡了多久才恢复：分钟、小时、天', () => {
+    expect(resolvedAfter('2026-10-05T12:14:00Z', '2026-10-05T12:26:00Z')).toEqual({ unit: 'minutes', count: 12 })
+    expect(resolvedAfter('2026-10-06T02:23:00Z', '2026-10-06T03:28:00Z')).toEqual({ unit: 'hours', count: 1 })
+    expect(resolvedAfter('2026-10-01T00:00:00Z', '2026-10-04T00:00:00Z')).toEqual({ unit: 'days', count: 3 })
   })
 })

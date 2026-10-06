@@ -8,12 +8,12 @@ import { useEscapeKey } from '../hooks/useEscapeKey'
 import { relativeTime } from '../lib/relativeTime'
 import { BottomSheet } from './BottomSheet'
 import { ConfirmDialog } from './ConfirmDialog'
+import { STUCK_THRESHOLD, reportSyncResolved } from '../domain/syncProblems'
 import type { OutboxEntry } from '../types'
 
-// 重试到这个次数还没成功，大概率是权限/数据冲突之类不会自愈的问题，值得
-// 标红提醒——次数少的还在正常等网络，不用紧张。这里刻意只是"标出来给人看"，
-// 不停止重试、不引入新的终止状态：万一真是网络问题，后台该怎么重试还怎么重试
-export const STUCK_THRESHOLD = 10
+// "卡住"的门槛（STUCK_THRESHOLD，重试多少次算卡住）跟向服务器上报共用一个定义，
+// 见 domain/syncProblems.ts。这里刻意只是"标出来给人看"，不停止重试、不引入新的
+// 终止状态：万一真是网络问题，后台该怎么重试还怎么重试
 
 // 从payload里挑一个人能看懂的字段，帮用户定位"到底是哪一条"卡住了——
 // 光看"账目·新增/修改"认不出是哪笔账。delete操作没有payload（见dexie.ts
@@ -167,7 +167,10 @@ export function SyncDetailSheet({ onClose }: { onClose: () => void }) {
           message={t('syncDetail.discardConfirmMessage')}
           confirmLabel={t('syncDetail.discardConfirm')}
           onConfirm={async () => {
+            const entry = pending.find((e) => e.id === pendingDeleteId)
             await db.outbox.delete(pendingDeleteId)
+            // 之前已经向服务器报过"卡住"的，丢弃后报一声，数据后台上就不会一直挂着
+            if (entry && entry.attempts >= STUCK_THRESHOLD) reportSyncResolved(entry.tableName, entry.recordId, 'discarded')
             setPendingDeleteId(null)
           }}
           onCancel={() => setPendingDeleteId(null)}

@@ -747,6 +747,34 @@
       "test": "测试",
       "exempt": "豁免",
       "supported": "已打赏"
+    },
+    "sync": {
+      "title": "同步卡住",
+      "stuckHouseholds_other": "{{count}} 个团队卡住中",
+      "onlyTest": "只有测试账号卡住",
+      "allGood": "最近 7 天都正常",
+      "empty": "手机上有记录重试 10 次还推不上去时，会出现在这里。",
+      "noHousehold": "（还没进团队）",
+      "pillStuck": "卡住中",
+      "pillResolved": "已恢复",
+      "pillOldVersion": "旧版本",
+      "item": "<b>{{table}}</b> {{reason}} ×{{n}}",
+      "metaStuck": "{{since}} 开始卡 · 最多重试 {{n}} 次 · 版本 {{version}}",
+      "metaResolved": "{{since}} 卡住，{{after}}恢复 · 版本 {{version}}",
+      "after": {
+        "minutes_other": "{{count}} 分钟后",
+        "hours_other": "{{count}} 小时后",
+        "days_other": "{{count}} 天后"
+      },
+      "reason": {
+        "rateLabelTaken": "汇率重名",
+        "duplicate": "重复数据",
+        "dependency": "等它用到的记录",
+        "check": "数据检查没通过（{{rule}}）",
+        "permission": "没有权限",
+        "network": "网络问题",
+        "other": "错误 {{code}}"
+      }
     }
   },
   "subscription": {

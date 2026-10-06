@@ -11,7 +11,7 @@ import { useThemePreference, type ThemePreference } from '../../lib/theme'
 import { useLocalePreference, type LocalePreference } from '../../lib/locale'
 import { db } from '../../db/dexie'
 import { BottomSheet } from '../../components/BottomSheet'
-import { STUCK_THRESHOLD } from '../../components/SyncDetailSheet'
+import { STUCK_THRESHOLD } from '../../domain/syncProblems'
 import type { Trip } from '../../types'
 
 type ExportKind = 'excel' | 'json' | 'csv'

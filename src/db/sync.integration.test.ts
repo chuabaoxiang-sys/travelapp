@@ -295,6 +295,51 @@ describe('pushOutbox / pullAll / runSync（真实mock网络层）', () => {
     expect(entries[0]?.lastError).toContain('23505')
   })
 
+  it('0041：重试次数刚好跨过"卡住"门槛时向服务器报一次，只带技术字段，不带内容', async () => {
+    await seedLocal(() => db.rateBookEntries.put(rateRow({})))
+    await db.outbox.add(outboxEntry({ id: 'ob-1', tableName: 'rateBookEntries', recordId: 'rate-dup', payload: rateRow({}), attempts: 9, createdAt: 1000 }))
+    mock.setUpsertError('rate_book_entry', {
+      message: 'duplicate key value violates unique constraint "idx_rate_book_entry_trip_currency_label"',
+      details: 'Key (trip_id, currency_code, label)=(t1, KRW, rate) already exists.',
+      code: '23505',
+    })
+
+    await pushOutbox()
+
+    const reports = mock.rpcCalls.filter((c) => c.name === 'report_sync_problem')
+    expect(reports).toHaveLength(1)
+    expect(reports[0].args).toEqual({
+      p_table: 'rateBookEntries',
+      p_operation: 'upsert',
+      p_record_id: 'rate-dup',
+      p_error_code: '23505',
+      p_error_label: 'idx_rate_book_entry_trip_currency_label',
+      p_attempts: 10,
+      p_queued_at: new Date(1000).toISOString(),
+      p_app_version: 'test',
+    })
+    expect(JSON.stringify(reports[0].args)).not.toContain('KRW')
+
+    // 下一轮再失败（第11次）不重复报
+    await pushOutbox()
+    expect(mock.rpcCalls.filter((c) => c.name === 'report_sync_problem')).toHaveLength(1)
+  })
+
+  it('0041：还没到门槛的失败不报；报过卡住的记录推成功后报一声已恢复', async () => {
+    await seedLocal(() => db.rateBookEntries.put(rateRow({})))
+    await db.outbox.bulkAdd([
+      outboxEntry({ id: 'ob-fresh', tableName: 'expenses', recordId: 'exp-banana', payload: expenseRow({}), attempts: 2 }),
+      outboxEntry({ id: 'ob-stuck', tableName: 'rateBookEntries', recordId: 'rate-dup', payload: rateRow({}), attempts: 25 }),
+    ])
+    mock.setUpsertError('expense', { message: 'boom', code: '23503' })
+
+    await pushOutbox()
+
+    expect(mock.rpcCalls.filter((c) => c.name === 'report_sync_problem')).toHaveLength(0)
+    const resolved = mock.rpcCalls.filter((c) => c.name === 'resolve_sync_problem')
+    expect(resolved).toEqual([{ name: 'resolve_sync_problem', args: { p_table: 'rateBookEntries', p_record_id: 'rate-dup', p_status: 'resolved' } }])
+  })
+
   it('保底：本地找不到这一行、也从没删过（写入失败回滚之类）时，照旧推排队里最新的那份内容，不漏推', async () => {
     await db.outbox.bulkAdd([
       outboxEntry({ id: 'ob-1', tableName: 'expenses', recordId: 'exp-banana', payload: expenseRow({ description: '旧' }), createdAt: 100 }),
