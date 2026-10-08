@@ -13,6 +13,11 @@ dist-ssr
 dev-dist
 *.local
 
+# 环境变量文件（可能含密钥）——.env.local 已经被上面的 *.local 挡住，这里把其余几种也挡住
+.env
+.env.*
+!.env.example
+
 # 数据库备份导出（含真实家庭财务数据，绝不能进版本库）
 旅记备份-*/
 
