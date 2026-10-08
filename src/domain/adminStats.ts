@@ -69,6 +69,16 @@ export interface AdminSyncProblem {
   items: AdminSyncProblemItem[]
 }
 
+// 账对不上（0042）：按团队 + 本位币汇总，只有笔数和差额合计，不含任何具体账目
+export interface AdminLedgerMismatch {
+  householdName: string | null
+  isTest: boolean
+  currency: string // 行程本位币代码，比如 MYR
+  count: number
+  diffTotal: number // 每笔"总额 - 分摊合计"的绝对值加起来
+  lastChangedAt: string
+}
+
 export interface AdminDashboardStats {
   generatedAt: string
   totals: AdminCounts
@@ -78,6 +88,7 @@ export interface AdminDashboardStats {
   stuckAccounts: AdminStuckAccount[]
   households: AdminHousehold[]
   syncProblems: AdminSyncProblem[]
+  ledgerMismatches: AdminLedgerMismatch[]
 }
 
 // 入口藏不藏只是体验问题，真正挡人的是数据库函数自己的权限判断——所以这里
@@ -228,6 +239,16 @@ export function resolvedAfter(sinceIso: string, resolvedIso: string): { unit: 'm
   const hours = Math.round(minutes / 60)
   if (hours < 48) return { unit: 'hours', count: hours }
   return { unit: 'days', count: Math.round(hours / 24) }
+}
+
+// "账对不上"卡片右上角的数字：几个真实团队、一共几笔。测试团队照样列出但不计数，
+// 跟其他卡片一致；同一个团队有两种本位币的行程会占两行，团队只算一个
+export function ledgerMismatchSummary(rows: AdminLedgerMismatch[]): { households: number; expenses: number } {
+  const real = rows.filter((r) => !r.isTest)
+  return {
+    households: new Set(real.map((r) => r.householdName)).size,
+    expenses: real.reduce((sum, r) => sum + r.count, 0),
+  }
 }
 
 export function householdHasNoActivity(h: Pick<AdminHousehold, 'tripCount' | 'expenseCount' | 'lastActivityAt'>): boolean {

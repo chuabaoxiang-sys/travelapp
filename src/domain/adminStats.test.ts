@@ -18,6 +18,8 @@ import {
   syncReason,
   usesOldVersion,
   resolvedAfter,
+  ledgerMismatchSummary,
+  type AdminLedgerMismatch,
   type AdminSyncProblem,
   type AdminDailyRow,
   type AdminFunnel,
@@ -251,5 +253,24 @@ describe('同步卡住卡片（0041）', () => {
     expect(resolvedAfter('2026-10-05T12:14:00Z', '2026-10-05T12:26:00Z')).toEqual({ unit: 'minutes', count: 12 })
     expect(resolvedAfter('2026-10-06T02:23:00Z', '2026-10-06T03:28:00Z')).toEqual({ unit: 'hours', count: 1 })
     expect(resolvedAfter('2026-10-01T00:00:00Z', '2026-10-04T00:00:00Z')).toEqual({ unit: 'days', count: 3 })
+  })
+})
+
+describe('账对不上卡片（0042）', () => {
+  function row(overrides: Partial<AdminLedgerMismatch>): AdminLedgerMismatch {
+    return { householdName: 'Chi En', isTest: false, currency: 'MYR', count: 3, diffTotal: 2.12, lastChangedAt: '2026-10-06T03:28:54Z', ...overrides }
+  }
+
+  it('右上角只数真实团队；同一个团队两种本位币占两行，团队只算一个，笔数相加', () => {
+    expect(ledgerMismatchSummary([
+      row({}),
+      row({ currency: 'SGD', count: 1 }),
+      row({ householdName: 'Test', isTest: true, count: 5 }),
+    ])).toEqual({ households: 1, expenses: 4 })
+  })
+
+  it('没有对不上的、或者只有测试团队对不上时，数字都是0', () => {
+    expect(ledgerMismatchSummary([])).toEqual({ households: 0, expenses: 0 })
+    expect(ledgerMismatchSummary([row({ isTest: true })])).toEqual({ households: 0, expenses: 0 })
   })
 })

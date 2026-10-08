@@ -775,6 +775,18 @@
         "network": "网络问题",
         "other": "错误 {{code}}"
       }
+    },
+    "ledger": {
+      "title": "账对不上",
+      "households_other": "{{count}} 个团队",
+      "summary_other": "{{households}} · {{count}} 笔",
+      "onlyTest": "只有测试团队对不上",
+      "allGood": "全部对得上",
+      "empty": "每笔账的总额都等于各自的分摊合计。",
+      "unknownHousehold": "（团队已删除）",
+      "meta_other": "{{count}} 笔 · 最近一次改动 {{time}}",
+      "diff": "差 {{amount}}",
+      "hint": "「差」是这几笔的总额和各自分摊合计之间的差距加起来。常见原因是同步出过问题；让对方把这几笔打开重新保存一次，通常就对上了。"
     }
   },
   "subscription": {

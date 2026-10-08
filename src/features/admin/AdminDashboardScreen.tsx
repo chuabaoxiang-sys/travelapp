@@ -22,7 +22,9 @@ import {
   syncReason,
   usesOldVersion,
   resolvedAfter,
+  ledgerMismatchSummary,
   type AdminDashboardStats,
+  type AdminLedgerMismatch,
   type AdminDailyRow,
   type AdminFunnel,
   type AdminHousehold,
@@ -33,6 +35,7 @@ import {
 } from '../../domain/adminStats'
 import { relativeTime } from '../../lib/relativeTime'
 import { APP_COMMIT } from '../../lib/appVersion'
+import { formatMoney } from '../../lib/money'
 
 type LoadState =
   | { status: 'loading' }
@@ -111,6 +114,8 @@ function DashboardBody({ stats }: { stats: AdminDashboardStats }) {
       {/* 放在总数下面第一张：有人同步卡住是要马上处理的事，其他卡片都只是"看看趋势"。
           ?? [] 是给 0041 迁移还没跑到的数据库留的退路 */}
       <SyncProblemsCard problems={stats.syncProblems ?? []} />
+      {/* 同上，?? [] 是给 0042 迁移还没跑到的数据库留的退路 */}
+      <LedgerMismatchCard rows={stats.ledgerMismatches ?? []} />
       <FunnelCard funnel={stats.funnel} />
       <DailyChartCard daily={stats.daily} />
       <StuckAccountsCard accounts={stats.stuckAccounts} now={now} />
@@ -434,6 +439,53 @@ function SyncProblemsCard({ problems }: { problems: AdminSyncProblem[] }) {
             </div>
           ))}
         </div>
+      )}
+    </Card>
+  )
+}
+
+function LedgerMismatchCard({ rows }: { rows: AdminLedgerMismatch[] }) {
+  const { t } = useTranslation()
+  const summary = ledgerMismatchSummary(rows)
+  return (
+    <Card
+      title={t('admin.ledger.title')}
+      aside={
+        summary.households > 0 ? (
+          <CardAside className="text-negative font-semibold">
+            {t('admin.ledger.summary', {
+              count: summary.expenses,
+              households: t('admin.ledger.households', { count: summary.households }),
+            })}
+          </CardAside>
+        ) : (
+          <CardAside>{rows.length > 0 ? t('admin.ledger.onlyTest') : t('admin.ledger.allGood')}</CardAside>
+        )
+      }
+    >
+      {rows.length === 0 ? (
+        <div className="text-[11px] text-muted mt-2">{t('admin.ledger.empty')}</div>
+      ) : (
+        <>
+          <div className="mt-2 flex flex-col">
+            {rows.map((r) => (
+              <ListRow
+                key={`${r.householdName}-${r.currency}`}
+                name={r.householdName ?? t('admin.ledger.unknownHousehold')}
+                pills={r.isTest && <Pill tone="test">{t('admin.pill.test')}</Pill>}
+                meta={t('admin.ledger.meta', { count: r.count, time: formatMonthDayTime(r.lastChangedAt) })}
+                side={
+                  <span className="text-[12.5px] font-semibold text-negative tabular whitespace-nowrap">
+                    {t('admin.ledger.diff', { amount: formatMoney(r.diffTotal, r.currency === 'MYR' ? 'RM' : `${r.currency} `) })}
+                  </span>
+                }
+              />
+            ))}
+          </div>
+          <div className="text-[10.5px] text-muted leading-relaxed mt-1.5 pt-2 border-t border-dashed border-line">
+            {t('admin.ledger.hint')}
+          </div>
+        </>
       )}
     </Card>
   )

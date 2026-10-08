@@ -805,6 +805,21 @@
         "network": "network problem",
         "other": "error {{code}}"
       }
+    },
+    "ledger": {
+      "title": "Ledger mismatches",
+      "households_one": "{{count}} household",
+      "households_other": "{{count}} households",
+      "summary_one": "{{households}} · {{count}} entry",
+      "summary_other": "{{households}} · {{count}} entries",
+      "onlyTest": "Only test households are off",
+      "allGood": "Everything adds up",
+      "empty": "Every entry's total matches the sum of its splits.",
+      "unknownHousehold": "(household deleted)",
+      "meta_one": "{{count}} entry · last changed {{time}}",
+      "meta_other": "{{count}} entries · last changed {{time}}",
+      "diff": "off by {{amount}}",
+      "hint": "The gap is how far each entry's total is from the sum of its splits, added up. It usually means a sync went wrong — asking them to open those entries and save again normally fixes it."
     }
   },
   "subscription": {
