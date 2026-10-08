@@ -7,11 +7,32 @@
 //
 // 输入：一天里"连续且都有经纬度"的一段地点坐标（由前端 src/lib/routeLegs.ts 负责切分）。
 // 输出：这段路线里每一段相邻地点之间的真实步行距离(米)和时长(秒)。
+//
+// 只给已登录用户调用（2026-10安全检查）：ORS免费额度一天约2000次、所有用户共用，
+// 不登录也能调的话谁都可以刷光，当天所有人的步行时间都会显示不出来
 export const config = { runtime: 'edge' }
+
+import { verifyLoggedIn } from './_lib/verifyHousehold'
 
 interface Coord {
   lat: number
   lng: number
+}
+
+// ORS步行路线一次最多接受50个途经点——跟它自己的上限对齐，正常的一天行程不会
+// 受影响，只挡掉故意塞超多点的请求
+export const MAX_ROUTE_COORDS = 50
+
+// 至少2个点、最多 MAX_ROUTE_COORDS 个，每个点都是合法范围内的经纬度数字
+export function isValidCoordList(coords: unknown): coords is Coord[] {
+  if (!Array.isArray(coords) || coords.length < 2 || coords.length > MAX_ROUTE_COORDS) return false
+  return coords.every((c) => {
+    const lat = (c as Coord | null)?.lat
+    const lng = (c as Coord | null)?.lng
+    return typeof lat === 'number' && typeof lng === 'number'
+      && Number.isFinite(lat) && Number.isFinite(lng)
+      && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+  })
 }
 
 // ORS 默认只在每个坐标周围350米内找可通行的路网点，找不到就报错（真机测试时
@@ -28,6 +49,14 @@ export default async function handler(request: Request): Promise<Response> {
     })
   }
 
+  const auth = await verifyLoggedIn(request)
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
   const apiKey = process.env.ORS_API_KEY
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'ORS_API_KEY 未配置' }), {
@@ -36,7 +65,7 @@ export default async function handler(request: Request): Promise<Response> {
     })
   }
 
-  let coords: Coord[]
+  let coords: unknown
   try {
     const body = await request.json()
     coords = body?.coords
@@ -47,8 +76,8 @@ export default async function handler(request: Request): Promise<Response> {
     })
   }
 
-  if (!Array.isArray(coords) || coords.length < 2) {
-    return new Response(JSON.stringify({ error: '至少需要2个坐标点' }), {
+  if (!isValidCoordList(coords)) {
+    return new Response(JSON.stringify({ error: `需要2到${MAX_ROUTE_COORDS}个合法的经纬度坐标点` }), {
       status: 400,
       headers: { 'content-type': 'application/json' },
     })

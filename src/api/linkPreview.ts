@@ -1,4 +1,5 @@
 import type { WishlistPlaceLinkPlatform } from '../types'
+import { postWithLogin } from './postWithLogin'
 
 // 粘贴的文字是不是一个支持抓预览的链接——覆盖YouTube/Facebook/Bilibili/小红书
 // 的常见域名，跟服务端 api/resolve-link-preview.ts 的allowlist保持一致
@@ -20,12 +21,8 @@ export interface LinkPreviewResult {
 // 只是没有预览图，不是不给存
 export async function resolveLinkPreview(url: string): Promise<LinkPreviewResult | null> {
   try {
-    const res = await fetch('/api/resolve-link-preview', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ url }),
-    })
-    if (!res.ok) return null
+    const res = await postWithLogin('/api/resolve-link-preview', { url })
+    if (!res?.ok) return null
     return await res.json()
   } catch {
     return null

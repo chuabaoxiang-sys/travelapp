@@ -13,9 +13,18 @@
 // 安全考虑：这个函数会用服务端环境去请求"用户传入的任意网址"，如果不限制能传
 // 什么网址，等于给了一个开放的服务端fetch代理（SSRF风险）。这里严格限制只能是
 // Google Maps相关域名，其他域名一律拒绝。
+//
+// 只给已登录用户调用（2026-10安全检查）：下面兜底用的Google Geocoding API是按次
+// 计费/有额度的，不登录也能调的话谁都可以拿它刷额度
 export const config = { runtime: 'edge' }
 
+import { verifyLoggedIn } from './_lib/verifyHousehold'
+
+// 正常的Google Maps分享链接远短于这个长度；限制长度是为了不让人塞超长字符串进来
+export const MAX_MAPS_URL_LENGTH = 2000
+
 export function isAllowedMapsUrl(raw: string): boolean {
+  if (raw.length > MAX_MAPS_URL_LENGTH) return false
   let u: URL
   try {
     u = new URL(raw)
@@ -104,6 +113,14 @@ export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
+  const auth = await verifyLoggedIn(request)
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
       headers: { 'content-type': 'application/json' },
     })
   }

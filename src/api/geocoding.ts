@@ -1,3 +1,5 @@
+import { postWithLogin } from './postWithLogin'
+
 export interface GeocodeResult {
   displayName: string
   lat: number
@@ -21,12 +23,8 @@ export interface ResolvedMapsLink {
 // 直接解析链接里的坐标比重新搜索可靠
 export async function resolveMapsLink(url: string): Promise<ResolvedMapsLink | null> {
   try {
-    const res = await fetch('/api/resolve-maps-link', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ url }),
-    })
-    if (!res.ok) return null
+    const res = await postWithLogin('/api/resolve-maps-link', { url })
+    if (!res?.ok) return null
     return await res.json()
   } catch {
     return null

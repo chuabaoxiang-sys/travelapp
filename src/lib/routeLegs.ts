@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { TFunction } from 'i18next'
 import { db } from '../db/dexie'
+import { postWithLogin } from '../api/postWithLogin'
 import type { ItineraryItem, LatLng, RouteLeg, RouteLegCacheEntry } from '../types'
 
 interface DirectionsLeg {
@@ -24,14 +25,23 @@ export function buildDaySignature(items: ItineraryItem[]): string {
   return `${CACHE_FORMAT_VERSION}|${items.map((it) => `${it.id}:${it.lat ?? ''},${it.lng ?? ''}`).join('|')}`
 }
 
+// 查失败（'unavailable'）的结果只信这么久，过了就重新查。以前失败结果跟成功结果一样
+// 永久缓存——某天碰上一次没网，只要那天的行程不改，就永远显示不出步行时间。
+// 2026-10 路线接口改成要登录时更明显：部署那一刻还在跑旧版本的手机调用会被拒绝，
+// 不加这条，那几天的结果会被永久记成"查不到"
+const FAILED_LOOKUP_RETRY_MS = 60 * 60 * 1000
+
+// 缓存能不能直接用：签名对得上，而且要么全部查成功，要么失败结果还不满一小时
+export function isRouteCacheUsable(entry: RouteLegCacheEntry | undefined, signature: string, now: number): boolean {
+  if (!entry || entry.signature !== signature) return false
+  const hasFailedLookup = entry.legs.some((leg) => leg.kind === 'unavailable')
+  return !hasFailedLookup || now - entry.fetchedAt < FAILED_LOOKUP_RETRY_MS
+}
+
 async function fetchRunLegs(coords: { lat: number; lng: number }[]): Promise<DirectionsLeg[] | null> {
   try {
-    const res = await fetch('/api/route-directions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ coords }),
-    })
-    if (!res.ok) return null
+    const res = await postWithLogin('/api/route-directions', { coords })
+    if (!res?.ok) return null
     const data = await res.json()
     if (!Array.isArray(data.legs)) return null
     return data.legs
@@ -64,7 +74,7 @@ export async function getDayRouteLegs(dayId: string, items: ItineraryItem[]): Pr
 
   const signature = buildDaySignature(items)
   const cached = await db.routeLegCache.get(dayId)
-  if (cached && cached.signature === signature) return cached.legs
+  if (cached && isRouteCacheUsable(cached, signature, Date.now())) return cached.legs
 
   const legs: RouteLeg[] = items.slice(0, -1).map((it, i) => {
     const next = items[i + 1]

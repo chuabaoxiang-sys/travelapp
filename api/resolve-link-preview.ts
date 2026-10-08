@@ -14,8 +14,14 @@
 // Chrome的UA会被直接拒绝（HTTP 400），换成手机Safari风格的UA才能拿到完整页面。
 //
 // 安全考虑：跟 resolve-maps-link.ts 同样的SSRF顾虑——只允许这四个平台的域名，
-// 其他域名一律拒绝，不做开放的服务端fetch代理。
+// 其他域名一律拒绝，不做开放的服务端fetch代理。另外只给已登录用户调用（2026-10
+// 安全检查）——不登录也能调的话，谁都可以拿它刷Vercel的函数调用额度
 export const config = { runtime: 'edge' }
+
+import { verifyLoggedIn } from './_lib/verifyHousehold'
+
+// 正常的分享链接远短于这个长度；限制长度是为了不让人塞超长字符串进来
+export const MAX_LINK_URL_LENGTH = 2000
 
 export type LinkPlatform = 'youtube' | 'facebook' | 'bilibili' | 'xiaohongshu' | 'other'
 
@@ -30,6 +36,7 @@ const MOBILE_SAFARI_UA =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1'
 
 export function isAllowedLinkUrl(raw: string): boolean {
+  if (raw.length > MAX_LINK_URL_LENGTH) return false
   let u: URL
   try {
     u = new URL(raw)
@@ -120,6 +127,14 @@ export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
+  const auth = await verifyLoggedIn(request)
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
       headers: { 'content-type': 'application/json' },
     })
   }
