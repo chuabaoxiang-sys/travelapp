@@ -227,6 +227,31 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
     }),
   },
 
+  // 刷卡记账用的卡，见0045迁移。按团队存，没有trip_id
+  paymentCards: {
+    remoteTable: 'payment_card',
+    conflictColumns: 'id',
+    hasUpdatedAt: true,
+    toRemote: (c) => ({
+      id: c.id,
+      household_id: c.householdId,
+      name: c.name,
+      archived_at: isoOrNull(c.archivedAt),
+      created_by: c.createdBy ?? null,
+      created_at: iso(c.createdAt),
+      updated_at: iso(c.updatedAt),
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      householdId: r.household_id,
+      name: r.name,
+      archivedAt: msOrNull(r.archived_at),
+      createdBy: r.created_by ?? null,
+      createdAt: ms(r.created_at),
+      updatedAt: ms(r.updated_at),
+    }),
+  },
+
   expenses: {
     remoteTable: 'expense',
     conflictColumns: 'id',
@@ -248,6 +273,8 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       split_type: e.splitType,
       day_spread_mode: e.daySpreadMode ?? null,
       rate_spread: e.rateSpread ?? null,
+      payment_card_id: e.paymentCardId ?? null,
+      card_charge_pending: e.cardChargePending ?? false,
       itinerary_day_id: e.itineraryDayId,
       itinerary_item_id: e.itineraryItemId,
       // 本地字段叫 description，远端表这一列叫 notes——纯粹是命名不统一，不是语义差异
@@ -273,6 +300,8 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       splitType: r.split_type,
       daySpreadMode: r.day_spread_mode ?? null,
       rateSpread: r.rate_spread ?? null,
+      paymentCardId: r.payment_card_id ?? null,
+      cardChargePending: r.card_charge_pending ?? false,
       itineraryDayId: r.itinerary_day_id,
       itineraryItemId: r.itinerary_item_id,
       description: r.notes,

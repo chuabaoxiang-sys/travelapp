@@ -9,6 +9,7 @@ import type {
   ItineraryDay,
   ItineraryItem,
   RateBookEntry,
+  PaymentCard,
   Expense,
   ExpenseSplit,
   ExpenseDayAllocation,
@@ -50,6 +51,7 @@ const SYNCED_TABLES = [
   'itineraryDays',
   'itineraryItems',
   'rateBookEntries',
+  'paymentCards',
   'expenses',
   'expenseDayAllocations',
   'expenseRateAllocations',
@@ -75,6 +77,7 @@ export class TripJournalDB extends Dexie {
   itineraryDays!: EntityTable<ItineraryDay, 'id'>
   itineraryItems!: EntityTable<ItineraryItem, 'id'>
   rateBookEntries!: EntityTable<RateBookEntry, 'id'>
+  paymentCards!: EntityTable<PaymentCard, 'id'>
   expenses!: EntityTable<Expense, 'id'>
   expenseSplits!: EntityTable<ExpenseSplit, 'id'>
   expenseDayAllocations!: EntityTable<ExpenseDayAllocation, 'id'>
@@ -167,6 +170,11 @@ export class TripJournalDB extends Dexie {
     // 越攒越多这台设备自己写过的记录，不会因为拉取而膨胀成全家所有设备的完整历史
     this.version(11).stores({
       auditLog: 'id, householdId, tripId, tableName, createdAt',
+    })
+    // 刷卡记账用的卡——2026-10-20新增，见types/index.ts的PaymentCard。全新的表，
+    // 按团队存不挂tripId（跟wishlistPlaces一样，deleteTripCascade不碰它），不影响已有数据
+    this.version(12).stores({
+      paymentCards: 'id, householdId, createdAt',
     })
     registerOutboxHooks(this)
   }

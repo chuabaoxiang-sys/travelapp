@@ -21,11 +21,11 @@ vi.mock('../api/supabaseClient', () => ({
 
 const { pushOutbox, pullAll, runSync } = await import('./sync')
 
-// 跟 sync.ts 里 TABLE_ORDER 保持一致——pullAll 每轮会遍历这19张表，
+// 跟 sync.ts 里 TABLE_ORDER 保持一致——pullAll 每轮会遍历这20张表，
 // 测试里没特别配置的表一律当成"远端没有变化"处理
 const ALL_TABLES = [
   'trips', 'members', 'tripMembers', 'itineraryDays', 'itineraryItems', 'daySatisfactions',
-  'rateBookEntries', 'expenses', 'expenseSplits', 'expenseSatisfactions', 'expenseLineItems',
+  'rateBookEntries', 'paymentCards', 'expenses', 'expenseSplits', 'expenseSatisfactions', 'expenseLineItems',
   'expenseLineItemMembers', 'expenseDayAllocations', 'expenseRateAllocations', 'budgets',
   'settlements', 'feedback', 'wishlistPlaces', 'wishlistPlaceLinks',
 ] as const

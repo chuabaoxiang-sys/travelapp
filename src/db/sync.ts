@@ -32,6 +32,7 @@ const TABLE_ORDER = [
   'itineraryItems',
   'daySatisfactions',
   'rateBookEntries',
+  'paymentCards',
   'expenses',
   'expenseSplits',
   'expenseSatisfactions',

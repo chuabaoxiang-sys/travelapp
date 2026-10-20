@@ -254,7 +254,27 @@ export interface Expense {
   // 一样是"谁"，不是"改了什么"；轻量版的变更归属，讨论时明确选了这个而不是
   // 完整的逐字段修改历史快照，成本低很多）
   lastEditedBy?: string | null
+  // 刷卡记账（2026-10-20，见0045迁移）：这笔是用哪张卡刷的。刷卡的开销
+  // rateBookEntryId 为空，rateUsed/homeAmount 就是这一笔自己的汇率和银行实际扣款，
+  // 所以只看 homeAmount 的结算/预算/统计逻辑都不用改。null/undefined = 现金或本位币
+  paymentCardId?: string | null
+  // true = 刷卡当下还不知道银行扣了多少，homeAmount 是按估算汇率先记的，
+  // 等用户补了真实扣款再变回 false
+  cardChargePending?: boolean | null
   deletedAt: number | null
+  createdAt: number
+  updatedAt: number
+}
+
+// 刷卡记账用的卡（信用卡/借记卡）——按团队存、所有行程通用，跟 WishlistPlace 一样
+// 不挂 tripId。没有固定汇率：每一笔刷卡开销的汇率各自存在 Expense.rateUsed 上。
+// 停用（archivedAt 非空）只是不再出现在记账时的选择列表里，挂过的开销不受影响
+export interface PaymentCard {
+  id: string
+  householdId: string
+  name: string
+  archivedAt: number | null
+  createdBy: string | null
   createdAt: number
   updatedAt: number
 }
