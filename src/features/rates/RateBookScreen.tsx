@@ -13,12 +13,10 @@ import {
   usageByEntry,
   deriveRateFromExchangeAmounts,
   tripBlendedRates,
-  findRateLabelConflict,
   type RateEntryUsage,
 } from '../../domain/rates'
 import { fetchReferenceRate } from '../../api/fx'
 import { ExchangeAmountFields } from './ExchangeAmountFields'
-import { RateLabelConflictNote } from './RateLabelConflictNote'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -253,16 +251,9 @@ export function RateBookScreen({
     if (derived != null) setAddRate(derived.toFixed(7))
   }
 
-  // 三个表单（新增 / 改名 / 另存为新标签）各自的重名判断——entries 本来就含已归档的，
-  // 规则见 findRateLabelConflict。改名时排除自己，名字没改不算重名
-  const addConflict = addOpen ? findRateLabelConflict(entries, addCurrency.trim().toUpperCase(), addLabel) : null
-  const saveAsNewConflict = saveAsNewFor ? findRateLabelConflict(entries, saveAsNewFor.foreignCurrency, newLabelValue) : null
-  const editingEntry = editingId ? entries.find((e) => e.id === editingId) : undefined
-  const editConflict = editingEntry ? findRateLabelConflict(entries, editingEntry.foreignCurrency, editLabel, editingEntry.id) : null
-
   async function confirmAdd() {
     const r = parseFloat(addRate)
-    if (!addCurrency.trim() || !addLabel.trim() || !(r > 0) || addConflict) return
+    if (!addCurrency.trim() || !addLabel.trim() || !(r > 0)) return
     const home = parseFloat(addExchangeHome)
     const foreign = parseFloat(addExchangeForeign)
     await createRateBookEntry({
@@ -295,7 +286,7 @@ export function RateBookScreen({
 
   async function saveEdit(e: RateBookEntry) {
     const r = parseFloat(editValue)
-    if (!(r > 0) || !editLabel.trim() || editConflict) return
+    if (!(r > 0) || !editLabel.trim()) return
     const home = parseFloat(editExchangeHome)
     const foreign = parseFloat(editExchangeForeign)
     await updateRateBookEntry(e.id, {
@@ -315,7 +306,7 @@ export function RateBookScreen({
   async function confirmSaveAsNew() {
     if (!saveAsNewFor) return
     const r = parseFloat(editValue)
-    if (!r || !newLabelValue.trim() || saveAsNewConflict) return
+    if (!r || !newLabelValue.trim()) return
     const home = parseFloat(editExchangeHome)
     const foreign = parseFloat(editExchangeForeign)
     await createRateBookEntry({
@@ -392,16 +383,11 @@ export function RateBookScreen({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         {editingId === e.id ? (
-                          <>
-                            <input
-                              value={editLabel}
-                              onChange={(ev) => setEditLabel(ev.target.value)}
-                              className={`w-full rounded-lg border bg-paper px-2 py-1 text-[14px] font-serif-sc font-semibold outline-none ${
-                                editConflict ? 'border-negative' : 'border-plan'
-                              }`}
-                            />
-                            {editConflict && <RateLabelConflictNote conflict={editConflict} />}
-                          </>
+                          <input
+                            value={editLabel}
+                            onChange={(ev) => setEditLabel(ev.target.value)}
+                            className="w-full rounded-lg border border-plan bg-paper px-2 py-1 text-[14px] font-serif-sc font-semibold outline-none"
+                          />
                         ) : (
                           <div className="font-serif-sc text-[14px] font-semibold truncate">{e.label}</div>
                         )}
@@ -496,12 +482,7 @@ export function RateBookScreen({
                             <X className="w-3.5 h-3.5" strokeWidth={1.8} />
                           </button>
                           <button onClick={() => startSaveAsNew(e)} className="text-[11px] text-plan px-2 py-1">{t('rateBook.saveAsNew')}</button>
-                          <button
-                            onClick={() => saveEdit(e)}
-                            disabled={!!editConflict}
-                            className="bg-plan text-card rounded-md px-2.5 py-1 ml-auto disabled:opacity-40"
-                            title={t('rateBook.save')}
-                          >
+                          <button onClick={() => saveEdit(e)} className="bg-plan text-card rounded-md px-2.5 py-1 ml-auto" title={t('rateBook.save')}>
                             <Check className="w-3.5 h-3.5" strokeWidth={2} />
                           </button>
                         </>
@@ -597,21 +578,13 @@ export function RateBookScreen({
             value={newLabelValue}
             onChange={(e) => setNewLabelValue(e.target.value)}
             placeholder={t('rateBook.newLabelPlaceholder')}
-            className={`w-full rounded-xl border bg-paper px-3 py-2 text-sm outline-none ${
-              saveAsNewConflict ? 'border-negative' : 'border-line focus:border-plan'
-            }`}
+            className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-plan"
           />
-          {saveAsNewConflict && <RateLabelConflictNote conflict={saveAsNewConflict} />}
           <div className="flex gap-2 mt-4">
             <button onClick={() => setSaveAsNewFor(null)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title={t('rateBook.cancel')}>
               <X className="w-4 h-4" strokeWidth={1.8} />
             </button>
-            <button
-              onClick={confirmSaveAsNew}
-              disabled={!!saveAsNewConflict}
-              className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center disabled:opacity-40"
-              title={t('rateBook.save')}
-            >
+            <button onClick={confirmSaveAsNew} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title={t('rateBook.save')}>
               <Check className="w-4 h-4" strokeWidth={2} />
             </button>
           </div>
@@ -649,11 +622,8 @@ export function RateBookScreen({
               value={addLabel}
               onChange={(e) => setAddLabel(e.target.value)}
               placeholder={t('rateBook.labelPlaceholder')}
-              className={`w-full rounded-lg border bg-paper px-2.5 py-1.5 text-sm outline-none ${
-                addConflict ? 'border-negative' : 'border-line focus:border-plan'
-              }`}
+              className="w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-plan"
             />
-            {addConflict && <RateLabelConflictNote conflict={addConflict} />}
           </div>
           <ExchangeAmountFields
             homeCurrency={trip.homeCurrency}
@@ -667,12 +637,7 @@ export function RateBookScreen({
             <button onClick={() => setAddOpen(false)} className="flex-1 rounded-xl border border-line py-2 text-muted flex items-center justify-center" title={t('rateBook.cancel')}>
               <X className="w-4 h-4" strokeWidth={1.8} />
             </button>
-            <button
-              onClick={confirmAdd}
-              disabled={!!addConflict}
-              className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center disabled:opacity-40"
-              title={t('rateBook.save')}
-            >
+            <button onClick={confirmAdd} className="flex-1 rounded-xl bg-plan text-card py-2 flex items-center justify-center" title={t('rateBook.save')}>
               <Check className="w-4 h-4" strokeWidth={2} />
             </button>
           </div>

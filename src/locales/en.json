@@ -182,9 +182,7 @@
     "weightedAverage": "Weighted average rate ≈ {{rate}}"
   },
   "rateLabel": {
-    "taken": "You already have a {{currency}} rate called \"{{label}}\". Pick another name.",
-    "takenOrUse": "You already have a {{currency}} rate called \"{{label}}\". Pick another name, or use that one.",
-    "takenArchived": "You already have a {{currency}} rate called \"{{label}}\" (archived). Pick another name.",
+    "sameName": "You already have \"{{label}}\" ({{rate}}). If it's the same rate, just use that one.",
     "use": "Use \"{{label}}\" {{rate}}"
   },
   "exchangeFields": {
@@ -797,7 +795,6 @@
         "days_other": "{{count}} days later"
       },
       "reason": {
-        "rateLabelTaken": "duplicate rate name",
         "duplicate": "duplicate data",
         "dependency": "waiting on another record",
         "check": "failed a data check ({{rule}})",
@@ -856,7 +853,6 @@
     "discardConfirmMessage": "This won't delete the data on your phone — but this change will stop syncing to other devices or teammates, and won't be retried again. Discard it?",
     "discardConfirm": "Discard",
     "dependencyWaiting": "This uses another record that hasn't synced yet. If that one is stuck in this list too, sort it out first and this one will follow.",
-    "rateLabelTaken": "There's already a rate with this name in your rate book, so this one can't upload. Rename it in the rate book and it'll sync again automatically.",
     "tables": {
       "trips": "Trip",
       "members": "Members",

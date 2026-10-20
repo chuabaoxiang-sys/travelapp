@@ -162,22 +162,31 @@ export async function tripBlendedRates(tripId: string): Promise<TripBlendedRate[
     .sort((a, b) => a.foreignCurrency.localeCompare(b.foreignCurrency))
 }
 
-// "同一趟行程、同一币种下标签不能重名"是数据库的唯一约束（0001_init.sql 的
-// idx_rate_book_entry_trip_currency_label），本地 Dexie 没有这条约束——重名的一条
-// 在手机上能存，同步时却会被服务器永远拒收，用它记的账也跟着卡住（2026-10-06 真实
-// 事故：输入框的自动补全推荐的恰好全是这个币种已用过的名字，点哪个都必然重名，
-// 所以那个自动补全也一起拿掉了）。保存前用这里拦下来。
+// 同一趟行程、同一币种下允许有同名的汇率（0044 拿掉了数据库的唯一索引）：同一张卡
+// 每次刷的汇率都不一样，名字天然就该一样，界面上靠汇率数字区分。
 //
-// 比数据库更严一点：不分大小写、忽略前后空格，免得 "rate" 和 "Rate" 这种看起来
-// 一模一样的两条并存、记账时分不清。已归档的也算，因为数据库也算。
-// excludeId 给改名用——名字跟自己原来的一样不算重名
-export function findRateLabelConflict(
-  entries: RateBookEntry[],
-  currency: string,
-  label: string,
-  excludeId?: string,
-): RateBookEntry | null {
+// 记账页输入新汇率的名字时，如果跟一条还在用（没归档）的同名，给一句不拦人的提示 +
+// "用它"按钮——很多时候用户其实就是想用那条旧的。只看没归档的：归档的在记账页本来
+// 就选不到，提示了也用不了。不分大小写、忽略前后空格
+export function findRateWithSameName(entries: RateBookEntry[], currency: string, label: string): RateBookEntry | null {
   const key = label.trim().toLowerCase()
   if (!key) return null
-  return entries.find((e) => e.foreignCurrency === currency && e.id !== excludeId && e.label.trim().toLowerCase() === key) ?? null
+  return entries.find((e) => e.foreignCurrency === currency && !e.archived && e.label.trim().toLowerCase() === key) ?? null
+}
+
+// 输入新汇率名字时的下拉建议——这趟行程里这个币种用过的所有名字（含已归档的，方便
+// 沿用命名习惯，比如反复用 "TNG VISA"），按最近使用排序去重。2026-10-08 不允许重名
+// 时拿掉过（那时建议出来的名字点了必然重名），0044 放开后恢复
+export async function suggestLabels(tripId: string, currency: string): Promise<string[]> {
+  const all = await db.rateBookEntries.where({ tripId, foreignCurrency: currency }).toArray()
+  const sorted = all.sort((a, b) => b.lastUsedAt - a.lastUsedAt)
+  const seen = new Set<string>()
+  const labels: string[] = []
+  for (const r of sorted) {
+    if (!seen.has(r.label)) {
+      seen.add(r.label)
+      labels.push(r.label)
+    }
+  }
+  return labels
 }

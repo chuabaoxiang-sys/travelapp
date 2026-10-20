@@ -216,9 +216,7 @@ export type SyncReason = { key: string; values?: Record<string, string> } | { te
 export function syncReason(item: Pick<AdminSyncProblemItem, 'code' | 'label'>): SyncReason {
   const { code, label } = item
   if (code === 'P0001' && label) return { text: label }
-  if (code === '23505') {
-    return label === 'idx_rate_book_entry_trip_currency_label' ? { key: 'admin.sync.reason.rateLabelTaken' } : { key: 'admin.sync.reason.duplicate' }
-  }
+  if (code === '23505') return { key: 'admin.sync.reason.duplicate' }
   if (code === '23503') return { key: 'admin.sync.reason.dependency' }
   if (code === '23514') return { key: 'admin.sync.reason.check', values: { rule: label ?? '' } }
   if (code === '42501') return { key: 'admin.sync.reason.permission' }

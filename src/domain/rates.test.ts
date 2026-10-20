@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { deriveRateFromExchangeAmounts, usageByEntry, createRateBookEntry, updateRateBookEntry, tripBlendedRates, findRateLabelConflict } from './rates'
+import { deriveRateFromExchangeAmounts, usageByEntry, createRateBookEntry, updateRateBookEntry, tripBlendedRates, findRateWithSameName } from './rates'
 import { db } from '../db/dexie'
 import type { Expense, RateBookEntry } from '../types'
 
@@ -250,49 +250,38 @@ describe('updateRateBookEntry', () => {
   })
 })
 
-// 2026-10-06事故：同一趟行程的韩元里 "rate" 建了两次，手机上能存，同步时被数据库的
-// 唯一约束永远拒收。这组测试锁定"保存前就拦下来"的判断规则
-describe('findRateLabelConflict', () => {
+// 同名允许（0044）：记账页输入新汇率名字时，跟一条还在用的同名就给一句提醒 + "用它"。
+// 这组测试锁定"什么时候出提醒"
+describe('findRateWithSameName', () => {
   function rate(overrides: Partial<RateBookEntry>): RateBookEntry {
     return {
-      id: 'r1', householdId: 'h1', tripId: 't1', foreignCurrency: 'KRW', label: 'rate', rate: 0.00304,
-      source: 'api_accepted', createdBy: 'm1', lastUsedAt: 1, archived: false, createdAt: 1,
+      id: 'r1', householdId: 'h1', tripId: 't1', foreignCurrency: 'JPY', label: 'TNG VISA', rate: 0.025915,
+      source: 'api_edited', createdBy: 'm1', lastUsedAt: 1, archived: false, createdAt: 1,
       exchangedHomeAmount: null, exchangedForeignAmount: null, ...overrides,
     }
   }
   const entries = [
-    rate({ id: 'r1', label: 'rate' }),
-    rate({ id: 'r2', label: 'Eddy change', rate: 0.00293 }),
+    rate({ id: 'r1', label: 'TNG VISA' }),
+    rate({ id: 'r2', label: 'RHB', rate: 0.02658 }),
     rate({ id: 'r3', label: '机场换的', archived: true }),
-    rate({ id: 'r4', label: 'cash', foreignCurrency: 'JPY' }),
+    rate({ id: 'r4', label: 'cash', foreignCurrency: 'KRW' }),
   ]
 
-  it('同币种同名：返回已有的那条', () => {
-    expect(findRateLabelConflict(entries, 'KRW', 'rate')?.id).toBe('r1')
+  it('同币种同名、还在用：返回那一条（不分大小写、忽略前后空格）', () => {
+    expect(findRateWithSameName(entries, 'JPY', 'TNG VISA')?.id).toBe('r1')
+    expect(findRateWithSameName(entries, 'JPY', '  tng visa ')?.id).toBe('r1')
   })
 
-  it('不分大小写、忽略前后空格', () => {
-    expect(findRateLabelConflict(entries, 'KRW', '  Rate ')?.id).toBe('r1')
-    expect(findRateLabelConflict(entries, 'KRW', 'eddy CHANGE')?.id).toBe('r2')
+  it('已归档的不提醒——记账页本来就选不到它，提醒了也用不了', () => {
+    expect(findRateWithSameName(entries, 'JPY', '机场换的')).toBeNull()
   })
 
-  it('已归档的也算重名（数据库的唯一约束不管归没归档）', () => {
-    expect(findRateLabelConflict(entries, 'KRW', '机场换的')?.id).toBe('r3')
+  it('不同币种的同名不提醒', () => {
+    expect(findRateWithSameName(entries, 'JPY', 'cash')).toBeNull()
   })
 
-  it('不同币种可以同名', () => {
-    expect(findRateLabelConflict(entries, 'KRW', 'cash')).toBeNull()
-    expect(findRateLabelConflict(entries, 'JPY', 'rate')).toBeNull()
-  })
-
-  it('改名时排除自己：名字没改、或者只改了大小写，不算重名', () => {
-    expect(findRateLabelConflict(entries, 'KRW', 'rate', 'r1')).toBeNull()
-    expect(findRateLabelConflict(entries, 'KRW', 'RATE', 'r1')).toBeNull()
-    expect(findRateLabelConflict(entries, 'KRW', 'rate', 'r2')?.id).toBe('r1')
-  })
-
-  it('名字还是空的（或只有空格）时不提示', () => {
-    expect(findRateLabelConflict(entries, 'KRW', '')).toBeNull()
-    expect(findRateLabelConflict(entries, 'KRW', '   ')).toBeNull()
+  it('名字还是空的（或只有空格）时不提醒', () => {
+    expect(findRateWithSameName(entries, 'JPY', '')).toBeNull()
+    expect(findRateWithSameName(entries, 'JPY', '   ')).toBeNull()
   })
 })

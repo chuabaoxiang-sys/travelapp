@@ -234,8 +234,8 @@ describe('同步卡住卡片（0041）', () => {
     expect(stuckSyncHouseholdCount([])).toBe(0)
   })
 
-  it('卡住原因翻成人话：汇率重名单独认出来，P0001 原样显示，认不出的带上错误码', () => {
-    expect(syncReason({ code: '23505', label: 'idx_rate_book_entry_trip_currency_label' })).toEqual({ key: 'admin.sync.reason.rateLabelTaken' })
+  it('卡住原因翻成人话：重复数据统一一句，P0001 原样显示，认不出的带上错误码', () => {
+    expect(syncReason({ code: '23505', label: 'idx_rate_book_entry_trip_currency_label' })).toEqual({ key: 'admin.sync.reason.duplicate' })
     expect(syncReason({ code: '23505', label: 'some_other_unique' })).toEqual({ key: 'admin.sync.reason.duplicate' })
     expect(syncReason({ code: '23503', label: 'expense_rate_book_entry_id_fkey' })).toEqual({ key: 'admin.sync.reason.dependency' })
     expect(syncReason({ code: 'P0001', label: '无权操作这笔费用的分摊记录' })).toEqual({ text: '无权操作这笔费用的分摊记录' })
