@@ -160,6 +160,33 @@
     "labelPlaceholder": "例如「机场换的」",
     "foreignCurrencyFallback": "外币"
   },
+  "card": {
+    "payCash": "现金",
+    "payCard": "刷卡",
+    "add": "加一张卡",
+    "namePlaceholder": "卡的名字，比如 TNG VISA",
+    "chargedLabel": "实际扣了 {{prefix}}",
+    "chargedPlaceholder": "不知道就先留空",
+    "derivedRate": "这笔的汇率是 {{rate}}，只记在这笔上",
+    "estimateHint": "先按 {{rate}} 估算 ≈ {{prefix}} {{amount}}，之后再补实际扣款",
+    "needCard": "选一张卡，或者点「＋」加一张",
+    "needCharged": "这张卡还没有可以参考的汇率，填一下实际扣了多少",
+    "sectionTitle": "卡 · 所有旅行通用",
+    "empty": "刷卡的话，在这里加一张卡（比如 TNG VISA）。每笔刷卡按银行实际扣的钱记，汇率每笔都不一样。",
+    "tripUsage": "这趟刷了 {{count}} 笔",
+    "tripUsageWithAverage": "这趟刷了 {{count}} 笔 · 平均 {{rate}}",
+    "tripUnused": "这趟还没用过",
+    "rename": "改名",
+    "archive": "停用",
+    "delete": "删除",
+    "restore": "重新启用",
+    "viewArchived": "查看已停用的卡（{{count}}）",
+    "collapseArchived": "收起已停用的卡",
+    "archiveConfirmTitle": "停用这张卡？",
+    "archiveConfirmMessage": "这张卡已经记过开销，所以只能停用：记账时不再出现，已经记好的账不受影响。之后随时可以重新启用。",
+    "deleteConfirmTitle": "删除这张卡？",
+    "deleteConfirmMessage": "这张卡还没记过任何开销，删除后就没了。"
+  },
   "rateChip": {
     "more_other": "更多（{{count}}）",
     "showLess": "收起",
@@ -1232,8 +1259,8 @@
       "desc": "提前记好汇率，用外币记账不用自己拿计算器算",
       "steps": [
         { "title": "记一条汇率", "desc": "从账目页点右上角图标进入汇率簿，点\"+\"，按参考值采用或者手动输入实际汇率。" },
-        { "title": "同一货币对记多条", "desc": "现金换汇跟银行刷卡汇率不一样，可以分开记，记账时挑对的那条。" },
-        { "title": "用汇率记外币账", "desc": "记外币账目时直接选一条汇率，金额自动按汇率换算成本位币。" },
+        { "title": "现金和卡分开", "desc": "换了几批现金就记几条汇率。刷卡不用记汇率：在汇率簿下面「卡」那一段加一张卡（比如 TNG VISA），所有旅行通用。" },
+        { "title": "用汇率记外币账", "desc": "记外币账目时选「现金」挑一条汇率，自动换算成本位币；选「刷卡」就挑卡、填银行实际扣了多少，这笔的汇率自动算好。还不知道扣了多少可以先留空，按估算记。" },
         { "title": "看换汇划不划算", "desc": "按实际花掉的钱加权算出综合汇率，跟今天的市场价比一比。" }
       ]
     },

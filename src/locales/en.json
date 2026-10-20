@@ -164,6 +164,35 @@
     "labelPlaceholder": "e.g. \"changed at the airport\"",
     "foreignCurrencyFallback": "foreign"
   },
+  "card": {
+    "payCash": "Cash",
+    "payCard": "Card",
+    "add": "Add a card",
+    "namePlaceholder": "Card name, e.g. TNG VISA",
+    "chargedLabel": "Charged {{prefix}}",
+    "chargedPlaceholder": "Leave blank if unknown",
+    "derivedRate": "Rate for this charge: {{rate}} (saved on this expense only)",
+    "estimateHint": "Estimated at {{rate}} ≈ {{prefix}} {{amount}}; add the actual charge later",
+    "needCard": "Pick a card, or tap + to add one",
+    "needCharged": "No rate to estimate from yet. Enter the amount you were charged",
+    "sectionTitle": "Cards · all trips",
+    "empty": "Paying by card? Add a card here (e.g. TNG VISA). Each charge is recorded at what your bank actually took, so every one has its own rate.",
+    "tripUsage_one": "{{count}} charge this trip",
+    "tripUsage_other": "{{count}} charges this trip",
+    "tripUsageWithAverage_one": "{{count}} charge this trip · avg {{rate}}",
+    "tripUsageWithAverage_other": "{{count}} charges this trip · avg {{rate}}",
+    "tripUnused": "Not used on this trip yet",
+    "rename": "Rename",
+    "archive": "Disable",
+    "delete": "Delete",
+    "restore": "Enable again",
+    "viewArchived": "Show disabled cards ({{count}})",
+    "collapseArchived": "Hide disabled cards",
+    "archiveConfirmTitle": "Disable this card?",
+    "archiveConfirmMessage": "This card has expenses on it, so it can only be disabled. It won't show up when you add expenses, and existing expenses stay as they are. You can enable it again anytime.",
+    "deleteConfirmTitle": "Delete this card?",
+    "deleteConfirmMessage": "No expenses use this card yet, so it will be removed for good."
+  },
   "rateChip": {
     "more_one": "{{count}} more",
     "more_other": "{{count}} more",
@@ -1277,8 +1306,8 @@
       "desc": "Save exchange rates ahead of time, no calculator needed later",
       "steps": [
         { "title": "Log an exchange rate", "desc": "From Ledger, tap the icon top-right to open your rate book, then \"+\" — use the reference rate or enter what you actually got." },
-        { "title": "Keep more than one per pair", "desc": "Cash exchange and card rates differ — log both, and pick the right one when you spend." },
-        { "title": "Use a rate when logging", "desc": "Pick a saved rate for a foreign-currency expense and it converts to your home currency automatically." },
+        { "title": "Cash and cards, separately", "desc": "Log one rate for each batch of cash you exchange. Cards don't need a rate: add your card (e.g. TNG VISA) under Cards at the bottom of the rate book, and use it on every trip." },
+        { "title": "Use a rate when logging", "desc": "For a foreign-currency expense, choose Cash and pick a saved rate, or choose Card, pick the card, and enter what your bank charged. That expense gets its own rate. Not sure yet? Leave it blank and it's estimated for now." },
         { "title": "See how your exchange went", "desc": "A weighted rate based on what you actually spent, compared against today's market rate." }
       ]
     },

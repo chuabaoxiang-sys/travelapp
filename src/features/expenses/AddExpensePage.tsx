@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X, AlertTriangle, Banknote, CreditCard } from 'lucide-react'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
@@ -11,6 +11,8 @@ import { SuccessToast } from '../../components/SuccessToast'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { dateRange } from '../../lib/dates'
 import { RateChipRow, type RateSelection } from '../rates/RateChipRow'
+import { CardPaymentPanel } from '../rates/CardPaymentPanel'
+import { isCardExpense, getPaymentCards, createPaymentCard, estimateCardRate } from '../../domain/paymentCards'
 import { createRateBookEntry, recordRateUsage } from '../../domain/rates'
 import { saveExpenseSplits } from '../../domain/splits'
 import { saveDayAllocations, deleteDayAllocations } from '../../domain/dayAllocations'
@@ -110,6 +112,24 @@ export function AddExpensePage({
     })
     rateSplitInitialized.current = true
   }, [initial, existingRateAllocations])
+  // 刷卡记账（2026-10-20）：外币开销可以选「现金」（走上面那套汇率簿）或「刷卡」——
+  // 刷卡没有固定汇率，填银行实际扣了多少本位币，这一笔的汇率就是它除出来的；
+  // 当下还不知道扣了多少就先留空，按估算汇率记、标成待补（cardChargePending）
+  const initialIsCard = !!initial && isCardExpense(initial)
+  const [payMethod, setPayMethod] = useState<'cash' | 'card'>(initialIsCard ? 'card' : 'cash')
+  const [cardId, setCardId] = useState<string | null>(initialIsCard ? initial!.paymentCardId ?? null : null)
+  const [cardCharged, setCardCharged] = useState(initialIsCard && !initial!.cardChargePending ? String(initial!.homeAmount) : '')
+  const allCards = useLiveQuery(() => getPaymentCards()) ?? []
+  // 停用的卡不出现在选择列表里——但编辑一笔当初用了这张卡的开销时，它还得显示着
+  const pickableCards = allCards.filter((c) => !c.archivedAt || c.id === cardId)
+  const cardEstimate = useLiveQuery(
+    () => (cardId ? estimateCardRate(cardId, currency, trip.id, initial?.id) : Promise.resolve(null)),
+    [cardId, currency, trip.id, initial?.id],
+  ) ?? null
+  async function handleCreateCard(name: string) {
+    const card = await createPaymentCard(name, currentMemberId)
+    setCardId(card.id)
+  }
   const [payer, setPayer] = useState(initial?.paidBy ?? currentMemberId)
   const [expenseDate, setExpenseDate] = useState(initial?.expenseDate ?? trip.startDate ?? new Date().toISOString().slice(0, 10))
 
@@ -266,16 +286,28 @@ export function AddExpensePage({
     : 0
   // 编辑已有账目、且还没碰过汇率选择时，先用当初快照的 rateUsed 顶着，不强行要求重新选一次；
   // 一旦用户点了别的chip或改了新汇率，rateSelection 就会有值，改用那个
+  // 刷卡：填了实际扣款就用它（汇率=扣款/外币金额）；没填就按估算汇率先记
+  const payingByCard = isForeign && payMethod === 'card'
+  const numCharged = parseFloat(cardCharged) || 0
+  // 估算汇率找不到时（这张卡和这趟都还没有可参考的汇率），编辑一笔原本就是
+  // 待补的刷卡开销，至少还能沿用它当初记下的估算
+  const cardEstimateRate = cardEstimate ?? (initialIsCard && initial!.cardChargePending && initial!.paymentCardId === cardId ? initial!.rateUsed : null)
+  const cardPending = payingByCard && !(numCharged > 0)
+  // 编辑一笔刷卡开销、切回「现金」时，不能拿刷卡那一笔的汇率冒充现金汇率，要重新选
   const numRate = !isForeign
     ? 1
-    : rateSelection.mode === 'split'
-      ? (splitTotalForeign > 0 ? splitHomeTotal / splitTotalForeign : 0)
-      : rateSelection.mode !== 'none' ? rateSelection.rate : initial?.rateUsed ?? 0
-  const homeAmount = rateSelection.mode === 'split' ? splitHomeTotal : round2(numAmount * numRate)
-  const rateReady = !isForeign || numRate > 0
+    : payingByCard
+      ? numCharged > 0 ? (numAmount > 0 ? numCharged / numAmount : 0) : cardEstimateRate ?? 0
+      : rateSelection.mode === 'split'
+        ? (splitTotalForeign > 0 ? splitHomeTotal / splitTotalForeign : 0)
+        : rateSelection.mode !== 'none' ? rateSelection.rate : (initialIsCard ? 0 : initial?.rateUsed ?? 0)
+  const homeAmount = payingByCard
+    ? numCharged > 0 ? round2(numCharged) : round2(numAmount * numRate)
+    : rateSelection.mode === 'split' ? splitHomeTotal : round2(numAmount * numRate)
+  const rateReady = !isForeign || (payingByCard ? !!cardId && numRate > 0 : numRate > 0)
   // 拆分模式下，各批填的外币总额必须刚好等于这笔开销的外币总额才能保存——
   // 跟"怎么分"/"花在几天"那两处的实时校验是同一套规矩
-  const rateSplitValid = rateSelection.mode !== 'split' || Math.abs(numAmount - splitTotalForeign) < 0.01
+  const rateSplitValid = payingByCard || rateSelection.mode !== 'split' || Math.abs(numAmount - splitTotalForeign) < 0.01
 
   // 切到"自定义金额"模式时，先按平均分摊帮忙填一份起点，用户在这个基础上改，
   // 不用每次都从0开始手算
@@ -427,8 +459,13 @@ export function AddExpensePage({
     // 拆多笔汇率时 rateBookEntryId 置空，改由 expenseRateAllocations 记录具体拆法，
     // 每一批用到的条目都要更新"最近使用"（不只是单选时的那一个）
     let rateBookEntryId: string | null = initial?.rateBookEntryId ?? null
-    const rateSpread = isForeign && rateSelection.mode === 'split'
-    if (isForeign) {
+    const rateSpread = isForeign && !payingByCard && rateSelection.mode === 'split'
+    // 刷卡的开销不挂汇率簿条目（rateBookEntryId 置空），汇率就是这一笔自己的
+    const paymentCardId = payingByCard ? cardId : null
+    const cardChargePending = payingByCard && cardPending
+    if (payingByCard) {
+      rateBookEntryId = null
+    } else if (isForeign) {
       if (rateSelection.mode === 'existing') {
         rateBookEntryId = rateSelection.entryId
         // 只有这笔账"新用上"这个汇率条目才更新"最近使用"——编辑已有账目、汇率
@@ -491,6 +528,8 @@ export function AddExpensePage({
         splitType,
         daySpreadMode,
         rateSpread,
+        paymentCardId,
+        cardChargePending,
         itemizedFeePercent: itemizedFeePercentForSave,
         lastEditedBy: currentMemberId,
         updatedAt: Date.now(),
@@ -520,6 +559,8 @@ export function AddExpensePage({
         splitType,
         daySpreadMode,
         rateSpread,
+        paymentCardId,
+        cardChargePending,
         itemizedFeePercent: itemizedFeePercentForSave,
         deletedAt: null,
         createdAt: now,
@@ -710,22 +751,61 @@ export function AddExpensePage({
             <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">
               {t('addExpense.chooseRate', { from: currency, to: trip.homeCurrency })}
             </div>
-            <RateChipRow
-              tripId={trip.id}
-              currency={currency}
-              homeCurrency={trip.homeCurrency}
-              expenseAmount={numAmount}
-              value={rateSelection}
-              onChange={setRateSelection}
-            />
-            {(rateSelection.mode !== 'split' || rateSplitValid) && (
-              numRate <= 0 && showProblems ? (
-                <ProblemLine text={t('addExpense.needRate')} />
-              ) : (
-                <div className="text-[11px] text-muted mt-1.5">
-                  {numRate > 0 ? t('addExpense.rateApprox', { currency: trip.homeCurrency, amount: homeAmount.toFixed(2) }) : t('addExpense.rateMissing')}
-                </div>
-              )
+            <div className="flex bg-segment rounded-full p-[3px] gap-0.5 mb-2">
+              {(['cash', 'card'] as const).map((m) => {
+                const Icon = m === 'cash' ? Banknote : CreditCard
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setPayMethod(m)}
+                    className={`flex-1 rounded-full py-1.5 text-[12px] font-semibold flex items-center justify-center gap-1.5 ${
+                      payMethod === m ? 'bg-surface-strong text-on-dark' : 'text-soft'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" strokeWidth={2} />
+                    {t(m === 'cash' ? 'card.payCash' : 'card.payCard')}
+                  </button>
+                )
+              })}
+            </div>
+            {payMethod === 'card' ? (
+              <>
+                <CardPaymentPanel
+                  cards={pickableCards}
+                  selectedId={cardId}
+                  onSelect={setCardId}
+                  onCreate={handleCreateCard}
+                  charged={cardCharged}
+                  onChargedChange={setCardCharged}
+                  homeCurrency={trip.homeCurrency}
+                  derivedRate={numCharged > 0 && numAmount > 0 ? numCharged / numAmount : null}
+                  estimateRate={cardEstimateRate}
+                  estimateHome={homeAmount}
+                />
+                {showProblems && !cardId && <ProblemLine text={t('card.needCard')} />}
+                {showProblems && !!cardId && numRate <= 0 && <ProblemLine text={t('card.needCharged')} />}
+              </>
+            ) : (
+              <>
+                <RateChipRow
+                  tripId={trip.id}
+                  currency={currency}
+                  homeCurrency={trip.homeCurrency}
+                  expenseAmount={numAmount}
+                  value={rateSelection}
+                  onChange={setRateSelection}
+                />
+                {(rateSelection.mode !== 'split' || rateSplitValid) && (
+                  numRate <= 0 && showProblems ? (
+                    <ProblemLine text={t('addExpense.needRate')} />
+                  ) : (
+                    <div className="text-[11px] text-muted mt-1.5">
+                      {numRate > 0 ? t('addExpense.rateApprox', { currency: trip.homeCurrency, amount: homeAmount.toFixed(2) }) : t('addExpense.rateMissing')}
+                    </div>
+                  )
+                )}
+              </>
             )}
           </div>
         )}

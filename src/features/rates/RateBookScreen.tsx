@@ -17,6 +17,7 @@ import {
 } from '../../domain/rates'
 import { fetchReferenceRate } from '../../api/fx'
 import { ExchangeAmountFields } from './ExchangeAmountFields'
+import { CardSection } from './CardSection'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -231,7 +232,8 @@ export function RateBookScreen({
 
   // 三个嵌套弹层（confirmArchiveId 的 ConfirmDialog、saveAsNewFor/addOpen 的
   // CenteredModal）打开时暂停这里自己的Escape监听，避免一键关掉两层
-  useEscapeKey(!confirmArchiveId && !confirmDeleteId && !saveAsNewFor && !addOpen, onClose)
+  const [cardDialogOpen, setCardDialogOpen] = useState(false)
+  useEscapeKey(!confirmArchiveId && !confirmDeleteId && !saveAsNewFor && !addOpen && !cardDialogOpen, onClose)
 
   function openAddModal() {
     setAddCurrency('')
@@ -509,6 +511,8 @@ export function RateBookScreen({
             </div>
           </div>
         ))}
+
+        <CardSection tripId={trip.id} currentMemberId={currentMemberId} onDialogOpenChange={setCardDialogOpen} />
 
         {archived.length > 0 && (
           <div className="mt-2">
