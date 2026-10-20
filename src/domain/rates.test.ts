@@ -148,6 +148,48 @@ describe('tripBlendedRates（真实走Dexie）', () => {
     // (1000*0.04 + 2000*0.02) / 3000 = 80/3000
     expect(result[0].blendedRate).toBeCloseTo(80 / 3000, 6)
   })
+
+  // 刷卡记账（2026-10-20）：刷卡的开销按每笔自己的 homeAmount 算进来
+  function cardExpense(id: string, expenseAmount: number, homeAmount: number, over: Partial<Expense> = {}): Expense {
+    return { ...expense(id, null, expenseAmount), homeAmount, paymentCardId: 'c1', cardChargePending: false, ...over }
+  }
+
+  it('现金和刷卡都有：总数一起加权，另外分开给出现金/刷卡各自的汇率和笔数', async () => {
+    const cash = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '换的现金', rate: 0.0295, source: 'manual', createdBy: 'papa',
+    })
+    await db.expenses.bulkAdd([
+      expense('e1', cash.id, 38000),
+      cardExpense('k1', 15000, 444.15),
+      cardExpense('k2', 6000, 177.66, { cardChargePending: true }),
+    ])
+    const [r] = await tripBlendedRates('t1')
+    expect(r.blendedRate).toBeCloseTo((38000 * 0.0295 + 444.15 + 177.66) / 59000, 9)
+    expect(r.cash).toEqual({ rate: 0.0295, foreignAmount: 38000 })
+    expect(r.card?.rate).toBeCloseTo(621.81 / 21000, 9)
+    expect(r.card).toMatchObject({ foreignAmount: 21000, count: 2, estimatedCount: 1 })
+  })
+
+  it('只刷过卡的币种也会出现（以前汇率簿里没条目就整个不显示）', async () => {
+    await db.expenses.bulkAdd([cardExpense('k1', 10000, 30.5, { expenseCurrency: 'KRW' })])
+    const result = await tripBlendedRates('t1')
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ foreignCurrency: 'KRW', cash: null, card: { count: 1, estimatedCount: 0 } })
+    expect(result[0].blendedRate).toBeCloseTo(0.00305, 9)
+  })
+
+  it('不算：已删除的刷卡开销、被老版本改回现金汇率的（卡还挂着但有 rateBookEntryId）', async () => {
+    const cash = await createRateBookEntry({
+      tripId: 't1', foreignCurrency: 'JPY', label: '现金', rate: 0.03, source: 'manual', createdBy: 'papa',
+    })
+    await db.expenses.bulkAdd([
+      cardExpense('gone', 5000, 999, { deletedAt: 1 }),
+      { ...expense('switched', cash.id, 1000), paymentCardId: 'c1' },
+    ])
+    const [r] = await tripBlendedRates('t1')
+    expect(r.card).toBeNull()
+    expect(r.blendedRate).toBeCloseTo(0.03, 9)
+  })
 })
 
 describe('createRateBookEntry', () => {

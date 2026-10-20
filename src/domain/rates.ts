@@ -1,5 +1,6 @@
 import { db } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
+import { isCardExpense } from './paymentCards'
 import type { RateBookEntry } from '../types'
 
 // 汇率簿推荐排序：最近用过的排前面，用得越勤的在同等新近度下也更靠前。
@@ -131,7 +132,12 @@ export function deriveRateFromExchangeAmounts(homeAmount: string, foreignAmount:
 
 export interface TripBlendedRate {
   foreignCurrency: string
+  // 现金+刷卡一起，按实际花掉的外币加权
   blendedRate: number
+  // 分开看：现金那部分（按汇率簿条目的 rate 加权）、刷卡那部分（每笔银行实际扣的
+  // 本位币加总 / 外币加总）。这个币种没用过这种付款方式就是 null
+  cash: { rate: number; foreignAmount: number } | null
+  card: { rate: number; foreignAmount: number; count: number; estimatedCount: number } | null
 }
 
 // "这趟换汇换得怎么样"——按每个币种真正被开销用掉的外币金额，加权这些开销
@@ -143,22 +149,49 @@ export interface TripBlendedRate {
 // 之所以按"实际花费"而不是"实际换了多少钱"加权：换了但没花完的钱不该拉低/
 // 拉高这个数字——例子：机场换的汇率差但没花完，银行换的汇率好且全部花掉，
 // 按花费加权算出来的数字会更贴近"我这趟花的钱平均成本"这个用户真正关心的问题
+//
+// 2026-10-20 刷卡记账：刷卡的开销不挂汇率簿条目，每笔有自己的汇率（银行实际扣的
+// 本位币 / 外币），按它自己的 homeAmount 算进来。还没补真实扣款的那几笔先按估算的
+// homeAmount 算，estimatedCount 让界面能说一声"其中几笔是估的"
 export async function tripBlendedRates(tripId: string): Promise<TripBlendedRate[]> {
-  const [entries, usage] = await Promise.all([getAllRateBookEntries(tripId), usageByEntry(tripId)])
-  const byCurrency = new Map<string, { weightedSum: number; totalForeign: number }>()
+  const [entries, usage, expensesRaw] = await Promise.all([
+    getAllRateBookEntries(tripId),
+    usageByEntry(tripId),
+    db.expenses.where('tripId').equals(tripId).toArray(),
+  ])
+  const cashBy = new Map<string, { weightedSum: number; totalForeign: number }>()
   for (const e of entries) {
     const u = usage.get(e.id)
     if (!u || u.foreignAmount <= 0) continue
-    const acc = byCurrency.get(e.foreignCurrency) ?? { weightedSum: 0, totalForeign: 0 }
+    const acc = cashBy.get(e.foreignCurrency) ?? { weightedSum: 0, totalForeign: 0 }
     acc.weightedSum += u.foreignAmount * e.rate
     acc.totalForeign += u.foreignAmount
-    byCurrency.set(e.foreignCurrency, acc)
+    cashBy.set(e.foreignCurrency, acc)
   }
-  return [...byCurrency.entries()]
-    .map(([foreignCurrency, { weightedSum, totalForeign }]) => ({
-      foreignCurrency,
-      blendedRate: weightedSum / totalForeign,
-    }))
+  const cardBy = new Map<string, { home: number; foreign: number; count: number; estimated: number }>()
+  for (const e of expensesRaw) {
+    if (e.deletedAt || !isCardExpense(e) || !(e.expenseAmount > 0)) continue
+    const acc = cardBy.get(e.expenseCurrency) ?? { home: 0, foreign: 0, count: 0, estimated: 0 }
+    acc.home += e.homeAmount
+    acc.foreign += e.expenseAmount
+    acc.count += 1
+    if (e.cardChargePending) acc.estimated += 1
+    cardBy.set(e.expenseCurrency, acc)
+  }
+  const currencies = new Set([...cashBy.keys(), ...cardBy.keys()])
+  return [...currencies]
+    .map((foreignCurrency) => {
+      const c = cashBy.get(foreignCurrency)
+      const k = cardBy.get(foreignCurrency)
+      const home = (c?.weightedSum ?? 0) + (k?.home ?? 0)
+      const foreign = (c?.totalForeign ?? 0) + (k?.foreign ?? 0)
+      return {
+        foreignCurrency,
+        blendedRate: home / foreign,
+        cash: c ? { rate: c.weightedSum / c.totalForeign, foreignAmount: c.totalForeign } : null,
+        card: k ? { rate: k.home / k.foreign, foreignAmount: k.foreign, count: k.count, estimatedCount: k.estimated } : null,
+      }
+    })
     .sort((a, b) => a.foreignCurrency.localeCompare(b.foreignCurrency))
 }
 

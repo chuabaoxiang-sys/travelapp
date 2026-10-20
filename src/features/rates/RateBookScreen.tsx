@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation, Trans } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Check, X, Pencil, Archive, ArchiveRestore, Trash2, Plus } from 'lucide-react'
+import { Check, X, Pencil, Archive, ArchiveRestore, Trash2, Plus, Banknote, CreditCard } from 'lucide-react'
 import {
   getAllRateBookEntries,
   updateRateBookEntry,
@@ -14,6 +14,7 @@ import {
   deriveRateFromExchangeAmounts,
   tripBlendedRates,
   type RateEntryUsage,
+  type TripBlendedRate,
 } from '../../domain/rates'
 import { fetchReferenceRate } from '../../api/fx'
 import { ExchangeAmountFields } from './ExchangeAmountFields'
@@ -50,6 +51,8 @@ function RateSummaryRow({
   pct,
   lower,
   known,
+  cash,
+  card,
   t,
 }: {
   index: number
@@ -60,6 +63,8 @@ function RateSummaryRow({
   pct: number | null
   lower: boolean
   known: boolean
+  cash: TripBlendedRate['cash']
+  card: TripBlendedRate['card']
   t: TFunction
 }) {
   const numRef = useRef<HTMLSpanElement>(null)
@@ -168,6 +173,43 @@ function RateSummaryRow({
           </div>
         </div>
       )}
+      {/* 刷卡记账（2026-10-20）：现金和刷卡都用过的币种，下面分两格对比各自的平均汇率，
+          一眼看出这趟哪种更划算；只刷过卡的币种没得比，就说一声含几笔刷卡、几笔是估的 */}
+      {cash && card ? (
+        <div className="mt-3 pt-2.5 border-t border-dashed border-line grid grid-cols-2 gap-2.5">
+          <div>
+            <div className="text-[10.5px] text-muted flex items-center gap-1">
+              <Banknote className="w-3 h-3" strokeWidth={2} />
+              {t('rateBook.summary.cashLabel')}
+            </div>
+            <div className="font-serif-sc text-[13px] tabular mt-0.5">{formatRateAmount(cash.rate)}</div>
+            <div className="text-[10px] text-muted tabular mt-px">
+              {t('rateBook.summary.spent', { currency: foreignCurrency, amount: cash.foreignAmount.toLocaleString() })}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10.5px] text-muted flex items-center gap-1">
+              <CreditCard className="w-3 h-3" strokeWidth={2} />
+              {t('rateBook.summary.cardLabel')}
+            </div>
+            <div className="font-serif-sc text-[13px] tabular mt-0.5">{formatRateAmount(card.rate)}</div>
+            <div className="text-[10px] text-muted tabular mt-px">
+              {card.estimatedCount > 0
+                ? t('rateBook.summary.spentWithEstimated', { currency: foreignCurrency, amount: card.foreignAmount.toLocaleString(), count: card.estimatedCount })
+                : t('rateBook.summary.spent', { currency: foreignCurrency, amount: card.foreignAmount.toLocaleString() })}
+            </div>
+          </div>
+        </div>
+      ) : card ? (
+        <div className="mt-2.5 text-[10.5px] text-muted flex items-start gap-1.5">
+          <CreditCard className="w-3 h-3 flex-shrink-0 mt-[2px]" strokeWidth={2} />
+          <span>
+            {card.estimatedCount > 0
+              ? t('rateBook.summary.cardOnlyWithEstimated', { count: card.count, estimated: card.estimatedCount })
+              : t('rateBook.summary.cardOnly', { count: card.count })}
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -362,6 +404,8 @@ export function RateBookScreen({
                     pct={pct}
                     lower={lower}
                     known={known}
+                    cash={b.cash}
+                    card={b.card}
                     t={t}
                   />
                 )
