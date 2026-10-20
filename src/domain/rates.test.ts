@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { deriveRateFromExchangeAmounts, usageByEntry, createRateBookEntry, updateRateBookEntry, tripBlendedRates, findRateWithSameName } from './rates'
+import { deriveRateFromExchangeAmounts, usageByEntry, createRateBookEntry, updateRateBookEntry, tripBlendedRates, findRateWithSameName, sortRatesForPicking } from './rates'
 import { db } from '../db/dexie'
 import type { Expense, RateBookEntry } from '../types'
 
@@ -283,5 +283,50 @@ describe('findRateWithSameName', () => {
   it('名字还是空的（或只有空格）时不提醒', () => {
     expect(findRateWithSameName(entries, 'JPY', '')).toBeNull()
     expect(findRateWithSameName(entries, 'JPY', '   ')).toBeNull()
+  })
+})
+
+// 2026-10-20 用户要求"优先显示还未用完的汇率"：以前只按最近使用取前4个，还剩钱的换汇
+// 可能被挤出去。用东京北海道这趟真实的7个日元汇率做样例
+describe('sortRatesForPicking', () => {
+  function rate(id: string, lastUsedAt: number, exchanged: number | null): RateBookEntry {
+    return {
+      id, householdId: 'h1', tripId: 't1', foreignCurrency: 'JPY', label: id, rate: 0.026,
+      source: 'manual', createdBy: 'm1', lastUsedAt, archived: false, createdAt: 1,
+      exchangedHomeAmount: exchanged == null ? null : exchanged * 0.026, exchangedForeignAmount: exchanged,
+    }
+  }
+  const entries = [
+    rate('TNG VISA', 700, null),
+    rate('RHB', 600, null),
+    rate('Midvalley 10.03', 500, 80000),
+    rate('Midvalley 09.20', 400, 80000),
+    rate('RHB CC', 300, 27297),
+    rate('Wise 08.03', 200, 154088),
+    rate('待定', 100, null),
+  ]
+  const usage = new Map([
+    ['TNG VISA', { foreignAmount: 7800 }],
+    ['RHB', { foreignAmount: 1000 }],
+    ['RHB CC', { foreignAmount: 27297 }],
+    ['Wise 08.03', { foreignAmount: 150552 }],
+    ['待定', { foreignAmount: 56630 }],
+  ])
+
+  it('还有钱的换汇 → 没记金额的 → 已用完的；每一档里最近用过的在前', () => {
+    expect(sortRatesForPicking(entries, usage).map((e) => e.id)).toEqual([
+      'Midvalley 10.03', 'Midvalley 09.20', 'Wise 08.03',
+      'TNG VISA', 'RHB', '待定',
+      'RHB CC',
+    ])
+  })
+
+  it('刚好用完（剩0）算用完；不改动传进来的数组', () => {
+    const copy = [...entries]
+    const sorted = sortRatesForPicking(entries, new Map([['Midvalley 10.03', { foreignAmount: 80000 }]]))
+    // 这里只给了 Midvalley 10.03 的用量：它刚好用完排最后，RHB CC 没有用量、回到"还有钱"那一档
+    expect(sorted.at(-1)?.id).toBe('Midvalley 10.03')
+    expect(sorted.slice(0, 3).map((e) => e.id)).toEqual(['Midvalley 09.20', 'RHB CC', 'Wise 08.03'])
+    expect(entries).toEqual(copy)
   })
 })

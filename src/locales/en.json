@@ -165,6 +165,9 @@
     "foreignCurrencyFallback": "foreign"
   },
   "rateChip": {
+    "more_one": "{{count}} more",
+    "more_other": "{{count}} more",
+    "showLess": "Show less",
     "exhausted": "All used up",
     "remaining": "{{amount}} left",
     "newRate": "New rate",

@@ -162,6 +162,22 @@ export async function tripBlendedRates(tripId: string): Promise<TripBlendedRate[
     .sort((a, b) => a.foreignCurrency.localeCompare(b.foreignCurrency))
 }
 
+// 记账页选汇率时的排序（2026-10-20 用户要求"优先显示还未用完的汇率"）。分三档：
+//   0 还有钱没用完的换汇（记了换汇外币金额、还没花完）——最该用的就是它们
+//   1 没记换汇金额的（刷卡汇率、估的汇率）——没有"用完"的概念
+//   2 已经用完的换汇——放最后，还能选（有时候确实就是要按这批的汇率记），但不该挡在前面
+// 每一档里面按最近使用排。以前只按最近使用取前4个，还剩钱的换汇反而可能因为
+// 好久没用被挤出去，根本选不到
+export function rateEntryTier(entry: RateBookEntry, usedForeign: number): 0 | 1 | 2 {
+  if (entry.exchangedForeignAmount == null) return 1
+  return entry.exchangedForeignAmount - usedForeign > 0 ? 0 : 2
+}
+
+export function sortRatesForPicking(entries: RateBookEntry[], usage: Map<string, Pick<RateEntryUsage, 'foreignAmount'>>): RateBookEntry[] {
+  const tierOf = (e: RateBookEntry) => rateEntryTier(e, usage.get(e.id)?.foreignAmount ?? 0)
+  return [...entries].sort((a, b) => tierOf(a) - tierOf(b) || b.lastUsedAt - a.lastUsedAt)
+}
+
 // 同一趟行程、同一币种下允许有同名的汇率（0044 拿掉了数据库的唯一索引）：同一张卡
 // 每次刷的汇率都不一样，名字天然就该一样，界面上靠汇率数字区分。
 //

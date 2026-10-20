@@ -7,12 +7,14 @@ import {
   findRateWithSameName,
   suggestLabels,
   usageByEntry,
+  sortRatesForPicking,
   deriveRateFromExchangeAmounts,
   type RateEntryUsage,
 } from '../../domain/rates'
 import { fetchReferenceRate } from '../../api/fx'
 import { ExchangeAmountFields } from './ExchangeAmountFields'
 import { RateSameNameNote } from './RateSameNameNote'
+import { TwoRowChips } from './TwoRowChips'
 
 export type RateSplitAllocation = { rateBookEntryId: string; foreignAmount: number; rate: number }
 
@@ -47,8 +49,10 @@ export function RateChipRow({
 }) {
   const { t } = useTranslation()
   const entries = useLiveQuery(() => getRateBookEntries(tripId, currency), [tripId, currency]) ?? []
-  const topEntries = entries.slice(0, 4)
   const usageMap = useLiveQuery(() => usageByEntry(tripId), [tripId]) ?? new Map<string, RateEntryUsage>()
+  // 全部没归档的汇率，按"还有钱 / 没记金额 / 已用完"三档排（见 sortRatesForPicking）；
+  // 显示多少由 TwoRowChips 按两行收起，以前固定只取最近用过的前4个
+  const pickEntries = sortRatesForPicking(entries, usageMap)
   const [suggestions, setSuggestions] = useState<string[]>([])
 
   const [showNewForm, setShowNewForm] = useState(value.mode === 'new')
@@ -198,14 +202,26 @@ export function RateChipRow({
   return (
     <div>
       {!splitOpen && (
-        <div className="flex flex-wrap gap-1.5">
-          {topEntries.map((e) => {
+        <TwoRowChips>
+          {/* 「＋」放最前面：收起成两行时也永远看得见 */}
+          <button
+            type="button"
+            onClick={openNewForm}
+            title={t('rateChip.newRate')}
+            className={`rounded-full px-2.5 py-1.5 border flex items-center ${
+              showNewForm ? 'bg-plan/10 border-plan text-plan font-semibold' : 'border-plan text-plan'
+            }`}
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+          </button>
+          {pickEntries.map((e) => {
             const isSelected = value.mode === 'existing' && value.entryId === e.id
             const { remaining, exhausted } = remainingFor(e)
             return (
               <button
                 type="button"
                 key={e.id}
+                data-selected={isSelected}
                 onClick={() => { setShowNewForm(false); onChange({ mode: 'existing', entryId: e.id, rate: e.rate }) }}
                 className={`rounded-full px-2.5 py-1.5 text-[11.5px] border tabular flex flex-col items-start gap-0.5 ${
                   isSelected
@@ -224,17 +240,7 @@ export function RateChipRow({
               </button>
             )
           })}
-          <button
-            type="button"
-            onClick={openNewForm}
-            title={t('rateChip.newRate')}
-            className={`rounded-full px-2.5 py-1.5 border flex items-center ${
-              showNewForm ? 'bg-plan/10 border-plan text-plan font-semibold' : 'border-plan text-plan'
-            }`}
-          >
-            <Plus className="w-3.5 h-3.5" strokeWidth={2} />
-          </button>
-        </div>
+        </TwoRowChips>
       )}
 
       {!splitOpen && value.mode === 'existing' && (() => {
@@ -314,14 +320,15 @@ export function RateChipRow({
             <ChevronLeft className="w-3 h-3" strokeWidth={2.5} />
             {t('rateChip.backToSingle')}
           </button>
-          <div className="flex flex-wrap gap-1.5">
-            {topEntries.map((e) => {
+          <TwoRowChips>
+            {pickEntries.map((e) => {
               const isSelected = splitSelectedIds.includes(e.id)
               const { remaining, exhausted } = remainingFor(e)
               return (
                 <button
                   type="button"
                   key={e.id}
+                  data-selected={isSelected}
                   onClick={() => toggleSplitEntry(e.id)}
                   className={`rounded-full px-2.5 py-1.5 text-[11.5px] border tabular flex flex-col items-start gap-0.5 ${
                     isSelected
@@ -340,7 +347,7 @@ export function RateChipRow({
                 </button>
               )
             })}
-          </div>
+          </TwoRowChips>
 
           {splitSelectedIds.length > 0 && (
             <div className="flex flex-col gap-1.5 mt-2">

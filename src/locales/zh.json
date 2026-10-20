@@ -161,6 +161,8 @@
     "foreignCurrencyFallback": "外币"
   },
   "rateChip": {
+    "more_other": "更多（{{count}}）",
+    "showLess": "收起",
     "exhausted": "已用完",
     "remaining": "还剩 {{amount}}",
     "newRate": "新汇率",
