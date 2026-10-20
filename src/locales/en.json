@@ -193,6 +193,25 @@
     "deleteConfirmTitle": "Delete this card?",
     "deleteConfirmMessage": "No expenses use this card yet, so it will be removed for good."
   },
+  "cardCharge": {
+    "banner_one": "{{count}} card charge to fill in",
+    "banner_other": "{{count}} card charges to fill in",
+    "bannerGo": "Fill in",
+    "pendingTag": "Estimate",
+    "estimateMark": "est.",
+    "title": "Fill in card charges",
+    "subtitle": "Enter what your bank actually charged in {{prefix}}. The rate is worked out for you",
+    "groupTitle_one": "{{name}} · {{count}} charge",
+    "groupTitle_other": "{{name}} · {{count}} charges",
+    "rowMeta": "{{date}} · {{foreign}}",
+    "rowEstimate": "est. {{prefix}} {{estimate}}",
+    "settledLocked": "Already settled, can't be changed",
+    "inputPlaceholder": "Charged",
+    "save_one": "Save {{count}} charge",
+    "save_other": "Save {{count}} charges",
+    "saveNone": "Fill one in to save",
+    "allDone": "All filled in"
+  },
   "rateChip": {
     "more_one": "{{count}} more",
     "more_other": "{{count}} more",
@@ -1307,7 +1326,7 @@
       "steps": [
         { "title": "Log an exchange rate", "desc": "From Ledger, tap the icon top-right to open your rate book, then \"+\" — use the reference rate or enter what you actually got." },
         { "title": "Cash and cards, separately", "desc": "Log one rate for each batch of cash you exchange. Cards don't need a rate: add your card (e.g. TNG VISA) under Cards at the bottom of the rate book, and use it on every trip." },
-        { "title": "Use a rate when logging", "desc": "For a foreign-currency expense, choose Cash and pick a saved rate, or choose Card, pick the card, and enter what your bank charged. That expense gets its own rate. Not sure yet? Leave it blank and it's estimated for now." },
+        { "title": "Use a rate when logging", "desc": "For a foreign-currency expense, choose Cash and pick a saved rate, or choose Card, pick the card, and enter what your bank charged. That expense gets its own rate. Not sure yet? Leave it blank and it's estimated for now, then tap Fill in at the top of Ledger to add the real charges in one go." },
         { "title": "See how your exchange went", "desc": "A weighted rate based on what you actually spent, compared against today's market rate." }
       ]
     },

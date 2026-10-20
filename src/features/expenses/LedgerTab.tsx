@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Wallet } from 'lucide-react'
+import { ChevronRight, Wallet, CreditCard } from 'lucide-react'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
@@ -11,6 +11,9 @@ import { relativeTime } from '../../lib/relativeTime'
 import type { ResolvedLocale } from '../../lib/locale'
 import { AddExpensePage } from './AddExpensePage'
 import { RateBookScreen } from '../rates/RateBookScreen'
+import { CardChargeSheet } from '../rates/CardChargeSheet'
+import { isPendingCardExpense } from '../../domain/cardCharges'
+import { getPaymentCards, isCardExpense } from '../../domain/paymentCards'
 import { getOverallBudget, getCategoryBudgets, overBudgetCategories } from '../../domain/budgets'
 import { computeBalances } from '../../domain/splits'
 import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
@@ -105,6 +108,10 @@ export function LedgerTab({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [rateBookOpen, setRateBookOpen] = useState(false)
   const [budgetOpen, setBudgetOpen] = useState(false)
+  // 刷卡待补扣款（2026-10-20）：刷卡当下没填实际扣了多少、按估算先记的那几笔
+  const pendingCardExpenses = expenses.filter(isPendingCardExpense)
+  const paymentCards = useLiveQuery(() => getPaymentCards()) ?? []
+  const [cardChargeOpen, setCardChargeOpen] = useState(false)
   // 日期条跳转用——scrollAreaRef是滚动容器本身，必须是position:relative，
   // 不然offsetTop会算到再往上第一个"有定位"的祖先节点上（很多情况下是body），
   // 跳转位置会整个错掉，这是做mockup原型时真的踩过的坑
@@ -131,6 +138,7 @@ export function LedgerTab({
   // 汇率簿同理——之前完全没接返回键，安卓上打开汇率簿按返回键会直接退出整个APP
   useBackDismiss(rateBookOpen, () => setRateBookOpen(false))
   useBackDismiss(budgetOpen, () => setBudgetOpen(false))
+  useBackDismiss(cardChargeOpen, () => setCardChargeOpen(false))
 
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
@@ -305,6 +313,20 @@ export function LedgerTab({
         </div>
       )}
 
+      {pendingCardExpenses.length > 0 && (
+        <button
+          onClick={() => setCardChargeOpen(true)}
+          className="w-full flex items-center gap-2 rounded-xl bg-spend/10 text-spend-text px-3 py-2.5 text-[12.5px] font-semibold text-left"
+        >
+          <CreditCard className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
+          <span className="flex-1 min-w-0">{t('cardCharge.banner', { count: pendingCardExpenses.length })}</span>
+          <span className="flex items-center gap-0.5 text-[12px] flex-shrink-0">
+            {t('cardCharge.bannerGo')}
+            <ChevronRight className="w-3.5 h-3.5" strokeWidth={2} />
+          </span>
+        </button>
+      )}
+
       {/* 日期条：只在有不止一天记录时才出现，一天的账目本来就不用跳。
           虚线框表示这天不在行程正式日期范围内（比如出发前很早就买好的机票）——
           这类账目确实存在，不能因为不在行程日期里就没有入口跳过去看 */}
@@ -359,6 +381,8 @@ export function LedgerTab({
                 const isPersonal = e.splitType === 'none'
                 const myShare = myShareOf(e.id, splits, currentMemberId)
                 const isNew = !!highlightSince && e.createdAt > highlightSince && e.recordedBy !== currentMemberId
+                const card = isCardExpense(e) ? paymentCards.find((c) => c.id === e.paymentCardId) : undefined
+                const pendingCharge = isPendingCardExpense(e)
                 return (
                   // 用 div+role="button" 而不是原生 <button>——账目行现在要塞进一个
                   // 独立可点的"盖章"小组件，<button>套<button>是非法的HTML嵌套，
@@ -379,7 +403,12 @@ export function LedgerTab({
                           （"住宿现付"）具体得多，好几笔同分类账目才不会长得一模一样，
                           真的什么都没有才退到分类名兜底 */}
                       <div className="text-[13.5px] font-medium truncate">{e.description || linkedItem?.title || categoryLabel(cat, t)}</div>
-                      <div className="text-[11px] text-muted mt-0.5 truncate">{categoryLabel(cat, t)}</div>
+                      <div className="text-[11px] text-muted mt-0.5 flex items-center gap-1.5 min-w-0">
+                        <span className="truncate">{categoryLabel(cat, t)}{card ? ` · ${card.name}` : ''}</span>
+                        {pendingCharge && (
+                          <span className="text-[9.5px] font-bold px-1.5 py-px rounded-full bg-spend/[.12] text-spend-text flex-shrink-0">{t('cardCharge.pendingTag')}</span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 mt-1 min-w-0">
                         <Avatar member={payer} size={16} />
                         <span className="text-[11px] text-muted truncate">
@@ -417,7 +446,10 @@ export function LedgerTab({
                         这种现实中不太会出现的大额单笔账目也只要93px，100px留了余量，能稳稳
                         盖住这个APP实际会出现的所有金额，徽标位置不再随金额宽度变化 */}
                     <div className="text-right flex-shrink-0 w-[100px]">
-                      <div className="text-[15px] tabular">{formatMoney(e.homeAmount, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}</div>
+                      <div className="text-[15px] tabular">
+                        {formatMoney(e.homeAmount, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency)}
+                        {pendingCharge && <span className="text-[10px] text-muted font-semibold ml-0.5">{t('cardCharge.estimateMark')}</span>}
+                      </div>
                       {e.expenseCurrency !== trip.homeCurrency && (
                         <div className="text-[10px] text-muted tabular">{e.expenseCurrency} {e.expenseAmount}</div>
                       )}
@@ -451,6 +483,16 @@ export function LedgerTab({
       )}
 
       {budgetOpen && <BudgetSheet trip={trip} onClose={() => setBudgetOpen(false)} />}
+
+      {cardChargeOpen && (
+        <CardChargeSheet
+          trip={trip}
+          pending={pendingCardExpenses}
+          cards={paymentCards}
+          categories={categories}
+          onClose={() => setCardChargeOpen(false)}
+        />
+      )}
     </div>
   )
 }
