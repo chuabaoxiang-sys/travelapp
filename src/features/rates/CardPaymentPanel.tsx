@@ -18,6 +18,7 @@ export function CardPaymentPanel({
   derivedRate,
   estimateRate,
   estimateHome,
+  paidHint,
 }: {
   cards: PaymentCard[]
   selectedId: string | null
@@ -31,6 +32,8 @@ export function CardPaymentPanel({
   // 没填时用来估的汇率，和按它估出来的本位币金额
   estimateRate: number | null
   estimateHome: number
+  // 有优惠时提示「扣的是实付那个数」，比如「实付 JPY 14,000」
+  paidHint?: string
 }) {
   const { t } = useTranslation()
   const [creating, setCreating] = useState(false)
@@ -94,7 +97,7 @@ export function CardPaymentPanel({
       {selectedId && (
         <>
           <label className="mt-2.5 flex items-center gap-2 rounded-lg border border-line bg-paper px-2.5 py-1.5 focus-within:border-plan">
-            <span className="text-[12px] text-soft whitespace-nowrap">{t('card.chargedLabel', { prefix: homePrefix })}</span>
+            <span className="text-[12px] text-soft whitespace-nowrap">{t('card.chargedLabel', { prefix: homePrefix })}{paidHint ? <span className="text-muted"> · {paidHint}</span> : null}</span>
             <input
               value={charged}
               onChange={(e) => onChargedChange(e.target.value)}

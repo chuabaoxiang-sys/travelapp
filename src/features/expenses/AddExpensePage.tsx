@@ -93,7 +93,8 @@ export function AddExpensePage({
   // 不在这份chip列表里时，直接展开手动输入框，而不是让chip显示一个选不中的状态
   const chipCurrencies = Array.from(new Set([trip.homeCurrency, ...(trip.currencies ?? [])]))
   const [manualCurrencyOpen, setManualCurrencyOpen] = useState(!chipCurrencies.includes(currency))
-  const [amount, setAmount] = useState(initial ? String(initial.expenseAmount) : '')
+  // 金额框填的是收据上的原价；有优惠时，存进数据库的 expenseAmount 是实付 = 原价 − 优惠
+  const [amount, setAmount] = useState(initial ? String(round2(initial.expenseAmount + (initial.discountAmount ?? 0))) : '')
   const [rateSelection, setRateSelection] = useState<RateSelection>(
     initial?.rateBookEntryId ? { mode: 'existing', entryId: initial.rateBookEntryId, rate: initial.rateUsed } : { mode: 'none' },
   )
@@ -300,7 +301,10 @@ export function AddExpensePage({
   const visibleCategories = categories
   const isForeign = currency !== trip.homeCurrency
   const homeLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
-  const numAmount = parseFloat(amount) || 0
+  const numListPrice = parseFloat(amount) || 0
+  // 优惠 ≥ 原价时实付会变成 0 或负数——当作"金额没填对"拦下来
+  const discountTooBig = numDiscount > 0 && numListPrice > 0 && numDiscount >= numListPrice
+  const numAmount = numDiscount > 0 ? Math.max(0, round2(numListPrice - numDiscount)) : numListPrice
   // 拆多笔汇率时，rateUsed 是加权平均（各批本位币金额加总 / 开销外币总额），
   // homeAmount 直接是各批本位币金额的加总——不是"总外币×一个混合汇率"反推出来的
   const splitTotalForeign = rateSelection.mode === 'split'
@@ -758,6 +762,9 @@ export function AddExpensePage({
           ref={amountRef}
           className={`rounded-2xl border-[1.5px] bg-card px-3.5 py-2.5 ${showProblems && !numAmount ? 'border-negative' : 'border-plan'}`}
         >
+          {numDiscount > 0 && (
+            <div className="text-[10.5px] tracking-widest uppercase text-muted">{t('addExpense.listPriceLabel')}</div>
+          )}
           <input
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -802,8 +809,35 @@ export function AddExpensePage({
               className="mt-1.5 w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-sm uppercase outline-none focus:border-plan disabled:opacity-60"
             />
           )}
+          {/* 优惠（2026-11-07 挪进金额卡）：照收据顺序 原价 → 优惠 → 实付；花费、预算、分摊都按实付算 */}
+          <label className="block border-t border-line mt-2.5 pt-2">
+            <span className="text-[10.5px] tracking-widest uppercase text-muted mb-1 flex items-center gap-1.5">
+              <Tag className="w-[13px] h-[13px] text-positive" strokeWidth={1.8} />
+              {t('addExpense.discountLabel')}
+            </span>
+            <span className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 focus-within:border-plan">
+              <input
+                value={discount}
+                inputMode="decimal"
+                disabled={settled}
+                onChange={(e) => setDiscount(e.target.value)}
+                placeholder={t('addExpense.discountPlaceholder')}
+                className="flex-1 min-w-0 bg-transparent text-[15px] font-semibold outline-none tabular disabled:opacity-60"
+              />
+              <span className="text-[12px] text-muted flex-shrink-0">{currency}</span>
+            </span>
+          </label>
+          {numDiscount > 0 && numAmount > 0 && (
+            <div className="flex items-baseline justify-between border-t border-line mt-2.5 pt-2">
+              <span className="text-[12.5px] text-soft">
+                {t('addExpense.paidLabel')}
+                {isForeign && numRate > 0 ? <span className="text-muted"> · {t('addExpense.discountSaved', { amount: formatMoney(round2(numDiscount * numRate), homeLabel) })}</span> : null}
+              </span>
+              <span className="text-[17px] font-bold tabular">{currency} {numAmount.toLocaleString()}</span>
+            </div>
+          )}
         </div>
-        {showProblems && !numAmount && <ProblemLine text={t('addExpense.needAmount')} />}
+        {showProblems && !numAmount && <ProblemLine text={t(discountTooBig ? 'addExpense.discountTooBig' : 'addExpense.needAmount')} />}
 
         {isForeign && (
           <div ref={rateRef} className={`mt-2 ${settled ? 'pointer-events-none opacity-60' : ''}`}>
@@ -841,6 +875,7 @@ export function AddExpensePage({
                   derivedRate={numCharged > 0 && numAmount > 0 ? numCharged / numAmount : null}
                   estimateRate={cardEstimateRate}
                   estimateHome={homeAmount}
+                  paidHint={numDiscount > 0 && numAmount > 0 ? `${t('addExpense.paidLabel')} ${currency} ${numAmount.toLocaleString()}` : undefined}
                 />
                 {showProblems && !cardId && <ProblemLine text={t('card.needCard')} />}
                 {showProblems && !!cardId && numRate <= 0 && <ProblemLine text={t('card.needCharged')} />}
@@ -922,28 +957,6 @@ export function AddExpensePage({
               placeholder={t('addExpense.notePlaceholder')}
               className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm outline-none focus:border-plan"
             />
-
-            {/* 优惠（2026-11-07）：只记"省了多少"，上面的金额照旧填实付，不影响花费和分摊 */}
-            <label className="block">
-              <span className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1 flex items-center gap-1.5">
-                <Tag className="w-[13px] h-[13px] text-positive" strokeWidth={1.8} />
-                {t('addExpense.discountLabel')}
-              </span>
-              <span className="flex items-center gap-2 rounded-xl border border-line bg-card px-3 py-2 focus-within:border-plan">
-                <input
-                  value={discount}
-                  inputMode="decimal"
-                  onChange={(e) => setDiscount(e.target.value)}
-                  placeholder={t('addExpense.discountPlaceholder')}
-                  className="flex-1 min-w-0 bg-transparent text-sm outline-none tabular"
-                />
-                <span className="text-[12px] text-muted flex-shrink-0">
-                  {currency}
-                  {numDiscount > 0 && isForeign && numRate > 0 ? ` · ${t('addExpense.discountSaved', { amount: formatMoney(round2(numDiscount * numRate), homeLabel) })}` : ''}
-                </span>
-              </span>
-              {numDiscount > 0 && <span className="block text-[11px] text-muted mt-1">{t('addExpense.discountHint')}</span>}
-            </label>
 
             <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.payerLabel')}</div>
             <div className="flex flex-wrap gap-1.5">
