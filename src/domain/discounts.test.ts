@@ -35,3 +35,18 @@ describe('discountSummary', () => {
     expect(discountSummary(list)).toEqual({ total: 67.15, count: 2 })
   })
 })
+
+describe('discountSummary 跟代购（分给代购的人那部分不算）', () => {
+  // 实付 ¥14,000 = RM374.59，优惠 ¥2,000（≈ RM53.51），朋友的东西原价 ¥15,000（占原价 15/16）
+  const base = { id: 'p', expenseAmount: 14000, homeAmount: 374.59, discountAmount: 2000 }
+  const splits = [{ expenseId: 'p', proxyName: '妈妈', proxyAmount: 15000, deletedAt: null }]
+  it('默认不分给代购的人：全额算', () => {
+    expect(discountSummary([expense(base)], splits).total).toBe(53.51)
+  })
+  it('分给代购的人：只算你们自己那 1/16', () => {
+    expect(discountSummary([expense({ ...base, proxyDiscountShared: true })], splits).total).toBe(3.34)
+  })
+  it('分给了但这笔没有代购行：全额算', () => {
+    expect(discountSummary([expense({ ...base, proxyDiscountShared: true })], []).total).toBe(53.51)
+  })
+})

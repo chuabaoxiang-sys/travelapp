@@ -140,7 +140,7 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
     unsettledCount: transfers.length,
     unsettledTotal: round2(transfers.reduce((s, t) => s + t.amount, 0)),
     satisfaction: { moodCurveMe, moodCurveAll, expenseStatMe, expenseStatAll },
-    discount: discountSummary(tripExpenses),
+    discount: discountSummary(tripExpenses, tripSplits),
     cashbackTotal,
     proxyTotal,
     actual,
