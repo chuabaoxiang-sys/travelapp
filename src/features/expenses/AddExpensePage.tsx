@@ -18,7 +18,7 @@ import { saveExpenseSplits, isProxySplit, resolveProxyShares, proxyReceivable } 
 import { recentProxyNames } from '../../domain/proxies'
 import { saveDayAllocations, deleteDayAllocations } from '../../domain/dayAllocations'
 import { saveRateAllocations, deleteRateAllocations } from '../../domain/rateAllocations'
-import { saveItemizedExpense, deleteLineItems, getLineItemsForExpense, type LoadedLineItem } from '../../domain/lineItems'
+import { saveItemizedExpense, deleteLineItems, getLineItemsForExpense, resolveItemizedParts, type LoadedLineItem } from '../../domain/lineItems'
 import { isExpenseSettled } from '../../domain/settlements'
 import { categoryColor } from '../../lib/categoryColors'
 import { formatMoney, round2 } from '../../lib/money'
@@ -211,8 +211,11 @@ export function AddExpensePage({
   // 逐项拆账——每个子项自己的名称+金额+勾选的成员。金额、服务费都用字符串存，
   // 跟"自定义金额"那处同一个理由：避免"12."这种还没打完的中间态被强行转数字。
   // 新记账默认一个空子项，不强迫用户先想好要拆几项
-  interface LocalLineItem { id: string; name: string; amount: string; memberIds: string[] }
-  const [lineItems, setLineItems] = useState<LocalLineItem[]>([{ id: crypto.randomUUID(), name: '', amount: '', memberIds: [] }])
+  interface LocalLineItem { id: string; name: string; amount: string; memberIds: string[]; proxyNames: string[] }
+  const [lineItems, setLineItems] = useState<LocalLineItem[]>([{ id: crypto.randomUUID(), name: '', amount: '', memberIds: [], proxyNames: [] }])
+  // 逐项拆账里「＋ 代购」正在给哪一项加新名字
+  const [addingProxyFor, setAddingProxyFor] = useState<string | null>(null)
+  const [newProxyName, setNewProxyName] = useState('')
   const [feePercent, setFeePercent] = useState('0')
   const itemizedInitialized = useRef(false)
   const existingLineItems = useLiveQuery(
@@ -226,7 +229,7 @@ export function AddExpensePage({
     if (itemizedInitialized.current) return
     if (initial?.splitType !== 'itemized') { itemizedInitialized.current = true; return }
     if (!existingLineItems.length) return
-    setLineItems(existingLineItems.map((li) => ({ id: li.id, name: li.name, amount: String(li.amount), memberIds: li.memberIds })))
+    setLineItems(existingLineItems.map((li) => ({ id: li.id, name: li.name, amount: String(li.amount), memberIds: li.memberIds, proxyNames: li.proxyNames })))
     setFeePercent(String(initial.itemizedFeePercent ?? 0))
     itemizedInitialized.current = true
   }, [initial, existingLineItems])
@@ -251,7 +254,8 @@ export function AddExpensePage({
   const proxyInitialized = useRef(false)
   useEffect(() => {
     if (proxyInitialized.current) return
-    if (!initial) { proxyInitialized.current = true; return }
+    // 逐项拆账的代购行是从每一项里勾的名字算出来的（0051），不回填到单独的「代购」页
+    if (!initial || initial.splitType === 'itemized') { proxyInitialized.current = true; return }
     if (!existingAllSplits.length) return
     setProxyLines(existingAllSplits.filter(isProxySplit).map((s) => ({
       id: s.id, name: s.proxyName ?? '', amount: String(s.proxyAmount ?? ''), repaidAt: s.proxyRepaidAt ?? null,
@@ -390,7 +394,25 @@ export function AddExpensePage({
   // 每一项最后摊到的本位币（含服务费、扣掉优惠）：homeAmount × 这项含服务费 / 原价
   const itemHomeShare = (amount: number) =>
     numListPrice > 0 ? round2((homeAmount * amount * (1 + (parseFloat(feePercent) || 0) / 100)) / numListPrice) : 0
-  const itemsMissingMembers = lineItems.some((it) => (parseFloat(it.amount) || 0) > 0 && it.memberIds.length === 0)
+  const itemsMissingMembers = lineItems.some((it) => (parseFloat(it.amount) || 0) > 0 && it.memberIds.length === 0 && it.proxyNames.length === 0)
+  // 逐项拆账 + 代购（2026-11-08）：每项里勾的代购的人，跟单独记代购时同一套口径（成本按原价比例、
+  // 优惠默认不分给他们）
+  const itemizedProxyParts = usingItemized
+    ? resolveItemizedParts(
+        lineItems.map((it) => ({ name: it.name, amount: parseFloat(it.amount) || 0, memberIds: it.memberIds, proxyNames: it.proxyNames })),
+        parseFloat(feePercent) || 0,
+        homeAmount,
+      ).filter((p) => p.kind === 'proxy')
+    : []
+  const itemizedHasProxies = itemizedProxyParts.length > 0
+  const itemizedProxyRows = itemizedProxyParts.map((p) => ({
+    name: p.key,
+    cost: p.share,
+    receivable: proxyReceivable({ shareAmount: p.share, proxyAmount: p.weight }, { homeAmount, expenseAmount: numAmount, discountAmount: numDiscount, proxyDiscountShared }),
+  }))
+  const itemizedProxyReceivable = round2(itemizedProxyRows.reduce((s, r) => s + r.receivable, 0))
+  const itemizedProxyCost = round2(itemizedProxyRows.reduce((s, r) => s + r.cost, 0))
+  const itemProxyNameChoices = [...new Set([...proxyNameSuggestions, ...lineItems.flatMap((it) => it.proxyNames)])]
   const itemizedValid = !usingItemized || (Math.abs(itemizedDiff) < 0.01 && !itemsMissingMembers && lineItems.length > 0)
 
   const proxyProblem = !hasProxies
@@ -408,13 +430,30 @@ export function AddExpensePage({
               : null
 
   function addLineItem() {
-    setLineItems((prev) => [...prev, { id: crypto.randomUUID(), name: '', amount: '', memberIds: [] }])
+    setLineItems((prev) => [...prev, { id: crypto.randomUUID(), name: '', amount: '', memberIds: [], proxyNames: [] }])
   }
   function removeLineItem(id: string) {
     setLineItems((prev) => (prev.length > 1 ? prev.filter((it) => it.id !== id) : prev))
   }
   function updateLineItem(id: string, patch: Partial<LocalLineItem>) {
     setLineItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
+  }
+  function toggleLineItemProxy(id: string, name: string) {
+    setLineItems((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? { ...it, proxyNames: it.proxyNames.includes(name) ? it.proxyNames.filter((n) => n !== name) : [...it.proxyNames, name] }
+          : it,
+      ),
+    )
+  }
+  function confirmNewItemProxy(id: string) {
+    const name = newProxyName.trim()
+    if (name) {
+      setLineItems((prev) => prev.map((it) => (it.id === id && !it.proxyNames.includes(name) ? { ...it, proxyNames: [...it.proxyNames, name] } : it)))
+    }
+    setNewProxyName('')
+    setAddingProxyFor(null)
   }
   function toggleLineItemMember(id: string, memberId: string) {
     setLineItems((prev) =>
@@ -604,7 +643,7 @@ export function AddExpensePage({
         cardChargePending,
         discountAmount: numDiscount > 0 ? round2(numDiscount) : null,
         cashbackAmount: payingByCard && (parseFloat(cardCashback) || 0) > 0 ? round2(parseFloat(cardCashback)) : null,
-        proxyDiscountShared: numDiscount > 0 && hasProxies ? proxyDiscountShared : false,
+        proxyDiscountShared: numDiscount > 0 && (hasProxies || itemizedHasProxies) ? proxyDiscountShared : false,
         itemizedFeePercent: itemizedFeePercentForSave,
         lastEditedBy: currentMemberId,
         updatedAt: Date.now(),
@@ -638,7 +677,7 @@ export function AddExpensePage({
         cardChargePending,
         discountAmount: numDiscount > 0 ? round2(numDiscount) : null,
         cashbackAmount: payingByCard && (parseFloat(cardCashback) || 0) > 0 ? round2(parseFloat(cardCashback)) : null,
-        proxyDiscountShared: numDiscount > 0 && hasProxies ? proxyDiscountShared : false,
+        proxyDiscountShared: numDiscount > 0 && (hasProxies || itemizedHasProxies) ? proxyDiscountShared : false,
         itemizedFeePercent: itemizedFeePercentForSave,
         deletedAt: null,
         createdAt: now,
@@ -648,9 +687,9 @@ export function AddExpensePage({
 
     if (usingItemized) {
       const itemsForSave = lineItems
-        .filter((it) => (parseFloat(it.amount) || 0) > 0 && it.memberIds.length > 0)
-        .map((it) => ({ name: it.name.trim() || t('addExpense.itemizedPage.unnamedItem'), amount: parseFloat(it.amount) || 0, memberIds: it.memberIds }))
-      await saveItemizedExpense(expenseId, itemsForSave, parseFloat(feePercent) || 0, homeAmount)
+        .filter((it) => (parseFloat(it.amount) || 0) > 0 && (it.memberIds.length > 0 || it.proxyNames.length > 0))
+        .map((it) => ({ name: it.name.trim() || t('addExpense.itemizedPage.unnamedItem'), amount: parseFloat(it.amount) || 0, memberIds: it.memberIds, proxyNames: it.proxyNames }))
+      await saveItemizedExpense(expenseId, itemsForSave, parseFloat(feePercent) || 0, homeAmount, payer)
     } else {
       // 从"逐项拆账"改成别的分摊方式时，把旧的子项明细清掉，不留占地方的残留数据
       if (initial?.splitType === 'itemized') await deleteLineItems(expenseId)
@@ -1116,7 +1155,11 @@ export function AddExpensePage({
                   <span className="truncate">
                     {showProblems && proxyProblem
                       ? proxyProblem
-                      : usingItemized && !hasProxies ? t('addExpense.proxyPage.itemizedBlocked') : proxySummaryText}
+                      : usingItemized && !hasProxies
+                        ? itemizedHasProxies
+                          ? t('addExpense.proxyPage.fromItemized', { names: itemizedProxyRows.map((r) => r.name).join('、') })
+                          : t('addExpense.proxyPage.itemizedBlocked')
+                        : proxySummaryText}
                   </span>
                   {!settled && <ChevronRight className="w-3.5 h-3.5 text-muted flex-shrink-0" strokeWidth={1.8} />}
                 </span>
@@ -1340,6 +1383,52 @@ export function AddExpensePage({
                             </button>
                           )
                         })}
+                        {/* 代购的人：虚线框，跟同行成员用一条竖线隔开 */}
+                        {!hasProxies && (
+                          <>
+                            <span className="w-px h-4 bg-line self-center" aria-hidden="true" />
+                            {itemProxyNameChoices.map((n) => {
+                              const checked = item.proxyNames.includes(n)
+                              return (
+                                <button
+                                  type="button"
+                                  key={n}
+                                  onClick={() => toggleLineItemProxy(item.id, n)}
+                                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] border border-dashed ${
+                                    checked ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-paper border-line text-soft'
+                                  }`}
+                                >
+                                  <Gift className="w-3 h-3" strokeWidth={2} />
+                                  {n}
+                                </button>
+                              )
+                            })}
+                            {addingProxyFor === item.id ? (
+                              <span className="flex items-center gap-1">
+                                <input
+                                  autoFocus
+                                  value={newProxyName}
+                                  onChange={(e) => setNewProxyName(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmNewItemProxy(item.id) } }}
+                                  placeholder={t('addExpense.proxyPage.namePlaceholder')}
+                                  className="w-[96px] rounded-full border border-dashed border-plan bg-paper px-2.5 py-1 text-[11.5px] outline-none"
+                                />
+                                <button type="button" onClick={() => confirmNewItemProxy(item.id)} className="text-plan p-1" title={t('rateBook.save')} aria-label={t('rateBook.save')}>
+                                  <Check className="w-4 h-4" strokeWidth={2} />
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => { setAddingProxyFor(item.id); setNewProxyName('') }}
+                                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] border border-dashed border-plan text-plan"
+                              >
+                                <Plus className="w-3 h-3" strokeWidth={2} />
+                                {t('addExpense.itemizedPage.addProxy')}
+                              </button>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1367,6 +1456,45 @@ export function AddExpensePage({
                   />
                   <span className="text-[12.5px] text-muted flex-shrink-0">%</span>
                 </div>
+
+                {itemizedHasProxies && numDiscount > 0 && (
+                  <>
+                    <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.proxyPage.discountHeading')}</div>
+                    <div className="flex bg-segment rounded-xl p-[3px]">
+                      {([false, true] as const).map((shared) => (
+                        <button
+                          key={String(shared)}
+                          type="button"
+                          onClick={() => setProxyDiscountShared(shared)}
+                          className={`flex-1 py-[7px] text-[12.5px] rounded-[10px] ${proxyDiscountShared === shared ? 'bg-surface-strong text-on-dark font-semibold' : 'text-soft'}`}
+                        >
+                          {t(shared ? 'addExpense.proxyPage.discountShared' : 'addExpense.proxyPage.discountNotShared')}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {itemizedHasProxies && homeAmount > 0 && (
+                  <div className="bg-card border border-line rounded-2xl px-3.5 py-3 mt-3 flex flex-col gap-1.5 tabular">
+                    {itemizedProxyRows.map((r) => (
+                      <div key={r.name} className="flex justify-between gap-2 text-[12.5px]">
+                        <span className="text-muted">{t('addExpense.itemizedPage.proxyOwes', { name: r.name })}</span>
+                        <span>{formatMoney(r.receivable, homeLabel)}</span>
+                      </div>
+                    ))}
+                    {itemizedProxyReceivable - itemizedProxyCost > 0.004 && (
+                      <div className="flex justify-between gap-2 text-[12.5px] text-positive">
+                        <span>{t('addExpense.proxyPage.payerGain', { name: payerName })}</span>
+                        <span>{formatMoney(round2(itemizedProxyReceivable - itemizedProxyCost), homeLabel)}</span>
+                      </div>
+                    )}
+                    <div className="h-px bg-line" />
+                    <div className="flex justify-between gap-2 text-[13px] font-semibold">
+                      <span>{t('addExpense.itemizedPage.travelersPart')}</span>
+                      <span>{formatMoney(round2(homeAmount - itemizedProxyCost), homeLabel)}</span>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="flex items-center gap-2 mt-3 text-[12px] text-muted bg-card border border-dashed border-line rounded-xl px-3 py-2.5">

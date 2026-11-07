@@ -330,6 +330,8 @@ export interface ExpenseLineItem {
   name: string
   amount: number
   orderIndex: number
+  // 0051：这一项勾的代购的人（名字）
+  proxyNames?: string[]
   deletedAt: number | null
 }
 

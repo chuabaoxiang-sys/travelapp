@@ -640,6 +640,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       name: i.name,
       amount: i.amount,
       order_index: i.orderIndex,
+      proxy_names: i.proxyNames ?? [],
       deleted_at: isoOrNull(i.deletedAt),
     }),
     fromRemote: (r) => ({
@@ -649,6 +650,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       name: r.name,
       amount: num(r.amount),
       orderIndex: r.order_index,
+      proxyNames: Array.isArray(r.proxy_names) ? r.proxy_names : [],
       deletedAt: msOrNull(r.deleted_at),
     }),
   },

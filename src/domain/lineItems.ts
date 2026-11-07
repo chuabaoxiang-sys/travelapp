@@ -1,12 +1,15 @@
 import { db } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
-import { persistExpenseSplitShares, round2 } from './splits'
+import { isProxySplit, persistExpenseSplitShares, round2, type SplitShare } from './splits'
 import type { ExpenseLineItem } from '../types'
 
 export interface LineItemInput {
   name: string
   amount: number
   memberIds: string[]
+  // 逐项拆账 + 代购（0051，2026-11-08）：这一项还勾了哪些代购的人（名字），
+  // 跟勾的同行成员一起均分这一项
+  proxyNames?: string[]
 }
 
 export interface LineItemShare {
@@ -25,40 +28,73 @@ export interface LineItemShare {
 // homeAmount 分下去——优惠、汇率都自然按比例摊进每个人，合计刚好等于 homeAmount
 // （四舍五入的零头给份额最大的人）
 export function resolveLineItemShares(items: LineItemInput[], feePercent: number, homeAmount?: number): LineItemShare[] {
-  const raw = resolveLineItemWeights(items, feePercent)
-  if (homeAmount == null) return raw
-  const weightTotal = raw.reduce((s, r) => s + r.shareAmount, 0)
-  if (!(weightTotal > 0)) return raw.map((r) => ({ ...r, shareAmount: 0 }))
-  const scaled = raw.map((r) => ({ memberId: r.memberId, shareAmount: round2((homeAmount * r.shareAmount) / weightTotal) }))
-  const diff = round2(homeAmount - scaled.reduce((s, r) => s + r.shareAmount, 0))
-  if (diff !== 0 && scaled.length) {
-    const biggest = scaled.reduce((a, b) => (b.shareAmount > a.shareAmount ? b : a))
-    biggest.shareAmount = round2(biggest.shareAmount + diff)
-  }
-  return scaled
+  return resolveItemizedParts(items, feePercent, homeAmount)
+    .filter((p) => p.kind === 'member')
+    .map((p) => ({ memberId: p.key, shareAmount: p.share }))
 }
 
-function resolveLineItemWeights(items: LineItemInput[], feePercent: number): LineItemShare[] {
-  const totals = new Map<string, number>()
+// 每个参与者（同行成员 / 代购的人）在"这笔的币种"里占多少（weight），以及按比例分到的本位币（share）
+export interface ItemizedPart {
+  kind: 'member' | 'proxy'
+  key: string // 成员 id，或代购的人的名字
+  weight: number
+  share: number
+}
+
+export function resolveItemizedParts(items: LineItemInput[], feePercent: number, homeAmount?: number): ItemizedPart[] {
+  const weights = new Map<string, { kind: 'member' | 'proxy'; key: string; weight: number }>()
   for (const item of items) {
-    if (!item.memberIds.length) continue
+    const participants = [
+      ...item.memberIds.map((id) => ({ kind: 'member' as const, key: id })),
+      ...(item.proxyNames ?? []).map((n) => n.trim()).filter(Boolean).map((n) => ({ kind: 'proxy' as const, key: n })),
+    ]
+    if (!participants.length) continue
     const withFee = round2(item.amount * (1 + feePercent / 100))
-    const n = item.memberIds.length
+    const n = participants.length
     const base = Math.floor((withFee / n) * 100) / 100
     const remainder = round2(withFee - base * n)
-    item.memberIds.forEach((id, i) => {
-      const share = i === 0 ? round2(base + remainder) : base
-      totals.set(id, round2((totals.get(id) ?? 0) + share))
+    participants.forEach((p, i) => {
+      const id = `${p.kind}:${p.key}`
+      const cur = weights.get(id) ?? { ...p, weight: 0 }
+      cur.weight = round2(cur.weight + (i === 0 ? round2(base + remainder) : base))
+      weights.set(id, cur)
     })
   }
-  return [...totals.entries()].map(([memberId, shareAmount]) => ({ memberId, shareAmount }))
+  const parts = [...weights.values()].map((w) => ({ ...w, share: w.weight }))
+  if (homeAmount == null) return parts
+  const weightTotal = parts.reduce((s, r) => s + r.weight, 0)
+  if (!(weightTotal > 0)) return parts.map((r) => ({ ...r, share: 0 }))
+  for (const p of parts) p.share = round2((homeAmount * p.weight) / weightTotal)
+  const diff = round2(homeAmount - parts.reduce((s, r) => s + r.share, 0))
+  if (diff !== 0 && parts.length) {
+    const biggest = parts.reduce((a, b) => (b.share > a.share ? b : a))
+    biggest.share = round2(biggest.share + diff)
+  }
+  return parts
+}
+
+// 逐项拆账的全部分摊行：同行成员按份额；代购的人变成代购行（memberId = 付款人，
+// proxyAmount = 他在这笔币种里占的原价，跟单独记代购时同一套口径）。repaidByName 用来
+// 保留重新保存前已经标了"已还"的状态
+export function buildItemizedSplitShares(
+  items: LineItemInput[],
+  feePercent: number,
+  homeAmount: number,
+  payerId: string,
+  repaidByName: Map<string, number | null> = new Map(),
+): SplitShare[] {
+  return resolveItemizedParts(items, feePercent, homeAmount).map((p) =>
+    p.kind === 'member'
+      ? { memberId: p.key, shareAmount: p.share }
+      : { memberId: payerId, shareAmount: p.share, proxyName: p.key, proxyAmount: p.weight, proxyRepaidAt: repaidByName.get(p.key) ?? null },
+  )
 }
 
 // 保存一笔逐项拆账：子项+成员关联永远整份替换（先清掉这笔账目旧的两张表的行，
 // 再重新写入），这两张表没有"编辑单个字段"的路径，逻辑更简单也不会留孤儿行。
 // 算出来的最终每人份额复用 persistExpenseSplitShares 落地进 expenseSplits——
 // 结算/按笔结算这些下游逻辑完全不用知道这笔账目是不是逐项拆的
-export async function saveItemizedExpense(expenseId: string, items: LineItemInput[], feePercent: number, homeAmount: number) {
+export async function saveItemizedExpense(expenseId: string, items: LineItemInput[], feePercent: number, homeAmount: number, payerId: string) {
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('No household found')
 
@@ -75,6 +111,7 @@ export async function saveItemizedExpense(expenseId: string, items: LineItemInpu
     name: item.name,
     amount: item.amount,
     orderIndex: i,
+    proxyNames: (item.proxyNames ?? []).map((n) => n.trim()).filter(Boolean),
     deletedAt: null,
   }))
   await db.expenseLineItems.bulkAdd(itemRows)
@@ -84,8 +121,10 @@ export async function saveItemizedExpense(expenseId: string, items: LineItemInpu
   )
   if (memberRows.length) await db.expenseLineItemMembers.bulkAdd(memberRows)
 
-  const shares = resolveLineItemShares(items, feePercent, homeAmount)
-  await persistExpenseSplitShares(expenseId, shares)
+  // 已经标了"已还"的代购，按名字保留下来
+  const oldSplits = (await db.expenseSplits.where('expenseId').equals(expenseId).toArray()).filter((s) => !s.deletedAt && isProxySplit(s))
+  const repaidByName = new Map(oldSplits.map((s) => [(s.proxyName ?? '').trim(), s.proxyRepaidAt ?? null]))
+  await persistExpenseSplitShares(expenseId, buildItemizedSplitShares(items, feePercent, homeAmount, payerId, repaidByName))
 }
 
 // 从"逐项拆账"改回其他分摊方式时，把旧的子项+成员关联清掉——跟"从跨多天
@@ -104,6 +143,7 @@ export interface LoadedLineItem {
   name: string
   amount: number
   memberIds: string[]
+  proxyNames: string[]
 }
 
 // 编辑一笔已有的逐项拆账账目时，回显原来的子项+每项勾选的成员
@@ -117,5 +157,6 @@ export async function getLineItemsForExpense(expenseId: string): Promise<LoadedL
     name: item.name,
     amount: item.amount,
     memberIds: memberRows.filter((m) => m.lineItemId === item.id).map((m) => m.memberId),
+    proxyNames: item.proxyNames ?? [],
   }))
 }
