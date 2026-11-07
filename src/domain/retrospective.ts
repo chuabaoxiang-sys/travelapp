@@ -3,7 +3,8 @@ import { db } from '../db/dexie'
 import { assembleExportBundle, type PersonSummary } from './export'
 import { computeBalances, simplifyDebts } from './splits'
 import { discountSummary } from './discounts'
-import { cashbackSummary } from './cashback'
+import { actualSpend, cashbackSummary } from './cashback'
+import { proxySummary, toProxyItems } from './proxies'
 import { CATEGORY_COLORS } from '../lib/categoryColors'
 import { categoryLabel } from '../lib/categoryLabel'
 import { daysInclusive } from '../lib/dates'
@@ -53,8 +54,12 @@ export interface TripRetrospective {
   satisfaction: SatisfactionRetro
   // 优惠（2026-11-07）：这趟靠优惠省了多少（本位币）、几笔
   discount: { total: number; count: number }
-  // Cashback（2026-11-07）：这趟返了多少（本位币），实际花费 = total - 它
+  // Cashback（2026-11-07）：这趟返了多少（本位币）
   cashbackTotal: number
+  // 代购的人要还的合计（本位币，0050 口径）
+  proxyTotal: number
+  // 实际花费 = total − 代购 − 返现（跟黑卡算式同一个函数）；主卡大数字和人均都用它
+  actual: number
 }
 
 function round2(n: number) {
@@ -65,13 +70,17 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
   const bundle = await assembleExportBundle(tripId, t)
   const { trip, daySummary, categorySummary, personSummary } = bundle
 
-  const [itemsRaw, allCategories, tripExpenses, tripCashbacks] = await Promise.all([
+  const [itemsRaw, allCategories, tripExpensesRaw, tripCashbacks] = await Promise.all([
     db.itineraryItems.where('tripId').equals(tripId).toArray(),
     db.expenseCategories.toArray(),
     db.expenses.where('tripId').equals(tripId).toArray(),
     db.cardCashbacks.where('tripId').equals(tripId).toArray(),
   ])
   const items = itemsRaw.filter((i) => !i.deletedAt)
+  const tripExpenses = tripExpensesRaw.filter((e) => !e.deletedAt)
+  const tripSplits = tripExpenses.length
+    ? (await db.expenseSplits.where('expenseId').anyOf(tripExpenses.map((e) => e.id)).toArray()).filter((s) => !s.deletedAt)
+    : []
 
   // 按名字对回分类对象，用来查颜色、也用来查翻译后的显示名（export.ts的
   // CategorySummary只带原始中文名，因为Excel/CSV导出要的就是这个原始值）。
@@ -112,12 +121,17 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
     expenseSatisfactionStat(tripId, { kind: 'all' }),
   ])
 
+  // 2026-11-07 口径统一：主卡大数字和人均都用「实际花费」（扣掉代购的人要还的、扣掉返现）
+  const proxyTotal = proxySummary(toProxyItems(tripExpenses, tripSplits)).total
+  const cashbackTotal = cashbackSummary(tripCashbacks, tripExpenses).total
+  const actual = actualSpend(total, proxyTotal, cashbackTotal)
+
   return {
     finished: !!trip.endDate && todayISO > trip.endDate,
     total,
     dayCount,
     memberCount,
-    perPerson: memberCount > 0 ? round2(total / memberCount) : 0,
+    perPerson: memberCount > 0 ? round2(actual / memberCount) : 0,
     itemCount: items.length,
     placeCount: items.filter((i) => !!i.locationName).length,
     topDay,
@@ -127,6 +141,8 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
     unsettledTotal: round2(transfers.reduce((s, t) => s + t.amount, 0)),
     satisfaction: { moodCurveMe, moodCurveAll, expenseStatMe, expenseStatAll },
     discount: discountSummary(tripExpenses),
-    cashbackTotal: cashbackSummary(tripCashbacks, tripExpenses).total,
+    cashbackTotal,
+    proxyTotal,
+    actual,
   }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag, Coins } from 'lucide-react'
+import { Tag } from 'lucide-react'
 import type { Trip } from '../../types'
 import { buildRetrospective, type TripRetrospective } from '../../domain/retrospective'
 import { formatMoney } from '../../lib/money'
@@ -51,7 +51,7 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
   // Hook不能在下面两个提前return之后才调用，所以放在这里、用data?.total ?? 0
   // 兜底——data还没查完时hook收到的是0，真实总额一到，会自然从0滚上去，
   // 跟useAnimatedNumber自己注释里说的"挂载瞬间的变化也一视同仁滚动"是同一件事
-  const animatedTotal = useAnimatedNumber(data?.total ?? 0)
+  const animatedTotal = useAnimatedNumber(data?.actual ?? 0)
 
   const currency = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
   const money = (n: number) => formatMoney(n, currency)
@@ -73,7 +73,9 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
     <div className="flex flex-col gap-4">
       {/* 主卡：整趟总花费 */}
       <div className={`bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark ${enterClass()}`} style={delayStyle(nextDelayMs())}>
-        <div className="text-[11px] tracking-wider text-on-dark/55">{trip.name}</div>
+        <div className="text-[11px] tracking-wider text-on-dark/55">
+          {data.proxyTotal > 0 || data.cashbackTotal > 0 ? t('retrospective.heroLabelActual', { name: trip.name }) : trip.name}
+        </div>
         <div className="font-bold tracking-tight tabular text-[32px] leading-none mt-1.5">{money(animatedTotal)}</div>
         <div className="mt-2.5 text-[11px] text-on-dark/50 leading-relaxed">
           {[
@@ -82,16 +84,35 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
             data.placeCount > 0 ? t('retrospective.summaryPlaces', { count: data.placeCount }) : null,
           ].filter(Boolean).join(' · ')}
         </div>
-        {data.discount.count > 0 && (
-          <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
-            <Tag className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
-            {t('retrospective.discountLine', { amount: money(data.discount.total), count: data.discount.count })}
+        {/* 实际花费的算式一直摊开（2026-11-07）：跟黑卡点开后同一套算法；没有代购和返现就不出现 */}
+        {(data.proxyTotal > 0 || data.cashbackTotal > 0) && (
+          <div className="mt-3 border-t border-on-dark/12 pt-2.5 flex flex-col gap-[5px] text-[11.5px] tabular">
+            <div className="flex justify-between text-on-dark/75">
+              <span>{t('spendHero.formula.spent')}</span>
+              <span>{money(data.total)}</span>
+            </div>
+            {data.proxyTotal > 0 && (
+              <div className="flex justify-between gap-2 text-plan-on-dark">
+                <span>− {t('spendHero.formula.proxy')}<span className="text-on-dark/50">{t('retrospective.proxyOwedHint')}</span></span>
+                <span>{money(data.proxyTotal)}</span>
+              </div>
+            )}
+            {data.cashbackTotal > 0 && (
+              <div className="flex justify-between text-plan-on-dark">
+                <span>− {t('spendHero.formula.cashback')}</span>
+                <span>{money(data.cashbackTotal)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t border-on-dark/12 pt-1.5 mt-px font-bold text-on-dark text-[13px]">
+              <span>= {t('spendHero.formula.actual')}</span>
+              <span>{money(data.actual)}</span>
+            </div>
           </div>
         )}
-        {data.cashbackTotal > 0 && (
-          <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
-            <Coins className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
-            {t('retrospective.cashbackLine', { amount: money(data.cashbackTotal), net: money(Math.max(0, data.total - data.cashbackTotal)) })}
+        {data.discount.count > 0 && (
+          <div className="mt-2.5 text-[11px] text-plan-on-dark flex items-center gap-1.5">
+            <Tag className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
+            {t(data.proxyTotal > 0 || data.cashbackTotal > 0 ? 'retrospective.discountLineAlso' : 'retrospective.discountLine', { amount: money(data.discount.total), count: data.discount.count })}
           </div>
         )}
       </div>

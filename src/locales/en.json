@@ -1256,7 +1256,10 @@
     "personLine": "Paid {{paid}} · share {{owed}}",
     "discountLine_one": "Saved {{amount}} with discounts ({{count}} purchase)",
     "discountLine_other": "Saved {{amount}} with discounts ({{count}} purchases)",
-    "cashbackLine": "{{amount}} cashback · {{net}} spent after cashback"
+    "discountLineAlso_one": "Also saved {{amount}} with discounts ({{count}} purchase)",
+    "discountLineAlso_other": "Also saved {{amount}} with discounts ({{count}} purchases)",
+    "heroLabelActual": "{{name}} · actual spend",
+    "proxyOwedHint": " (owed back by others)"
   },
   "emailLogin": {
     "title": "Let's log you in",
@@ -1406,7 +1409,7 @@
         { "title": "Meet the four tabs", "desc": "Overview, Itinerary, Ledger, More — the purple circle button in the middle is \"Add expense,\" reachable from Itinerary or Ledger any time." },
         { "title": "Before you leave", "desc": "A countdown card, your still-unbooked plans, and a checklist of what's ready." },
         { "title": "While you're traveling", "desc": "What's left to spend today, what's coming up, and what everyone else just did." },
-        { "title": "After you're home", "desc": "Total spend, per-person average, where the money went — this is the old \"trip recap,\" now shown automatically once you're back." },
+        { "title": "After you're home", "desc": "What the trip actually cost (after purchases for others and cashback, with the breakdown shown), per-person average, where the money went — this is the old \"trip recap,\" now shown automatically once you're back." },
         { "title": "Start a new trip", "desc": "\"+ New trip\" at the bottom of \"My trips\" — name it, pick a home currency, and go." }
       ]
     },
