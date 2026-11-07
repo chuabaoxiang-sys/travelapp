@@ -54,8 +54,13 @@ export async function unarchivePaymentCard(id: string) {
 
 // 这张卡挂了多少笔开销——所有行程一起算，连已删除的开销也算：数据库那边
 // 已删除（软删）的开销照样占着外键，硬删卡会被拒绝，这里的判断要跟数据库一致
+// 返现记录（0048 card_cashback）也用外键挂着卡，有返现的卡同样只能停用不能删
 export async function cardExpenseCount(cardId: string): Promise<number> {
-  return db.expenses.filter((e) => e.paymentCardId === cardId).count()
+  const [expenses, cashbacks] = await Promise.all([
+    db.expenses.filter((e) => e.paymentCardId === cardId).count(),
+    db.cardCashbacks.where('paymentCardId').equals(cardId).count(),
+  ])
+  return expenses + cashbacks
 }
 
 // 真正删除——只有一笔开销都没挂过的卡才允许，用过的一律只能停用

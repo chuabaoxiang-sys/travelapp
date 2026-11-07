@@ -3,6 +3,7 @@ import { db } from '../db/dexie'
 import { assembleExportBundle, type PersonSummary } from './export'
 import { computeBalances, simplifyDebts } from './splits'
 import { discountSummary } from './discounts'
+import { cashbackSummary } from './cashback'
 import { CATEGORY_COLORS } from '../lib/categoryColors'
 import { categoryLabel } from '../lib/categoryLabel'
 import { daysInclusive } from '../lib/dates'
@@ -52,6 +53,8 @@ export interface TripRetrospective {
   satisfaction: SatisfactionRetro
   // 优惠（2026-11-07）：这趟靠优惠省了多少（本位币）、几笔
   discount: { total: number; count: number }
+  // Cashback（2026-11-07）：这趟返了多少（本位币），实际花费 = total - 它
+  cashbackTotal: number
 }
 
 function round2(n: number) {
@@ -62,10 +65,11 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
   const bundle = await assembleExportBundle(tripId, t)
   const { trip, daySummary, categorySummary, personSummary } = bundle
 
-  const [itemsRaw, allCategories, tripExpenses] = await Promise.all([
+  const [itemsRaw, allCategories, tripExpenses, tripCashbacks] = await Promise.all([
     db.itineraryItems.where('tripId').equals(tripId).toArray(),
     db.expenseCategories.toArray(),
     db.expenses.where('tripId').equals(tripId).toArray(),
+    db.cardCashbacks.where('tripId').equals(tripId).toArray(),
   ])
   const items = itemsRaw.filter((i) => !i.deletedAt)
 
@@ -123,5 +127,6 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
     unsettledTotal: round2(transfers.reduce((s, t) => s + t.amount, 0)),
     satisfaction: { moodCurveMe, moodCurveAll, expenseStatMe, expenseStatAll },
     discount: discountSummary(tripExpenses),
+    cashbackTotal: cashbackSummary(tripCashbacks).total,
   }
 }

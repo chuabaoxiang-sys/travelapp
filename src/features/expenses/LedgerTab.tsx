@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag } from 'lucide-react'
+import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins } from 'lucide-react'
+import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { LedgerFilterSheet } from './LedgerFilterSheet'
 import { EMPTY_LEDGER_FILTER, PAY_CASH, PAY_PENDING, filterCount, isFilterActive, matchesLedgerFilter, type LedgerFilter } from '../../domain/ledgerFilter'
 import { db } from '../../db/dexie'
@@ -147,6 +148,10 @@ export function LedgerTab({
   useBackDismiss(filterOpen, () => setFilterOpen(false))
 
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
+  // Cashback（2026-11-07）：总花费照账面算，另列返现和实际；"我的"扣掉归自己的那部分
+  const tripCashbacks = useLiveQuery(() => listTripCashbacks(trip.id), [trip.id]) ?? []
+  const cashback = cashbackSummary(tripCashbacks)
+  const myCashback = cashback.byMember.get(currentMemberId) ?? 0
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
 
   // 用 spentOnDate（按 expenseDate 归日）而不是行程页那个 spendByDate（按
@@ -168,7 +173,7 @@ export function LedgerTab({
   // "全部/我的"切两张卡时，用户要看到数字本身也连续滚过去（哪怕两边含义不同），
   // 不只是卡片淡入——所以两张卡的大数字接到同一个useAnimatedNumber上，只是
   // "目标值"跟着view切换，起点永远是当前视觉上正显示的那个数
-  const activeHeroValue = view === 'mine' ? myOwed : heroRawValue(allowance)
+  const activeHeroValue = view === 'mine' ? Math.max(0, myOwed - myCashback) : heroRawValue(allowance)
   const animatedActiveHeroValue = useAnimatedNumber(activeHeroValue)
   const myExpenseIds = myRelatedExpenseIds(expenses, splits, currentMemberId)
   const visibleExpenses = view === 'mine' ? expenses.filter((e) => myExpenseIds.has(e.id)) : expenses
@@ -300,7 +305,7 @@ export function LedgerTab({
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
         <div key="team" className="card-swap flex flex-col gap-3.5">
-          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} />
+          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} cashback={{ total: cashback.total, net: Math.max(0, total - cashback.total) }} />
           {hasEnoughForBreakdown && (
             <SpendBreakdownCard
               expenses={expenses}
@@ -344,6 +349,12 @@ export function LedgerTab({
           <div className="text-[11px] tracking-wider text-on-dark/55">{t('ledger.mineHero.label')}</div>
           <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
           <div className="mt-2 text-[11px] text-on-dark/50">{t('ledger.mineHero.sublabel')}</div>
+          {myCashback > 0 && (
+            <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
+              <Coins className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
+              {t('ledger.mineHero.cashback', { amount: formatMoney(myCashback, currencyLabel) })}
+            </div>
+          )}
         </div>
       )}
 

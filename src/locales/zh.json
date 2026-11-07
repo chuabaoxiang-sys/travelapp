@@ -166,7 +166,33 @@
     "labelPlaceholder": "例如「机场换的」",
     "foreignCurrencyFallback": "外币"
   },
+  "cashback": {
+    "title": "{{card}} · 这趟的返现",
+    "percentLabel": "返现比例（可选，所有旅行通用）",
+    "estimate": "这趟用这张卡刷了 {{spend}}，按 {{percent}}% 约",
+    "useEstimate": "用这个数",
+    "recorded": "已记的返现",
+    "ownerLine": "归 {{name}}",
+    "edit": "修改",
+    "delete": "删除",
+    "addHeading": "再记一笔",
+    "editing": "修改这笔返现",
+    "amount": "金额",
+    "owner": "归谁",
+    "note": "备注",
+    "notePlaceholder": "可选，比如 12月账单",
+    "save": "记下",
+    "saveEdit": "保存修改",
+    "cancelEdit": "取消",
+    "footnote": "返现算「归谁」那个人的：他这趟的「我的花费」少这么多，跟同行者之间的结算不变。「归谁」默认是这趟用这张卡付钱最多的人。",
+    "deleteTitle": "删除这笔返现？",
+    "deleteMessage": "删掉之后「我的花费」和「实际花费」会按没有这笔返现重新算。"
+  },
   "card": {
+    "cashbackPercentShort": "返现 {{percent}}%",
+    "cashbackTrip": "这趟返现",
+    "cashbackOwner": "归 {{names}}",
+    "cashbackAdd": "记一笔返现",
     "payCash": "现金",
     "payCard": "刷卡",
     "add": "加一张卡",
@@ -536,7 +562,8 @@
     "budgetOverMany": "{{count}}个分类已超出预算",
     "mineHero": {
       "label": "我这趟要承担",
-      "sublabel": "自己付的 + 分摊别人垫付的"
+      "sublabel": "自己付的 + 分摊别人垫付的",
+      "cashback": "已扣 Cashback {{amount}}"
     },
     "dayTotalLabel": "当日",
     "paidBySummary_other": "{{name}}垫付 · {{count}}人分摊",
@@ -599,6 +626,7 @@
     "tripRemaining": "这趟已花 <s>{{total}}</s> · 还剩 <b>{{remaining}}</b>",
     "proxyLine": "其中代购 {{total}}（还没还 {{unpaid}}）",
     "proxyLineAllRepaid": "其中代购 {{total}}（都还了）",
+    "cashbackLine": "Cashback {{total}} · 实际 {{net}}",
     "setBudgetCta": "设个预算，就能看到每天还能花多少 ›"
   },
   "tripHeader": {
@@ -1137,7 +1165,8 @@
     "priciestDay": "最贵的一天",
     "byPerson": "每个人",
     "personLine": "垫付 {{paid}} · 应分摊 {{owed}}",
-    "discountLine_other": "靠优惠省了 {{amount}}（{{count}} 笔）"
+    "discountLine_other": "靠优惠省了 {{amount}}（{{count}} 笔）",
+    "cashbackLine": "Cashback 返了 {{amount}} · 实际花了 {{net}}"
   },
   "emailLogin": {
     "title": "先登录一下",
@@ -1345,7 +1374,7 @@
       "desc": "提前记好汇率，用外币记账不用自己拿计算器算",
       "steps": [
         { "title": "记一条汇率", "desc": "从账目页点右上角图标进入汇率簿，点\"+\"，按参考值采用或者手动输入实际汇率。" },
-        { "title": "现金和卡分开", "desc": "换了几批现金就记几条汇率。刷卡不用记汇率：在汇率簿下面「卡」那一段加一张卡（比如 TNG VISA），所有旅行通用。" },
+        { "title": "现金和卡分开", "desc": "换了几批现金就记几条汇率。刷卡不用记汇率：在汇率簿下面「卡」那一段加一张卡（比如 TNG VISA），所有旅行通用。卡下面的「这趟返现」可以记银行给的 Cashback：设了返现比例会帮你估一个数，返现算归谁那个人的，只扣他自己的「我的花费」。" },
         { "title": "用汇率记外币账", "desc": "记外币账目时选「现金」挑一条汇率，自动换算成本位币；选「刷卡」就挑卡、填银行实际扣了多少，这笔的汇率自动算好。还不知道扣了多少可以先留空，按估算记，之后在账目页顶部点「去补」一次补齐。" },
         { "title": "看换汇划不划算", "desc": "按实际花掉的钱加权算出综合汇率（现金和刷卡一起算），跟今天的市场价比一比；两种都用过的话，还能看出这趟刷卡和换现金哪个更划算。" }
       ]

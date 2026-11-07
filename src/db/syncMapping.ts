@@ -240,6 +240,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       created_by: c.createdBy ?? null,
       created_at: iso(c.createdAt),
       updated_at: iso(c.updatedAt),
+      cashback_percent: c.cashbackPercent ?? null,
     }),
     fromRemote: (r) => ({
       id: r.id,
@@ -249,6 +250,40 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       createdBy: r.created_by ?? null,
       createdAt: ms(r.created_at),
       updatedAt: ms(r.updated_at),
+      cashbackPercent: r.cashback_percent == null ? null : num(r.cashback_percent),
+    }),
+  },
+
+  // 刷卡返现（0048）：跟 settlement 一样按行程挂，按团队隔离；卡用复合外键保证同团队
+  cardCashbacks: {
+    remoteTable: 'card_cashback',
+    conflictColumns: 'id',
+    hasUpdatedAt: true,
+    toRemote: (c) => ({
+      id: c.id,
+      household_id: c.householdId,
+      trip_id: c.tripId,
+      payment_card_id: c.paymentCardId,
+      member_id: c.memberId,
+      amount: c.amount,
+      note: c.note ?? null,
+      created_by: c.createdBy ?? null,
+      created_at: iso(c.createdAt),
+      updated_at: iso(c.updatedAt),
+      deleted_at: isoOrNull(c.deletedAt),
+    }),
+    fromRemote: (r) => ({
+      id: r.id,
+      householdId: r.household_id,
+      tripId: r.trip_id,
+      paymentCardId: r.payment_card_id,
+      memberId: r.member_id,
+      amount: num(r.amount),
+      note: r.note ?? null,
+      createdBy: r.created_by ?? null,
+      createdAt: ms(r.created_at),
+      updatedAt: ms(r.updated_at),
+      deletedAt: msOrNull(r.deleted_at),
     }),
   },
 

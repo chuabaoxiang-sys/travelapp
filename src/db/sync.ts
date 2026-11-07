@@ -34,6 +34,7 @@ const TABLE_ORDER = [
   'rateBookEntries',
   'paymentCards',
   'expenses',
+  'cardCashbacks',
   'expenseSplits',
   'expenseSatisfactions',
   'expenseLineItems',

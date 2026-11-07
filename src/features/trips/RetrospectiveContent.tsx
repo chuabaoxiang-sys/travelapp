@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag } from 'lucide-react'
+import { Tag, Coins } from 'lucide-react'
 import type { Trip } from '../../types'
 import { buildRetrospective, type TripRetrospective } from '../../domain/retrospective'
 import { formatMoney } from '../../lib/money'
@@ -86,6 +86,12 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
           <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
             <Tag className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
             {t('retrospective.discountLine', { amount: money(data.discount.total), count: data.discount.count })}
+          </div>
+        )}
+        {data.cashbackTotal > 0 && (
+          <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
+            <Coins className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
+            {t('retrospective.cashbackLine', { amount: money(data.cashbackTotal), net: money(Math.max(0, data.total - data.cashbackTotal)) })}
           </div>
         )}
       </div>

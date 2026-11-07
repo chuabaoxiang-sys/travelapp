@@ -280,6 +280,24 @@ export interface PaymentCard {
   createdBy: string | null
   createdAt: number
   updatedAt: number
+  // 返现比例（%，0048），可选、所有旅行通用——只用来帮忙估算"这趟大概返多少"
+  cashbackPercent?: number | null
+}
+
+// 刷卡返现（0048）：某趟行程、某张卡、归谁、返了多少本位币。只影响"归谁"那个人
+// 的"我的花费"和"实际花费"的展示，不进同行者之间的结算，不改"这趟已花"和预算
+export interface CardCashback {
+  id: string
+  householdId: string
+  tripId: string
+  paymentCardId: string
+  memberId: string // 返现归谁
+  amount: number // 本位币
+  note: string | null
+  createdBy: string | null
+  createdAt: number
+  updatedAt: number
+  deletedAt: number | null
 }
 
 export interface ExpenseSplit {

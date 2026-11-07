@@ -1,5 +1,5 @@
 import { Trans, useTranslation } from 'react-i18next'
-import { Gift } from 'lucide-react'
+import { Gift, Coins } from 'lucide-react'
 import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { heroRawValue, type AllowanceState } from '../../domain/dailyAllowance'
@@ -37,6 +37,7 @@ export function SpendHero({
   animatedValueOverride,
   entered = true,
   proxy,
+  cashback,
 }: {
   state: AllowanceState
   currency: string
@@ -49,6 +50,8 @@ export function SpendHero({
   entered?: boolean
   // 代购（2026-11-07）：照样算进总花费，只是在这里标出来"其中代购多少、还有多少没还"
   proxy?: { total: number; unpaid: number }
+  // Cashback（2026-11-07）："这趟已花"和预算照账面算，这里另列返现和扣掉后的实际花费
+  cashback?: { total: number; net: number }
 }) {
   const { t } = useTranslation()
   const money = (n: number) => formatMoney(n, currency)
@@ -131,6 +134,12 @@ export function SpendHero({
           {proxy.unpaid > 0
             ? t('spendHero.proxyLine', { total: money(proxy.total), unpaid: money(proxy.unpaid) })
             : t('spendHero.proxyLineAllRepaid', { total: money(proxy.total) })}
+        </div>
+      )}
+      {cashback && cashback.total > 0 && (
+        <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
+          <Coins className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
+          {t('spendHero.cashbackLine', { total: money(cashback.total), net: money(cashback.net) })}
         </div>
       )}
       {progress !== null && bar(progress, entered)}

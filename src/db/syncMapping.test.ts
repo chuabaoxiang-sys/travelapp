@@ -6,12 +6,25 @@ describe('paymentCards / expense card fields mapping', () => {
   it('round-trips a payment card, including archived', () => {
     const card = {
       id: 'c1', householdId: 'h1', name: 'TNG VISA', archivedAt: Date.UTC(2026, 9, 20),
-      createdBy: 'm1', createdAt: Date.UTC(2026, 9, 1), updatedAt: Date.UTC(2026, 9, 2),
+      createdBy: 'm1', createdAt: Date.UTC(2026, 9, 1), updatedAt: Date.UTC(2026, 9, 2), cashbackPercent: 5,
     }
     const remote = SYNC_CONFIG.paymentCards.toRemote(card)
     expect(remote.archived_at).toBe('2026-10-20T00:00:00.000Z')
+    expect(remote.cashback_percent).toBe(5)
     expect(SYNC_CONFIG.paymentCards.fromRemote(remote)).toEqual(card)
     expect(SYNC_CONFIG.paymentCards.fromRemote({ ...remote, archived_at: null }).archivedAt).toBeNull()
+    // 0048 之前的卡没有返现比例
+    expect(SYNC_CONFIG.paymentCards.fromRemote({ ...remote, cashback_percent: null }).cashbackPercent).toBeNull()
+  })
+
+  it('round-trips a card cashback record (0048)', () => {
+    const cb = {
+      id: 'cb1', householdId: 'h1', tripId: 't1', paymentCardId: 'c1', memberId: 'm1', amount: 45.6, note: '11月账单',
+      createdBy: 'm1', createdAt: Date.UTC(2026, 10, 1), updatedAt: Date.UTC(2026, 10, 2), deletedAt: null,
+    }
+    const remote = SYNC_CONFIG.cardCashbacks.toRemote(cb)
+    expect(remote).toMatchObject({ trip_id: 't1', payment_card_id: 'c1', member_id: 'm1', amount: 45.6, note: '11月账单' })
+    expect(SYNC_CONFIG.cardCashbacks.fromRemote({ ...remote, amount: '45.60' })).toEqual(cb)
   })
 
   it('sends card fields on expenses, defaulting old rows to cash', () => {

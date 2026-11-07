@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { Check, X, Pencil, Archive, ArchiveRestore, Trash2, Plus, CreditCard } from 'lucide-react'
+import { Check, X, Pencil, Archive, ArchiveRestore, Trash2, Plus, CreditCard, Coins, ChevronRight } from 'lucide-react'
 import { db } from '../../db/dexie'
+import { formatMoney } from '../../lib/money'
+import { listTripCashbacks } from '../../domain/cashback'
+import { CashbackSheet } from './CashbackSheet'
 import {
   getPaymentCards,
   createPaymentCard,
@@ -35,8 +38,13 @@ export function CardSection({
   // 跟数据库那道外键的判断一致（见 domain/paymentCards.ts 的 cardExpenseCount）
   const usedCardIds = useLiveQuery(async () => {
     const rows = await db.expenses.filter((e) => !!e.paymentCardId).toArray()
-    return new Set(rows.map((e) => e.paymentCardId as string))
+    const cashbackRows = await db.cardCashbacks.toArray()
+    return new Set([...rows.map((e) => e.paymentCardId as string), ...cashbackRows.map((c) => c.paymentCardId)])
   }) ?? new Set<string>()
+  // 返现（2026-11-07）：每张卡这趟返了多少、归谁；点那一行打开返现面板
+  const tripCashbacks = useLiveQuery(() => listTripCashbacks(tripId), [tripId]) ?? []
+  const members = useLiveQuery(() => db.members.toArray()) ?? []
+  const [cashbackCardId, setCashbackCardId] = useState<string | null>(null)
 
   const active = cards.filter((c) => !c.archivedAt)
   const archived = cards.filter((c) => c.archivedAt)
@@ -112,7 +120,8 @@ export function CardSection({
           const u = tripUsage.get(c.id)
           const used = usedCardIds.has(c.id)
           return (
-            <div key={c.id} className="bg-card border border-line rounded-2xl p-3 flex items-center gap-2.5">
+            <div key={c.id} className="bg-card border border-line rounded-2xl p-3 flex flex-col gap-2.5">
+            <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-segment text-soft flex items-center justify-center flex-shrink-0">
                 <CreditCard className="w-3.5 h-3.5" strokeWidth={2} />
               </div>
@@ -134,6 +143,7 @@ export function CardSection({
                       ? t('card.tripUsageWithAverage', { count: u.count, rate: formatCardRate(u.averageRate) })
                       : t('card.tripUsage', { count: u.count })
                     : t('card.tripUnused')}
+                  {c.cashbackPercent ? ` · ${t('card.cashbackPercentShort', { percent: c.cashbackPercent })}` : ''}
                 </div>
               </div>
               <div className="flex gap-1.5 flex-shrink-0">
@@ -168,9 +178,47 @@ export function CardSection({
                 )}
               </div>
             </div>
+            {(() => {
+              const mine = tripCashbacks.filter((x) => x.paymentCardId === c.id)
+              const total = mine.reduce((s, x) => s + x.amount, 0)
+              const owners = [...new Set(mine.map((x) => members.find((m) => m.id === x.memberId)?.displayName ?? '?'))]
+              return (
+                <button
+                  type="button"
+                  onClick={() => { onDialogOpenChange(true); setCashbackCardId(c.id) }}
+                  className="flex items-center gap-2 border-t border-line pt-2.5 text-left"
+                >
+                  <Coins className="w-[15px] h-[15px] text-positive flex-shrink-0" strokeWidth={1.8} />
+                  <span className="flex-1 min-w-0 text-[12.5px] truncate">
+                    {mine.length > 0 ? (
+                      <>
+                        {t('card.cashbackTrip')} <b className="text-positive font-semibold tabular">{formatMoney(total)}</b>
+                        <span className="text-muted"> · {t('card.cashbackOwner', { names: owners.join('、') })}</span>
+                      </>
+                    ) : (
+                      <span className="text-muted">{t('card.cashbackAdd')}</span>
+                    )}
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5 text-muted flex-shrink-0" strokeWidth={2} />
+                </button>
+              )
+            })()}
+            </div>
           )
         })}
       </div>
+
+      {cashbackCardId && (() => {
+        const card = cards.find((x) => x.id === cashbackCardId)
+        return card ? (
+          <CashbackSheet
+            tripId={tripId}
+            card={card}
+            currentMemberId={currentMemberId}
+            onClose={() => { setCashbackCardId(null); onDialogOpenChange(false) }}
+          />
+        ) : null
+      })()}
 
       {archived.length > 0 && (
         <div className="mt-2">

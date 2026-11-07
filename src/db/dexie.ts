@@ -10,6 +10,7 @@ import type {
   ItineraryItem,
   RateBookEntry,
   PaymentCard,
+  CardCashback,
   Expense,
   ExpenseSplit,
   ExpenseDayAllocation,
@@ -53,6 +54,7 @@ const SYNCED_TABLES = [
   'rateBookEntries',
   'paymentCards',
   'expenses',
+  'cardCashbacks',
   'expenseDayAllocations',
   'expenseRateAllocations',
   'budgets',
@@ -78,6 +80,7 @@ export class TripJournalDB extends Dexie {
   itineraryItems!: EntityTable<ItineraryItem, 'id'>
   rateBookEntries!: EntityTable<RateBookEntry, 'id'>
   paymentCards!: EntityTable<PaymentCard, 'id'>
+  cardCashbacks!: EntityTable<CardCashback, 'id'>
   expenses!: EntityTable<Expense, 'id'>
   expenseSplits!: EntityTable<ExpenseSplit, 'id'>
   expenseDayAllocations!: EntityTable<ExpenseDayAllocation, 'id'>
@@ -175,6 +178,11 @@ export class TripJournalDB extends Dexie {
     // 按团队存不挂tripId（跟wishlistPlaces一样，deleteTripCascade不碰它），不影响已有数据
     this.version(12).stores({
       paymentCards: 'id, householdId, createdAt',
+    })
+    // 刷卡返现——2026-11-07新增，见types/index.ts的CardCashback。全新的表，按行程挂
+    // （deleteTripCascade 会一起软删），不影响已有数据
+    this.version(13).stores({
+      cardCashbacks: 'id, tripId, paymentCardId, householdId',
     })
     registerOutboxHooks(this)
   }
@@ -382,6 +390,7 @@ export async function deleteTripCascade(tripId: string) {
       db.trips, db.tripMembers, db.itineraryDays, db.itineraryItems, db.expenses, db.expenseSplits,
       db.expenseDayAllocations, db.expenseRateAllocations, db.budgets, db.settlements,
       db.daySatisfactions, db.expenseSatisfactions, db.expenseLineItems, db.expenseLineItemMembers,
+      db.cardCashbacks,
     ],
     async () => {
       const expenseIds = await db.expenses.where('tripId').equals(tripId).primaryKeys()
@@ -399,6 +408,7 @@ export async function deleteTripCascade(tripId: string) {
       await db.itineraryDays.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
       await db.budgets.where('tripId').equals(tripId).modify({ deletedAt: now })
       await db.settlements.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
+      await db.cardCashbacks.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
       await db.tripMembers.where('tripId').equals(tripId).modify({ deletedAt: now })
       await db.trips.where('id').equals(tripId).modify({ deletedAt: now, updatedAt: now })
     },
