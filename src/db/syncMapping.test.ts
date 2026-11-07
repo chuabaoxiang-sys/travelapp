@@ -46,4 +46,20 @@ describe('paymentCards / expense card fields mapping', () => {
     expect(back.paymentCardId).toBe('c1')
     expect(back.cardChargePending).toBe(true)
   })
+
+  it('round-trips the itemized fee percent on expenses', () => {
+    const base = {
+      id: 'e2', householdId: 'h1', tripId: 't1', categoryId: 'c', phase: 'during', description: null,
+      expenseCurrency: 'KRW', expenseAmount: 55000, rateBookEntryId: null, rateUsed: 0.003, homeAmount: 165,
+      paidBy: 'm1', recordedBy: 'm1', expenseDate: '2026-10-06', itineraryDayId: null, itineraryItemId: null,
+      splitType: 'itemized', deletedAt: null, createdAt: 0, updatedAt: 0,
+    }
+    const remote = SYNC_CONFIG.expenses.toRemote({ ...base, itemizedFeePercent: 10 })
+    expect(remote.itemized_fee_percent).toBe(10)
+    // numeric 列从 PostgREST 拉回来是字符串
+    expect(SYNC_CONFIG.expenses.fromRemote({ ...remote, itemized_fee_percent: '10' }).itemizedFeePercent).toBe(10)
+    // 不是逐项拆账、或旧数据没有手续费
+    expect(SYNC_CONFIG.expenses.toRemote(base).itemized_fee_percent).toBeNull()
+    expect(SYNC_CONFIG.expenses.fromRemote({ ...remote, itemized_fee_percent: null }).itemizedFeePercent).toBeNull()
+  })
 })
