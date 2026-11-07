@@ -568,6 +568,7 @@
     "paidBySummaryRest_one": "{{name}} paid · rest split {{count}} way",
     "paidBySummaryRest_other": "{{name}} paid · rest split {{count}} ways",
     "proxyTag": "For {{names}}",
+    "discountTag": "Saved {{amount}}",
     "filter": {
       "button": "Filter expenses",
       "title": "Filter expenses",
@@ -665,6 +666,10 @@
     "today": "Today",
     "noteLabel": "Note",
     "notePlaceholder": "Note (optional)",
+    "discountLabel": "Discount (optional)",
+    "discountPlaceholder": "Discount, tax refund or coupon on the receipt",
+    "discountSaved": "saved ≈ {{amount}}",
+    "discountHint": "Keep the amount above as what you actually paid — the discount just records how much you saved and doesn't change spending or splits.",
     "payerLabel": "Paid by",
     "payerFallback": "Payer",
     "payerChip": "{{name}} paid",
@@ -1187,7 +1192,9 @@
     "whereItWent": "Where it went",
     "priciestDay": "Priciest day",
     "byPerson": "By person",
-    "personLine": "Paid {{paid}} · share {{owed}}"
+    "personLine": "Paid {{paid}} · share {{owed}}",
+    "discountLine_one": "Saved {{amount}} with discounts ({{count}} purchase)",
+    "discountLine_other": "Saved {{amount}} with discounts ({{count}} purchases)"
   },
   "emailLogin": {
     "title": "Let's log you in",
@@ -1362,7 +1369,7 @@
         { "title": "Tap the \"+\" at the bottom", "desc": "It's there on Ledger and Itinerary alike, always in the same spot." },
         { "title": "Enter the amount, pick a category", "desc": "Currency defaults to your home currency; once you pick a category, whether it counts as \"before the trip\" or \"during\" is worked out for you." },
         { "title": "Pay in another currency", "desc": "Tap another currency next to the amount — as long as you've saved a rate for it, the conversion happens automatically." },
-        { "title": "Expand \"Other settings\"", "desc": "Tap \"Edit\" — date, who paid, and how to split are tucked in here, usually already right. Bought something for someone who isn't on the trip? Add who it's for and how much under \"Bought for others\" — that part isn't split among the travelers." },
+        { "title": "Expand \"Other settings\"", "desc": "Tap \"Edit\" — date, who paid, and how to split are tucked in here, usually already right. Bought something for someone who isn't on the trip? Add who it's for and how much under \"Bought for others\" — that part isn't split among the travelers. Got a discount? Put it under \"Discount\" — it only records what you saved, so keep the amount as what you actually paid." },
         { "title": "Link it to a plan", "desc": "Tie an expense to a specific itinerary item, so you can see the cost when you look back at that day." },
         { "title": "Edit or delete an expense", "desc": "Tap an existing entry to expand it — expenses already settled can't have their amount changed anymore. With lots of entries, tap the filter button at the left of the date strip to show only certain categories or payment methods; a bar above the list shows how many match and their total." },
         { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back. Below it, the \"Bought for others\" card totals up what each person owes; tap once when they've paid it back." },

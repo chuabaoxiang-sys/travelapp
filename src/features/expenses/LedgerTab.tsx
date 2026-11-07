@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Wallet, CreditCard, Gift, Filter, X } from 'lucide-react'
+import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag } from 'lucide-react'
 import { LedgerFilterSheet } from './LedgerFilterSheet'
 import { EMPTY_LEDGER_FILTER, PAY_CASH, PAY_PENDING, filterCount, isFilterActive, matchesLedgerFilter, type LedgerFilter } from '../../domain/ledgerFilter'
 import { db } from '../../db/dexie'
@@ -213,6 +213,11 @@ export function LedgerTab({
   }
   function itineraryItemOf(id: string) {
     return itineraryItems.find((it) => it.id === id)
+  }
+  // 优惠标签按这笔自己的币种显示（"省 ¥2,000"）——照收据抄的就是这个数
+  function discountLabel(currency: string, amount: number) {
+    const symbol: Record<string, string> = { JPY: '¥', MYR: 'RM', CNY: '¥', KRW: '₩', USD: '$', EUR: '€' }
+    return symbol[currency] ? `${symbol[currency]}${amount.toLocaleString()}` : `${currency} ${amount.toLocaleString()}`
   }
   function splitCountOf(expenseId: string) {
     return splits.filter((s) => s.expenseId === expenseId && !isProxySplit(s)).length
@@ -481,6 +486,12 @@ export function LedgerTab({
                         <span className="truncate">{categoryLabel(cat, t)}{card ? ` · ${card.name}` : ''}</span>
                         {pendingCharge && (
                           <span className="text-[9.5px] font-bold px-1.5 py-px rounded-full bg-spend/[.12] text-spend-text flex-shrink-0">{t('cardCharge.pendingTag')}</span>
+                        )}
+                        {(e.discountAmount ?? 0) > 0 && (
+                          <span className="inline-flex items-center gap-[3px] text-[10.5px] px-[7px] py-px rounded-full bg-positive/10 text-positive flex-shrink-0 tabular">
+                            <Tag className="w-[11px] h-[11px]" strokeWidth={2} />
+                            {t('ledger.discountTag', { amount: discountLabel(e.expenseCurrency, e.discountAmount ?? 0) })}
+                          </span>
                         )}
                         {proxyNamesOf(e.id).length > 0 && (
                           <span className="inline-flex items-center gap-[3px] text-[10.5px] px-[7px] py-px rounded-full bg-plan/[.08] text-plan min-w-0 truncate">

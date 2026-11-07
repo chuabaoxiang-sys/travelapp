@@ -261,6 +261,9 @@ export interface Expense {
   // true = 刷卡当下还不知道银行扣了多少，homeAmount 是按估算汇率先记的，
   // 等用户补了真实扣款再变回 false
   cardChargePending?: boolean | null
+  // 优惠（0047）：按这笔账自己的币种记的优惠金额，只用来显示"省了多少"，
+  // 不参与花费、预算、分摊；null/undefined = 没记
+  discountAmount?: number | null
   deletedAt: number | null
   createdAt: number
   updatedAt: number

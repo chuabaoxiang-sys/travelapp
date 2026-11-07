@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Tag } from 'lucide-react'
 import type { Trip } from '../../types'
 import { buildRetrospective, type TripRetrospective } from '../../domain/retrospective'
 import { formatMoney } from '../../lib/money'
@@ -81,6 +82,12 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
             data.placeCount > 0 ? t('retrospective.summaryPlaces', { count: data.placeCount }) : null,
           ].filter(Boolean).join(' · ')}
         </div>
+        {data.discount.count > 0 && (
+          <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
+            <Tag className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
+            {t('retrospective.discountLine', { amount: money(data.discount.total), count: data.discount.count })}
+          </div>
+        )}
       </div>
 
       {/* 还没结清——放在最前面，因为这是这个APP最不可替代的价值 */}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X, AlertTriangle, Banknote, CreditCard, Gift } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X, AlertTriangle, Banknote, CreditCard, Gift, Tag } from 'lucide-react'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
@@ -85,6 +85,8 @@ export function AddExpensePage({
 
   const [categoryId, setCategoryId] = useState<string>(initial?.categoryId ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
+  const [discount, setDiscount] = useState(initial?.discountAmount ? String(initial.discountAmount) : '')
+  const numDiscount = parseFloat(discount) || 0
   const [currency, setCurrency] = useState(initial?.expenseCurrency ?? trip.homeCurrency)
   // 币种chip从"本位币+行程设置里选好的会用到的货币"生成，不用每次手动打字。
   // 老账目/没被行程货币列表覆盖的币种（比如编辑一笔当初手动输入的冷门币种）
@@ -579,6 +581,7 @@ export function AddExpensePage({
         rateSpread,
         paymentCardId,
         cardChargePending,
+        discountAmount: numDiscount > 0 ? round2(numDiscount) : null,
         itemizedFeePercent: itemizedFeePercentForSave,
         lastEditedBy: currentMemberId,
         updatedAt: Date.now(),
@@ -610,6 +613,7 @@ export function AddExpensePage({
         rateSpread,
         paymentCardId,
         cardChargePending,
+        discountAmount: numDiscount > 0 ? round2(numDiscount) : null,
         itemizedFeePercent: itemizedFeePercentForSave,
         deletedAt: null,
         createdAt: now,
@@ -918,6 +922,28 @@ export function AddExpensePage({
               placeholder={t('addExpense.notePlaceholder')}
               className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm outline-none focus:border-plan"
             />
+
+            {/* 优惠（2026-11-07）：只记"省了多少"，上面的金额照旧填实付，不影响花费和分摊 */}
+            <label className="block">
+              <span className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1 flex items-center gap-1.5">
+                <Tag className="w-[13px] h-[13px] text-positive" strokeWidth={1.8} />
+                {t('addExpense.discountLabel')}
+              </span>
+              <span className="flex items-center gap-2 rounded-xl border border-line bg-card px-3 py-2 focus-within:border-plan">
+                <input
+                  value={discount}
+                  inputMode="decimal"
+                  onChange={(e) => setDiscount(e.target.value)}
+                  placeholder={t('addExpense.discountPlaceholder')}
+                  className="flex-1 min-w-0 bg-transparent text-sm outline-none tabular"
+                />
+                <span className="text-[12px] text-muted flex-shrink-0">
+                  {currency}
+                  {numDiscount > 0 && isForeign && numRate > 0 ? ` · ${t('addExpense.discountSaved', { amount: formatMoney(round2(numDiscount * numRate), homeLabel) })}` : ''}
+                </span>
+              </span>
+              {numDiscount > 0 && <span className="block text-[11px] text-muted mt-1">{t('addExpense.discountHint')}</span>}
+            </label>
 
             <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.payerLabel')}</div>
             <div className="flex flex-wrap gap-1.5">
