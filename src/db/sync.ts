@@ -97,7 +97,14 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
       }
       const { error } = await supabase.rpc('replace_expense_splits', {
         p_expense_id: expenseId,
-        p_rows: rows.map((r) => ({ id: r.id, member_id: r.memberId, share_amount: r.shareAmount })),
+        p_rows: rows.map((r) => ({
+          id: r.id,
+          member_id: r.memberId,
+          share_amount: r.shareAmount,
+          proxy_name: r.proxyName ?? null,
+          proxy_amount: r.proxyAmount ?? null,
+          proxy_repaid_at: r.proxyRepaidAt ? new Date(r.proxyRepaidAt).toISOString() : null,
+        })),
       })
       if (error) throw error
       await Promise.all(group.map((e) => db.outbox.update(e.id, { status: 'synced' })))

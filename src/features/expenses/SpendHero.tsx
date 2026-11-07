@@ -1,4 +1,5 @@
 import { Trans, useTranslation } from 'react-i18next'
+import { Gift } from 'lucide-react'
 import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { heroRawValue, type AllowanceState } from '../../domain/dailyAllowance'
@@ -35,6 +36,7 @@ export function SpendHero({
   onSetBudget,
   animatedValueOverride,
   entered = true,
+  proxy,
 }: {
   state: AllowanceState
   currency: string
@@ -45,6 +47,8 @@ export function SpendHero({
   animatedValueOverride?: number
   // 见上面bar()的注释——只有需要"从0滚到目标宽度"进场效果的调用方才用得到
   entered?: boolean
+  // 代购（2026-11-07）：照样算进总花费，只是在这里标出来"其中代购多少、还有多少没还"
+  proxy?: { total: number; unpaid: number }
 }) {
   const { t } = useTranslation()
   const money = (n: number) => formatMoney(n, currency)
@@ -114,6 +118,14 @@ export function SpendHero({
             values={{ remaining: money(tripRemaining) }}
             components={{ b: <span className="font-semibold text-spend" /> }}
           />
+        </div>
+      )}
+      {proxy && proxy.total > 0 && (
+        <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
+          <Gift className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
+          {proxy.unpaid > 0
+            ? t('spendHero.proxyLine', { total: money(proxy.total), unpaid: money(proxy.unpaid) })
+            : t('spendHero.proxyLineAllRepaid', { total: money(proxy.total) })}
         </div>
       )}
       {progress !== null && bar(progress, entered)}

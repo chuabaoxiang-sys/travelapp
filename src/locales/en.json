@@ -253,6 +253,18 @@
   },
   "split": {
     "title": "Settle up",
+    "proxy": {
+      "heading": "Bought for others",
+      "unpaidTotal": "{{amount}} not paid back yet",
+      "meta_one": "{{count}} purchase · {{range}} · owed to {{name}}",
+      "meta_other": "{{count}} purchases · {{range}} · owed to {{name}}",
+      "expand": "Show items",
+      "collapse": "Hide items",
+      "markRepaid": "Mark {{name}} as paid back",
+      "repaidHeading": "Paid back",
+      "repaidLine": "{{name}} · marked paid back {{date}}",
+      "undo": "Mark as not paid back"
+    },
     "unknownMember": "Unknown",
     "untitledExpense": "Other",
     "emptyTitle": "Nothing to settle yet",
@@ -553,6 +565,9 @@
     "dayTotalLabel": "Day total",
     "paidBySummary_one": "{{name}} paid · split {{count}} way",
     "paidBySummary_other": "{{name}} paid · split {{count}} ways",
+    "paidBySummaryRest_one": "{{name}} paid · rest split {{count}} way",
+    "paidBySummaryRest_other": "{{name}} paid · rest split {{count}} ways",
+    "proxyTag": "For {{names}}",
     "personalBadge": "Personal",
     "recordedBy": "Logged by {{name}}",
     "lastEditedBy": "Last edited by {{name}} · {{time}}",
@@ -592,6 +607,8 @@
       "subNoBudget": "No budget set yet"
     },
     "tripRemaining": "<b>{{remaining}}</b> left for the trip",
+    "proxyLine": "Incl. {{total}} bought for others ({{unpaid}} not paid back yet)",
+    "proxyLineAllRepaid": "Incl. {{total}} bought for others (all paid back)",
     "setBudgetCta": "Set a budget to see your daily allowance ›"
   },
   "tripHeader": {
@@ -645,11 +662,40 @@
     "splitRow": "Split",
     "daysRow": "Spread across days",
     "linkedToItinerary": "Linked to itinerary",
+    "proxyRow": "Bought for others",
+    "proxyNone": "None",
+    "proxyPage": {
+      "title": "Bought for others",
+      "intro": "Things you bought for people who aren't on this trip. These lines aren't split among the travelers — they're recorded as owed to {{name}}, who paid.",
+      "forWhom": "Bought for",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Mum",
+      "amountLabel": "Amount ({{currency}})",
+      "removeLine": "Remove this line",
+      "addLine": "Add a person",
+      "recentLabel": "Names you've used before (tap to add)",
+      "total": "This expense",
+      "proxyTotal_one": "Bought for others ({{count}} person)",
+      "proxyTotal_other": "Bought for others ({{count}} people)",
+      "rest": "Rest, split as set under Split",
+      "note": "These lines can't add up to more than the expense. For card payments, they update to the actual rate once you fill in the real charge.",
+      "itemizedBlocked": "Not available while Split is set to Itemized"
+    },
+    "proxyProblem": {
+      "missingName": "A line is missing a name",
+      "missingAmount": "A line is missing an amount",
+      "duplicateName": "\"{{name}}\" appears twice",
+      "over": "These lines add up to more than the expense",
+      "itemized": "Can't combine with an itemized split"
+    },
     "splitSummary": {
       "personal": "{{name}}'s personal expense",
       "noOne": "No one selected to split with",
       "sharedEqual": "{{name}} paid · split evenly among {{count}}",
       "sharedExact": "{{name}} paid · custom split among {{count}}",
+      "personalRest": "The rest is {{name}}'s own",
+      "sharedEqualRest": "{{name}} paid · rest split evenly among {{count}}",
+      "sharedExactRest": "{{name}} paid · rest custom split among {{count}}",
       "itemized_one": "Itemized · {{count}} item",
       "itemized_other": "Itemized · {{count}} items"
     },
@@ -1299,10 +1345,10 @@
         { "title": "Tap the \"+\" at the bottom", "desc": "It's there on Ledger and Itinerary alike, always in the same spot." },
         { "title": "Enter the amount, pick a category", "desc": "Currency defaults to your home currency; once you pick a category, whether it counts as \"before the trip\" or \"during\" is worked out for you." },
         { "title": "Pay in another currency", "desc": "Tap another currency next to the amount — as long as you've saved a rate for it, the conversion happens automatically." },
-        { "title": "Expand \"Other settings\"", "desc": "Tap \"Edit\" — date, who paid, and how to split are tucked in here, usually already right." },
+        { "title": "Expand \"Other settings\"", "desc": "Tap \"Edit\" — date, who paid, and how to split are tucked in here, usually already right. Bought something for someone who isn't on the trip? Add who it's for and how much under \"Bought for others\" — that part isn't split among the travelers." },
         { "title": "Link it to a plan", "desc": "Tie an expense to a specific itinerary item, so you can see the cost when you look back at that day." },
         { "title": "Edit or delete an expense", "desc": "Tap an existing entry to expand it — expenses already settled can't have their amount changed anymore." },
-        { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back." },
+        { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back. Below it, the \"Bought for others\" card totals up what each person owes; tap once when they've paid it back." },
         { "title": "Settle specific expenses", "desc": "Pick one or a few expenses and settle just those, instead of the running total." },
         { "title": "Log a prepayment", "desc": "If someone handed over a lump sum upfront, \"Add\" next to \"Settlement records\" logs it directly — no expense needed first." },
         { "title": "Who paid what", "desc": "See at a glance what each person covered and what they owe." }

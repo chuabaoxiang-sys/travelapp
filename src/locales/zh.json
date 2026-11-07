@@ -240,6 +240,17 @@
   },
   "split": {
     "title": "费用分摊 · 按人结算",
+    "proxy": {
+      "heading": "代购 · 帮没来的人买",
+      "unpaidTotal": "还没还 {{amount}}",
+      "meta_other": "{{count}}笔 · {{range}} · 还给 {{name}}",
+      "expand": "展开明细",
+      "collapse": "收起明细",
+      "markRepaid": "{{name}}已还",
+      "repaidHeading": "已还",
+      "repaidLine": "{{name}} · {{date}} 标为已还",
+      "undo": "改回未还"
+    },
     "unknownMember": "未知",
     "untitledExpense": "其他",
     "emptyTitle": "还没有可以结算的账目",
@@ -529,6 +540,8 @@
     },
     "dayTotalLabel": "当日",
     "paidBySummary_other": "{{name}}垫付 · {{count}}人分摊",
+    "paidBySummaryRest_other": "{{name}}垫付 · 剩下 {{count}}人分摊",
+    "proxyTag": "代购 {{names}}",
     "personalBadge": "个人开销",
     "recordedBy": "由 {{name}} 记录",
     "lastEditedBy": "最后由 {{name}} 修改于 {{time}}",
@@ -568,6 +581,8 @@
       "subNoBudget": "还没设预算"
     },
     "tripRemaining": "这趟一共还剩 <b>{{remaining}}</b>",
+    "proxyLine": "其中代购 {{total}}（还没还 {{unpaid}}）",
+    "proxyLineAllRepaid": "其中代购 {{total}}（都还了）",
     "setBudgetCta": "设个预算，就能看到每天还能花多少 ›"
   },
   "tripHeader": {
@@ -621,11 +636,39 @@
     "splitRow": "怎么分",
     "daysRow": "花在几天",
     "linkedToItinerary": "已关联行程",
+    "proxyRow": "代购",
+    "proxyNone": "无",
+    "proxyPage": {
+      "title": "代购",
+      "intro": "帮没来旅行的人买的东西，填在这里。这几行不算进同行者的分摊，记成他们欠 {{name}}（这笔的付款人）。",
+      "forWhom": "帮谁买",
+      "nameLabel": "名字",
+      "namePlaceholder": "比如 妈妈",
+      "amountLabel": "金额（{{currency}}）",
+      "removeLine": "删除这一行",
+      "addLine": "再加一个人",
+      "recentLabel": "以前填过的名字（点一下加一行）",
+      "total": "这笔一共",
+      "proxyTotal_other": "代购（{{count}}人）",
+      "rest": "剩下，按「怎么分」分摊",
+      "note": "代购加起来不能超过这笔的总额。刷卡补了实际扣款后，会按实际汇率自动更新。",
+      "itemizedBlocked": "「怎么分」选了逐项拆账时，不能同时记代购"
+    },
+    "proxyProblem": {
+      "missingName": "代购有一行没填名字",
+      "missingAmount": "代购有一行没填金额",
+      "duplicateName": "代购里「{{name}}」重复了",
+      "over": "代购加起来超过了这笔的总额",
+      "itemized": "代购和逐项拆账不能同时用"
+    },
     "splitSummary": {
       "personal": "{{name}}的个人开销",
       "noOne": "未选择分摊对象",
       "sharedEqual": "{{name}}垫付 · {{count}}人平均分摊",
       "sharedExact": "{{name}}垫付 · {{count}}人自定义分摊",
+      "personalRest": "剩下算{{name}}自己的",
+      "sharedEqualRest": "{{name}}垫付 · 剩下 {{count}}人平均分摊",
+      "sharedExactRest": "{{name}}垫付 · 剩下 {{count}}人自定义分摊",
       "itemized_one": "逐项拆账 · {{count}}项",
       "itemized_other": "逐项拆账 · {{count}}项"
     },
@@ -1246,10 +1289,10 @@
         { "title": "点底部中间的\"+\"", "desc": "账目、行程任何一个标签都能看到，位置固定不用找。" },
         { "title": "填金额，选分类", "desc": "币种默认本位币，选好分类之后这笔算\"出行前\"还是\"途中\"会自动定下来。" },
         { "title": "用外币记账", "desc": "点币种旁边的其他货币，只要汇率簿里有对应汇率，会自动换算成本位币。" },
-        { "title": "展开\"其他设置\"", "desc": "点\"改\"，日期、付款人、怎么分这几项默认收在这里，多数时候不用改。" },
+        { "title": "展开\"其他设置\"", "desc": "点\"改\"，日期、付款人、怎么分这几项默认收在这里，多数时候不用改。帮没来旅行的人买了东西，在\"代购\"那一行填帮谁买、多少钱，这部分不算进同行者的分摊。" },
         { "title": "关联到具体行程项", "desc": "把这笔账跟某个行程安排绑在一起，回头翻行程也能看到花了多少。" },
         { "title": "编辑或删除一笔账目", "desc": "点已经记好的账目原地展开，改完保存；已经被结算过的账目金额不能再改。" },
-        { "title": "看结算建议", "desc": "切到\"结算\"分段，自动算出最少的转账笔数，不是每个人两两互转。" },
+        { "title": "看结算建议", "desc": "切到\"结算\"分段，自动算出最少的转账笔数，不是每个人两两互转。下面的\"代购\"卡片按人汇总帮别人买的东西，对方还钱后点一下标已还。" },
         { "title": "按笔结算", "desc": "针对某一笔或几笔具体账目单独结算，而不是笼统的总账。" },
         { "title": "记一笔预付款", "desc": "有人提前给了一大笔钱，\"结算记录\"旁边的\"新增\"能直接记，不用先有欠款。" },
         { "title": "谁付了多少", "desc": "每个人垫付了多少、应该分摊多少，一目了然。" }

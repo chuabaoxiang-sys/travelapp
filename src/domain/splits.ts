@@ -1,6 +1,6 @@
 import { db, enqueueOutbox } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
-import type { SplitType } from '../types'
+import type { ExpenseSplit, SplitType } from '../types'
 
 export function round2(n: number) {
   return Math.round(n * 100) / 100
@@ -55,10 +55,21 @@ export function resolveSplitShares(
 // resolveSplitShares（整单按人数/比例/自定义分）和 domain/lineItems.ts 的
 // 逐项拆账计算——但"写进数据库、怎么同步"这段逻辑两条路径必须完全一致，
 // 不能各写一遍，否则容易出现"逐项拆账忘了走原子推送"这种同步坑
-export async function persistExpenseSplitShares(expenseId: string, shares: { memberId: string; shareAmount: number }[]) {
+export interface SplitShare {
+  memberId: string
+  shareAmount: number
+  proxyName?: string | null
+  proxyAmount?: number | null
+  proxyRepaidAt?: number | null
+}
+
+export async function persistExpenseSplitShares(expenseId: string, shares: SplitShare[]) {
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('No household found')
-  const rows = shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount, deletedAt: null }))
+  const rows: ExpenseSplit[] = shares.map((s) => ({
+    id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount, deletedAt: null,
+    proxyName: s.proxyName ?? null, proxyAmount: s.proxyAmount ?? null, proxyRepaidAt: s.proxyRepaidAt ?? null,
+  }))
   // 写分摊和入队放在同一个事务里：后台拉取不会刚好插在"新分摊写好了、还没入队"
   // 的空档里，把这几行当成"云端已删除"清掉
   await db.transaction('rw', db.expenseSplits, db.outbox, async () => {
@@ -81,9 +92,76 @@ export async function saveExpenseSplits(
   memberIds: string[],
   payerId: string,
   customAmounts?: Record<string, number>,
+  proxy?: { expenseAmount: number; lines: ProxyLine[] },
 ) {
-  const shares = resolveSplitShares(homeAmount, splitType, memberIds, payerId, customAmounts)
-  await persistExpenseSplitShares(expenseId, shares)
+  await persistExpenseSplitShares(expenseId, buildSplitShares(homeAmount, splitType, memberIds, payerId, customAmounts, proxy))
+}
+
+// ---------------------------------------------------------------------
+// 代购（2026-11-07）：一笔账里帮没来旅行的人买的那部分。存成 expenseSplits 里的
+// 特殊行（见 0046_expense_split_proxy.sql）：memberId = 付款人，proxyName = 帮谁买，
+// shareAmount = 这部分的本位币金额。整笔账的分摊合计照旧等于 homeAmount，
+// 数据库那道合计约束、原子推送都不用改；代价是读分摊的地方要用 isProxySplit
+// 认出这种行——同行者之间谁欠谁、"我的花费"都不算它们
+// ---------------------------------------------------------------------
+
+export interface ProxyLine {
+  name: string
+  amount: number // 按这笔账自己的币种（照收据填的外币）
+  repaidAt?: number | null
+}
+
+export function isProxySplit(s: { proxyName?: string | null }): boolean {
+  return !!s.proxyName
+}
+
+// 每行代购折成本位币：按"这行外币 / 整笔外币"的比例分 homeAmount——跟按这笔的
+// 汇率乘出来是一回事，但刷卡补了实际扣款后同一个公式自动跟着变。代购加起来等于
+// 整笔（整张收据都是帮人买的）时，四舍五入的零头补给第一行，剩下的刚好是 0，
+// 不会出现 -0.01 这种负数
+export function resolveProxyShares(homeAmount: number, expenseAmount: number, lines: ProxyLine[]) {
+  const valid = lines.filter((l) => l.name.trim() && l.amount > 0)
+  if (!valid.length || !(expenseAmount > 0)) return []
+  const shares = valid.map((l) => ({
+    name: l.name.trim(),
+    amount: l.amount,
+    repaidAt: l.repaidAt ?? null,
+    shareAmount: round2((homeAmount * l.amount) / expenseAmount),
+  }))
+  const foreignTotal = valid.reduce((s, l) => s + l.amount, 0)
+  if (Math.abs(foreignTotal - expenseAmount) < 0.005) {
+    const diff = round2(homeAmount - shares.reduce((s, p) => s + p.shareAmount, 0))
+    shares[0].shareAmount = round2(shares[0].shareAmount + diff)
+  }
+  return shares
+}
+
+// 整笔账的全部分摊行：先扣掉代购，剩下的按"怎么分"给同行者
+export function buildSplitShares(
+  homeAmount: number,
+  splitType: SplitType,
+  memberIds: string[],
+  payerId: string,
+  customAmounts?: Record<string, number>,
+  proxy?: { expenseAmount: number; lines: ProxyLine[] },
+): SplitShare[] {
+  const proxyShares = proxy ? resolveProxyShares(homeAmount, proxy.expenseAmount, proxy.lines) : []
+  const remainder = Math.max(0, round2(homeAmount - proxyShares.reduce((s, p) => s + p.shareAmount, 0)))
+  return [
+    ...resolveSplitShares(remainder, splitType, memberIds, payerId, customAmounts),
+    ...proxyShares.map((p) => ({
+      memberId: payerId,
+      shareAmount: p.shareAmount,
+      proxyName: p.name,
+      proxyAmount: p.amount,
+      proxyRepaidAt: p.repaidAt,
+    })),
+  ]
+}
+
+// 一笔账里代购那部分的本位币合计（不在乎还没还）
+export function proxyTotal(splits: { proxyName?: string | null; shareAmount: number }[]): number {
+  return round2(splits.filter(isProxySplit).reduce((s, x) => s + x.shareAmount, 0))
 }
 
 export interface PersonBalance {
@@ -105,14 +183,23 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
   const splits = expenseIds.length ? await db.expenseSplits.where('expenseId').anyOf(expenseIds).toArray() : []
   const settlements = (await db.settlements.where('tripId').equals(tripId).toArray()).filter((s) => !s.deletedAt)
 
+  // 代购那部分是付款人跟没来旅行的人之间的事，不进同行者之间的账：付款人的"垫付"
+  // 扣掉代购，代购行也不算任何同行者"该分摊"的
+  const proxyByExpense = new Map<string, number>()
+  for (const s of splits) {
+    if (isProxySplit(s)) proxyByExpense.set(s.expenseId, round2((proxyByExpense.get(s.expenseId) ?? 0) + s.shareAmount))
+  }
+
   const paidMap = new Map<string, { amount: number; count: number }>()
   for (const e of expenses) {
     const cur = paidMap.get(e.paidBy) ?? { amount: 0, count: 0 }
-    paidMap.set(e.paidBy, { amount: round2(cur.amount + e.homeAmount), count: cur.count + 1 })
+    const paid = round2(e.homeAmount - (proxyByExpense.get(e.id) ?? 0))
+    paidMap.set(e.paidBy, { amount: round2(cur.amount + paid), count: cur.count + 1 })
   }
 
   const owedMap = new Map<string, number>()
   for (const s of splits) {
+    if (isProxySplit(s)) continue
     owedMap.set(s.memberId, round2((owedMap.get(s.memberId) ?? 0) + s.shareAmount))
   }
 
@@ -183,7 +270,7 @@ async function computeOpenDebtsAndPools(tripId: string) {
   for (const split of splits) {
     const expense = expenseById.get(split.expenseId)
     // 自己分摊给自己（付款人本人的那一份，或者splitType='none'时的整笔自留）不算欠款
-    if (!expense || split.memberId === expense.paidBy) continue
+    if (!expense || split.memberId === expense.paidBy || isProxySplit(split)) continue
     const settledAmount = settledMap.get(`${split.expenseId}:${split.memberId}`) ?? 0
     afterTagged.push({
       expenseId: expense.id,

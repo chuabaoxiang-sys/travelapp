@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X, AlertTriangle, Banknote, CreditCard } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X, AlertTriangle, Banknote, CreditCard, Gift } from 'lucide-react'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { getCurrentHouseholdId } from '../../domain/household'
 import { db, ensureItineraryDay } from '../../db/dexie'
@@ -14,13 +14,14 @@ import { RateChipRow, type RateSelection } from '../rates/RateChipRow'
 import { CardPaymentPanel } from '../rates/CardPaymentPanel'
 import { isCardExpense, getPaymentCards, createPaymentCard, estimateCardRate } from '../../domain/paymentCards'
 import { createRateBookEntry, recordRateUsage } from '../../domain/rates'
-import { saveExpenseSplits } from '../../domain/splits'
+import { saveExpenseSplits, isProxySplit, resolveProxyShares } from '../../domain/splits'
+import { recentProxyNames } from '../../domain/proxies'
 import { saveDayAllocations, deleteDayAllocations } from '../../domain/dayAllocations'
 import { saveRateAllocations, deleteRateAllocations } from '../../domain/rateAllocations'
 import { saveItemizedExpense, deleteLineItems, getLineItemsForExpense, type LoadedLineItem } from '../../domain/lineItems'
 import { isExpenseSettled } from '../../domain/settlements'
 import { categoryColor } from '../../lib/categoryColors'
-import { round2 } from '../../lib/money'
+import { formatMoney, round2 } from '../../lib/money'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -148,7 +149,7 @@ export function AddExpensePage({
   // 子页的"‹ 返回"只是本地状态切换，不涉及浏览器历史——安卓硬件返回键仍然是
   // "关掉整个记账页"（跟点取消/点背景一样，本来就不带二次确认，子页多退一层
   // 不改变这个既有语义）；只有桌面 Escape 键会先退一层子页，见下面 useEscapeKey
-  const [activeDetail, setActiveDetail] = useState<'split' | 'days' | null>(null)
+  const [activeDetail, setActiveDetail] = useState<'split' | 'days' | 'proxy' | null>(null)
 
   // 阶段/日期/备注/付款人/关联行程/怎么分/花在几天——这几项绝大多数时候都是默认值就对
   // （自己付、今天、全家平摊），折叠在"其他设置"里，只留金额+分类两个真正每次都要
@@ -228,10 +229,29 @@ export function AddExpensePage({
   // 所以跟前面"关联行程"那处一样，用 useEffect + ref 只回填一次，避免空数组当成初始值
   const [splitMemberIds, setSplitMemberIds] = useState<string[]>([])
   const splitInitialized = useRef(false)
-  const existingSplits = useLiveQuery(
+  const existingAllSplits = useLiveQuery(
     () => (initial ? db.expenseSplits.where('expenseId').equals(initial.id).toArray() : Promise.resolve<ExpenseSplit[]>([])),
     [initial?.id],
   ) ?? []
+  // 代购行（帮没来旅行的人买的）的 memberId 是付款人，不能混进"分摊给谁"的名单
+  const existingSplits = existingAllSplits.filter((s) => !isProxySplit(s))
+
+  // 代购（2026-11-07）：一笔账里帮没来旅行的人买的那几行。金额用字符串存，
+  // 跟"自定义金额"同一个理由；repaidAt 编辑时原样带回去，不能因为改了一下账
+  // 就把"已还"丢了
+  interface LocalProxyLine { id: string; name: string; amount: string; repaidAt: number | null }
+  const [proxyLines, setProxyLines] = useState<LocalProxyLine[]>([])
+  const proxyInitialized = useRef(false)
+  useEffect(() => {
+    if (proxyInitialized.current) return
+    if (!initial) { proxyInitialized.current = true; return }
+    if (!existingAllSplits.length) return
+    setProxyLines(existingAllSplits.filter(isProxySplit).map((s) => ({
+      id: s.id, name: s.proxyName ?? '', amount: String(s.proxyAmount ?? ''), repaidAt: s.proxyRepaidAt ?? null,
+    })))
+    proxyInitialized.current = true
+  }, [initial, existingAllSplits])
+  const proxyNameSuggestions = useLiveQuery(() => recentProxyNames(), []) ?? []
 
   // 停用的成员不该再被选成新的付款人/分摊对象，但如果这笔账原本就是他付的、
   // 或者原本分摊名单里就有他，编辑时还是要让他继续出现，不然历史记录会看不全
@@ -277,6 +297,7 @@ export function AddExpensePage({
   // 显示不会太挤，也不用再靠一个藏起来的开关去筛选可选项
   const visibleCategories = categories
   const isForeign = currency !== trip.homeCurrency
+  const homeLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
   const numAmount = parseFloat(amount) || 0
   // 拆多笔汇率时，rateUsed 是加权平均（各批本位币金额加总 / 开销外币总额），
   // homeAmount 直接是各批本位币金额的加总——不是"总外币×一个混合汇率"反推出来的
@@ -311,20 +332,32 @@ export function AddExpensePage({
   // 跟"怎么分"/"花在几天"那两处的实时校验是同一套规矩
   const rateSplitValid = payingByCard || rateSelection.mode !== 'split' || Math.abs(numAmount - splitTotalForeign) < 0.01
 
+  // 代购那几行按外币占整笔的比例折成本位币；同行者"怎么分"只分剩下的 shareBase
+  const activeProxyLines = proxyLines
+    .map((l) => ({ name: l.name.trim(), amount: parseFloat(l.amount) || 0, repaidAt: l.repaidAt }))
+    .filter((l) => l.name || l.amount > 0)
+  const proxyShares = resolveProxyShares(homeAmount, numAmount, activeProxyLines)
+  const proxyHomeTotal = round2(proxyShares.reduce((s, p) => s + p.shareAmount, 0))
+  const proxyForeignTotal = round2(activeProxyLines.reduce((s, l) => s + l.amount, 0))
+  const hasProxies = activeProxyLines.length > 0
+  const shareBase = Math.max(0, round2(homeAmount - proxyHomeTotal))
+  const proxyNames = activeProxyLines.map((l) => l.name).filter(Boolean)
+  const duplicateProxyName = proxyNames.find((n, i) => proxyNames.indexOf(n) !== i)
+
   // 切到"自定义金额"模式时，先按平均分摊帮忙填一份起点，用户在这个基础上改，
   // 不用每次都从0开始手算
   function seedEqualCustomAmounts(ids: string[]) {
-    if (!ids.length || !homeAmount) return
+    if (!ids.length || !shareBase) return
     const n = ids.length
-    const base = Math.floor((homeAmount / n) * 100) / 100
-    const remainder = Math.round((homeAmount - base * n) * 100) / 100
+    const base = Math.floor((shareBase / n) * 100) / 100
+    const remainder = Math.round((shareBase - base * n) * 100) / 100
     const next: Record<string, string> = {}
     ids.forEach((id, i) => { next[id] = (i === 0 ? base + remainder : base).toFixed(2) })
     setCustomAmounts(next)
   }
 
   const customTotal = splitMemberIds.reduce((sum, id) => sum + (parseFloat(customAmounts[id] ?? '0') || 0), 0)
-  const customDiff = Math.round((homeAmount - customTotal) * 100) / 100
+  const customDiff = Math.round((shareBase - customTotal) * 100) / 100
   const usingExactSplit = mode === 'share' && splitMode === 'exact' && splitMemberIds.length >= 2
   const customValid = !usingExactSplit || Math.abs(customDiff) < 0.01
 
@@ -338,6 +371,20 @@ export function AddExpensePage({
   const itemizedDiff = round2(homeAmount - itemsGrandTotal)
   const itemsMissingMembers = lineItems.some((it) => (parseFloat(it.amount) || 0) > 0 && it.memberIds.length === 0)
   const itemizedValid = !usingItemized || (Math.abs(itemizedDiff) < 0.01 && !itemsMissingMembers && lineItems.length > 0)
+
+  const proxyProblem = !hasProxies
+    ? null
+    : usingItemized
+      ? t('addExpense.proxyProblem.itemized')
+      : activeProxyLines.some((l) => !l.name)
+        ? t('addExpense.proxyProblem.missingName')
+        : activeProxyLines.some((l) => !(l.amount > 0))
+          ? t('addExpense.proxyProblem.missingAmount')
+          : duplicateProxyName
+            ? t('addExpense.proxyProblem.duplicateName', { name: duplicateProxyName })
+            : proxyForeignTotal > numAmount + 0.005
+              ? t('addExpense.proxyProblem.over')
+              : null
 
   function addLineItem() {
     setLineItems((prev) => [...prev, { id: crypto.randomUUID(), name: '', amount: '', memberIds: [] }])
@@ -425,13 +472,13 @@ export function AddExpensePage({
         ? rateRef
         : !categoryId
           ? categoryRef
-          : splitProblem || daysProblem
+          : splitProblem || daysProblem || proxyProblem
             ? detailsRef
             : null
     if (firstProblem) {
       setShowProblems(true)
-      // "怎么分"/"花在几天"在折叠起来的"其他设置"里，不展开用户看不到红字
-      if (splitProblem || daysProblem) setDetailsOpen(true)
+      // "怎么分"/"花在几天"/"代购"在折叠起来的"其他设置"里，不展开用户看不到红字
+      if (splitProblem || daysProblem || proxyProblem) setDetailsOpen(true)
       // 等展开的内容渲染出来再滚
       requestAnimationFrame(() => {
         const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -578,7 +625,10 @@ export function AddExpensePage({
     } else {
       // 从"逐项拆账"改成别的分摊方式时，把旧的子项明细清掉，不留占地方的残留数据
       if (initial?.splitType === 'itemized') await deleteLineItems(expenseId)
-      await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIds, payer, customAmountsForSave)
+      await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIds, payer, customAmountsForSave, {
+        expenseAmount: numAmount,
+        lines: activeProxyLines,
+      })
     }
 
     // 从"跨多天"改回"单日"时要把旧的每日分摊清掉，否则那几天的当日花费
@@ -641,10 +691,13 @@ export function AddExpensePage({
   const splitSummary = mode === 'itemized'
     ? t('addExpense.splitSummary.itemized', { count: lineItems.length })
     : mode === 'personal'
-      ? t('addExpense.splitSummary.personal', { name: payerName })
+      ? t(`addExpense.splitSummary.${hasProxies ? 'personalRest' : 'personal'}`, { name: payerName })
       : splitMemberIds.length === 0
         ? t('addExpense.splitSummary.noOne')
-        : t(`addExpense.splitSummary.${splitMode === 'exact' && splitMemberIds.length >= 2 ? 'sharedExact' : 'sharedEqual'}`, { name: payerName, count: splitMemberIds.length })
+        : t(`addExpense.splitSummary.${splitMode === 'exact' && splitMemberIds.length >= 2 ? 'sharedExact' : 'sharedEqual'}${hasProxies ? 'Rest' : ''}`, { name: payerName, count: splitMemberIds.length })
+  const proxySummaryText = hasProxies
+    ? `${[...new Set(proxyNames)].join('、')} · ${currency} ${proxyForeignTotal.toLocaleString()}`
+    : t('addExpense.proxyNone')
   const daysSummary = !spreadOpen || !spreadDates.length
     ? t('addExpense.daysSummary.single')
     : t(`addExpense.daysSummary.${dayMode === 'exact' ? 'multiExact' : 'multiEqual'}`, { count: spreadDates.length })
@@ -965,7 +1018,7 @@ export function AddExpensePage({
             <div
               ref={detailsRef}
               className={`border bg-card rounded-xl overflow-hidden ${
-                showProblems && (splitProblem || daysProblem) ? 'border-negative/55' : 'border-line'
+                showProblems && (splitProblem || daysProblem || proxyProblem) ? 'border-negative/55' : 'border-line'
               }`}
             >
               <button
@@ -978,6 +1031,31 @@ export function AddExpensePage({
                 <span className={`text-[12.5px] flex items-center gap-1 ${showProblems && splitProblem ? 'text-negative font-semibold' : ''}`}>
                   {showProblems && splitProblem ? splitProblem : splitSummary}
                   {!settled && <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={1.8} />}
+                </span>
+              </button>
+              {/* 代购（2026-11-07）：帮没来旅行的人买的那部分。逐项拆账时不可用；
+                  已经按笔结算过的账跟"怎么分"一样锁住——改代购就是改同行者分的那份 */}
+              <button
+                type="button"
+                onClick={() => {
+                  // 第一次点进来先给一行空的，不用再多点一下"再加一个人"
+                  if (!proxyLines.length) setProxyLines([{ id: crypto.randomUUID(), name: '', amount: '', repaidAt: null }])
+                  setActiveDetail('proxy')
+                }}
+                disabled={settled || (usingItemized && !hasProxies)}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left disabled:opacity-60 ${tripDates.length > 1 ? 'border-b border-line' : ''} ${hasProxies ? 'bg-plan/[.05]' : ''}`}
+              >
+                <span className="text-[12.5px] text-muted flex items-center gap-1.5">
+                  <Gift className="w-3.5 h-3.5 text-plan" strokeWidth={1.8} />
+                  {t('addExpense.proxyRow')}
+                </span>
+                <span className={`text-[12.5px] flex items-center gap-1 min-w-0 ${showProblems && proxyProblem ? 'text-negative font-semibold' : ''}`}>
+                  <span className="truncate">
+                    {showProblems && proxyProblem
+                      ? proxyProblem
+                      : usingItemized && !hasProxies ? t('addExpense.proxyPage.itemizedBlocked') : proxySummaryText}
+                  </span>
+                  {!settled && <ChevronRight className="w-3.5 h-3.5 text-muted flex-shrink-0" strokeWidth={1.8} />}
                 </span>
               </button>
               {tripDates.length > 1 && (
@@ -1045,7 +1123,7 @@ export function AddExpensePage({
                   <span className="text-[10.5px] tracking-widest uppercase text-muted">
                     {t('addExpense.splitPage.splitAmongLabel')}
                     {splitMemberIds.length >= 2 && splitMode === 'equal'
-                      ? t('addExpense.splitPage.splitAmongEqualEach', { amount: homeAmount ? (homeAmount / splitMemberIds.length).toFixed(2) : '0.00' })
+                      ? t('addExpense.splitPage.splitAmongEqualEach', { amount: shareBase ? (shareBase / splitMemberIds.length).toFixed(2) : '0.00' })
                       : ''}
                   </span>
                   {splitMemberIds.length !== members.length && (
@@ -1236,6 +1314,115 @@ export function AddExpensePage({
                   : t('addExpense.diff.over', { amount: Math.abs(customDiff).toFixed(2) })}
             </div>
           )}
+        </div>
+      )}
+
+      {activeDetail === 'proxy' && (
+        <div className="absolute inset-0 z-40 bg-paper flex flex-col">
+          <div className="flex items-center gap-3 px-4 pt-safe-header pb-2.5 border-b border-line flex-shrink-0">
+            <button onClick={() => setActiveDetail(null)} className="flex items-center gap-0.5 text-muted text-[12.5px]">
+              <ChevronLeft className="w-4 h-4" strokeWidth={2} />
+              {t('addExpense.splitPage.back')}
+            </button>
+            <span className="font-serif-sc text-[13.5px] font-semibold flex-1 text-center pr-10">{t('addExpense.proxyPage.title')}</span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 flex flex-col gap-2.5">
+            <div className="text-[12px] text-soft leading-relaxed">{t('addExpense.proxyPage.intro', { name: payerName })}</div>
+
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-1">{t('addExpense.proxyPage.forWhom')}</div>
+            {proxyLines.map((l) => {
+              const share = proxyShares.find((p) => p.name === l.name.trim() && p.amount === (parseFloat(l.amount) || 0))
+              return (
+                <div key={l.id} className="flex items-center gap-2 bg-card border border-line rounded-xl pl-3 pr-1.5 py-1.5">
+                  <label className="flex-1 min-w-0 flex flex-col">
+                    <span className="text-[10.5px] text-muted">{t('addExpense.proxyPage.nameLabel')}</span>
+                    <input
+                      value={l.name}
+                      onChange={(ev) => setProxyLines((prev) => prev.map((x) => (x.id === l.id ? { ...x, name: ev.target.value } : x)))}
+                      placeholder={t('addExpense.proxyPage.namePlaceholder')}
+                      className="bg-transparent outline-none text-[14px] py-0.5 w-full"
+                    />
+                  </label>
+                  <label className="w-[96px] flex flex-col">
+                    <span className="text-[10.5px] text-muted">{t('addExpense.proxyPage.amountLabel', { currency })}</span>
+                    <input
+                      value={l.amount}
+                      inputMode="decimal"
+                      onChange={(ev) => setProxyLines((prev) => prev.map((x) => (x.id === l.id ? { ...x, amount: ev.target.value } : x)))}
+                      className="bg-transparent outline-none text-[14px] py-0.5 w-full tabular"
+                    />
+                  </label>
+                  {isForeign && (
+                    <span className="w-[72px] text-right text-[11.5px] text-muted tabular">
+                      {share ? `≈ ${formatMoney(share.shareAmount, homeLabel)}` : ''}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setProxyLines((prev) => prev.filter((x) => x.id !== l.id))}
+                    className="w-9 h-9 flex items-center justify-center text-muted rounded-[10px]"
+                    title={t('addExpense.proxyPage.removeLine')}
+                    aria-label={t('addExpense.proxyPage.removeLine')}
+                  >
+                    <Trash2 className="w-4 h-4" strokeWidth={1.8} />
+                  </button>
+                </div>
+              )
+            })}
+            <button
+              type="button"
+              onClick={() => setProxyLines((prev) => [...prev, { id: crypto.randomUUID(), name: '', amount: '', repaidAt: null }])}
+              className="min-h-[44px] flex items-center justify-center gap-1.5 border-[1.5px] border-dashed border-handle rounded-xl text-plan text-[12.5px] font-medium"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2} />
+              {t('addExpense.proxyPage.addLine')}
+            </button>
+
+            {proxyNameSuggestions.filter((n) => !proxyNames.includes(n)).length > 0 && (
+              <>
+                <div className="text-[10.5px] tracking-widest uppercase text-muted mt-1">{t('addExpense.proxyPage.recentLabel')}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {proxyNameSuggestions.filter((n) => !proxyNames.includes(n)).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setProxyLines((prev) => {
+                        // 有一行还没填名字就填进那一行，不然新加一行
+                        const blank = prev.find((x) => !x.name.trim())
+                        return blank
+                          ? prev.map((x) => (x.id === blank.id ? { ...x, name: n } : x))
+                          : [...prev, { id: crypto.randomUUID(), name: n, amount: '', repaidAt: null }]
+                      })}
+                      className="rounded-full px-3 py-1.5 text-[12.5px] border border-line bg-card text-soft"
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {hasProxies && numAmount > 0 && (
+              <div className="bg-card border border-line rounded-2xl px-3.5 py-3 mt-1 flex flex-col gap-1.5 tabular">
+                <div className="flex justify-between text-[12.5px]">
+                  <span className="text-muted">{t('addExpense.proxyPage.total')}</span>
+                  <span>{isForeign ? `${currency} ${numAmount.toLocaleString()} · ` : ''}{formatMoney(homeAmount, homeLabel)}</span>
+                </div>
+                <div className="flex justify-between text-[12.5px]">
+                  <span className="text-muted">{t('addExpense.proxyPage.proxyTotal', { count: new Set(proxyNames).size })}</span>
+                  <span>{isForeign ? `${currency} ${proxyForeignTotal.toLocaleString()} · ` : ''}{formatMoney(proxyHomeTotal, homeLabel)}</span>
+                </div>
+                <div className="h-px bg-line" />
+                <div className="flex justify-between text-[13px] font-semibold">
+                  <span>{t('addExpense.proxyPage.rest')}</span>
+                  <span>{isForeign ? `${currency} ${round2(numAmount - proxyForeignTotal).toLocaleString()} · ` : ''}{formatMoney(shareBase, homeLabel)}</span>
+                </div>
+              </div>
+            )}
+            {proxyProblem && <div className="text-[12px] text-negative font-semibold">{proxyProblem}</div>}
+            <div className="text-[11.5px] text-muted leading-relaxed">{t('addExpense.proxyPage.note')}</div>
+          </div>
         </div>
       )}
 

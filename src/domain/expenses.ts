@@ -12,6 +12,7 @@ export function myRelatedExpenseIds(expenses: Expense[], splits: ExpenseSplit[],
 
 // 这笔账里我自己分摊到多少——找不到时返回undefined，跟"确实分摊为0"区分开，
 // 调用方要用这个区分显示"—（你垫付，不分摊给自己）"这种情况
+// 代购行（proxyName 非空）的 memberId 也是付款人，但那是帮别人买的，不算"我分摊到的"
 export function myShareOf(expenseId: string, splits: ExpenseSplit[], memberId: string): number | undefined {
-  return splits.find((s) => s.expenseId === expenseId && s.memberId === memberId)?.shareAmount
+  return splits.find((s) => s.expenseId === expenseId && s.memberId === memberId && !s.proxyName)?.shareAmount
 }

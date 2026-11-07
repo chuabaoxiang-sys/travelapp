@@ -286,6 +286,12 @@ export interface ExpenseSplit {
   memberId: string
   shareAmount: number
   deletedAt: number | null
+  // 代购（0046）：帮没来旅行的人买的那部分。proxyName 非空时这一行不是同行者的
+  // 分摊——memberId = 付款人，shareAmount = 这部分折成本位币的金额，
+  // proxyAmount = 按这笔账自己的币种记的金额，proxyRepaidAt = 标"已还"的时间
+  proxyName?: string | null
+  proxyAmount?: number | null
+  proxyRepaidAt?: number | null
 }
 
 // 逐项拆账的子项——"这笔账目分成了几项"，每项自己的名称+金额，跟哪些成员

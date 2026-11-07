@@ -330,6 +330,9 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       member_id: s.memberId,
       share_amount: s.shareAmount,
       deleted_at: isoOrNull(s.deletedAt),
+      proxy_name: s.proxyName ?? null,
+      proxy_amount: s.proxyAmount ?? null,
+      proxy_repaid_at: isoOrNull(s.proxyRepaidAt ?? null),
     }),
     fromRemote: (r) => ({
       id: r.id,
@@ -338,6 +341,9 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       memberId: r.member_id,
       shareAmount: num(r.share_amount),
       deletedAt: msOrNull(r.deleted_at),
+      proxyName: r.proxy_name ?? null,
+      proxyAmount: r.proxy_amount == null ? null : num(r.proxy_amount),
+      proxyRepaidAt: msOrNull(r.proxy_repaid_at ?? null),
     }),
   },
 

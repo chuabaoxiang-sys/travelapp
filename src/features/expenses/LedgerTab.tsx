@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Wallet, CreditCard } from 'lucide-react'
+import { ChevronRight, Wallet, CreditCard, Gift } from 'lucide-react'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
@@ -15,7 +15,8 @@ import { CardChargeSheet } from '../rates/CardChargeSheet'
 import { isPendingCardExpense } from '../../domain/cardCharges'
 import { getPaymentCards, isCardExpense } from '../../domain/paymentCards'
 import { getOverallBudget, getCategoryBudgets, overBudgetCategories } from '../../domain/budgets'
-import { computeBalances } from '../../domain/splits'
+import { computeBalances, isProxySplit } from '../../domain/splits'
+import { proxySummary, toProxyItems } from '../../domain/proxies'
 import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
@@ -191,8 +192,13 @@ export function LedgerTab({
     return itineraryItems.find((it) => it.id === id)
   }
   function splitCountOf(expenseId: string) {
-    return splits.filter((s) => s.expenseId === expenseId).length
+    return splits.filter((s) => s.expenseId === expenseId && !isProxySplit(s)).length
   }
+  // 代购（2026-11-07）：这笔里帮谁买了，账目行上标一个小标签；黑卡下面一行"其中代购"
+  function proxyNamesOf(expenseId: string) {
+    return [...new Set(splits.filter((s) => s.expenseId === expenseId && isProxySplit(s)).map((s) => (s.proxyName ?? '').trim()))]
+  }
+  const tripProxy = proxySummary(toProxyItems(expenses, splits))
 
   // "简单模式"渐进式复杂度——一个从没记过账的新团队，第一次打开这个标签不该
   // 同时看到汇率簿/结算/预算/分类图这几个进阶概念，等对应场景真的出现了
@@ -266,7 +272,7 @@ export function LedgerTab({
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
         <div key="team" className="card-swap flex flex-col gap-3.5">
-          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} />
+          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} />
           {hasEnoughForBreakdown && (
             <SpendBreakdownCard
               expenses={expenses}
@@ -408,11 +414,19 @@ export function LedgerTab({
                         {pendingCharge && (
                           <span className="text-[9.5px] font-bold px-1.5 py-px rounded-full bg-spend/[.12] text-spend-text flex-shrink-0">{t('cardCharge.pendingTag')}</span>
                         )}
+                        {proxyNamesOf(e.id).length > 0 && (
+                          <span className="inline-flex items-center gap-[3px] text-[10.5px] px-[7px] py-px rounded-full bg-plan/[.08] text-plan min-w-0 truncate">
+                            <Gift className="w-[11px] h-[11px] flex-shrink-0" strokeWidth={2} />
+                            <span className="truncate">{t('ledger.proxyTag', { names: proxyNamesOf(e.id).join('、') })}</span>
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 min-w-0">
                         <Avatar member={payer} size={16} />
                         <span className="text-[11px] text-muted truncate">
-                          {isPersonal ? payer?.displayName : t('ledger.paidBySummary', { name: payer?.displayName, count: splitCountOf(e.id) })}
+                          {isPersonal
+                            ? payer?.displayName
+                            : t(proxyNamesOf(e.id).length > 0 ? 'ledger.paidBySummaryRest' : 'ledger.paidBySummary', { name: payer?.displayName, count: splitCountOf(e.id) })}
                         </span>
                         {isPersonal && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-line text-muted flex-shrink-0">{t('ledger.personalBadge')}</span>}
                       </div>

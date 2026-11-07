@@ -14,6 +14,7 @@ import { DatePicker } from '../../components/DatePicker'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { SuccessToast } from '../../components/SuccessToast'
+import { ProxyCard } from './ProxyCard'
 import type { Trip, Settlement, Member } from '../../types'
 
 function debtKey(d: OpenExpenseDebt) {
@@ -529,6 +530,8 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
           <div className="text-[12.5px] text-muted text-center py-1">{t('split.suggestion.balanced')}</div>
         )}
       </div>
+
+      <ProxyCard trip={trip} members={members} />
 
       {(openDebts.length > 0 || prepayBalances.length > 0 || closedDebts.length > 0) && (
         <div className="bg-card border border-line rounded-2xl p-4 mb-4">
