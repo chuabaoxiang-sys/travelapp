@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PieChart, ChevronDown } from 'lucide-react'
 import type { Expense, ExpenseCategory, ExpenseDayAllocation } from '../../types'
@@ -127,12 +127,17 @@ export function SpendBreakdownCard({
   dayAllocations,
   todayISO,
   currency,
+  title,
+  footer,
 }: {
   expenses: Expense[]
   categories: ExpenseCategory[]
   dayAllocations: ExpenseDayAllocation[]
   todayISO: string
   currency: string
+  // 「我的」视角（2026-11-08）复用这张卡：换标题、底下多一行对账
+  title?: string
+  footer?: ReactNode
 }) {
   const { t } = useTranslation()
   const [mode, setMode] = useState<'trip' | 'today'>('trip')
@@ -161,7 +166,7 @@ export function SpendBreakdownCard({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5 text-[13px] font-medium">
           <PieChart className="w-3.5 h-3.5 text-muted" strokeWidth={2} />
-          {t('ledger.breakdown.title')}
+          {title ?? t('ledger.breakdown.title')}
         </div>
         <div className="flex bg-segment rounded-lg p-0.5">
           {(['trip', 'today'] as const).map((m) => (
@@ -237,6 +242,7 @@ export function SpendBreakdownCard({
           ))}
         </div>
       )}
+      {footer}
     </div>
   )
 }

@@ -18,7 +18,7 @@ import { CardChargeSheet } from '../rates/CardChargeSheet'
 import { isPendingCardExpense } from '../../domain/cardCharges'
 import { getPaymentCards, isCardExpense } from '../../domain/paymentCards'
 import { getOverallBudget, getCategoryBudgets, overBudgetCategories } from '../../domain/budgets'
-import { computeBalances, isProxySplit } from '../../domain/splits'
+import { computeBalances, isProxySplit, memberSharesOfExpense } from '../../domain/splits'
 import { proxyGainBreakdown, proxyGainByMember, proxySummary, toProxyItems } from '../../domain/proxies'
 import { ProxyGainSheet } from './ProxyGainSheet'
 import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
@@ -246,6 +246,27 @@ export function LedgerTab({
   const hasForeignCurrencyUsage = expenses.some((e) => e.expenseCurrency !== trip.homeCurrency)
   const hasMultiPersonSplit = expenses.some((e) => splitCountOf(e.id) >= 2)
   const hasEnoughForBreakdown = expenses.length >= 3
+  // 「我的钱花在哪」：每笔账换成"我的那份"（含送礼分到我头上的），跨天分摊按同样比例缩
+  const myBreakdown = (() => {
+    const shareByExpense = new Map<string, number>()
+    const splitsByExpense = new Map<string, ExpenseSplit[]>()
+    for (const sp of splits) {
+      if (sp.deletedAt) continue
+      const arr = splitsByExpense.get(sp.expenseId) ?? []
+      arr.push(sp)
+      splitsByExpense.set(sp.expenseId, arr)
+    }
+    for (const [id, rows] of splitsByExpense) {
+      const mine = memberSharesOfExpense(rows).get(currentMemberId) ?? 0
+      if (mine > 0) shareByExpense.set(id, mine)
+    }
+    const mineExpenses = expenses.filter((e) => shareByExpense.has(e.id)).map((e) => ({ ...e, homeAmount: shareByExpense.get(e.id)! }))
+    const ratio = new Map(expenses.map((e) => [e.id, e.homeAmount > 0 ? (shareByExpense.get(e.id) ?? 0) / e.homeAmount : 0]))
+    const mineAllocations = dayAllocations
+      .filter((a) => (ratio.get(a.expenseId) ?? 0) > 0)
+      .map((a) => ({ ...a, amount: round2(a.amount * (ratio.get(a.expenseId) ?? 0)) }))
+    return { expenses: mineExpenses, allocations: mineAllocations }
+  })()
   const now = Date.now()
 
   return (
@@ -352,7 +373,8 @@ export function LedgerTab({
           </button>
         </div>
       ) : (
-        <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
+        <div key="mine" className="card-swap flex flex-col gap-3.5">
+        <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
           <div className="text-[11px] tracking-wider text-on-dark/55">{t('ledger.mineHero.label')}</div>
           <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
           {myCashback > 0 || myProxyGain !== 0 ? (
@@ -377,6 +399,26 @@ export function LedgerTab({
           ) : (
             <div className="mt-2 text-[11px] text-on-dark/50">{t('ledger.mineHero.sublabel')}</div>
           )}
+        </div>
+        {/* 我的钱花在哪（2026-11-08）：跟「全部」那张同一个组件，每笔只算我的那份 */}
+        {hasEnoughForBreakdown && myBreakdown.expenses.length > 0 && (
+          <SpendBreakdownCard
+            expenses={myBreakdown.expenses}
+            categories={categories}
+            dayAllocations={myBreakdown.allocations}
+            todayISO={todayISO}
+            currency={currencyLabel}
+            title={t('ledger.breakdown.mineTitle')}
+            footer={myCashback > 0 || myProxyGain !== 0 ? (
+              <div className="border-t border-line mt-2.5 pt-2 text-[11px] text-soft tabular leading-relaxed">
+                {t('ledger.breakdown.mineReconcile', { owed: formatMoney(myOwed, currencyLabel) })}
+                {myCashback > 0 && <span className="text-positive"> {t('ledger.mineHero.minusCashback', { amount: formatMoney(myCashback, currencyLabel) })}</span>}
+                {myProxyGain !== 0 && <span className="text-positive"> {t(myProxyGain > 0 ? 'ledger.mineHero.minusProxyGain' : 'ledger.mineHero.plusProxyLoss', { amount: formatMoney(Math.abs(myProxyGain), currencyLabel) })}</span>}
+                {' = '}{t('ledger.mineHero.label')} <b className="text-ink">{formatMoney(round2(myOwed - myCashback - myProxyGain), currencyLabel)}</b>
+              </div>
+            ) : undefined}
+          />
+        )}
         </div>
       )}
 

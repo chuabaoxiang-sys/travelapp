@@ -655,6 +655,8 @@
     "emptyAll": "No expenses yet — tap \"+\" to add one",
     "breakdown": {
       "title": "Where it went",
+      "mineTitle": "Where my money went",
+      "mineReconcile": "Category total (your share) {{owed}}",
       "trip": "Trip",
       "today": "Today",
       "emptyToday": "Nothing logged today yet",
@@ -1473,7 +1475,7 @@
         { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back. Below it, the \"Bought for others\" card totals up what each person owes; tap \"Mark as paid back\" when they've paid and enter what they actually paid (more or less both count as settled, and the difference goes to whoever was paid back), or tap \"Gift\" to give it to them and pick who shares the cost." },
         { "title": "Settle specific expenses", "desc": "Pick one or a few expenses and settle just those, instead of the running total." },
         { "title": "Log a prepayment", "desc": "If someone handed over a lump sum upfront, \"Add\" next to \"Settlement records\" logs it directly — no expense needed first." },
-        { "title": "Who paid what", "desc": "See at a glance what each person covered and what they owe." }
+        { "title": "Who paid what", "desc": "See at a glance what each person covered and what they owe. On \"Mine\", the \"Where my money went\" card under the dark card counts only your share, so you can see which categories your own money went to." }
       ]
     },
     "budget": {
