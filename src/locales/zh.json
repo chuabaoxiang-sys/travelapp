@@ -580,7 +580,7 @@
       "subWithBudget": "预算 {{budget}} · 还剩 {{remaining}}",
       "subNoBudget": "还没设预算"
     },
-    "tripRemaining": "这趟一共还剩 <b>{{remaining}}</b>",
+    "tripRemaining": "这趟已花 <s>{{total}}</s> · 还剩 <b>{{remaining}}</b>",
     "proxyLine": "其中代购 {{total}}（还没还 {{unpaid}}）",
     "proxyLineAllRepaid": "其中代购 {{total}}（都还了）",
     "setBudgetCta": "设个预算，就能看到每天还能花多少 ›"

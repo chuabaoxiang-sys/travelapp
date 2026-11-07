@@ -62,6 +62,9 @@ export function SpendHero({
   // 补的第二行小字，只在这两个状态出现（其余状态本来就已经是整趟视角，或者
   // 压根没有预算可言）
   let tripRemaining: number | null = null
+  // 旅途中只看得到"还能花多少"，看不到"这趟已经花了多少"（2026-11-07 用户反馈），
+  // 跟还剩多少放在同一行
+  let tripTotal = 0
 
   switch (state.kind) {
     case 'daily-remaining':
@@ -69,12 +72,14 @@ export function SpendHero({
       sub = t('spendHero.dailyRemaining.sub', { allowance: money(state.allowance), spent: money(state.todaySpent) })
       progress = state.allowance > 0 ? (state.todaySpent / state.allowance) * 100 : 0
       tripRemaining = state.budget - state.total
+      tripTotal = state.total
       break
     case 'daily-over':
       label = t('spendHero.dailyOver.label')
       sub = t('spendHero.dailyOver.sub', { spent: money(state.todaySpent), allowance: money(state.allowance) })
       progress = 100
       tripRemaining = state.budget - state.total
+      tripTotal = state.total
       break
     case 'budget-over':
       label = t('spendHero.budgetOver.label')
@@ -115,8 +120,8 @@ export function SpendHero({
         <div className="mt-1 text-[11px] text-on-dark/75">
           <Trans
             i18nKey="spendHero.tripRemaining"
-            values={{ remaining: money(tripRemaining) }}
-            components={{ b: <span className="font-semibold text-spend" /> }}
+            values={{ remaining: money(tripRemaining), total: money(tripTotal) }}
+            components={{ b: <span className="font-semibold text-spend" />, s: <span className="font-semibold text-on-dark" /> }}
           />
         </div>
       )}
