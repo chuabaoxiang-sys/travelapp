@@ -64,9 +64,11 @@ export function expenseCashbackForCard(expenses: Expense[], cardId: string): { t
 }
 
 // 实际花费（2026-11-07 口径统一）：这趟已花 − 代购（朋友会还） − 全部返现。
-// 黑卡「实际花费」那一行和展开的算式都用这一个数，不再各算各的
+// 黑卡「实际花费」那一行和展开的算式都用这一个数，不再各算各的。
+// proxyTotal 是代购的人「要还的数」（0050：优惠不分给他时按原价还，可能比成本多），
+// 所以结果可以是负数——这趟代购多收的钱比自己花的还多，照实显示
 export function actualSpend(total: number, proxyTotal: number, cashbackTotal: number): number {
-  return round2(Math.max(0, total - proxyTotal - cashbackTotal))
+  return round2(total - proxyTotal - cashbackTotal)
 }
 
 export async function listTripCashbacks(tripId: string): Promise<CardCashback[]> {

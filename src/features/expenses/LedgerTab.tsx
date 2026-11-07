@@ -1,13 +1,13 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins } from 'lucide-react'
 import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { LedgerFilterSheet } from './LedgerFilterSheet'
 import { EMPTY_LEDGER_FILTER, PAY_CASH, PAY_PENDING, filterCount, isFilterActive, matchesLedgerFilter, type LedgerFilter } from '../../domain/ledgerFilter'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
-import { formatMoney } from '../../lib/money'
+import { formatMoney, round2 } from '../../lib/money'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { formatDateChipDow, formatDateChipDate } from '../../lib/dateChip'
 import { relativeTime } from '../../lib/relativeTime'
@@ -19,7 +19,7 @@ import { isPendingCardExpense } from '../../domain/cardCharges'
 import { getPaymentCards, isCardExpense } from '../../domain/paymentCards'
 import { getOverallBudget, getCategoryBudgets, overBudgetCategories } from '../../domain/budgets'
 import { computeBalances, isProxySplit } from '../../domain/splits'
-import { proxySummary, toProxyItems } from '../../domain/proxies'
+import { proxyGainByMember, proxySummary, toProxyItems } from '../../domain/proxies'
 import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
@@ -152,6 +152,9 @@ export function LedgerTab({
   const tripCashbacks = useLiveQuery(() => listTripCashbacks(trip.id), [trip.id]) ?? []
   const cashback = cashbackSummary(tripCashbacks, expenses)
   const myCashback = cashback.byMember.get(currentMemberId) ?? 0
+  // 代购遇到优惠（0050）：优惠不分给代购的人时，付款人多收的那部分只扣他自己的"我的花费"
+  const tripProxyItems = toProxyItems(expenses, splits)
+  const myProxyGain = proxyGainByMember(tripProxyItems).get(currentMemberId) ?? 0
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
 
   // 用 spentOnDate（按 expenseDate 归日）而不是行程页那个 spendByDate（按
@@ -173,7 +176,7 @@ export function LedgerTab({
   // "全部/我的"切两张卡时，用户要看到数字本身也连续滚过去（哪怕两边含义不同），
   // 不只是卡片淡入——所以两张卡的大数字接到同一个useAnimatedNumber上，只是
   // "目标值"跟着view切换，起点永远是当前视觉上正显示的那个数
-  const activeHeroValue = view === 'mine' ? Math.max(0, myOwed - myCashback) : heroRawValue(allowance)
+  const activeHeroValue = view === 'mine' ? round2(myOwed - myCashback - myProxyGain) : heroRawValue(allowance)
   const animatedActiveHeroValue = useAnimatedNumber(activeHeroValue)
   const myExpenseIds = myRelatedExpenseIds(expenses, splits, currentMemberId)
   const visibleExpenses = view === 'mine' ? expenses.filter((e) => myExpenseIds.has(e.id)) : expenses
@@ -231,7 +234,7 @@ export function LedgerTab({
   function proxyNamesOf(expenseId: string) {
     return [...new Set(splits.filter((s) => s.expenseId === expenseId && isProxySplit(s)).map((s) => (s.proxyName ?? '').trim()))]
   }
-  const tripProxy = proxySummary(toProxyItems(expenses, splits))
+  const tripProxy = proxySummary(tripProxyItems)
 
   // "简单模式"渐进式复杂度——一个从没记过账的新团队，第一次打开这个标签不该
   // 同时看到汇率簿/结算/预算/分类图这几个进阶概念，等对应场景真的出现了
@@ -348,14 +351,12 @@ export function LedgerTab({
         <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
           <div className="text-[11px] tracking-wider text-on-dark/55">{t('ledger.mineHero.label')}</div>
           <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
-          {myCashback > 0 ? (
-            // 有归我的返现时，这一行直接写成算式：应分摊 − Cashback（2026-11-07 口径统一）
+          {myCashback > 0 || myProxyGain > 0 ? (
+            // 有归我的返现 / 代购多收时，这一行直接写成算式：应分摊 − Cashback − 代购多收（2026-11-07 口径统一）
             <div className="mt-2 text-[11px] text-on-dark/75 tabular">
-              <Trans
-                i18nKey="ledger.mineHero.formula"
-                values={{ owed: formatMoney(myOwed, currencyLabel), cashback: formatMoney(myCashback, currencyLabel) }}
-                components={{ s: <span className="font-semibold text-on-dark" />, c: <span className="text-plan-on-dark" /> }}
-              />
+              {t('ledger.mineHero.owedLabel')} <span className="font-semibold text-on-dark">{formatMoney(myOwed, currencyLabel)}</span>
+              {myCashback > 0 && <span className="text-plan-on-dark"> {t('ledger.mineHero.minusCashback', { amount: formatMoney(myCashback, currencyLabel) })}</span>}
+              {myProxyGain > 0 && <span className="text-plan-on-dark"> {t('ledger.mineHero.minusProxyGain', { amount: formatMoney(myProxyGain, currencyLabel) })}</span>}
             </div>
           ) : (
             <div className="mt-2 text-[11px] text-on-dark/50">{t('ledger.mineHero.sublabel')}</div>

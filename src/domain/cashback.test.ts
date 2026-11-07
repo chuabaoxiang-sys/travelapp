@@ -62,8 +62,8 @@ describe('actualSpend', () => {
   it('equals trip spend when there is neither', () => {
     expect(actualSpend(1234.56, 0, 0)).toBe(1234.56)
   })
-  it('never goes below zero', () => {
-    expect(actualSpend(100, 80, 50)).toBe(0)
+  it('can go negative when proxies repay more than was spent', () => {
+    expect(actualSpend(374.59, 401.35, 0)).toBe(-26.76)
   })
   it('rounds to cents', () => {
     expect(actualSpend(100.005, 0.001, 0)).toBe(100)

@@ -1,5 +1,5 @@
 import { db, enqueueOutbox } from '../db/dexie'
-import { isProxySplit, round2 } from './splits'
+import { isProxySplit, proxyReceivable, round2 } from './splits'
 import type { Expense, ExpenseSplit } from '../types'
 
 // 代购清单（2026-11-07）：帮没来旅行的人买的东西，按人汇总、结束后一次标已还。
@@ -13,8 +13,10 @@ export interface ProxyItem {
   expenseDate: string
   description: string | null
   currency: string
-  amount: number // 按这笔账的币种
-  shareAmount: number // 本位币
+  amount: number // 按这笔账的币种（有优惠时是原价）
+  // 本位币：代购的人要还的数（0050：优惠不分给他时按原价还，比成本多）
+  shareAmount: number
+  costAmount: number // 本位币：这部分在这笔里的成本（分摊行上的数）
   creditorId: string // 这笔的付款人，钱还给他
   repaidAt: number | null
 }
@@ -42,7 +44,8 @@ export function toProxyItems(expenses: Expense[], splits: ExpenseSplit[]): Proxy
       description: e.description,
       currency: e.expenseCurrency,
       amount: s.proxyAmount ?? 0,
-      shareAmount: s.shareAmount,
+      shareAmount: proxyReceivable(s, e),
+      costAmount: s.shareAmount,
       creditorId: e.paidBy,
       repaidAt: s.proxyRepaidAt ?? null,
     })
@@ -69,7 +72,18 @@ export function groupProxyItems(items: ProxyItem[]): { unpaid: ProxyGroup[]; rep
   }
 }
 
-// 这趟代购一共多少、还有多少没还（账目页黑卡那一行用）
+// 付款人因为"优惠不分给代购的人"多收的钱（应还 − 成本），按付款人汇总。
+// 跟返现一样只扣付款人自己的"我的花费"，不进同行者之间的结算
+export function proxyGainByMember(items: ProxyItem[]): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const it of items) {
+    const gain = round2(it.shareAmount - it.costAmount)
+    if (gain > 0) m.set(it.creditorId, round2((m.get(it.creditorId) ?? 0) + gain))
+  }
+  return m
+}
+
+// 这趟代购一共多少、还有多少没还（账目页黑卡那一行用）——按"要还的数"算
 export function proxySummary(items: ProxyItem[]): { total: number; unpaid: number } {
   return {
     total: round2(items.reduce((s, it) => s + it.shareAmount, 0)),

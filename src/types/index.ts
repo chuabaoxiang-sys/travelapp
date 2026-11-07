@@ -266,6 +266,8 @@ export interface Expense {
   discountAmount?: number | null
   // 每笔返现（2026-11-07，0049）：本位币，照卡的 App 抄；归付款人，不参与分摊
   cashbackAmount?: number | null
+  // 代购遇到优惠（0050）：true = 优惠按原价比例分给代购的人；false/缺省 = 代购的人按原价还，多出的归付款人
+  proxyDiscountShared?: boolean
   deletedAt: number | null
   createdAt: number
   updatedAt: number

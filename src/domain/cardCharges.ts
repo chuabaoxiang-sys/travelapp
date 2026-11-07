@@ -1,5 +1,5 @@
 import { db } from '../db/dexie'
-import { isProxySplit, persistExpenseSplitShares, resolveProxyShares, resolveSplitShares, round2 } from './splits'
+import { expenseListPrice, isProxySplit, persistExpenseSplitShares, resolveProxyShares, resolveSplitShares, round2 } from './splits'
 import { saveDayAllocations } from './dayAllocations'
 import { isExpenseSettled } from './settlements'
 import { isCardExpense } from './paymentCards'
@@ -57,7 +57,7 @@ export async function fillCardCharge(expenseId: string, charged: number) {
 
   const allSplits = (await db.expenseSplits.where('expenseId').equals(expenseId).toArray()).filter((s) => !s.deletedAt)
   // 代购那几行按实际汇率重算本位币（按外币金额占整笔的比例），剩下的才是同行者分的
-  const proxyShares = resolveProxyShares(newHome, e.expenseAmount, allSplits.filter(isProxySplit).map((s) => ({
+  const proxyShares = resolveProxyShares(newHome, expenseListPrice(e), allSplits.filter(isProxySplit).map((s) => ({
     name: s.proxyName ?? '', amount: s.proxyAmount ?? 0, repaidAt: s.proxyRepaidAt ?? null,
   }))).map((p) => ({ memberId: e.paidBy, shareAmount: p.shareAmount, proxyName: p.name, proxyAmount: p.amount, proxyRepaidAt: p.repaidAt }))
   const remainder = Math.max(0, round2(newHome - proxyShares.reduce((s, p) => s + p.shareAmount, 0)))

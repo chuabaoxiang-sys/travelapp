@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { db } from '../db/dexie'
-import { buildSplitShares, resolveProxyShares, computeBalances, openExpenseDebts } from './splits'
-import { groupProxyItems, proxySummary, setProxyRepaid, toProxyItems } from './proxies'
+import { buildSplitShares, resolveProxyShares, computeBalances, openExpenseDebts, expenseListPrice, proxyReceivable, round2 } from './splits'
+import { groupProxyItems, proxyGainByMember, proxySummary, setProxyRepaid, toProxyItems } from './proxies'
 import { fillCardCharge } from './cardCharges'
 import type { Expense, ExpenseSplit } from '../types'
 
@@ -28,7 +28,7 @@ function rows(expenseId: string, shares: ReturnType<typeof buildSplitShares>): E
 
 describe('resolveProxyShares / buildSplitShares', () => {
   it('代购按外币占比折成本位币，剩下的同行者平均分，整笔合计等于总额', () => {
-    const shares = buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { expenseAmount: 13298, lines: LINES })
+    const shares = buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { listPrice: 13298, lines: LINES })
     const proxy = shares.filter((s) => s.proxyName)
     expect(proxy.map((s) => [s.proxyName, s.shareAmount, s.memberId])).toEqual([['妈妈', 121.26, 'bx'], ['小王', 79.08, 'bx']])
     const travelers = shares.filter((s) => !s.proxyName)
@@ -39,7 +39,7 @@ describe('resolveProxyShares / buildSplitShares', () => {
   it('整张收据都是帮人买的：零头补给第一行，剩下刚好是 0，不会出现负数', () => {
     const p = resolveProxyShares(100, 3, [{ name: 'A', amount: 1 }, { name: 'B', amount: 1 }, { name: 'C', amount: 1 }])
     expect(p.reduce((a, x) => a + x.shareAmount, 0)).toBeCloseTo(100, 10)
-    const shares = buildSplitShares(100, 'equal', ['bx', 'kn'], 'bx', undefined, { expenseAmount: 3, lines: [{ name: 'A', amount: 1 }, { name: 'B', amount: 1 }, { name: 'C', amount: 1 }] })
+    const shares = buildSplitShares(100, 'equal', ['bx', 'kn'], 'bx', undefined, { listPrice: 3, lines: [{ name: 'A', amount: 1 }, { name: 'B', amount: 1 }, { name: 'C', amount: 1 }] })
     expect(shares.filter((s) => !s.proxyName).every((s) => s.shareAmount === 0)).toBe(true)
   })
 
@@ -49,7 +49,7 @@ describe('resolveProxyShares / buildSplitShares', () => {
   })
 
   it('已还的状态原样带回去，编辑一下账不会把"已还"弄丢', () => {
-    const shares = buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { expenseAmount: 13298, lines: [{ name: '妈妈', amount: 4600, repaidAt: 123 }] })
+    const shares = buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { listPrice: 13298, lines: [{ name: '妈妈', amount: 4600, repaidAt: 123 }] })
     expect(shares.find((s) => s.proxyName === '妈妈')?.proxyRepaidAt).toBe(123)
   })
 })
@@ -61,7 +61,7 @@ describe('代购不进同行者之间的账（真实走 Dexie）', () => {
 
   it('computeBalances：BX 的垫付扣掉代购，KN 只欠剩下那部分的一半；按笔结算里也没有代购', async () => {
     await db.expenses.add(expense())
-    await db.expenseSplits.bulkAdd(rows('e1', buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { expenseAmount: 13298, lines: LINES })))
+    await db.expenseSplits.bulkAdd(rows('e1', buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { listPrice: 13298, lines: LINES })))
     const balances = await computeBalances('t1')
     const bx = balances.find((b) => b.memberId === 'bx')!
     const kn = balances.find((b) => b.memberId === 'kn')!
@@ -76,7 +76,7 @@ describe('代购不进同行者之间的账（真实走 Dexie）', () => {
   it('补刷卡实际扣款：代购按实际汇率重算，"已还"保留，剩下的重新平均分，合计等于新金额', async () => {
     await db.expenses.add(expense({ paymentCardId: 'c1', cardChargePending: true }))
     const initial = rows('e1', buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, {
-      expenseAmount: 13298, lines: [{ name: '妈妈', amount: 4600, repaidAt: 999 }, { name: '小王', amount: 3000 }],
+      listPrice: 13298, lines: [{ name: '妈妈', amount: 4600, repaidAt: 999 }, { name: '小王', amount: 3000 }],
     }))
     await db.expenseSplits.bulkAdd(initial)
     await fillCardCharge('e1', 344.2)
@@ -90,7 +90,7 @@ describe('代购不进同行者之间的账（真实走 Dexie）', () => {
 
   it('标已还 / 改回未还：只改这几行，每笔账入队一次整笔分摊推送', async () => {
     await db.expenses.add(expense())
-    const r = rows('e1', buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { expenseAmount: 13298, lines: LINES }))
+    const r = rows('e1', buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { listPrice: 13298, lines: LINES }))
     await db.expenseSplits.bulkAdd(r)
     const mamaId = r.find((x) => x.proxyName === '妈妈')!.id
     await setProxyRepaid([mamaId], 555)
@@ -130,5 +130,28 @@ describe('groupProxyItems：按人汇总', () => {
   it('删掉的账不算', () => {
     const items = toProxyItems([{ ...e1, deletedAt: 1 }], [split('a', 'e1', '妈妈', 100)])
     expect(items).toEqual([])
+  })
+})
+
+describe('代购遇到优惠（0050）', () => {
+  // 原价 ¥16,000、优惠 ¥2,000、实付 ¥14,000 = RM374.59；妈妈的东西原价 ¥15,000
+  const e = { id: 'x', homeAmount: 374.59, expenseAmount: 14000, discountAmount: 2000, proxyDiscountShared: false }
+  const shares = buildSplitShares(374.59, 'equal', ['bx', 'kn'], 'bx', undefined, { listPrice: expenseListPrice(e), lines: [{ name: '妈妈', amount: 15000 }] })
+  const proxyRow = shares.find((s) => s.proxyName)!
+
+  it('cost is pro-rata on the list price, travelers split their own part at the discounted price', () => {
+    expect(proxyRow.shareAmount).toBe(351.18)
+    expect(round2(shares.filter((s) => !s.proxyName).reduce((a, s) => a + s.shareAmount, 0))).toBe(23.41)
+  })
+  it('not shared: the friend repays the list price; shared: the discounted cost', () => {
+    expect(proxyReceivable(proxyRow, e)).toBe(401.35)
+    expect(proxyReceivable(proxyRow, { ...e, proxyDiscountShared: true })).toBe(351.18)
+    expect(proxyReceivable(proxyRow, { ...e, discountAmount: null })).toBe(351.18)
+  })
+  it('payer keeps the difference', () => {
+    const items = toProxyItems([{ ...e, paidBy: 'bx', deletedAt: null, expenseDate: '2026-11-04', description: null, expenseCurrency: 'JPY' } as unknown as Expense],
+      [{ id: 's1', expenseId: 'x', memberId: 'bx', shareAmount: proxyRow.shareAmount, proxyName: '妈妈', proxyAmount: 15000 } as ExpenseSplit])
+    expect(proxyGainByMember(items).get('bx')).toBe(50.17)
+    expect(proxySummary(items).total).toBe(401.35)
   })
 })

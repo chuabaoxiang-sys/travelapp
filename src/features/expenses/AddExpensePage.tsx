@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, CheckCheck, Check, Trash2, Lock, Plus, X, AlertTriangle, Banknote, CreditCard, Gift, Tag } from 'lucide-react'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { getCurrentHouseholdId } from '../../domain/household'
@@ -14,7 +14,7 @@ import { RateChipRow, type RateSelection } from '../rates/RateChipRow'
 import { CardPaymentPanel } from '../rates/CardPaymentPanel'
 import { isCardExpense, getPaymentCards, createPaymentCard, estimateCardRate } from '../../domain/paymentCards'
 import { createRateBookEntry, recordRateUsage } from '../../domain/rates'
-import { saveExpenseSplits, isProxySplit, resolveProxyShares } from '../../domain/splits'
+import { saveExpenseSplits, isProxySplit, resolveProxyShares, proxyReceivable } from '../../domain/splits'
 import { recentProxyNames } from '../../domain/proxies'
 import { saveDayAllocations, deleteDayAllocations } from '../../domain/dayAllocations'
 import { saveRateAllocations, deleteRateAllocations } from '../../domain/rateAllocations'
@@ -123,6 +123,8 @@ export function AddExpensePage({
   const [payMethod, setPayMethod] = useState<'cash' | 'card'>(initialIsCard ? 'card' : 'cash')
   const [cardId, setCardId] = useState<string | null>(initialIsCard ? initial!.paymentCardId ?? null : null)
   // 每笔返现（2026-11-07，0049）：只在刷卡时出现，照卡的 App 填本位币；归这笔的付款人
+  // 代购遇到优惠（0050）：优惠要不要按原价比例分给代购的人，默认不分（他们按原价还）
+  const [proxyDiscountShared, setProxyDiscountShared] = useState(initial?.proxyDiscountShared ?? false)
   const [cardCashback, setCardCashback] = useState(initial?.cashbackAmount ? String(initial.cashbackAmount) : '')
   const [cardCharged, setCardCharged] = useState(initialIsCard && !initial!.cardChargePending ? String(initial!.homeAmount) : '')
   const allCards = useLiveQuery(() => getPaymentCards()) ?? []
@@ -340,11 +342,17 @@ export function AddExpensePage({
   // 跟"怎么分"/"花在几天"那两处的实时校验是同一套规矩
   const rateSplitValid = payingByCard || rateSelection.mode !== 'split' || Math.abs(numAmount - splitTotalForeign) < 0.01
 
-  // 代购那几行按外币占整笔的比例折成本位币；同行者"怎么分"只分剩下的 shareBase
+  // 代购那几行按外币占整笔「原价」的比例折成本位币（有优惠时代购照原价填，成本也就
+  // 按比例摊到了优惠，0050）；同行者"怎么分"只分剩下的 shareBase
   const activeProxyLines = proxyLines
     .map((l) => ({ name: l.name.trim(), amount: parseFloat(l.amount) || 0, repaidAt: l.repaidAt }))
     .filter((l) => l.name || l.amount > 0)
-  const proxyShares = resolveProxyShares(homeAmount, numAmount, activeProxyLines)
+  const proxyShares = resolveProxyShares(homeAmount, numListPrice, activeProxyLines)
+  // 有优惠时：代购的人按原价还（默认）还是按折后价还
+  const proxyHasDiscount = numDiscount > 0
+  const proxyReceivableOf = (p: { shareAmount: number; amount: number }) =>
+    proxyReceivable({ shareAmount: p.shareAmount, proxyAmount: p.amount }, { homeAmount, expenseAmount: numAmount, discountAmount: numDiscount, proxyDiscountShared })
+  const proxyReceivableTotal = round2(proxyShares.reduce((s, p) => s + proxyReceivableOf(p), 0))
   const proxyHomeTotal = round2(proxyShares.reduce((s, p) => s + p.shareAmount, 0))
   const proxyForeignTotal = round2(activeProxyLines.reduce((s, l) => s + l.amount, 0))
   const hasProxies = activeProxyLines.length > 0
@@ -390,7 +398,7 @@ export function AddExpensePage({
           ? t('addExpense.proxyProblem.missingAmount')
           : duplicateProxyName
             ? t('addExpense.proxyProblem.duplicateName', { name: duplicateProxyName })
-            : proxyForeignTotal > numAmount + 0.005
+            : proxyForeignTotal > numListPrice + 0.005
               ? t('addExpense.proxyProblem.over')
               : null
 
@@ -589,6 +597,7 @@ export function AddExpensePage({
         cardChargePending,
         discountAmount: numDiscount > 0 ? round2(numDiscount) : null,
         cashbackAmount: payingByCard && (parseFloat(cardCashback) || 0) > 0 ? round2(parseFloat(cardCashback)) : null,
+        proxyDiscountShared: numDiscount > 0 && hasProxies ? proxyDiscountShared : false,
         itemizedFeePercent: itemizedFeePercentForSave,
         lastEditedBy: currentMemberId,
         updatedAt: Date.now(),
@@ -622,6 +631,7 @@ export function AddExpensePage({
         cardChargePending,
         discountAmount: numDiscount > 0 ? round2(numDiscount) : null,
         cashbackAmount: payingByCard && (parseFloat(cardCashback) || 0) > 0 ? round2(parseFloat(cardCashback)) : null,
+        proxyDiscountShared: numDiscount > 0 && hasProxies ? proxyDiscountShared : false,
         itemizedFeePercent: itemizedFeePercentForSave,
         deletedAt: null,
         createdAt: now,
@@ -638,7 +648,7 @@ export function AddExpensePage({
       // 从"逐项拆账"改成别的分摊方式时，把旧的子项明细清掉，不留占地方的残留数据
       if (initial?.splitType === 'itemized') await deleteLineItems(expenseId)
       await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIds, payer, customAmountsForSave, {
-        expenseAmount: numAmount,
+        listPrice: numListPrice,
         lines: activeProxyLines,
       })
     }
@@ -1375,6 +1385,18 @@ export function AddExpensePage({
 
           <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 flex flex-col gap-2.5">
             <div className="text-[12px] text-soft leading-relaxed">{t('addExpense.proxyPage.intro', { name: payerName })}</div>
+            {proxyHasDiscount && (
+              <div className="flex items-start gap-1.5 rounded-xl bg-positive/[.07] px-3 py-2 text-[12px] text-soft leading-relaxed">
+                <Tag className="w-3.5 h-3.5 text-positive flex-shrink-0 mt-[3px]" strokeWidth={1.8} />
+                <span>
+                  <Trans
+                    i18nKey="addExpense.proxyPage.discountNotice"
+                    values={{ amount: `${currency} ${numDiscount.toLocaleString()}` }}
+                    components={{ b: <b className="text-ink" /> }}
+                  />
+                </span>
+              </div>
+            )}
 
             <div className="text-[10.5px] tracking-widest uppercase text-muted mt-1">{t('addExpense.proxyPage.forWhom')}</div>
             {proxyLines.map((l) => {
@@ -1391,7 +1413,7 @@ export function AddExpensePage({
                     />
                   </label>
                   <label className="w-[96px] flex flex-col">
-                    <span className="text-[10.5px] text-muted">{t('addExpense.proxyPage.amountLabel', { currency })}</span>
+                    <span className="text-[10.5px] text-muted">{t(proxyHasDiscount ? 'addExpense.proxyPage.amountLabelList' : 'addExpense.proxyPage.amountLabel', { currency })}</span>
                     <input
                       value={l.amount}
                       inputMode="decimal"
@@ -1401,7 +1423,11 @@ export function AddExpensePage({
                   </label>
                   {isForeign && (
                     <span className="w-[72px] text-right text-[11.5px] text-muted tabular">
-                      {share ? `≈ ${formatMoney(share.shareAmount, homeLabel)}` : ''}
+                      {share
+                        ? proxyHasDiscount
+                          ? t('addExpense.proxyPage.repayShort', { amount: formatMoney(proxyReceivableOf(share), homeLabel) })
+                          : `≈ ${formatMoney(share.shareAmount, homeLabel)}`
+                        : ''}
                     </span>
                   )}
                   <button
@@ -1449,7 +1475,52 @@ export function AddExpensePage({
               </>
             )}
 
-            {hasProxies && numAmount > 0 && (
+            {hasProxies && proxyHasDiscount && (
+              <>
+                <div className="text-[10.5px] tracking-widest uppercase text-muted mt-1">{t('addExpense.proxyPage.discountHeading')}</div>
+                <div className="flex bg-segment rounded-xl p-[3px]">
+                  {([false, true] as const).map((shared) => (
+                    <button
+                      key={String(shared)}
+                      type="button"
+                      onClick={() => setProxyDiscountShared(shared)}
+                      className={`flex-1 py-[7px] text-[12.5px] rounded-[10px] ${proxyDiscountShared === shared ? 'bg-surface-strong text-on-dark font-semibold' : 'text-soft'}`}
+                    >
+                      {t(shared ? 'addExpense.proxyPage.discountShared' : 'addExpense.proxyPage.discountNotShared')}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[11px] text-muted leading-relaxed -mt-1">
+                  {proxyDiscountShared ? t('addExpense.proxyPage.discountSharedHint') : t('addExpense.proxyPage.discountNotSharedHint', { name: payerName })}
+                </div>
+              </>
+            )}
+
+            {hasProxies && numAmount > 0 && proxyHasDiscount && (
+              <div className="bg-card border border-line rounded-2xl px-3.5 py-3 mt-1 flex flex-col gap-1.5 tabular">
+                <div className="flex justify-between gap-2 text-[12.5px]">
+                  <span className="text-muted">{t('addExpense.proxyPage.listAndPaid', { list: `${currency} ${numListPrice.toLocaleString()}` })}</span>
+                  <span>{isForeign ? `${currency} ${numAmount.toLocaleString()} · ` : ''}{formatMoney(homeAmount, homeLabel)}</span>
+                </div>
+                <div className="flex justify-between gap-2 text-[12.5px]">
+                  <span className="text-muted">{t(proxyDiscountShared ? 'addExpense.proxyPage.repayDiscounted' : 'addExpense.proxyPage.repayList', { count: new Set(proxyNames).size })}</span>
+                  <span>{formatMoney(proxyReceivableTotal, homeLabel)}</span>
+                </div>
+                {!proxyDiscountShared && proxyReceivableTotal - proxyHomeTotal > 0.004 && (
+                  <div className="flex justify-between gap-2 text-[12.5px] text-positive">
+                    <span>{t('addExpense.proxyPage.payerGain', { name: payerName })}</span>
+                    <span>{formatMoney(round2(proxyReceivableTotal - proxyHomeTotal), homeLabel)}</span>
+                  </div>
+                )}
+                <div className="h-px bg-line" />
+                <div className="flex justify-between gap-2 text-[13px] font-semibold">
+                  <span>{t('addExpense.proxyPage.rest')}</span>
+                  <span>{formatMoney(shareBase, homeLabel)}</span>
+                </div>
+              </div>
+            )}
+
+            {hasProxies && numAmount > 0 && !proxyHasDiscount && (
               <div className="bg-card border border-line rounded-2xl px-3.5 py-3 mt-1 flex flex-col gap-1.5 tabular">
                 <div className="flex justify-between text-[12.5px]">
                   <span className="text-muted">{t('addExpense.proxyPage.total')}</span>
@@ -1467,7 +1538,7 @@ export function AddExpensePage({
               </div>
             )}
             {proxyProblem && <div className="text-[12px] text-negative font-semibold">{proxyProblem}</div>}
-            <div className="text-[11.5px] text-muted leading-relaxed">{t('addExpense.proxyPage.note')}</div>
+            <div className="text-[11.5px] text-muted leading-relaxed">{t(proxyHasDiscount ? 'addExpense.proxyPage.noteDiscount' : 'addExpense.proxyPage.note')}</div>
           </div>
         </div>
       )}

@@ -92,7 +92,7 @@ export async function saveExpenseSplits(
   memberIds: string[],
   payerId: string,
   customAmounts?: Record<string, number>,
-  proxy?: { expenseAmount: number; lines: ProxyLine[] },
+  proxy?: { listPrice: number; lines: ProxyLine[] },
 ) {
   await persistExpenseSplitShares(expenseId, buildSplitShares(homeAmount, splitType, memberIds, payerId, customAmounts, proxy))
 }
@@ -115,21 +115,22 @@ export function isProxySplit(s: { proxyName?: string | null }): boolean {
   return !!s.proxyName
 }
 
-// 每行代购折成本位币：按"这行外币 / 整笔外币"的比例分 homeAmount——跟按这笔的
-// 汇率乘出来是一回事，但刷卡补了实际扣款后同一个公式自动跟着变。代购加起来等于
-// 整笔（整张收据都是帮人买的）时，四舍五入的零头补给第一行，剩下的刚好是 0，
-// 不会出现 -0.01 这种负数
-export function resolveProxyShares(homeAmount: number, expenseAmount: number, lines: ProxyLine[]) {
+// 每行代购折成本位币（= 这部分的成本）：按"这行外币 / 整笔原价"的比例分 homeAmount——
+// 刷卡补了实际扣款后同一个公式自动跟着变。listPrice = 整笔原价（实付 + 优惠，0050 起
+// 代购按原价填；没有优惠时就是实付），所以有优惠时代购这部分也按比例摊到了优惠。
+// 代购加起来等于整笔原价（整张收据都是帮人买的）时，四舍五入的零头补给第一行，
+// 剩下的刚好是 0，不会出现 -0.01 这种负数
+export function resolveProxyShares(homeAmount: number, listPrice: number, lines: ProxyLine[]) {
   const valid = lines.filter((l) => l.name.trim() && l.amount > 0)
-  if (!valid.length || !(expenseAmount > 0)) return []
+  if (!valid.length || !(listPrice > 0)) return []
   const shares = valid.map((l) => ({
     name: l.name.trim(),
     amount: l.amount,
     repaidAt: l.repaidAt ?? null,
-    shareAmount: round2((homeAmount * l.amount) / expenseAmount),
+    shareAmount: round2((homeAmount * l.amount) / listPrice),
   }))
   const foreignTotal = valid.reduce((s, l) => s + l.amount, 0)
-  if (Math.abs(foreignTotal - expenseAmount) < 0.005) {
+  if (Math.abs(foreignTotal - listPrice) < 0.005) {
     const diff = round2(homeAmount - shares.reduce((s, p) => s + p.shareAmount, 0))
     shares[0].shareAmount = round2(shares[0].shareAmount + diff)
   }
@@ -143,9 +144,9 @@ export function buildSplitShares(
   memberIds: string[],
   payerId: string,
   customAmounts?: Record<string, number>,
-  proxy?: { expenseAmount: number; lines: ProxyLine[] },
+  proxy?: { listPrice: number; lines: ProxyLine[] },
 ): SplitShare[] {
-  const proxyShares = proxy ? resolveProxyShares(homeAmount, proxy.expenseAmount, proxy.lines) : []
+  const proxyShares = proxy ? resolveProxyShares(homeAmount, proxy.listPrice, proxy.lines) : []
   const remainder = Math.max(0, round2(homeAmount - proxyShares.reduce((s, p) => s + p.shareAmount, 0)))
   return [
     ...resolveSplitShares(remainder, splitType, memberIds, payerId, customAmounts),
@@ -157,6 +158,21 @@ export function buildSplitShares(
       proxyRepaidAt: p.repaidAt,
     })),
   ]
+}
+
+// 整笔原价（照收据填的那个大数字）：实付 + 优惠；没有优惠就是实付
+export function expenseListPrice(e: { expenseAmount: number; discountAmount?: number | null }): number {
+  return round2(e.expenseAmount + (e.discountAmount ?? 0))
+}
+
+// 代购的人要还多少（本位币）：优惠不分给他（默认）时按原价还 = 代购原价 × 这笔的汇率
+// （homeAmount / 实付）；分给他、或者这笔没有优惠时，就是成本 shareAmount
+export function proxyReceivable(
+  s: { shareAmount: number; proxyAmount?: number | null },
+  e: { homeAmount: number; expenseAmount: number; discountAmount?: number | null; proxyDiscountShared?: boolean },
+): number {
+  if (!((e.discountAmount ?? 0) > 0) || e.proxyDiscountShared || !(e.expenseAmount > 0)) return s.shareAmount
+  return round2(((s.proxyAmount ?? 0) * e.homeAmount) / e.expenseAmount)
 }
 
 // 一笔账里代购那部分的本位币合计（不在乎还没还）
