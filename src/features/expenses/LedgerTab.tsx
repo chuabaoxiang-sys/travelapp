@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Wallet, CreditCard, Gift } from 'lucide-react'
+import { ChevronRight, Wallet, CreditCard, Gift, Filter, X } from 'lucide-react'
+import { LedgerFilterSheet } from './LedgerFilterSheet'
+import { EMPTY_LEDGER_FILTER, PAY_CASH, PAY_PENDING, filterCount, isFilterActive, matchesLedgerFilter, type LedgerFilter } from '../../domain/ledgerFilter'
 import { db } from '../../db/dexie'
 import type { Trip, ExpenseSplit } from '../../types'
 import { formatMoney } from '../../lib/money'
@@ -113,6 +115,8 @@ export function LedgerTab({
   const pendingCardExpenses = expenses.filter(isPendingCardExpense)
   const paymentCards = useLiveQuery(() => getPaymentCards()) ?? []
   const [cardChargeOpen, setCardChargeOpen] = useState(false)
+  const [ledgerFilter, setLedgerFilter] = useState<LedgerFilter>(EMPTY_LEDGER_FILTER)
+  const [filterOpen, setFilterOpen] = useState(false)
   // 日期条跳转用——scrollAreaRef是滚动容器本身，必须是position:relative，
   // 不然offsetTop会算到再往上第一个"有定位"的祖先节点上（很多情况下是body），
   // 跳转位置会整个错掉，这是做mockup原型时真的踩过的坑
@@ -140,6 +144,7 @@ export function LedgerTab({
   useBackDismiss(rateBookOpen, () => setRateBookOpen(false))
   useBackDismiss(budgetOpen, () => setBudgetOpen(false))
   useBackDismiss(cardChargeOpen, () => setCardChargeOpen(false))
+  useBackDismiss(filterOpen, () => setFilterOpen(false))
 
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
@@ -169,9 +174,27 @@ export function LedgerTab({
   const visibleExpenses = view === 'mine' ? expenses.filter((e) => myExpenseIds.has(e.id)) : expenses
   const editingExpense = expenses.find((e) => e.id === editingId)
 
+  // 账目筛选（2026-11-07）：只筛下面的明细列表，黑卡和"这趟花在哪"始终是整趟。
+  // 状态只活在这个页面里——离开账目页或者关掉APP就清掉，不会忘了自己开过筛选
+  const filteredExpenses = visibleExpenses.filter((e) => matchesLedgerFilter(e, ledgerFilter))
+  const filterOn = isFilterActive(ledgerFilter)
+  const filterCategories = categories.filter((c) => visibleExpenses.some((e) => e.categoryId === c.id))
+  const filterCards = paymentCards.filter((c) => visibleExpenses.some((e) => isCardExpense(e) && e.paymentCardId === c.id))
+  const filterHasCash = visibleExpenses.some((e) => !isCardExpense(e))
+  const filterHasPending = visibleExpenses.some(isPendingCardExpense)
+  const filterSummaryLabel = [
+    filterCategories.filter((c) => ledgerFilter.categoryIds.includes(c.id)).map((c) => categoryLabel(c, t)).join('、'),
+    [
+      ledgerFilter.payments.includes(PAY_CASH) ? t('ledger.filter.cash') : null,
+      ...filterCards.filter((c) => ledgerFilter.payments.includes(c.id)).map((c) => c.name),
+      ledgerFilter.payments.includes(PAY_PENDING) ? t('ledger.filter.pending') : null,
+    ].filter(Boolean).join('、'),
+  ].filter(Boolean).join(' · ')
+  const filteredTotal = filteredExpenses.reduce((a, e) => a + e.homeAmount, 0)
+
   // 按行程日期分组——之前拍平按记账先后排，多天行程账目一多，"回看第3天花了
   // 什么"得整段划过去肉眼找。组内保留原来"最近记的排前面"的顺序
-  const sortedVisibleExpenses = [...visibleExpenses].sort((a, b) => {
+  const sortedVisibleExpenses = [...filteredExpenses].sort((a, b) => {
     if (a.expenseDate !== b.expenseDate) return a.expenseDate < b.expenseDate ? -1 : 1
     return b.createdAt - a.createdAt
   })
@@ -336,12 +359,32 @@ export function LedgerTab({
       {/* 日期条：只在有不止一天记录时才出现，一天的账目本来就不用跳。
           虚线框表示这天不在行程正式日期范围内（比如出发前很早就买好的机票）——
           这类账目确实存在，不能因为不在行程日期里就没有入口跳过去看 */}
+      {/* 筛选按钮固定在日期条最左边、不跟着日期滑走（样式跟"行程"页的筛选按钮一样）；
+          只有一天的账、没有日期条时，这一行就只剩按钮 */}
+      {visibleExpenses.length > 0 && (
+      <div className="flex gap-1.5 items-stretch min-h-min">
+        <button
+          type="button"
+          onClick={() => setFilterOpen(true)}
+          className={`relative flex-shrink-0 w-10 min-h-[40px] rounded-xl border flex items-center justify-center ${
+            filterOn ? 'border-spend bg-spend/10 text-spend' : 'border-line bg-card text-muted'
+          }`}
+          title={t('ledger.filter.button')}
+          aria-label={t('ledger.filter.button')}
+        >
+          <Filter className="w-4 h-4" strokeWidth={1.8} />
+          {filterOn && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-spend text-card text-[9.5px] font-bold flex items-center justify-center leading-none border-[1.5px] border-paper">
+              {filterCount(ledgerFilter)}
+            </span>
+          )}
+        </button>
       {expensesByDay.length > 1 && (
         // min-h-min：这个横向滚动条自己也在一个flex-col容器里当flex item，
         // 浏览器对"overflow-x-auto的flex item"有个隐藏规则——纵轴的自动最小高度
         // 会被当成可滚动内容直接归零，整条日期条因此被压成0高度、内容还在但看不见。
         // 显式给个min-content撑住高度就绕开了这条规则
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-5 px-5 min-h-min">
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mr-5 pr-5 min-h-min min-w-0 flex-1">
           {expensesByDay.map(({ date }) => {
             const dow = formatDateChipDow(date, locale)
             const md = formatDateChipDate(date, locale)
@@ -360,6 +403,31 @@ export function LedgerTab({
             )
           })}
         </div>
+      )}
+      </div>
+      )}
+
+      {filterOn && (
+        <div className="flex items-center gap-2 bg-card border border-line rounded-xl pl-3 pr-1.5 py-2">
+          <div className="flex-1 min-w-0">
+            <div className="text-[12px] text-soft truncate">{filterSummaryLabel}</div>
+            <div className="text-[13.5px] font-semibold mt-0.5 tabular">
+              {t('ledger.filter.summary', { count: filteredExpenses.length, total: formatMoney(filteredTotal, currencyLabel) })}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLedgerFilter(EMPTY_LEDGER_FILTER)}
+            className="w-9 h-9 flex items-center justify-center text-muted flex-shrink-0"
+            title={t('ledger.filter.clearAria')}
+            aria-label={t('ledger.filter.clearAria')}
+          >
+            <X className="w-[17px] h-[17px]" strokeWidth={1.8} />
+          </button>
+        </div>
+      )}
+      {filterOn && filteredExpenses.length === 0 && (
+        <div className="text-[12.5px] text-muted text-center py-6">{t('ledger.filter.empty')}</div>
       )}
 
       <div className="flex flex-col gap-2">
@@ -505,6 +573,19 @@ export function LedgerTab({
           cards={paymentCards}
           categories={categories}
           onClose={() => setCardChargeOpen(false)}
+        />
+      )}
+
+      {filterOpen && (
+        <LedgerFilterSheet
+          categories={filterCategories}
+          cards={filterCards}
+          hasCash={filterHasCash}
+          hasPending={filterHasPending}
+          value={ledgerFilter}
+          onChange={setLedgerFilter}
+          matchCount={filteredExpenses.length}
+          onClose={() => setFilterOpen(false)}
         />
       )}
     </div>
