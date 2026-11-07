@@ -816,7 +816,12 @@
       "feeLabel": "Service charge / tax",
       "feeHint": "Split proportionally across every item above — no need to argue over the tax separately",
       "missingMembers": "Some items still need at least one person checked",
-      "unnamedItem": "Unnamed item"
+      "unnamedItem": "Unnamed item",
+    "discountNotice": "This purchase has a {{amount}} discount — enter each item at the <b>original price</b> on the receipt; the discount is spread across items by amount.",
+    "homeShare": "≈ {{amount}}",
+    "homeShareDiscounted": "After discount ≈ {{amount}}",
+    "doneWithTotal": "All split ✓ (original {{amount}})",
+    "doneWithTotalPlain": "All split ✓ (total {{amount}})"
     },
     "daysPage": {
       "back": "Back",
@@ -1434,7 +1439,7 @@
         { "title": "Tap the \"+\" at the bottom", "desc": "It's there on Ledger and Itinerary alike, always in the same spot." },
         { "title": "Enter the amount, pick a category", "desc": "Currency defaults to your home currency; once you pick a category, whether it counts as \"before the trip\" or \"during\" is worked out for you. Got a discount? Enter the original price from the receipt, put the discount under \"Discount\", and the app works out what you paid — spending, budget and splits all use the paid amount." },
         { "title": "Pay in another currency", "desc": "Tap another currency next to the amount — as long as you've saved a rate for it, the conversion happens automatically." },
-        { "title": "Expand \"Other settings\"", "desc": "Tap \"Edit\" — date, who paid, and how to split are tucked in here, usually already right. Bought something for someone who isn't on the trip? Add who it's for and how much under \"Bought for others\" — that part isn't split among the travelers. If the purchase had a discount, enter their items at the original price and choose whether to share the discount with them (by default you keep it: they pay back the original price and the extra goes to whoever paid; if you share it, their part isn't counted in \"Saved with discounts\" on the trip recap)." },
+        { "title": "Expand \"Other settings\"", "desc": "Tap \"Edit\" — date, who paid, and how to split are tucked in here, usually already right. Bought something for someone who isn't on the trip? Add who it's for and how much under \"Bought for others\" — that part isn't split among the travelers. If the purchase had a discount, enter their items at the original price and choose whether to share the discount with them (by default you keep it: they pay back the original price and the extra goes to whoever paid; if you share it, their part isn't counted in \"Saved with discounts\" on the trip recap). With Split set to Itemized, enter each item in the receipt's currency (at the original price if there's a discount) — the app converts it and spreads the discount for you." },
         { "title": "Link it to a plan", "desc": "Tie an expense to a specific itinerary item, so you can see the cost when you look back at that day." },
         { "title": "Edit or delete an expense", "desc": "Tap an existing entry to expand it — expenses already settled can't have their amount changed anymore. With lots of entries, tap the filter button at the left of the date strip to show only certain categories or payment methods; a bar above the list shows how many match and their total." },
         { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back. Below it, the \"Bought for others\" card totals up what each person owes; tap once when they've paid it back." },

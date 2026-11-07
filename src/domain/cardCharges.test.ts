@@ -81,7 +81,7 @@ describe('fillCardCharge（真实走 Dexie）', () => {
     expect(await sharesOf()).toEqual({ a: 220, b: 110 })
   })
 
-  it('逐项拆账：份额和子项金额都按比例缩放', async () => {
+  it('逐项拆账：份额按比例缩放，子项金额（按这笔的币种记）不动', async () => {
     await db.expenses.add(expense({ splitType: 'itemized', homeAmount: 300 }))
     await addSplits([['a', 200], ['b', 100]])
     await db.expenseLineItems.bulkAdd([
@@ -90,8 +90,8 @@ describe('fillCardCharge（真实走 Dexie）', () => {
     ])
     await fillCardCharge('e1', 270)
     expect(await sharesOf()).toEqual({ a: 180, b: 90 })
-    expect((await db.expenseLineItems.get('i1'))?.amount).toBe(180)
-    expect((await db.expenseLineItems.get('i2'))?.amount).toBe(90)
+    expect((await db.expenseLineItems.get('i1'))?.amount).toBe(200)
+    expect((await db.expenseLineItems.get('i2'))?.amount).toBe(100)
   })
 
   it('跨天开销：平均分的重新平均，自定义的按比例', async () => {

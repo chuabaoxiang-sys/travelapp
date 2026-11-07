@@ -384,7 +384,12 @@ export function AddExpensePage({
   const itemsAmountTotal = round2(lineItems.reduce((sum, it) => sum + (parseFloat(it.amount) || 0), 0))
   const itemsFeeAmount = round2((itemsAmountTotal * (parseFloat(feePercent) || 0)) / 100)
   const itemsGrandTotal = round2(itemsAmountTotal + itemsFeeAmount)
-  const itemizedDiff = round2(homeAmount - itemsGrandTotal)
+  // 2026-11-07 起子项按这笔的币种填（有优惠时照原价填），所以对的是「原价」，不是折后的本位币
+  const itemizedDiff = round2(numListPrice - itemsGrandTotal)
+  const itemizedDiffText = (diff: number) => (isForeign ? `${currency} ${Math.abs(diff).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : Math.abs(diff).toFixed(2))
+  // 每一项最后摊到的本位币（含服务费、扣掉优惠）：homeAmount × 这项含服务费 / 原价
+  const itemHomeShare = (amount: number) =>
+    numListPrice > 0 ? round2((homeAmount * amount * (1 + (parseFloat(feePercent) || 0) / 100)) / numListPrice) : 0
   const itemsMissingMembers = lineItems.some((it) => (parseFloat(it.amount) || 0) > 0 && it.memberIds.length === 0)
   const itemizedValid = !usingItemized || (Math.abs(itemizedDiff) < 0.01 && !itemsMissingMembers && lineItems.length > 0)
 
@@ -457,7 +462,9 @@ export function AddExpensePage({
       : t('addExpense.diff.over', { amount: Math.abs(diff).toFixed(2) })
   }
   const splitProblem = !itemizedValid
-    ? (itemsMissingMembers ? t('addExpense.itemizedPage.missingMembers') : diffMessage(itemizedDiff))
+    ? (itemsMissingMembers
+        ? t('addExpense.itemizedPage.missingMembers')
+        : t(itemizedDiff > 0 ? 'addExpense.diff.remaining' : 'addExpense.diff.over', { amount: itemizedDiffText(itemizedDiff) }))
     : !customValid ? diffMessage(customDiff) : null
   const daysProblem = daysValid ? null : spreadDates.length === 0 ? t('addExpense.daysPage.needAtLeastOne') : diffMessage(dayDiff)
 
@@ -643,7 +650,7 @@ export function AddExpensePage({
       const itemsForSave = lineItems
         .filter((it) => (parseFloat(it.amount) || 0) > 0 && it.memberIds.length > 0)
         .map((it) => ({ name: it.name.trim() || t('addExpense.itemizedPage.unnamedItem'), amount: parseFloat(it.amount) || 0, memberIds: it.memberIds }))
-      await saveItemizedExpense(expenseId, itemsForSave, parseFloat(feePercent) || 0)
+      await saveItemizedExpense(expenseId, itemsForSave, parseFloat(feePercent) || 0, homeAmount)
     } else {
       // 从"逐项拆账"改成别的分摊方式时，把旧的子项明细清掉，不留占地方的残留数据
       if (initial?.splitType === 'itemized') await deleteLineItems(expenseId)
@@ -1272,6 +1279,18 @@ export function AddExpensePage({
               </>
             ) : mode === 'itemized' ? (
               <>
+                {numDiscount > 0 && (
+                  <div className="flex items-start gap-1.5 rounded-xl bg-positive/[.07] px-3 py-2 mt-3 text-[12px] text-soft leading-relaxed">
+                    <Tag className="w-3.5 h-3.5 text-positive flex-shrink-0 mt-[3px]" strokeWidth={1.8} />
+                    <span>
+                      <Trans
+                        i18nKey="addExpense.itemizedPage.discountNotice"
+                        values={{ amount: `${currency} ${numDiscount.toLocaleString()}` }}
+                        components={{ b: <b className="text-ink" /> }}
+                      />
+                    </span>
+                  </div>
+                )}
                 <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3 mb-1">{t('addExpense.itemizedPage.itemsLabel')}</div>
                 <div className="flex flex-col gap-2">
                   {lineItems.map((item) => (
@@ -1283,19 +1302,27 @@ export function AddExpensePage({
                           placeholder={t('addExpense.itemizedPage.namePlaceholder')}
                           className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[12.5px] outline-none focus:border-plan"
                         />
-                        <input
-                          value={item.amount}
-                          onChange={(e) => updateLineItem(item.id, { amount: e.target.value })}
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          className="w-[84px] flex-shrink-0 text-right rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[12.5px] tabular outline-none focus:border-plan"
-                        />
+                        <label className="w-[104px] flex-shrink-0 flex items-center gap-1 rounded-lg border border-line bg-paper px-2 py-1.5 focus-within:border-plan">
+                          <span className="text-[11px] text-muted">{currency}</span>
+                          <input
+                            value={item.amount}
+                            onChange={(e) => updateLineItem(item.id, { amount: e.target.value })}
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            className="flex-1 min-w-0 bg-transparent text-right text-[12.5px] tabular outline-none"
+                          />
+                        </label>
                         {lineItems.length > 1 && (
                           <button type="button" onClick={() => removeLineItem(item.id)} className="text-faint flex-shrink-0" title={t('addExpense.itemizedPage.removeItem')}>
                             <X className="w-4 h-4" strokeWidth={1.8} />
                           </button>
                         )}
                       </div>
+                      {(isForeign || numDiscount > 0) && (parseFloat(item.amount) || 0) > 0 && (
+                        <div className="text-right text-[11px] text-muted tabular -mt-1 mb-1.5">
+                          {t(numDiscount > 0 ? 'addExpense.itemizedPage.homeShareDiscounted' : 'addExpense.itemizedPage.homeShare', { amount: formatMoney(itemHomeShare(parseFloat(item.amount) || 0), homeLabel) })}
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-1.5">
                         {members.map((m) => {
                           const checked = item.memberIds.includes(m.id)
@@ -1354,10 +1381,12 @@ export function AddExpensePage({
               {itemsMissingMembers
                 ? t('addExpense.itemizedPage.missingMembers')
                 : Math.abs(itemizedDiff) < 0.01
-                  ? t('addExpense.diff.done')
+                  ? (isForeign || numDiscount > 0
+                    ? t(numDiscount > 0 ? 'addExpense.itemizedPage.doneWithTotal' : 'addExpense.itemizedPage.doneWithTotalPlain', { amount: itemizedDiffText(numListPrice) })
+                    : t('addExpense.diff.done'))
                   : itemizedDiff > 0
-                    ? t('addExpense.diff.remaining', { amount: itemizedDiff.toFixed(2) })
-                    : t('addExpense.diff.over', { amount: Math.abs(itemizedDiff).toFixed(2) })}
+                    ? t('addExpense.diff.remaining', { amount: itemizedDiffText(itemizedDiff) })
+                    : t('addExpense.diff.over', { amount: itemizedDiffText(itemizedDiff) })}
             </div>
           )}
 

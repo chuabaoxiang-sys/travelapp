@@ -46,7 +46,6 @@ export async function fillCardCharge(expenseId: string, charged: number) {
   if (await isExpenseSettled(expenseId)) throw new ExpenseSettledError()
 
   const newHome = round2(charged)
-  const oldHome = e.homeAmount
 
   await db.expenses.update(expenseId, {
     homeAmount: newHome,
@@ -70,12 +69,8 @@ export async function fillCardCharge(expenseId: string, charged: number) {
     await persistExpenseSplitShares(expenseId, [...splits.map((s, i) => ({ memberId: s.memberId, shareAmount: scaled[i] })), ...proxyShares])
   }
 
-  if (e.splitType === 'itemized' && oldHome > 0) {
-    const items = (await db.expenseLineItems.where('expenseId').equals(expenseId).toArray()).filter((it) => !it.deletedAt)
-    for (const it of items) {
-      await db.expenseLineItems.update(it.id, { amount: round2((it.amount * newHome) / oldHome) })
-    }
-  }
+  // 逐项拆账的子项金额是按这笔的币种记的（2026-11-07 起），不随实际扣款变，
+  // 每人份额已经在上面按比例跟着新金额缩放了，这里不用再动子项
 
   if (e.daySpreadMode) {
     const days = (await db.expenseDayAllocations.where('expenseId').equals(expenseId).toArray())

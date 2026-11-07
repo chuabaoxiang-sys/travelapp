@@ -19,7 +19,26 @@ export interface LineItemShare {
 // 跟resolveSplitShares的取整规则保持一致，同一个概念只定义一次取整方式）。
 // 同一个人可能出现在好几个子项里（比如两道菜都点了），各子项算出来的
 // 份额要累加，不是覆盖——用Map按memberId汇总
-export function resolveLineItemShares(items: LineItemInput[], feePercent: number): LineItemShare[] {
+//
+// 2026-11-07 起子项金额按这笔账自己的币种填（外币账照收据填外币；有优惠时照原价填）。
+// 传了 homeAmount 时，先按上面的规则在"这笔的币种"里算出每人占多少，再按比例把
+// homeAmount 分下去——优惠、汇率都自然按比例摊进每个人，合计刚好等于 homeAmount
+// （四舍五入的零头给份额最大的人）
+export function resolveLineItemShares(items: LineItemInput[], feePercent: number, homeAmount?: number): LineItemShare[] {
+  const raw = resolveLineItemWeights(items, feePercent)
+  if (homeAmount == null) return raw
+  const weightTotal = raw.reduce((s, r) => s + r.shareAmount, 0)
+  if (!(weightTotal > 0)) return raw.map((r) => ({ ...r, shareAmount: 0 }))
+  const scaled = raw.map((r) => ({ memberId: r.memberId, shareAmount: round2((homeAmount * r.shareAmount) / weightTotal) }))
+  const diff = round2(homeAmount - scaled.reduce((s, r) => s + r.shareAmount, 0))
+  if (diff !== 0 && scaled.length) {
+    const biggest = scaled.reduce((a, b) => (b.shareAmount > a.shareAmount ? b : a))
+    biggest.shareAmount = round2(biggest.shareAmount + diff)
+  }
+  return scaled
+}
+
+function resolveLineItemWeights(items: LineItemInput[], feePercent: number): LineItemShare[] {
   const totals = new Map<string, number>()
   for (const item of items) {
     if (!item.memberIds.length) continue
@@ -39,7 +58,7 @@ export function resolveLineItemShares(items: LineItemInput[], feePercent: number
 // 再重新写入），这两张表没有"编辑单个字段"的路径，逻辑更简单也不会留孤儿行。
 // 算出来的最终每人份额复用 persistExpenseSplitShares 落地进 expenseSplits——
 // 结算/按笔结算这些下游逻辑完全不用知道这笔账目是不是逐项拆的
-export async function saveItemizedExpense(expenseId: string, items: LineItemInput[], feePercent: number) {
+export async function saveItemizedExpense(expenseId: string, items: LineItemInput[], feePercent: number, homeAmount: number) {
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('No household found')
 
@@ -65,7 +84,7 @@ export async function saveItemizedExpense(expenseId: string, items: LineItemInpu
   )
   if (memberRows.length) await db.expenseLineItemMembers.bulkAdd(memberRows)
 
-  const shares = resolveLineItemShares(items, feePercent)
+  const shares = resolveLineItemShares(items, feePercent, homeAmount)
   await persistExpenseSplitShares(expenseId, shares)
 }
 
