@@ -9,7 +9,7 @@ import { DatePicker } from '../../components/DatePicker'
 import { BottomSheet } from '../../components/BottomSheet'
 import { SuccessToast } from '../../components/SuccessToast'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
-import { dateRange } from '../../lib/dates'
+import { dateRange, defaultTripDate, todayLocal } from '../../lib/dates'
 import { RateChipRow, type RateSelection } from '../rates/RateChipRow'
 import { CardPaymentPanel } from '../rates/CardPaymentPanel'
 import { isCardExpense, getPaymentCards, createPaymentCard, estimateCardRate } from '../../domain/paymentCards'
@@ -131,7 +131,9 @@ export function AddExpensePage({
     setCardId(card.id)
   }
   const [payer, setPayer] = useState(initial?.paidBy ?? currentMemberId)
-  const [expenseDate, setExpenseDate] = useState(initial?.expenseDate ?? trip.startDate ?? new Date().toISOString().slice(0, 10))
+  // 新记一笔：进行中默认今天、没出发默认第一天、结束了默认最后一天（规则见 defaultTripDate）；
+  // 编辑已有账目照旧用它自己的日期
+  const [expenseDate, setExpenseDate] = useState(() => initial?.expenseDate ?? defaultTripDate(trip, todayLocal()))
 
   // 这笔账有没有被"按笔结算"过（哪怕只结算了一部分）——有的话金额/汇率/怎么分/
   // 付款人这几项会锁住不能改，因为已经记录的结算是照着当时这几个字段算出来的，

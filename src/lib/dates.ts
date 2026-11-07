@@ -31,3 +31,22 @@ export function dateRange(start: string, end: string) {
   }
   return dates
 }
+
+// 打开「行程」页、记一笔新账时默认停在哪一天（2026-11-07，用户旅行回来反馈：
+// 旅途中每次打开都停在第一天、记账日期每次都是出发那天，要手动翻到今天）：
+//   - 行程进行中（今天在出发日到结束日之间）→ 今天
+//   - 还没出发 → 第一天
+//   - 已经结束 → 最后一天（回来补记、翻看，最近的记忆在最后几天）
+//   - 行程没设日期 → 今天
+// today 由调用方传进来（手机本地日期，不是 UTC），方便测试
+export function defaultTripDate(trip: { startDate: string | null; endDate: string | null }, today: string): string {
+  const { startDate, endDate } = trip
+  if (!startDate || !endDate) return today
+  if (today < startDate) return startDate
+  if (today > endDate) return endDate
+  return today
+}
+
+export function todayLocal(): string {
+  return toLocalDateString(new Date())
+}

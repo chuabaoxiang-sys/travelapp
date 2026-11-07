@@ -20,7 +20,7 @@ import { CalendarView } from './CalendarView'
 // leaflet/react-leaflet源码近4MB，只有切到"地图"这个视图才用得到——懒加载，
 // 不切地图的用户完全不用下载这部分代码
 const MapView = lazy(() => import('./MapView').then((m) => ({ default: m.MapView })))
-import { dateRange, formatTimeHM } from '../../lib/dates'
+import { dateRange, defaultTripDate, formatTimeHM, todayLocal } from '../../lib/dates'
 import { useDayRouteLegs } from '../../lib/routeLegs'
 import { RouteLegHint } from '../../components/RouteLegHint'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
@@ -51,7 +51,8 @@ export function ItineraryTab({
   const locale: ResolvedLocale = i18n.language === 'en' ? 'en' : 'zh'
   const days = trip.startDate && trip.endDate ? dateRange(trip.startDate, trip.endDate) : []
   const [viewMode, setViewMode] = useState<ViewMode>('timeline')
-  const [selected, setSelected] = useState(days[0] ?? '')
+  // 进行中停在今天、没出发停在第一天、结束了停在最后一天（规则见 defaultTripDate）
+  const [selected, setSelected] = useState(() => (days.length ? defaultTripDate(trip, todayLocal()) : ''))
   const [wishlistOpen, setWishlistOpen] = useState(false)
   useBackDismiss(wishlistOpen, () => setWishlistOpen(false))
 
