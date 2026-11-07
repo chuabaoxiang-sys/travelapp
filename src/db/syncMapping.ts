@@ -374,6 +374,8 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       proxy_name: s.proxyName ?? null,
       proxy_amount: s.proxyAmount ?? null,
       proxy_repaid_at: isoOrNull(s.proxyRepaidAt ?? null),
+      proxy_repaid_amount: s.proxyRepaidAmount ?? null,
+      proxy_gift_member_ids: s.proxyGiftMemberIds?.length ? s.proxyGiftMemberIds : null,
     }),
     fromRemote: (r) => ({
       id: r.id,
@@ -385,6 +387,8 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       proxyName: r.proxy_name ?? null,
       proxyAmount: r.proxy_amount == null ? null : num(r.proxy_amount),
       proxyRepaidAt: msOrNull(r.proxy_repaid_at ?? null),
+      proxyRepaidAmount: r.proxy_repaid_amount == null ? null : num(r.proxy_repaid_amount),
+      proxyGiftMemberIds: Array.isArray(r.proxy_gift_member_ids) && r.proxy_gift_member_ids.length ? r.proxy_gift_member_ids : null,
     }),
   },
 

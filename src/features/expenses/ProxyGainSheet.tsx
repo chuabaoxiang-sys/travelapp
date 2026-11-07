@@ -31,7 +31,7 @@ export function ProxyGainSheet({
     <BottomSheet onClose={onClose} cardClassName="px-5 pt-3.5 pb-5 max-h-[90%] flex flex-col">
       <div className="w-[38px] h-1 rounded-full bg-handle mx-auto mb-2 flex-shrink-0" />
       <div className="flex items-center justify-between flex-shrink-0">
-        <h2 className="font-serif-sc text-[15px] font-semibold">{t('proxyGain.title', { amount: formatMoney(total, currencyLabel) })}</h2>
+        <h2 className="font-serif-sc text-[15px] font-semibold">{t(total >= 0 ? 'proxyGain.title' : 'proxyGain.titleLoss', { amount: formatMoney(Math.abs(total), currencyLabel) })}</h2>
         <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-muted" title={t('activity.close')} aria-label={t('activity.close')}>
           <X className="w-[18px] h-[18px]" strokeWidth={1.8} />
         </button>
@@ -49,7 +49,7 @@ export function ProxyGainSheet({
             <span className="flex items-baseline gap-1.5 w-full">
               <span className="text-[13px] font-semibold flex-1 min-w-0 truncate">{titleOf(g.expenseId)}</span>
               <span className="text-[11px] text-muted flex-shrink-0">{g.expenseDate.slice(5).replace('-', '/')}</span>
-              <span className="text-[13px] font-semibold text-positive tabular flex-shrink-0">+{formatMoney(g.total, currencyLabel)}</span>
+              <span className={`text-[13px] font-semibold tabular flex-shrink-0 ${g.total >= 0 ? 'text-positive' : 'text-negative'}`}>{g.total >= 0 ? '+' : '−'}{formatMoney(Math.abs(g.total), currencyLabel)}</span>
               <ChevronRight className="w-3.5 h-3.5 text-muted flex-shrink-0 self-center" strokeWidth={2} />
             </span>
             <span className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-2.5 gap-y-[3px] w-full text-[11.5px] tabular text-soft">
@@ -62,7 +62,7 @@ export function ProxyGainSheet({
                   <span className="truncate">{r.name} · {foreign(g.currency, r.amount)}</span>
                   <span className="text-right">{num(r.receivable)}</span>
                   <span className="text-right">{num(r.cost)}</span>
-                  <span className="text-right text-positive">{num(r.gain)}</span>
+                  <span className={`text-right ${r.gain >= 0 ? 'text-positive' : 'text-negative'}`}>{r.gain >= 0 ? '' : '−'}{num(Math.abs(r.gain))}</span>
                 </span>
               ))}
             </span>
@@ -72,7 +72,7 @@ export function ProxyGainSheet({
 
       <div className="flex justify-between gap-2 border-t border-line pt-2.5 mt-2.5 text-[12.5px] tabular flex-shrink-0">
         <span className="text-muted">{t('proxyGain.footer', { owes: num(receivable), cost: num(cost) })}</span>
-        <span className="font-bold text-positive">= {formatMoney(total, currencyLabel)}</span>
+        <span className={`font-bold ${total >= 0 ? 'text-positive' : 'text-negative'}`}>= {total < 0 ? '−' : ''}{formatMoney(Math.abs(total), currencyLabel)}</span>
       </div>
       <div className="text-[11px] text-muted leading-relaxed mt-1.5 flex-shrink-0">{t('proxyGain.hint')}</div>
     </BottomSheet>

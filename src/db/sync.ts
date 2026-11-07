@@ -105,6 +105,8 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
           proxy_name: r.proxyName ?? null,
           proxy_amount: r.proxyAmount ?? null,
           proxy_repaid_at: r.proxyRepaidAt ? new Date(r.proxyRepaidAt).toISOString() : null,
+          proxy_repaid_amount: r.proxyRepaidAmount ?? null,
+          proxy_gift_member_ids: r.proxyGiftMemberIds?.length ? r.proxyGiftMemberIds : null,
         })),
       })
       if (error) throw error

@@ -249,7 +249,7 @@ export function AddExpensePage({
   // 代购（2026-11-07）：一笔账里帮没来旅行的人买的那几行。金额用字符串存，
   // 跟"自定义金额"同一个理由；repaidAt 编辑时原样带回去，不能因为改了一下账
   // 就把"已还"丢了
-  interface LocalProxyLine { id: string; name: string; amount: string; repaidAt: number | null }
+  interface LocalProxyLine { id: string; name: string; amount: string; repaidAt: number | null; repaidAmount?: number | null; giftMemberIds?: string[] | null }
   const [proxyLines, setProxyLines] = useState<LocalProxyLine[]>([])
   const proxyInitialized = useRef(false)
   useEffect(() => {
@@ -259,6 +259,7 @@ export function AddExpensePage({
     if (!existingAllSplits.length) return
     setProxyLines(existingAllSplits.filter(isProxySplit).map((s) => ({
       id: s.id, name: s.proxyName ?? '', amount: String(s.proxyAmount ?? ''), repaidAt: s.proxyRepaidAt ?? null,
+      repaidAmount: s.proxyRepaidAmount ?? null, giftMemberIds: s.proxyGiftMemberIds ?? null,
     })))
     proxyInitialized.current = true
   }, [initial, existingAllSplits])
@@ -349,7 +350,7 @@ export function AddExpensePage({
   // 代购那几行按外币占整笔「原价」的比例折成本位币（有优惠时代购照原价填，成本也就
   // 按比例摊到了优惠，0050）；同行者"怎么分"只分剩下的 shareBase
   const activeProxyLines = proxyLines
-    .map((l) => ({ name: l.name.trim(), amount: parseFloat(l.amount) || 0, repaidAt: l.repaidAt }))
+    .map((l) => ({ name: l.name.trim(), amount: parseFloat(l.amount) || 0, repaidAt: l.repaidAt, repaidAmount: l.repaidAmount ?? null, giftMemberIds: l.giftMemberIds ?? null }))
     .filter((l) => l.name || l.amount > 0)
   const proxyShares = resolveProxyShares(homeAmount, numListPrice, activeProxyLines)
   // 有优惠时：代购的人按原价还（默认）还是按折后价还
@@ -437,6 +438,39 @@ export function AddExpensePage({
   }
   function updateLineItem(id: string, patch: Partial<LocalLineItem>) {
     setLineItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
+  }
+  // 切换「怎么分」时，代购在「代购」页和逐项拆账的每一项之间搬过去（2026-11-08）：
+  // 切到逐项拆账 → 代购页每一行变成一项「帮 X 买」，已经勾好 X；
+  // 从逐项拆账切走 → 每一项里勾的代购的人按名字合成代购页的一行（金额 = 他在各项里占的原价）。
+  // 「已还」状态都按名字保留，不会因为切换丢掉代购
+  function switchSplitMode(next: 'share' | 'itemized' | 'personal') {
+    if (next === mode) return
+    if (next === 'itemized') {
+      const lines = activeProxyLines.filter((l) => l.name && l.amount > 0)
+      if (lines.length) {
+        const converted: LocalLineItem[] = lines.map((l) => ({
+          id: crypto.randomUUID(),
+          name: t('addExpense.itemizedPage.proxyItemName', { name: l.name }),
+          amount: String(l.amount),
+          memberIds: [],
+          proxyNames: [l.name],
+        }))
+        setLineItems((prev) => [...prev.filter((it) => it.name.trim() || (parseFloat(it.amount) || 0) > 0), ...converted])
+        setProxyLines([])
+      }
+    } else if (mode === 'itemized' && itemizedProxyParts.length) {
+      const stateByName = new Map(existingAllSplits.filter(isProxySplit).map((sp) => [(sp.proxyName ?? '').trim(), sp]))
+      setProxyLines(itemizedProxyParts.map((p) => ({
+        id: crypto.randomUUID(),
+        name: p.key,
+        amount: String(round2(p.weight)),
+        repaidAt: stateByName.get(p.key)?.proxyRepaidAt ?? null,
+        repaidAmount: stateByName.get(p.key)?.proxyRepaidAmount ?? null,
+        giftMemberIds: stateByName.get(p.key)?.proxyGiftMemberIds ?? null,
+      })))
+      setLineItems((prev) => prev.map((it) => ({ ...it, proxyNames: [] })))
+    }
+    setMode(next)
   }
   function toggleLineItemProxy(id: string, name: string) {
     setLineItems((prev) =>
@@ -1202,21 +1236,21 @@ export function AddExpensePage({
             <div className="flex border border-line rounded-xl overflow-hidden">
               <button
                 type="button"
-                onClick={() => { setMode('share'); setSplitMemberIds(members.map((m) => m.id)) }}
+                onClick={() => { switchSplitMode('share'); setSplitMemberIds(members.map((m) => m.id)) }}
                 className={`flex-1 py-2 text-[12.5px] ${mode === 'share' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
               >
                 {t('addExpense.splitPage.share')}
               </button>
               <button
                 type="button"
-                onClick={() => setMode('itemized')}
+                onClick={() => switchSplitMode('itemized')}
                 className={`flex-1 py-2 text-[12.5px] ${mode === 'itemized' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
               >
                 {t('addExpense.splitPage.itemized')}
               </button>
               <button
                 type="button"
-                onClick={() => { setMode('personal'); setSplitMemberIds([]) }}
+                onClick={() => { switchSplitMode('personal'); setSplitMemberIds([]) }}
                 className={`flex-1 py-2 text-[12.5px] ${mode === 'personal' ? 'bg-plan text-card font-medium' : 'text-muted'}`}
               >
                 {t('addExpense.splitPage.personal')}

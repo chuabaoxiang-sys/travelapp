@@ -355,12 +355,12 @@ export function LedgerTab({
         <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
           <div className="text-[11px] tracking-wider text-on-dark/55">{t('ledger.mineHero.label')}</div>
           <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
-          {myCashback > 0 || myProxyGain > 0 ? (
+          {myCashback > 0 || myProxyGain !== 0 ? (
             // 有归我的返现 / 代购多收时，这一行直接写成算式：应分摊 − Cashback − 代购多收（2026-11-07 口径统一）
             <div className="mt-2 text-[11px] text-on-dark/75 tabular">
               {t('ledger.mineHero.owedLabel')} <span className="font-semibold text-on-dark">{formatMoney(myOwed, currencyLabel)}</span>
               {myCashback > 0 && <span className="text-plan-on-dark"> {t('ledger.mineHero.minusCashback', { amount: formatMoney(myCashback, currencyLabel) })}</span>}
-              {myProxyGain > 0 && (
+              {myProxyGain !== 0 && (
                 <>
                   {' '}
                   <button
@@ -368,7 +368,7 @@ export function LedgerTab({
                     onClick={() => setProxyGainOpen(true)}
                     className="inline-flex items-center gap-0.5 text-plan-on-dark underline decoration-dotted underline-offset-[3px]"
                   >
-                    {t('ledger.mineHero.minusProxyGain', { amount: formatMoney(myProxyGain, currencyLabel) })}
+                    {t(myProxyGain > 0 ? 'ledger.mineHero.minusProxyGain' : 'ledger.mineHero.plusProxyLoss', { amount: formatMoney(Math.abs(myProxyGain), currencyLabel) })}
                     <ChevronRight className="w-3 h-3" strokeWidth={2} />
                   </button>
                 </>

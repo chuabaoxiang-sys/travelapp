@@ -317,6 +317,9 @@ export interface ExpenseSplit {
   proxyName?: string | null
   proxyAmount?: number | null
   proxyRepaidAt?: number | null
+  // 0052：标已还时实际收回的本位币（null = 照算出来的该还）；送给对方时一起送的同行者
+  proxyRepaidAmount?: number | null
+  proxyGiftMemberIds?: string[] | null
 }
 
 // 逐项拆账的子项——"这笔账目分成了几项"，每项自己的名称+金额，跟哪些成员

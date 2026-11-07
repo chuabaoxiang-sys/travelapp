@@ -61,6 +61,8 @@ export interface SplitShare {
   proxyName?: string | null
   proxyAmount?: number | null
   proxyRepaidAt?: number | null
+  proxyRepaidAmount?: number | null
+  proxyGiftMemberIds?: string[] | null
 }
 
 export async function persistExpenseSplitShares(expenseId: string, shares: SplitShare[]) {
@@ -69,6 +71,7 @@ export async function persistExpenseSplitShares(expenseId: string, shares: Split
   const rows: ExpenseSplit[] = shares.map((s) => ({
     id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount, deletedAt: null,
     proxyName: s.proxyName ?? null, proxyAmount: s.proxyAmount ?? null, proxyRepaidAt: s.proxyRepaidAt ?? null,
+    proxyRepaidAmount: s.proxyRepaidAmount ?? null, proxyGiftMemberIds: s.proxyGiftMemberIds?.length ? s.proxyGiftMemberIds : null,
   }))
   // 写分摊和入队放在同一个事务里：后台拉取不会刚好插在"新分摊写好了、还没入队"
   // 的空档里，把这几行当成"云端已删除"清掉
@@ -109,10 +112,39 @@ export interface ProxyLine {
   name: string
   amount: number // 按这笔账自己的币种（照收据填的外币）
   repaidAt?: number | null
+  // 0052：这两项只是跟着行走，重算分摊（编辑、补刷卡扣款）时不能丢
+  repaidAmount?: number | null
+  giftMemberIds?: string[] | null
 }
 
 export function isProxySplit(s: { proxyName?: string | null }): boolean {
   return !!s.proxyName
+}
+
+// 送礼（0052）：代购行标了"送给他/她"——不用还了，这部分成本由一起送的同行者平分，
+// 算进同行者之间的结算（"垫付"也不再扣掉它）
+export function isGiftProxy(s: { proxyName?: string | null; proxyGiftMemberIds?: string[] | null }): boolean {
+  return !!s.proxyName && !!s.proxyGiftMemberIds?.length
+}
+
+// 一行送礼的代购，按一起送的人平分成每人多少（零头给第一个人）
+export function giftShares(s: { shareAmount: number; proxyGiftMemberIds?: string[] | null }): { memberId: string; shareAmount: number }[] {
+  const ids = s.proxyGiftMemberIds ?? []
+  if (!ids.length) return []
+  const base = Math.floor((s.shareAmount / ids.length) * 100) / 100
+  const remainder = round2(s.shareAmount - base * ids.length)
+  return ids.map((id, i) => ({ memberId: id, shareAmount: i === 0 ? round2(base + remainder) : base }))
+}
+
+// 这笔账里每个同行者的份额：普通分摊行 + 送礼代购分到他头上的（0052）。
+// 结算、按笔结算、"你的份额"都用这一个，口径不会跑偏
+export function memberSharesOfExpense(splits: { memberId: string; shareAmount: number; proxyName?: string | null; proxyGiftMemberIds?: string[] | null }[]): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const s of splits) {
+    if (!isProxySplit(s)) m.set(s.memberId, round2((m.get(s.memberId) ?? 0) + s.shareAmount))
+    else if (isGiftProxy(s)) for (const g of giftShares(s)) m.set(g.memberId, round2((m.get(g.memberId) ?? 0) + g.shareAmount))
+  }
+  return m
 }
 
 // 每行代购折成本位币（= 这部分的成本）：按"这行外币 / 整笔原价"的比例分 homeAmount——
@@ -127,6 +159,8 @@ export function resolveProxyShares(homeAmount: number, listPrice: number, lines:
     name: l.name.trim(),
     amount: l.amount,
     repaidAt: l.repaidAt ?? null,
+    repaidAmount: l.repaidAmount ?? null,
+    giftMemberIds: l.giftMemberIds ?? null,
     shareAmount: round2((homeAmount * l.amount) / listPrice),
   }))
   const foreignTotal = valid.reduce((s, l) => s + l.amount, 0)
@@ -156,6 +190,8 @@ export function buildSplitShares(
       proxyName: p.name,
       proxyAmount: p.amount,
       proxyRepaidAt: p.repaidAt,
+      proxyRepaidAmount: p.repaidAmount,
+      proxyGiftMemberIds: p.giftMemberIds,
     })),
   ]
 }
@@ -201,9 +237,10 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
 
   // 代购那部分是付款人跟没来旅行的人之间的事，不进同行者之间的账：付款人的"垫付"
   // 扣掉代购，代购行也不算任何同行者"该分摊"的
+  // 送了礼的代购（0052）不扣：那部分变成同行者自己的花费
   const proxyByExpense = new Map<string, number>()
   for (const s of splits) {
-    if (isProxySplit(s)) proxyByExpense.set(s.expenseId, round2((proxyByExpense.get(s.expenseId) ?? 0) + s.shareAmount))
+    if (isProxySplit(s) && !isGiftProxy(s)) proxyByExpense.set(s.expenseId, round2((proxyByExpense.get(s.expenseId) ?? 0) + s.shareAmount))
   }
 
   const paidMap = new Map<string, { amount: number; count: number }>()
@@ -215,8 +252,8 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
 
   const owedMap = new Map<string, number>()
   for (const s of splits) {
-    if (isProxySplit(s)) continue
-    owedMap.set(s.memberId, round2((owedMap.get(s.memberId) ?? 0) + s.shareAmount))
+    if (!isProxySplit(s)) owedMap.set(s.memberId, round2((owedMap.get(s.memberId) ?? 0) + s.shareAmount))
+    else if (isGiftProxy(s)) for (const g of giftShares(s)) owedMap.set(g.memberId, round2((owedMap.get(g.memberId) ?? 0) + g.shareAmount))
   }
 
   const settledOutMap = new Map<string, number>()
@@ -282,22 +319,32 @@ async function computeOpenDebtsAndPools(tripId: string) {
     pools.set(key, round2((pools.get(key) ?? 0) + s.amount))
   }
 
+  // 每笔账每个同行者的份额：普通分摊 + 送礼代购分到他头上的（0052），合成一条
+  const splitsByExpense = new Map<string, typeof splits>()
+  for (const s of splits) {
+    const arr = splitsByExpense.get(s.expenseId) ?? []
+    arr.push(s)
+    splitsByExpense.set(s.expenseId, arr)
+  }
   const afterTagged: Omit<OpenExpenseDebt, 'prepaidAmount' | 'remaining'>[] = []
-  for (const split of splits) {
-    const expense = expenseById.get(split.expenseId)
-    // 自己分摊给自己（付款人本人的那一份，或者splitType='none'时的整笔自留）不算欠款
-    if (!expense || split.memberId === expense.paidBy || isProxySplit(split)) continue
-    const settledAmount = settledMap.get(`${split.expenseId}:${split.memberId}`) ?? 0
-    afterTagged.push({
-      expenseId: expense.id,
-      description: expense.description,
-      categoryId: expense.categoryId,
-      expenseDate: expense.expenseDate,
-      creditorId: expense.paidBy,
-      debtorId: split.memberId,
-      totalShare: split.shareAmount,
-      settledAmount,
-    })
+  for (const [expenseId, rows] of splitsByExpense) {
+    const expense = expenseById.get(expenseId)
+    if (!expense) continue
+    for (const [memberId, share] of memberSharesOfExpense(rows)) {
+      // 自己分摊给自己（付款人本人的那一份，或者splitType='none'时的整笔自留）不算欠款
+      if (memberId === expense.paidBy) continue
+      const settledAmount = settledMap.get(`${expenseId}:${memberId}`) ?? 0
+      afterTagged.push({
+        expenseId: expense.id,
+        description: expense.description,
+        categoryId: expense.categoryId,
+        expenseDate: expense.expenseDate,
+        creditorId: expense.paidBy,
+        debtorId: memberId,
+        totalShare: share,
+        settledAmount,
+      })
+    }
   }
   afterTagged.sort((a, b) => a.expenseDate.localeCompare(b.expenseDate))
 

@@ -58,7 +58,11 @@ export async function fillCardCharge(expenseId: string, charged: number) {
   // 代购那几行按实际汇率重算本位币（按外币金额占整笔的比例），剩下的才是同行者分的
   const proxyShares = resolveProxyShares(newHome, expenseListPrice(e), allSplits.filter(isProxySplit).map((s) => ({
     name: s.proxyName ?? '', amount: s.proxyAmount ?? 0, repaidAt: s.proxyRepaidAt ?? null,
-  }))).map((p) => ({ memberId: e.paidBy, shareAmount: p.shareAmount, proxyName: p.name, proxyAmount: p.amount, proxyRepaidAt: p.repaidAt }))
+    repaidAmount: s.proxyRepaidAmount ?? null, giftMemberIds: s.proxyGiftMemberIds ?? null,
+  }))).map((p) => ({
+    memberId: e.paidBy, shareAmount: p.shareAmount, proxyName: p.name, proxyAmount: p.amount, proxyRepaidAt: p.repaidAt,
+    proxyRepaidAmount: p.repaidAmount, proxyGiftMemberIds: p.giftMemberIds,
+  }))
   const remainder = Math.max(0, round2(newHome - proxyShares.reduce((s, p) => s + p.shareAmount, 0)))
   const splits = allSplits.filter((s) => !isProxySplit(s))
   if (e.splitType === 'equal' || e.splitType === 'none' || !splits.length) {

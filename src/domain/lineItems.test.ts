@@ -24,7 +24,7 @@ describe('逐项拆账 + 代购（0051）', () => {
     { name: '零食', amount: 6000, memberIds: ['bx', 'kn'], proxyNames: ['妈妈'] },
   ]
   it('代购的人变成代购行（记在付款人名下），proxyAmount 是他占的原价；合计刚好等于实付', () => {
-    const shares = buildItemizedSplitShares(items, 0, 374.59, 'bx', new Map([['妈妈', 123]]))
+    const shares = buildItemizedSplitShares(items, 0, 374.59, 'bx', new Map([['妈妈', { repaidAt: 123, repaidAmount: null, giftMemberIds: null }]]))
     const mama = shares.find((s) => s.proxyName === '妈妈')!
     expect(mama.memberId).toBe('bx')
     expect(mama.proxyAmount).toBe(12000)

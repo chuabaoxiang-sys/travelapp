@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { db } from '../db/dexie'
 import { buildSplitShares, resolveProxyShares, computeBalances, openExpenseDebts, expenseListPrice, proxyReceivable, round2 } from './splits'
-import { groupProxyItems, proxyGainBreakdown, proxyGainByMember, proxySummary, setProxyRepaid, toProxyItems } from './proxies'
+import { groupProxyItems, proxyGainBreakdown, proxyGainByMember, proxySummary, setProxyGift, setProxyRepaid, toProxyItems } from './proxies'
 import { fillCardCharge } from './cardCharges'
 import type { Expense, ExpenseSplit } from '../types'
 
@@ -159,7 +159,7 @@ describe('代购遇到优惠（0050）', () => {
 describe('proxyGainBreakdown', () => {
   const mk = (id: string, expenseId: string, date: string, name: string, receivable: number, cost: number, creditorId = 'bx') => ({
     splitId: id, name, expenseId, expenseDate: date, description: expenseId, currency: 'JPY', amount: 1000,
-    shareAmount: receivable, costAmount: cost, creditorId, repaidAt: null,
+    shareAmount: receivable, costAmount: cost, creditorId, repaidAt: null, repaidAmount: null, giftMemberIds: null, received: receivable,
   })
   it('按账目分组、按日期排，只列多收 > 0、只列这个付款人的', () => {
     const groups = proxyGainBreakdown([
@@ -172,5 +172,60 @@ describe('proxyGainBreakdown', () => {
     expect(groups.map((g) => g.expenseId)).toEqual(['a', 'b'])
     expect(groups[0].total).toBe(43.98)
     expect(groups[0].rows.map((r) => r.gain)).toEqual([24.89, 19.09])
+  })
+})
+
+describe('代购结算选项（0052，真实走 Dexie）', () => {
+  beforeEach(async () => {
+    await Promise.all([db.expenses.clear(), db.expenseSplits.clear(), db.settlements.clear(), db.outbox.clear()])
+  })
+  // Mega Donki ¥13,298 = RM350.55；妈妈 ¥4,600 → RM121.26、小王 ¥3,000 → RM79.08，剩下 RM150.21 两人平分
+  async function seed() {
+    await db.expenses.add(expense())
+    await db.expenseSplits.bulkAdd(rows('e1', buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { listPrice: 13298, lines: LINES })))
+  }
+  const proxyIds = async () => (await db.expenseSplits.toArray()).filter((s) => s.proxyName).map((s) => s.id)
+
+  it('实际还得多：多出来的算付款人多收；少还：算付款人少收（负数）', async () => {
+    await seed()
+    const [mama] = (await db.expenseSplits.toArray()).filter((s) => s.proxyName === '妈妈')
+    await setProxyRepaid([mama.id], 1, 130)
+    let items = toProxyItems(await db.expenses.toArray(), await db.expenseSplits.toArray())
+    expect(items.find((i) => i.name === '妈妈')!.received).toBe(130)
+    expect(proxyGainByMember(items).get('bx')).toBe(round2(130 - mama.shareAmount))
+    await setProxyRepaid([mama.id], 1, 100)
+    items = toProxyItems(await db.expenses.toArray(), await db.expenseSplits.toArray())
+    expect(proxyGainByMember(items).get('bx')).toBe(round2(100 - mama.shareAmount))
+    // 撤销：实际金额一起清掉
+    await setProxyRepaid([mama.id], null)
+    expect((await db.expenseSplits.get(mama.id))!.proxyRepaidAmount).toBeNull()
+  })
+
+  it('一个人好几行一起标已还：实际总额按该还比例摊，合计刚好', async () => {
+    await seed()
+    const ids = await proxyIds()
+    await setProxyRepaid(ids, 1, 200)
+    const amounts = (await db.expenseSplits.toArray()).filter((s) => s.proxyName).map((s) => s.proxyRepaidAmount ?? 0)
+    expect(round2(amounts.reduce((a, b) => a + b, 0))).toBe(200)
+  })
+
+  it('送给妈妈：成本由 BX、KN 平分，进结算；不再算"收回"', async () => {
+    await seed()
+    const [mama] = (await db.expenseSplits.toArray()).filter((s) => s.proxyName === '妈妈')
+    const before = await computeBalances('t1')
+    await setProxyGift([mama.id], ['bx', 'kn'])
+    const after = await computeBalances('t1')
+    const kn0 = before.find((b) => b.memberId === 'kn')!
+    const kn1 = after.find((b) => b.memberId === 'kn')!
+    expect(round2(kn1.owed - kn0.owed)).toBe(round2(mama.shareAmount / 2))
+    const bx1 = after.find((b) => b.memberId === 'bx')!
+    expect(round2(bx1.paid - before.find((b) => b.memberId === 'bx')!.paid)).toBe(mama.shareAmount)
+    const items = toProxyItems(await db.expenses.toArray(), await db.expenseSplits.toArray())
+    expect(groupProxyItems(items).gifted.map((g) => g.name)).toEqual(['妈妈'])
+    expect(proxySummary(items).total).toBe(items.find((i) => i.name === '小王')!.shareAmount)
+    const debts = await openExpenseDebts('t1')
+    expect(debts.find((d) => d.debtorId === 'kn')!.totalShare).toBe(round2(75.1 + mama.shareAmount / 2))
+    await setProxyGift([mama.id], null)
+    expect((await computeBalances('t1')).find((b) => b.memberId === 'kn')!.owed).toBe(kn0.owed)
   })
 })

@@ -12,6 +12,13 @@ export interface LineItemInput {
   proxyNames?: string[]
 }
 
+// 代购行的结算状态（已还时间、实际还了多少、送给谁），重算分摊时按名字带回去
+export interface ProxySettleState {
+  repaidAt: number | null
+  repaidAmount: number | null
+  giftMemberIds: string[] | null
+}
+
 export interface LineItemShare {
   memberId: string
   shareAmount: number
@@ -81,12 +88,17 @@ export function buildItemizedSplitShares(
   feePercent: number,
   homeAmount: number,
   payerId: string,
-  repaidByName: Map<string, number | null> = new Map(),
+  repaidByName: Map<string, ProxySettleState> = new Map(),
 ): SplitShare[] {
   return resolveItemizedParts(items, feePercent, homeAmount).map((p) =>
     p.kind === 'member'
       ? { memberId: p.key, shareAmount: p.share }
-      : { memberId: payerId, shareAmount: p.share, proxyName: p.key, proxyAmount: p.weight, proxyRepaidAt: repaidByName.get(p.key) ?? null },
+      : {
+          memberId: payerId, shareAmount: p.share, proxyName: p.key, proxyAmount: p.weight,
+          proxyRepaidAt: repaidByName.get(p.key)?.repaidAt ?? null,
+          proxyRepaidAmount: repaidByName.get(p.key)?.repaidAmount ?? null,
+          proxyGiftMemberIds: repaidByName.get(p.key)?.giftMemberIds ?? null,
+        },
   )
 }
 
@@ -123,7 +135,7 @@ export async function saveItemizedExpense(expenseId: string, items: LineItemInpu
 
   // 已经标了"已还"的代购，按名字保留下来
   const oldSplits = (await db.expenseSplits.where('expenseId').equals(expenseId).toArray()).filter((s) => !s.deletedAt && isProxySplit(s))
-  const repaidByName = new Map(oldSplits.map((s) => [(s.proxyName ?? '').trim(), s.proxyRepaidAt ?? null]))
+  const repaidByName = new Map(oldSplits.map((s) => [(s.proxyName ?? '').trim(), { repaidAt: s.proxyRepaidAt ?? null, repaidAmount: s.proxyRepaidAmount ?? null, giftMemberIds: s.proxyGiftMemberIds ?? null }]))
   await persistExpenseSplitShares(expenseId, buildItemizedSplitShares(items, feePercent, homeAmount, payerId, repaidByName))
 }
 
