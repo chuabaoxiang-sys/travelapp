@@ -587,7 +587,7 @@
     "mineHero": {
       "label": "My share this trip",
       "sublabel": "What you paid, plus your share of what others covered",
-      "cashback": "After {{amount}} cashback"
+      "formula": "Your share <s>{{owed}}</s> <c>− {{cashback}} cashback</c>"
     },
     "dayTotalLabel": "Day total",
     "paidBySummary_one": "{{name}} paid · split {{count}} way",
@@ -652,9 +652,15 @@
       "subNoBudget": "No budget set yet"
     },
     "tripRemaining": "Spent <s>{{total}}</s> so far · <b>{{remaining}}</b> left for the trip",
-    "proxyLine": "Incl. {{total}} bought for others ({{unpaid}} not paid back yet)",
-    "proxyLineAllRepaid": "Incl. {{total}} bought for others (all paid back)",
-    "cashbackLine": "{{total}} cashback · {{net}} net",
+    "formula": {
+      "actual": "Actual spend",
+      "howTitle": "How actual spend is worked out",
+      "spent": "Spent this trip",
+      "proxy": "Bought for others",
+      "proxyUnpaid": " ({{amount}} not paid back yet)",
+      "proxyAllRepaid": " (all paid back)",
+      "cashback": "Cashback"
+    },
     "setBudgetCta": "Set a budget to see your daily allowance ›"
   },
   "tripHeader": {
@@ -1435,7 +1441,7 @@
       "desc": "Save exchange rates ahead of time, no calculator needed later",
       "steps": [
         { "title": "Log an exchange rate", "desc": "From Ledger, tap the icon top-right to open your rate book, then \"+\" — use the reference rate or enter what you actually got." },
-        { "title": "Cash and cards, separately", "desc": "Log one rate for each batch of cash you exchange. Cards don't need a rate: add your card (e.g. TNG VISA) under Cards at the bottom of the rate book, and use it on every trip. Under each card, \"Cashback this trip\" records what the bank gave back: set a cashback rate and it estimates the amount for you. Cashback belongs to whoever it goes to and only lowers their own \"My spending\"." },
+        { "title": "Cash and cards, separately", "desc": "Log one rate for each batch of cash you exchange. Cards don't need a rate: add your card (e.g. TNG VISA) under Cards at the bottom of the rate book, and use it on every trip. Under each card, \"Cashback this trip\" records what the bank gave back: set a cashback rate and it estimates the amount for you. Cashback belongs to whoever it goes to and only lowers their own \"My spending\". The last line of the dark card on Ledger, \"Actual spend\", is spent this trip minus purchases for others minus cashback — tap it to see the breakdown." },
         { "title": "Use a rate when logging", "desc": "For a foreign-currency expense, choose Cash and pick a saved rate, or choose Card, pick the card, and enter what your bank charged. That expense gets its own rate. Not sure yet? Leave it blank and it's estimated for now, then tap Fill in at the top of Ledger to add the real charges in one go." },
         { "title": "See how your exchange went", "desc": "A weighted rate based on what you actually spent, cash and card together, compared against today's market rate. Used both? You'll also see whether card or cash worked out cheaper this trip." }
       ]

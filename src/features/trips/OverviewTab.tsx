@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import { ListChecks, MapPin, ChevronRight } from 'lucide-react'
 import { db } from '../../db/dexie'
-import type { Trip } from '../../types'
+import type { ExpenseSplit, Trip } from '../../types'
 import { resolveTripPhase, daysUntil, currentDayIndex } from '../../domain/tripPhase'
 import { resolveAllowance } from '../../domain/dailyAllowance'
 import { spentOnDate } from '../../domain/dayAllocations'
@@ -17,6 +17,8 @@ import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { useStaggerEntrance } from '../../hooks/useStaggerEntrance'
 import { Avatar } from '../../components/Avatar'
 import { SpendHero } from '../expenses/SpendHero'
+import { proxySummary, toProxyItems } from '../../domain/proxies'
+import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { RetrospectiveContent } from './RetrospectiveContent'
 import { useActivityEntries, activityKindLabel, ACTIVITY_KIND_CLASS } from '../activity/useActivityEntries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
@@ -301,6 +303,14 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
     todayISO, startDate: trip.startDate, endDate: trip.endDate, budget: overallBudget?.amount ?? null, total, todaySpent,
   })
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
+  // 跟账目页的黑卡完全一样（2026-11-07）：也带「实际花费」那一行和算式
+  const expenseIds = expenses.map((e) => e.id)
+  const splits = useLiveQuery(
+    () => (expenseIds.length ? db.expenseSplits.where('expenseId').anyOf(expenseIds).toArray() : Promise.resolve<ExpenseSplit[]>([])),
+    [expenseIds.join(',')],
+  ) ?? []
+  const tripProxy = proxySummary(toProxyItems(expenses, splits))
+  const tripCashbackTotal = cashbackSummary(useLiveQuery(() => listTripCashbacks(trip.id), [trip.id]) ?? []).total
 
   const itineraryDays = (useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((d) => !d.deletedAt)
   const todayDay = itineraryDays.find((d) => d.date === todayISO)
@@ -340,7 +350,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
         {dayIndex != null && (
           <div className="text-[11px] text-muted mb-1.5">{t('overview.dayIndex', { day: dayIndex, date: todayISO.slice(5) })}</div>
         )}
-        <SpendHero state={allowance} currency={currencyLabel} entered={entered} />
+        <SpendHero state={allowance} currency={currencyLabel} entered={entered} proxy={tripProxy} cashbackTotal={tripCashbackTotal} />
       </div>
 
       <SatisfactionEntryCard trip={trip} currentMemberId={currentMemberId} onOpen={onOpenFlipDeck} />

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useTranslation } from 'react-i18next'
-import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins } from 'lucide-react'
+import { Trans, useTranslation } from 'react-i18next'
+import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag } from 'lucide-react'
 import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { LedgerFilterSheet } from './LedgerFilterSheet'
 import { EMPTY_LEDGER_FILTER, PAY_CASH, PAY_PENDING, filterCount, isFilterActive, matchesLedgerFilter, type LedgerFilter } from '../../domain/ledgerFilter'
@@ -305,7 +305,7 @@ export function LedgerTab({
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
         <div key="team" className="card-swap flex flex-col gap-3.5">
-          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} cashback={{ total: cashback.total, net: Math.max(0, total - cashback.total) }} />
+          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} cashbackTotal={cashback.total} />
           {hasEnoughForBreakdown && (
             <SpendBreakdownCard
               expenses={expenses}
@@ -348,12 +348,17 @@ export function LedgerTab({
         <div key="mine" className="card-swap bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
           <div className="text-[11px] tracking-wider text-on-dark/55">{t('ledger.mineHero.label')}</div>
           <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
-          <div className="mt-2 text-[11px] text-on-dark/50">{t('ledger.mineHero.sublabel')}</div>
-          {myCashback > 0 && (
-            <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
-              <Coins className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
-              {t('ledger.mineHero.cashback', { amount: formatMoney(myCashback, currencyLabel) })}
+          {myCashback > 0 ? (
+            // 有归我的返现时，这一行直接写成算式：应分摊 − Cashback（2026-11-07 口径统一）
+            <div className="mt-2 text-[11px] text-on-dark/75 tabular">
+              <Trans
+                i18nKey="ledger.mineHero.formula"
+                values={{ owed: formatMoney(myOwed, currencyLabel), cashback: formatMoney(myCashback, currencyLabel) }}
+                components={{ s: <span className="font-semibold text-on-dark" />, c: <span className="text-plan-on-dark" /> }}
+              />
             </div>
+          ) : (
+            <div className="mt-2 text-[11px] text-on-dark/50">{t('ledger.mineHero.sublabel')}</div>
           )}
         </div>
       )}

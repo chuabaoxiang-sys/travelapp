@@ -45,6 +45,12 @@ export function cashbackSummary(cashbacks: CardCashback[]): { total: number; byM
   return { total: round2(live.reduce((s, c) => s + c.amount, 0)), byMember }
 }
 
+// 实际花费（2026-11-07 口径统一）：这趟已花 − 代购（朋友会还） − 全部返现。
+// 黑卡「实际花费」那一行和展开的算式都用这一个数，不再各算各的
+export function actualSpend(total: number, proxyTotal: number, cashbackTotal: number): number {
+  return round2(Math.max(0, total - proxyTotal - cashbackTotal))
+}
+
 export async function listTripCashbacks(tripId: string): Promise<CardCashback[]> {
   return (await db.cardCashbacks.where('tripId').equals(tripId).toArray()).filter((c) => !c.deletedAt)
 }

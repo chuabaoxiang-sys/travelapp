@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { Gift, Coins } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { heroRawValue, type AllowanceState } from '../../domain/dailyAllowance'
+import { actualSpend } from '../../domain/cashback'
 
 // 记账页顶部那张深色大卡（--color-surface-strong，不管App本身是浅色还是深色
 // 模式都保持深色，是专门配出来的"深色装饰面"，不是跟随模式变化的背景）——
@@ -37,7 +39,7 @@ export function SpendHero({
   animatedValueOverride,
   entered = true,
   proxy,
-  cashback,
+  cashbackTotal = 0,
 }: {
   state: AllowanceState
   currency: string
@@ -48,13 +50,17 @@ export function SpendHero({
   animatedValueOverride?: number
   // 见上面bar()的注释——只有需要"从0滚到目标宽度"进场效果的调用方才用得到
   entered?: boolean
-  // 代购（2026-11-07）：照样算进总花费，只是在这里标出来"其中代购多少、还有多少没还"
+  // 代购、Cashback（2026-11-07）："这趟已花"和预算照账面算；黑卡最下面一行
+  // 「实际花费」= 已花 − 代购 − 返现，点开看算式（两样都没有时这一行不出现）
   proxy?: { total: number; unpaid: number }
-  // Cashback（2026-11-07）："这趟已花"和预算照账面算，这里另列返现和扣掉后的实际花费
-  cashback?: { total: number; net: number }
+  cashbackTotal?: number
 }) {
   const { t } = useTranslation()
   const money = (n: number) => formatMoney(n, currency)
+  const [formulaOpen, setFormulaOpen] = useState(false)
+  const proxyTotal = proxy?.total ?? 0
+  const showFormula = proxyTotal > 0 || cashbackTotal > 0
+  const actual = actualSpend(state.total, proxyTotal, cashbackTotal)
 
   let label: string
   let sub: string
@@ -128,25 +134,61 @@ export function SpendHero({
           />
         </div>
       )}
-      {proxy && proxy.total > 0 && (
-        <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
-          <Gift className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
-          {proxy.unpaid > 0
-            ? t('spendHero.proxyLine', { total: money(proxy.total), unpaid: money(proxy.unpaid) })
-            : t('spendHero.proxyLineAllRepaid', { total: money(proxy.total) })}
-        </div>
-      )}
-      {cashback && cashback.total > 0 && (
-        <div className="mt-1 text-[11px] text-plan-on-dark flex items-center gap-1.5">
-          <Coins className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
-          {t('spendHero.cashbackLine', { total: money(cashback.total), net: money(cashback.net) })}
-        </div>
-      )}
       {progress !== null && bar(progress, entered)}
       {cta && onSetBudget && (
         <button onClick={onSetBudget} className="mt-2.5 text-[11px] text-plan-on-dark">
           {t('spendHero.setBudgetCta')}
         </button>
+      )}
+      {showFormula && (
+        <>
+          <button
+            type="button"
+            aria-expanded={formulaOpen}
+            onClick={() => setFormulaOpen((v) => !v)}
+            className="w-full min-h-11 mt-3 -mb-2 border-t border-on-dark/12 flex items-center gap-1.5 text-[11.5px] text-on-dark/75 text-left"
+          >
+            {formulaOpen ? (
+              <span>{t('spendHero.formula.howTitle')}</span>
+            ) : (
+              <>
+                <span>{t('spendHero.formula.actual')}</span>
+                <span className="font-semibold text-on-dark tabular">{money(actual)}</span>
+              </>
+            )}
+            <span className="flex-1" />
+            <ChevronDown className={`w-4 h-4 text-plan-on-dark transition-transform ${formulaOpen ? 'rotate-180' : ''}`} strokeWidth={1.8} />
+          </button>
+          {formulaOpen && (
+            <div className="mt-2 flex flex-col gap-[5px] text-[11.5px] tabular">
+              <div className="flex justify-between text-on-dark/75">
+                <span>{t('spendHero.formula.spent')}</span>
+                <span>{money(state.total)}</span>
+              </div>
+              {proxyTotal > 0 && (
+                <div className="flex justify-between items-baseline gap-2 text-plan-on-dark">
+                  <span>
+                    − {t('spendHero.formula.proxy')}
+                    <span className="text-on-dark/50">
+                      {proxy!.unpaid > 0 ? t('spendHero.formula.proxyUnpaid', { amount: money(proxy!.unpaid) }) : t('spendHero.formula.proxyAllRepaid')}
+                    </span>
+                  </span>
+                  <span>{money(proxyTotal)}</span>
+                </div>
+              )}
+              {cashbackTotal > 0 && (
+                <div className="flex justify-between text-plan-on-dark">
+                  <span>− {t('spendHero.formula.cashback')}</span>
+                  <span>{money(cashbackTotal)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-on-dark/12 pt-1.5 mt-px font-bold text-on-dark text-[13px]">
+                <span>= {t('spendHero.formula.actual')}</span>
+                <span>{money(actual)}</span>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

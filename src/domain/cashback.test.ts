@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cardTripSpend, estimateCashback, defaultCashbackOwner, cashbackSummary } from './cashback'
+import { cardTripSpend, estimateCashback, defaultCashbackOwner, cashbackSummary, actualSpend } from './cashback'
 import type { CardCashback, Expense } from '../types'
 
 function expense(over: Partial<Expense>): Expense {
@@ -52,5 +52,20 @@ describe('cashbackSummary', () => {
     expect(s.total).toBe(57.9)
     expect(s.byMember.get('bx')).toBe(45.6)
     expect(s.byMember.get('kn')).toBe(12.3)
+  })
+})
+
+describe('actualSpend', () => {
+  it('subtracts both proxy purchases and cashback from trip spend', () => {
+    expect(actualSpend(20000, 3000, 600)).toBe(16400)
+  })
+  it('equals trip spend when there is neither', () => {
+    expect(actualSpend(1234.56, 0, 0)).toBe(1234.56)
+  })
+  it('never goes below zero', () => {
+    expect(actualSpend(100, 80, 50)).toBe(0)
+  })
+  it('rounds to cents', () => {
+    expect(actualSpend(100.005, 0.001, 0)).toBe(100)
   })
 })
