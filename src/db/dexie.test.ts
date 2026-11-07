@@ -3,12 +3,6 @@ import { db, withoutOutboxTracking, deleteTripCascade } from './dexie'
 
 vi.mock('../domain/household', () => ({ getCurrentHouseholdId: async () => 'h1' }))
 
-function deferred<T = void>() {
-  let resolve!: (v: T) => void
-  const promise = new Promise<T>((r) => { resolve = r })
-  return { promise, resolve }
-}
-
 function trip(id: string) {
   return {
     id, householdId: 'h1', name: 'x', homeCurrency: 'MYR', startDate: null, endDate: null,
@@ -27,23 +21,23 @@ describe('withoutOutboxTracking 重入计数', () => {
     await db.outbox.clear()
   })
 
-  it('两个调用重叠时，先结束的那个不会提前解除屏蔽', async () => {
-    const gateA = deferred()
-    const gateB = deferred()
-
-    const callA = withoutOutboxTracking(() => gateA.promise)
-    const callB = withoutOutboxTracking(async () => {
-      await gateB.promise
-      await db.trips.add(trip('t-race'))
-    })
-
-    gateA.resolve()
-    await callA
-
-    gateB.resolve()
-    await callB
-
+  it('两个调用重叠时，各自的写入都不记进outbox', async () => {
+    await Promise.all([
+      withoutOutboxTracking(async () => { await db.trips.add(trip('t-race-a')) }),
+      withoutOutboxTracking(async () => { await db.trips.add(trip('t-race-b')) }),
+    ])
     expect(await db.outbox.where('status').equals('pending').count()).toBe(0)
+  })
+
+  // 2026-11-03 真实事故：屏蔽以前是全局开关，后台拉取写本地的那一两秒里，用户亲手
+  // 改的账目也被一起忽略、永远进不了outbox。现在屏蔽只认拉取自己的事务
+  it('屏蔽进行中时，用户同时做的修改照样记进outbox', async () => {
+    await Promise.all([
+      withoutOutboxTracking(async () => { await db.trips.add(trip('t-pulled')) }),
+      db.trips.add(trip('t-user-edit')),
+    ])
+    const pending = await db.outbox.where('status').equals('pending').toArray()
+    expect(pending.map((e) => e.recordId)).toEqual(['t-user-edit'])
   })
 
   it('没有重叠时，屏蔽结束后新写入照常记进outbox', async () => {

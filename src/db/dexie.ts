@@ -193,20 +193,32 @@ export const db = new TripJournalDB()
 // 用一个简单的模块级标记而不是给每次调用传参，因为 bulkPut 内部对每一行都会
 // 触发一次 hook，没法在 bulkPut 的调用点之外单独给每一行传标记。
 //
-// 用计数器而不是布尔值：网络不好时两轮 runSync() 可能会重叠执行（各自的
-// pullAll() 都在写不同的表），如果只是个布尔开关，先结束的那次调用退出时
-// 会把标记直接置回 false，把还没结束的另一次也一起"解除屏蔽"，导致它接下来
-// 拉回来的行被误记成本地新写入——这正是 2026-08-23 那次"完全没操作就冒出待
-// 同步"的根源。计数器保证只有最外层的调用退出时才会真正关闭屏蔽
-let suppressOutboxDepth = 0
+// 屏蔽只对"这次调用自己发起的写入"生效：fn 在一个专门的读写事务里跑，事务上打一个
+// 标记，hook 只认这个标记。以前用的是模块级计数器（全局开关）——屏蔽期间用户
+// 亲手做的修改也会被一起忽略，永远进不了 outbox。真实事故（2026-11-03）：在「去补」
+// 清单里连着补刷卡扣款，其中两笔刚好撞上后台拉取写本地的那一两秒，账目改动没进
+// 队列、云端一直是旧金额，而分摊是手动入队的、照常去推，于是"分摊总额与 home_amount
+// 不一致"无限重试；11-04 另一笔新记的账整笔没传上去。
+//
+// 事务覆盖全部表：fn 里的读和写不会跟用户的写操作交错（用户那边的写入排队等这个
+// 事务结束），也就不会出现"按旧的本地数据决定用云端覆盖、实际覆盖时本地已经被
+// 用户改过"的情况。代价是 fn 里只能做 IndexedDB 操作，不能 await 网络请求之类的
+// 外部 Promise——否则事务会提前自动提交
+const UNTRACKED = Symbol('untrackedTransaction')
 
 export async function withoutOutboxTracking<T>(fn: () => Promise<T>): Promise<T> {
-  suppressOutboxDepth++
-  try {
-    return await fn()
-  } finally {
-    suppressOutboxDepth--
+  return db.transaction('rw', db.tables, async (tx) => {
+    ;(tx as unknown as Record<symbol, boolean>)[UNTRACKED] = true
+    return fn()
+  })
+}
+
+function isUntracked(tx: unknown): boolean {
+  // 嵌套的子事务带着 parent，一路往上找
+  for (let t = tx as { parent?: unknown } | null | undefined; t; t = t.parent as typeof t) {
+    if ((t as Record<symbol, boolean>)[UNTRACKED]) return true
   }
+  return false
 }
 
 // 切换团队时清空本地已同步的数据，然后重新从云端拉新团队的。
@@ -266,8 +278,8 @@ function registerOutboxHooks(db: TripJournalDB) {
   for (const tableName of SYNCED_TABLES) {
     const table = db.table(tableName)
 
-    table.hook('creating', (primKey, obj) => {
-      if (suppressOutboxDepth > 0) return
+    table.hook('creating', (primKey, obj, tx) => {
+      if (isUntracked(tx)) return
       const recordId = String(primKey ?? (obj as { id: string }).id)
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, recordId, 'upsert', obj)
@@ -275,8 +287,8 @@ function registerOutboxHooks(db: TripJournalDB) {
       })
     })
 
-    table.hook('updating', (modifications, primKey, obj) => {
-      if (suppressOutboxDepth > 0) return
+    table.hook('updating', (modifications, primKey, obj, tx) => {
+      if (isUntracked(tx)) return
       const merged = { ...obj, ...modifications }
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, String(primKey), 'upsert', merged)
@@ -284,8 +296,8 @@ function registerOutboxHooks(db: TripJournalDB) {
       })
     })
 
-    table.hook('deleting', (primKey, obj) => {
-      if (suppressOutboxDepth > 0) return
+    table.hook('deleting', (primKey, obj, tx) => {
+      if (isUntracked(tx)) return
       Dexie.ignoreTransaction(() => {
         void enqueueOutbox(tableName, String(primKey), 'delete', null)
         recordAuditLog(tableName, String(primKey), 'delete', obj)

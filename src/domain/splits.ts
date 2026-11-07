@@ -58,14 +58,18 @@ export function resolveSplitShares(
 export async function persistExpenseSplitShares(expenseId: string, shares: { memberId: string; shareAmount: number }[]) {
   const householdId = await getCurrentHouseholdId()
   if (!householdId) throw new Error('No household found')
-  await db.expenseSplits.where('expenseId').equals(expenseId).delete()
   const rows = shares.map((s) => ({ id: crypto.randomUUID(), householdId, expenseId, memberId: s.memberId, shareAmount: s.shareAmount, deletedAt: null }))
-  await db.expenseSplits.bulkAdd(rows)
+  // 写分摊和入队放在同一个事务里：后台拉取不会刚好插在"新分摊写好了、还没入队"
+  // 的空档里，把这几行当成"云端已删除"清掉
+  await db.transaction('rw', db.expenseSplits, db.outbox, async () => {
+    await db.expenseSplits.where('expenseId').equals(expenseId).delete()
+    await db.expenseSplits.bulkAdd(rows)
 
-  // expenseSplits 不走通用的逐行同步 hook（见 db/dexie.ts 里 SYNCED_TABLES 的注释）——
-  // 这里手动打包成"这笔费用的完整分摊名单"一条 entry，pushOutbox 会整批原子推送，
-  // 不会再被数据库那道"总额必须等于费用总额"的延迟约束卡在中间状态
-  await enqueueOutbox('expenseSplits', expenseId, 'upsert', { expenseId, rows })
+    // expenseSplits 不走通用的逐行同步 hook（见 db/dexie.ts 里 SYNCED_TABLES 的注释）——
+    // 这里手动打包成"这笔费用的完整分摊名单"一条 entry，pushOutbox 会整批原子推送，
+    // 不会再被数据库那道"总额必须等于费用总额"的延迟约束卡在中间状态
+    await enqueueOutbox('expenseSplits', expenseId, 'upsert', { expenseId, rows })
+  })
 }
 
 // 整单按人数/比例/自定义金额分——最常见的路径，直接调用 resolveSplitShares 算好

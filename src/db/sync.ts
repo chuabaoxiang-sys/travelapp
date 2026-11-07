@@ -1,4 +1,4 @@
-import { db, withoutOutboxTracking } from './dexie'
+import { db, withoutOutboxTracking, enqueueOutbox } from './dexie'
 import { supabase } from '../api/supabaseClient'
 import { SYNC_CONFIG } from './syncMapping'
 import { getCurrentHouseholdId } from '../domain/household'
@@ -83,6 +83,18 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
     const group = splitEntries.filter((e) => (e.payload as { expenseId?: string } | null)?.expenseId === expenseId)
     try {
       const rows = await db.expenseSplits.where('expenseId').equals(expenseId).toArray()
+      const expense = await db.expenses.get(expenseId)
+      const expensePending = (await db.outbox
+        .where('tableName').equals('expenses')
+        .filter((e) => e.status === 'pending' && e.recordId === expenseId)
+        .count()) > 0
+      if (isDeadSplitPush(expense, rows, expensePending)) {
+        // 推了也注定被拒、只会无限重试的分摊：丢掉这条排队，下一轮拉取会把云端那份
+        // （数据库保证总额对得上）接回本地
+        await Promise.all(group.map((e) => db.outbox.update(e.id, { status: 'synced' })))
+        if (group.some((e) => e.attempts >= STUCK_THRESHOLD)) reportSyncResolved('expenseSplits', expenseId, 'discarded')
+        continue
+      }
       const { error } = await supabase.rpc('replace_expense_splits', {
         p_expense_id: expenseId,
         p_rows: rows.map((r) => ({ id: r.id, member_id: r.memberId, share_amount: r.shareAmount })),
@@ -169,6 +181,23 @@ export async function pushOutbox(): Promise<{ pushed: number; failed: number }> 
   return { pushed, failed }
 }
 
+// 一笔账的分摊排队是不是"推了也注定失败"，可以直接丢掉——单独抽成纯函数方便测：
+//   - 本地已经没有这笔账了：云端要么本来就没有（那就是"无权操作这笔费用的分摊记录"，
+//     2026-11-04 那条），要么推完分摊也没意义
+//   - 这笔账本身没有待推送的改动，本地分摊合计却跟本地账目金额对不上：本地这份分摊
+//     已经过时，推上去只会被"分摊总额与 home_amount 不一致"拒收
+// 账目本身还有改动在排队时不丢——那是正常的先后顺序，等账目推上去自然就对得上
+export function isDeadSplitPush(
+  expense: { homeAmount: number; splitType: string } | undefined,
+  rows: { shareAmount: number }[],
+  expensePending: boolean,
+): boolean {
+  if (!expense) return true
+  if (expensePending || expense.splitType === 'none' || !rows.length) return false
+  const total = rows.reduce((s, r) => s + r.shareAmount, 0)
+  return Math.abs(total - expense.homeAmount) > 0.01 + 1e-9
+}
+
 export type PushAction = { kind: 'upsert'; row: unknown } | { kind: 'delete' }
 
 // 一组待推送（同一条记录）最终该推什么——单独抽成纯函数，不用连supabase就能测。
@@ -220,56 +249,9 @@ export async function pullAll(): Promise<number> {
     const { data, error } = await supabase.from(config.remoteTable).select('*')
     if (error || !data) continue // 这张表这次拉失败就跳过，不阻塞其他表，下个周期重试
 
-    const table = db.table(tableName)
-    const localRows = await table.toArray()
-    const localById = new Map(localRows.map((r: any) => [r.id, r]))
-
-    const pendingIds = new Set(
-      (await db.outbox.where('tableName').equals(tableName).toArray())
-        .filter((e) => e.status === 'pending')
-        .map((e) => e.recordId),
-    )
-
-    const toPut: any[] = []
-    for (const remoteRow of data) {
-      const localRow = config.fromRemote(remoteRow)
-
-      if (tableName === 'itineraryItems' && dayToTrip) {
-        localRow.tripId = dayToTrip.get(localRow.dayId) ?? localRow.tripId
-      }
-
-      // expenseSplits 的 outbox recordId 存的是 expenseId，不是分摊行自己的id（见
-      // domain/splits.ts 的 saveExpenseSplits）——这笔账目的分摊改动本地还没推上去时，
-      // 这一轮拉取就不把云端这笔账目的分摊行接回本地：本地那份还没成功推上去的改动
-      // 优先，等它自己推成功、outbox条目变成synced后，下一轮再正常拉取云端最新状态。
-      // 真实事故：这正是"同一个人分摊记录变成2-3份"的根因——两台设备一个在改、
-      // 一个同时拉到了旧版本，两份不同id但同一个人的分摊行都留在了本地
-      if (tableName === 'expenseSplits' && pendingIds.has(localRow.expenseId)) continue
-
-      const existing = localById.get(localRow.id)
-      if (config.hasUpdatedAt) {
-        // 本地有还没推上去的更新改动，这一轮先不覆盖——等那条推成功后下一轮自然就一致了
-        if (existing && existing.updatedAt > localRow.updatedAt) continue
-        if (!existing || existing.updatedAt !== localRow.updatedAt) changed++
-      } else if (!existing) {
-        // 没有 updatedAt 的表只认"本地压根没这行"，改动无法便宜地判断，宁可少报不误报
-        changed++
-      }
-      toPut.push(localRow)
-    }
-
-    if (toPut.length) {
-      await withoutOutboxTracking(() => table.bulkPut(toPut))
-    }
-
-    // 远端已经没有、本地也没有待推送记录的行，说明是别的设备删除的，本地也跟着删掉
-    // （expenseSplits这张表的判断逻辑见computeIdsToDelete的注释）
-    const remoteIds = new Set(data.map((r: any) => r.id))
-    const idsToDelete = computeIdsToDelete(tableName, localRows, remoteIds, pendingIds)
-    if (idsToDelete.length) {
-      await withoutOutboxTracking(() => table.bulkDelete(idsToDelete))
-      changed += idsToDelete.length
-    }
+    // 读本地、决定覆盖哪些、写回，整段放在同一个事务里（见 withoutOutboxTracking）：
+    // 用户的写操作不会插在"读"和"写"中间，被一份过时的判断覆盖掉
+    changed += await withoutOutboxTracking(() => mergeRemoteTable(tableName, data, dayToTrip))
 
     if (tableName === 'itineraryDays') {
       const allDays = await db.itineraryDays.toArray()
@@ -277,6 +259,72 @@ export async function pullAll(): Promise<number> {
     }
   }
 
+  return changed
+}
+
+async function mergeRemoteTable(tableName: string, data: any[], dayToTrip: Map<string, string> | null): Promise<number> {
+  const config = SYNC_CONFIG[tableName]
+  let changed = 0
+  const table = db.table(tableName)
+  const localRows = await table.toArray()
+  const localById = new Map(localRows.map((r: any) => [r.id, r]))
+
+  const pendingIds = new Set(
+    (await db.outbox.where('tableName').equals(tableName).toArray())
+      .filter((e) => e.status === 'pending')
+      .map((e) => e.recordId),
+  )
+
+  const toPut: any[] = []
+  const toRequeue: any[] = []
+  for (const remoteRow of data) {
+    const localRow = config.fromRemote(remoteRow)
+
+    if (tableName === 'itineraryItems' && dayToTrip) {
+      localRow.tripId = dayToTrip.get(localRow.dayId) ?? localRow.tripId
+    }
+
+    // expenseSplits 的 outbox recordId 存的是 expenseId，不是分摊行自己的id（见
+    // domain/splits.ts 的 saveExpenseSplits）——这笔账目的分摊改动本地还没推上去时，
+    // 这一轮拉取就不把云端这笔账目的分摊行接回本地：本地那份还没成功推上去的改动
+    // 优先，等它自己推成功、outbox条目变成synced后，下一轮再正常拉取云端最新状态。
+    // 真实事故：这正是"同一个人分摊记录变成2-3份"的根因——两台设备一个在改、
+    // 一个同时拉到了旧版本，两份不同id但同一个人的分摊行都留在了本地
+    if (tableName === 'expenseSplits' && pendingIds.has(localRow.expenseId)) continue
+
+    const existing = localById.get(localRow.id)
+    if (config.hasUpdatedAt) {
+      // 本地有还没推上去的更新改动，这一轮先不覆盖——等那条推成功后下一轮自然就一致了。
+      // 本地比云端新、却没有任何待推送记录，说明这次改动当初没进队列（2026-11-03 那种
+      // 情况），现在补进去，推的是这一行现在的样子
+      if (existing && existing.updatedAt > localRow.updatedAt) {
+        if (!pendingIds.has(localRow.id)) toRequeue.push(existing)
+        continue
+      }
+      if (!existing || existing.updatedAt !== localRow.updatedAt) changed++
+    } else if (!existing) {
+      // 没有 updatedAt 的表只认"本地压根没这行"，改动无法便宜地判断，宁可少报不误报
+      changed++
+    }
+    toPut.push(localRow)
+  }
+
+  if (toPut.length) {
+    await table.bulkPut(toPut)
+  }
+
+  for (const row of toRequeue) {
+    await enqueueOutbox(tableName, row.id, 'upsert', row)
+  }
+
+  // 远端已经没有、本地也没有待推送记录的行，说明是别的设备删除的，本地也跟着删掉
+  // （expenseSplits这张表的判断逻辑见computeIdsToDelete的注释）
+  const remoteIds = new Set(data.map((r: any) => r.id))
+  const idsToDelete = computeIdsToDelete(tableName, localRows, remoteIds, pendingIds)
+  if (idsToDelete.length) {
+    await table.bulkDelete(idsToDelete)
+    changed += idsToDelete.length
+  }
   return changed
 }
 

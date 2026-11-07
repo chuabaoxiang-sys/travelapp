@@ -20,6 +20,7 @@ vi.mock('../api/supabaseClient', () => ({
 }))
 
 const { pushOutbox, pullAll, runSync } = await import('./sync')
+const { SYNC_CONFIG } = await import('./syncMapping')
 
 // 跟 sync.ts 里 TABLE_ORDER 保持一致——pullAll 每轮会遍历这20张表，
 // 测试里没特别配置的表一律当成"远端没有变化"处理
@@ -136,6 +137,7 @@ describe('pushOutbox / pullAll / runSync（真实mock网络层）', () => {
       splitRow({ id: 'split-a', expenseId: 'exp-1', memberId: 'm1', shareAmount: 50 }),
       splitRow({ id: 'split-b', expenseId: 'exp-1', memberId: 'm2', shareAmount: 50 }),
     ])
+    await seedLocal(() => db.expenses.add(expenseRow({ id: 'exp-1', homeAmount: 100 })))
     await db.outbox.bulkAdd([
       outboxEntry({ id: 'ob-1', recordId: 'exp-1', payload: { expenseId: 'exp-1' } }),
       outboxEntry({ id: 'ob-2', recordId: 'exp-1', payload: { expenseId: 'exp-1' } }),
@@ -158,7 +160,8 @@ describe('pushOutbox / pullAll / runSync（真实mock网络层）', () => {
   })
 
   it('RPC失败时整组一起留在pending、attempts都加1——不会出现"组内一半成功一半失败"的中间态', async () => {
-    await db.expenseSplits.bulkAdd([splitRow({ id: 'split-a', expenseId: 'exp-1' })])
+    await db.expenseSplits.bulkAdd([splitRow({ id: 'split-a', expenseId: 'exp-1', shareAmount: 10 })])
+    await seedLocal(() => db.expenses.add(expenseRow({ id: 'exp-1', homeAmount: 10 })))
     await db.outbox.bulkAdd([
       outboxEntry({ id: 'ob-1', recordId: 'exp-1', payload: { expenseId: 'exp-1' } }),
       outboxEntry({ id: 'ob-2', recordId: 'exp-1', payload: { expenseId: 'exp-1' } }),
@@ -172,6 +175,67 @@ describe('pushOutbox / pullAll / runSync（真实mock网络层）', () => {
     expect(entries.every((e) => e?.status === 'pending')).toBe(true)
     expect(entries.every((e) => e?.attempts === 1)).toBe(true)
     expect(entries[0]?.lastError).toContain('延迟约束触发')
+  })
+
+  // 2026-11-03/04 真实事故：账目改动当初没进队列，分摊却一直在推，"分摊总额与 home_amount
+  // 不一致"/"无权操作这笔费用的分摊记录"无限重试
+  it('11-03事故回归：本地这笔账比云端新、却没有待推送记录——拉取时补进队列，且不被云端旧版本覆盖', async () => {
+    await seedLocal(() => db.expenses.add(expenseRow({ id: 'exp-card', homeAmount: 7.51, updatedAt: 5000 })))
+    mock.setSelect('expense', { data: [SYNC_CONFIG.expenses.toRemote(expenseRow({ id: 'exp-card', homeAmount: 7.53, updatedAt: 1000 }))], error: null })
+
+    await pullAll()
+
+    expect((await db.expenses.get('exp-card'))?.homeAmount).toBe(7.51)
+    const pending = await db.outbox.where('status').equals('pending').toArray()
+    expect(pending.map((e) => [e.tableName, e.recordId])).toEqual([['expenses', 'exp-card']])
+  })
+
+  it('本地比云端新、但已经在排队推送的，不重复补队列', async () => {
+    await seedLocal(() => db.expenses.add(expenseRow({ id: 'exp-card', updatedAt: 5000 })))
+    await db.outbox.add(outboxEntry({ id: 'ob-exp', tableName: 'expenses', recordId: 'exp-card' }))
+    mock.setSelect('expense', { data: [SYNC_CONFIG.expenses.toRemote(expenseRow({ id: 'exp-card', updatedAt: 1000 }))], error: null })
+
+    await pullAll()
+
+    expect(await db.outbox.where('status').equals('pending').count()).toBe(1)
+  })
+
+  it('11-04事故回归：本地已经没有这笔账了，它的分摊排队直接丢掉，不再调RPC无限重试', async () => {
+    await db.outbox.add(outboxEntry({ id: 'ob-1', recordId: 'exp-gone', payload: { expenseId: 'exp-gone' }, attempts: 150 }))
+
+    const result = await pushOutbox()
+
+    // 之前报过"卡住"的，丢掉时会再报一声（resolve_sync_problem），但不会再推分摊
+    expect(mock.rpcCalls.map((c) => c.name)).toEqual(['resolve_sync_problem'])
+    expect(result).toEqual({ pushed: 0, failed: 0 })
+    expect((await db.outbox.get('ob-1'))?.status).toBe('synced')
+  })
+
+  it('账目本身没在排队、本地分摊合计却跟账目金额对不上：这份分摊已经过时，丢掉不推', async () => {
+    await db.expenseSplits.bulkAdd([
+      splitRow({ id: 'split-a', expenseId: 'exp-1', memberId: 'm1', shareAmount: 15.92 }),
+      splitRow({ id: 'split-b', expenseId: 'exp-1', memberId: 'm2', shareAmount: 15.92 }),
+    ])
+    await seedLocal(() => db.expenses.add(expenseRow({ id: 'exp-1', homeAmount: 32.13 })))
+    await db.outbox.add(outboxEntry({ id: 'ob-1', recordId: 'exp-1', payload: { expenseId: 'exp-1' } }))
+
+    await pushOutbox()
+
+    expect(mock.rpcCalls).toHaveLength(0)
+    expect((await db.outbox.get('ob-1'))?.status).toBe('synced')
+  })
+
+  it('账目本身还有改动在排队时，分摊对不上也照常推（正常的先后顺序，不丢）', async () => {
+    await db.expenseSplits.add(splitRow({ id: 'split-a', expenseId: 'exp-1', shareAmount: 5 }))
+    await seedLocal(() => db.expenses.add(expenseRow({ id: 'exp-1', homeAmount: 10 })))
+    await db.outbox.bulkAdd([
+      outboxEntry({ id: 'ob-1', recordId: 'exp-1', payload: { expenseId: 'exp-1' } }),
+      outboxEntry({ id: 'ob-exp', tableName: 'expenses', recordId: 'exp-1' }),
+    ])
+
+    await pushOutbox()
+
+    expect(mock.rpcCalls).toHaveLength(1)
   })
 
   it('08-25事故回归：expenseSplits这笔账目的分摊还没推到远端时，pullAll不能把本地这几行当成' +
