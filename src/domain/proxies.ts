@@ -113,3 +113,37 @@ export async function recentProxyNames(limit = 8): Promise<string[]> {
   })
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([n]) => n)
 }
+
+// 「代购多收」明细（2026-11-08）：某个付款人因为"优惠不分给代购的人"多收的钱，
+// 按账目分组列出每个代购的人的 原价 / 要还 / 实际花 / 多收。只列多收 > 0 的
+export interface ProxyGainRow {
+  name: string
+  amount: number // 原价，按这笔的币种
+  receivable: number
+  cost: number
+  gain: number
+}
+export interface ProxyGainGroup {
+  expenseId: string
+  expenseDate: string
+  description: string | null
+  currency: string
+  rows: ProxyGainRow[]
+  total: number
+}
+
+export function proxyGainBreakdown(items: ProxyItem[], creditorId: string): ProxyGainGroup[] {
+  const groups = new Map<string, ProxyGainGroup>()
+  for (const it of items) {
+    if (it.creditorId !== creditorId) continue
+    const gain = round2(it.shareAmount - it.costAmount)
+    if (!(gain > 0)) continue
+    const g = groups.get(it.expenseId) ?? {
+      expenseId: it.expenseId, expenseDate: it.expenseDate, description: it.description, currency: it.currency, rows: [], total: 0,
+    }
+    g.rows.push({ name: it.name, amount: it.amount, receivable: it.shareAmount, cost: it.costAmount, gain })
+    g.total = round2(g.total + gain)
+    groups.set(it.expenseId, g)
+  }
+  return [...groups.values()].sort((a, b) => a.expenseDate.localeCompare(b.expenseDate))
+}

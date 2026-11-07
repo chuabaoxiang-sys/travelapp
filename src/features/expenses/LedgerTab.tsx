@@ -19,7 +19,8 @@ import { isPendingCardExpense } from '../../domain/cardCharges'
 import { getPaymentCards, isCardExpense } from '../../domain/paymentCards'
 import { getOverallBudget, getCategoryBudgets, overBudgetCategories } from '../../domain/budgets'
 import { computeBalances, isProxySplit } from '../../domain/splits'
-import { proxyGainByMember, proxySummary, toProxyItems } from '../../domain/proxies'
+import { proxyGainBreakdown, proxyGainByMember, proxySummary, toProxyItems } from '../../domain/proxies'
+import { ProxyGainSheet } from './ProxyGainSheet'
 import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
@@ -110,6 +111,8 @@ export function LedgerTab({
   const balances = useLiveQuery(() => computeBalances(trip.id), [trip.id]) ?? []
   const myOwed = balances.find((b) => b.memberId === currentMemberId)?.owed ?? 0
   const [editingId, setEditingId] = useState<string | null>(null)
+  // 「代购多收」明细弹层（2026-11-08）
+  const [proxyGainOpen, setProxyGainOpen] = useState(false)
   const [rateBookOpen, setRateBookOpen] = useState(false)
   const [budgetOpen, setBudgetOpen] = useState(false)
   // 刷卡待补扣款（2026-10-20）：刷卡当下没填实际扣了多少、按估算先记的那几笔
@@ -141,6 +144,7 @@ export function LedgerTab({
   // 之前这个入口完全没接返回键（只有TripShell里"＋"新增那条接了），弹层时代还有
   // 个明显的关闭按钮兜底，全屏页上不接会比之前更糟
   useBackDismiss(!!editingId, () => setEditingId(null))
+  useBackDismiss(proxyGainOpen, () => setProxyGainOpen(false))
   // 汇率簿同理——之前完全没接返回键，安卓上打开汇率簿按返回键会直接退出整个APP
   useBackDismiss(rateBookOpen, () => setRateBookOpen(false))
   useBackDismiss(budgetOpen, () => setBudgetOpen(false))
@@ -356,7 +360,19 @@ export function LedgerTab({
             <div className="mt-2 text-[11px] text-on-dark/75 tabular">
               {t('ledger.mineHero.owedLabel')} <span className="font-semibold text-on-dark">{formatMoney(myOwed, currencyLabel)}</span>
               {myCashback > 0 && <span className="text-plan-on-dark"> {t('ledger.mineHero.minusCashback', { amount: formatMoney(myCashback, currencyLabel) })}</span>}
-              {myProxyGain > 0 && <span className="text-plan-on-dark"> {t('ledger.mineHero.minusProxyGain', { amount: formatMoney(myProxyGain, currencyLabel) })}</span>}
+              {myProxyGain > 0 && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={() => setProxyGainOpen(true)}
+                    className="inline-flex items-center gap-0.5 text-plan-on-dark underline decoration-dotted underline-offset-[3px]"
+                  >
+                    {t('ledger.mineHero.minusProxyGain', { amount: formatMoney(myProxyGain, currencyLabel) })}
+                    <ChevronRight className="w-3 h-3" strokeWidth={2} />
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div className="mt-2 text-[11px] text-on-dark/50">{t('ledger.mineHero.sublabel')}</div>
@@ -599,6 +615,21 @@ export function LedgerTab({
       )}
 
       {budgetOpen && <BudgetSheet trip={trip} onClose={() => setBudgetOpen(false)} />}
+
+      {proxyGainOpen && (
+        <ProxyGainSheet
+          groups={proxyGainBreakdown(tripProxyItems, currentMemberId)}
+          currencyLabel={currencyLabel}
+          titleOf={(id) => {
+            const e = expenses.find((x) => x.id === id)
+            if (!e) return ''
+            const linked = e.itineraryItemId ? itineraryItemOf(e.itineraryItemId) : undefined
+            return e.description || linked?.title || categoryLabel(categoryOf(e.categoryId), t)
+          }}
+          onOpenExpense={(id) => { setProxyGainOpen(false); setEditingId(id) }}
+          onClose={() => setProxyGainOpen(false)}
+        />
+      )}
 
       {cardChargeOpen && (
         <CardChargeSheet

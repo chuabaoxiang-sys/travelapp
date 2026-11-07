@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { db } from '../db/dexie'
 import { buildSplitShares, resolveProxyShares, computeBalances, openExpenseDebts, expenseListPrice, proxyReceivable, round2 } from './splits'
-import { groupProxyItems, proxyGainByMember, proxySummary, setProxyRepaid, toProxyItems } from './proxies'
+import { groupProxyItems, proxyGainBreakdown, proxyGainByMember, proxySummary, setProxyRepaid, toProxyItems } from './proxies'
 import { fillCardCharge } from './cardCharges'
 import type { Expense, ExpenseSplit } from '../types'
 
@@ -153,5 +153,24 @@ describe('代购遇到优惠（0050）', () => {
       [{ id: 's1', expenseId: 'x', memberId: 'bx', shareAmount: proxyRow.shareAmount, proxyName: '妈妈', proxyAmount: 15000 } as ExpenseSplit])
     expect(proxyGainByMember(items).get('bx')).toBe(50.17)
     expect(proxySummary(items).total).toBe(401.35)
+  })
+})
+
+describe('proxyGainBreakdown', () => {
+  const mk = (id: string, expenseId: string, date: string, name: string, receivable: number, cost: number, creditorId = 'bx') => ({
+    splitId: id, name, expenseId, expenseDate: date, description: expenseId, currency: 'JPY', amount: 1000,
+    shareAmount: receivable, costAmount: cost, creditorId, repaidAt: null,
+  })
+  it('按账目分组、按日期排，只列多收 > 0、只列这个付款人的', () => {
+    const groups = proxyGainBreakdown([
+      mk('1', 'b', '2026-10-30', '妈妈', 82.16, 74.31),
+      mk('2', 'a', '2026-10-25', 'Chi En', 195.33, 170.44),
+      mk('3', 'a', '2026-10-25', 'Michelle', 149.84, 130.75),
+      mk('4', 'c', '2026-10-26', '小王', 50, 50),
+      mk('5', 'd', '2026-10-27', '阿姨', 60, 50, 'kn'),
+    ], 'bx')
+    expect(groups.map((g) => g.expenseId)).toEqual(['a', 'b'])
+    expect(groups[0].total).toBe(43.98)
+    expect(groups[0].rows.map((r) => r.gain)).toEqual([24.89, 19.09])
   })
 })
