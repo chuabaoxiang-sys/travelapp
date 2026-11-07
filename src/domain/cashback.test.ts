@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cardTripSpend, estimateCashback, defaultCashbackOwner, cashbackSummary, actualSpend } from './cashback'
+import { cardTripSpend, estimateCashback, defaultCashbackOwner, cashbackSummary, actualSpend, expenseCashbackForCard } from './cashback'
 import type { CardCashback, Expense } from '../types'
 
 function expense(over: Partial<Expense>): Expense {
@@ -67,5 +67,27 @@ describe('actualSpend', () => {
   })
   it('rounds to cents', () => {
     expect(actualSpend(100.005, 0.001, 0)).toBe(100)
+  })
+})
+
+describe('per-expense cashback (0049)', () => {
+  const rows = [
+    expense({ id: 'a', cashbackAmount: 4.84, paidBy: 'bx' }),
+    expense({ id: 'b', cashbackAmount: 3.75, paidBy: 'kn' }),
+    expense({ id: 'c', cashbackAmount: 9, deletedAt: 1 }),
+    expense({ id: 'd', cashbackAmount: null }),
+    expense({ id: 'e2', cashbackAmount: 2, paymentCardId: 'maybank' }),
+  ]
+  it('cashbackSummary adds per-expense cashback to the payer, skipping deleted rows', () => {
+    const s = cashbackSummary([cashback({ amount: 10 })], rows)
+    expect(s.total).toBe(20.59)
+    expect(s.byMember.get('bx')).toBe(16.84)
+    expect(s.byMember.get('kn')).toBe(3.75)
+  })
+  it('expenseCashbackForCard only counts that card', () => {
+    const r = expenseCashbackForCard(rows, 'tng')
+    expect(r.total).toBe(8.59)
+    expect(r.count).toBe(2)
+    expect(r.payerIds.sort()).toEqual(['bx', 'kn'])
   })
 })

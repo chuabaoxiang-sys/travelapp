@@ -264,6 +264,8 @@ export interface Expense {
   // 优惠（0047）：按这笔账自己的币种记的优惠金额，只用来显示"省了多少"，
   // 不参与花费、预算、分摊；null/undefined = 没记
   discountAmount?: number | null
+  // 每笔返现（2026-11-07，0049）：本位币，照卡的 App 抄；归付款人，不参与分摊
+  cashbackAmount?: number | null
   deletedAt: number | null
   createdAt: number
   updatedAt: number

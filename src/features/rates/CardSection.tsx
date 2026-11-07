@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Check, X, Pencil, Archive, ArchiveRestore, Trash2, Plus, CreditCard, Coins, ChevronRight } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { formatMoney } from '../../lib/money'
-import { listTripCashbacks } from '../../domain/cashback'
+import { expenseCashbackForCard, listTripCashbacks } from '../../domain/cashback'
 import { CashbackSheet } from './CashbackSheet'
 import {
   getPaymentCards,
@@ -43,6 +43,8 @@ export function CardSection({
   }) ?? new Set<string>()
   // 返现（2026-11-07）：每张卡这趟返了多少、归谁；点那一行打开返现面板
   const tripCashbacks = useLiveQuery(() => listTripCashbacks(tripId), [tripId]) ?? []
+  // 每笔账上记的返现（0049）也算进这张卡的「这趟返现」
+  const tripExpenses = (useLiveQuery(() => db.expenses.where('tripId').equals(tripId).toArray(), [tripId]) ?? []).filter((e) => !e.deletedAt)
   const members = useLiveQuery(() => db.members.toArray()) ?? []
   const [cashbackCardId, setCashbackCardId] = useState<string | null>(null)
 
@@ -180,8 +182,9 @@ export function CardSection({
             </div>
             {(() => {
               const mine = tripCashbacks.filter((x) => x.paymentCardId === c.id)
-              const total = mine.reduce((s, x) => s + x.amount, 0)
-              const owners = [...new Set(mine.map((x) => members.find((m) => m.id === x.memberId)?.displayName ?? '?'))]
+              const perExpense = expenseCashbackForCard(tripExpenses, c.id)
+              const total = mine.reduce((s, x) => s + x.amount, 0) + perExpense.total
+              const owners = [...new Set([...mine.map((x) => x.memberId), ...perExpense.payerIds].map((id) => members.find((m) => m.id === id)?.displayName ?? '?'))]
               return (
                 <button
                   type="button"
@@ -190,7 +193,7 @@ export function CardSection({
                 >
                   <Coins className="w-[15px] h-[15px] text-positive flex-shrink-0" strokeWidth={1.8} />
                   <span className="flex-1 min-w-0 text-[12.5px] truncate">
-                    {mine.length > 0 ? (
+                    {mine.length > 0 || perExpense.count > 0 ? (
                       <>
                         {t('card.cashbackTrip')} <b className="text-positive font-semibold tabular">{formatMoney(total)}</b>
                         <span className="text-muted"> · {t('card.cashbackOwner', { names: owners.join('、') })}</span>

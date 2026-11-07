@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Check, X, CheckCircle2, Info } from 'lucide-react'
+import { Plus, Check, X, CheckCircle2, Info, Coins } from 'lucide-react'
 import { TwoRowChips } from './TwoRowChips'
 import { formatCardRate } from '../../domain/paymentCards'
 import type { PaymentCard } from '../../types'
@@ -19,6 +19,9 @@ export function CardPaymentPanel({
   estimateRate,
   estimateHome,
   paidHint,
+  cashback,
+  onCashbackChange,
+  cashbackOwnerName,
 }: {
   cards: PaymentCard[]
   selectedId: string | null
@@ -34,6 +37,10 @@ export function CardPaymentPanel({
   estimateHome: number
   // 有优惠时提示「扣的是实付那个数」，比如「实付 JPY 14,000」
   paidHint?: string
+  // 每笔返现（2026-11-07）：可选，本位币；不传 onCashbackChange 就不显示这一格
+  cashback?: string
+  onCashbackChange?: (v: string) => void
+  cashbackOwnerName?: string
 }) {
   const { t } = useTranslation()
   const [creating, setCreating] = useState(false)
@@ -117,6 +124,27 @@ export function CardPaymentPanel({
               <span>{t('card.estimateHint', { rate: formatCardRate(estimateRate), prefix: homePrefix, amount: estimateHome.toFixed(2) })}</span>
             </div>
           ) : null}
+          {onCashbackChange && (
+            <>
+              <label className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-card px-2.5 py-1.5 focus-within:border-positive">
+                <Coins className="w-3.5 h-3.5 text-positive flex-shrink-0" strokeWidth={1.8} />
+                <span className="text-[12px] text-soft whitespace-nowrap">
+                  {t('card.cashbackFieldLabel', { prefix: homePrefix })}
+                  <span className="text-muted"> {t('card.cashbackFieldOptional')}</span>
+                </span>
+                <input
+                  value={cashback ?? ''}
+                  onChange={(e) => onCashbackChange(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className="flex-1 min-w-0 bg-transparent text-right text-[15px] font-semibold text-positive tabular outline-none placeholder:text-faint placeholder:font-normal placeholder:text-[13px]"
+                />
+              </label>
+              {(parseFloat(cashback ?? '') || 0) > 0 && (
+                <div className="text-[11px] text-muted mt-1 leading-relaxed">{t('card.cashbackFieldHint', { name: cashbackOwnerName ?? '' })}</div>
+              )}
+            </>
+          )}
         </>
       )}
     </div>

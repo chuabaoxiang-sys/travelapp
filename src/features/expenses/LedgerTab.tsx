@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Trans, useTranslation } from 'react-i18next'
-import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag } from 'lucide-react'
+import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins } from 'lucide-react'
 import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { LedgerFilterSheet } from './LedgerFilterSheet'
 import { EMPTY_LEDGER_FILTER, PAY_CASH, PAY_PENDING, filterCount, isFilterActive, matchesLedgerFilter, type LedgerFilter } from '../../domain/ledgerFilter'
@@ -150,7 +150,7 @@ export function LedgerTab({
   const total = expenses.reduce((a, e) => a + e.homeAmount, 0)
   // Cashback（2026-11-07）：总花费照账面算，另列返现和实际；"我的"扣掉归自己的那部分
   const tripCashbacks = useLiveQuery(() => listTripCashbacks(trip.id), [trip.id]) ?? []
-  const cashback = cashbackSummary(tripCashbacks)
+  const cashback = cashbackSummary(tripCashbacks, expenses)
   const myCashback = cashback.byMember.get(currentMemberId) ?? 0
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
 
@@ -507,6 +507,12 @@ export function LedgerTab({
                           <span className="inline-flex items-center gap-[3px] text-[10.5px] px-[7px] py-px rounded-full bg-positive/10 text-positive flex-shrink-0 tabular">
                             <Tag className="w-[11px] h-[11px]" strokeWidth={2} />
                             {t('ledger.discountTag', { amount: discountLabel(e.expenseCurrency, e.discountAmount ?? 0) })}
+                          </span>
+                        )}
+                        {(e.cashbackAmount ?? 0) > 0 && (
+                          <span className="inline-flex items-center gap-[3px] text-[10.5px] px-[7px] py-px rounded-full bg-positive/10 text-positive flex-shrink-0 tabular">
+                            <Coins className="w-[11px] h-[11px]" strokeWidth={2} />
+                            {t('ledger.cashbackTag', { amount: formatMoney(e.cashbackAmount ?? 0, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency) })}
                           </span>
                         )}
                         {proxyNamesOf(e.id).length > 0 && (

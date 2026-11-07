@@ -310,7 +310,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
     [expenseIds.join(',')],
   ) ?? []
   const tripProxy = proxySummary(toProxyItems(expenses, splits))
-  const tripCashbackTotal = cashbackSummary(useLiveQuery(() => listTripCashbacks(trip.id), [trip.id]) ?? []).total
+  const tripCashbackTotal = cashbackSummary(useLiveQuery(() => listTripCashbacks(trip.id), [trip.id]) ?? [], expenses).total
 
   const itineraryDays = (useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((d) => !d.deletedAt)
   const todayDay = itineraryDays.find((d) => d.date === todayISO)

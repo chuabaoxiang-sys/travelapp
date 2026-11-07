@@ -122,6 +122,8 @@ export function AddExpensePage({
   const initialIsCard = !!initial && isCardExpense(initial)
   const [payMethod, setPayMethod] = useState<'cash' | 'card'>(initialIsCard ? 'card' : 'cash')
   const [cardId, setCardId] = useState<string | null>(initialIsCard ? initial!.paymentCardId ?? null : null)
+  // 每笔返现（2026-11-07，0049）：只在刷卡时出现，照卡的 App 填本位币；归这笔的付款人
+  const [cardCashback, setCardCashback] = useState(initial?.cashbackAmount ? String(initial.cashbackAmount) : '')
   const [cardCharged, setCardCharged] = useState(initialIsCard && !initial!.cardChargePending ? String(initial!.homeAmount) : '')
   const allCards = useLiveQuery(() => getPaymentCards()) ?? []
   // 停用的卡不出现在选择列表里——但编辑一笔当初用了这张卡的开销时，它还得显示着
@@ -586,6 +588,7 @@ export function AddExpensePage({
         paymentCardId,
         cardChargePending,
         discountAmount: numDiscount > 0 ? round2(numDiscount) : null,
+        cashbackAmount: payingByCard && (parseFloat(cardCashback) || 0) > 0 ? round2(parseFloat(cardCashback)) : null,
         itemizedFeePercent: itemizedFeePercentForSave,
         lastEditedBy: currentMemberId,
         updatedAt: Date.now(),
@@ -618,6 +621,7 @@ export function AddExpensePage({
         paymentCardId,
         cardChargePending,
         discountAmount: numDiscount > 0 ? round2(numDiscount) : null,
+        cashbackAmount: payingByCard && (parseFloat(cardCashback) || 0) > 0 ? round2(parseFloat(cardCashback)) : null,
         itemizedFeePercent: itemizedFeePercentForSave,
         deletedAt: null,
         createdAt: now,
@@ -875,6 +879,9 @@ export function AddExpensePage({
                   derivedRate={numCharged > 0 && numAmount > 0 ? numCharged / numAmount : null}
                   estimateRate={cardEstimateRate}
                   estimateHome={homeAmount}
+                  cashback={cardCashback}
+                  onCashbackChange={setCardCashback}
+                  cashbackOwnerName={payerName}
                   paidHint={numDiscount > 0 && numAmount > 0 ? `${t('addExpense.paidLabel')} ${currency} ${numAmount.toLocaleString()}` : undefined}
                 />
                 {showProblems && !cardId && <ProblemLine text={t('card.needCard')} />}

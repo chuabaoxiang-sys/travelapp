@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { X, Pencil, Trash2, Check } from 'lucide-react'
+import { X, Pencil, Trash2, Check, Coins, Info } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { BottomSheet } from '../../components/BottomSheet'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -15,6 +15,7 @@ import {
   estimateCashback,
   defaultCashbackOwner,
   listTripCashbacks,
+  expenseCashbackForCard,
 } from '../../domain/cashback'
 import type { PaymentCard } from '../../types'
 
@@ -41,7 +42,9 @@ export function CashbackSheet({
   const [percent, setPercent] = useState(card.cashbackPercent ? String(card.cashbackPercent) : '')
   const numPercent = parseFloat(percent) || 0
   const spend = cardTripSpend(expenses, card.id)
-  const estimate = estimateCashback(spend, numPercent)
+  // 每笔账上记的返现（0049）：这里只读显示合计；有的话就不再给"按比例估总数"，免得同一笔算两次
+  const perExpense = expenseCashbackForCard(expenses, card.id)
+  const estimate = perExpense.count > 0 ? null : estimateCashback(spend, numPercent)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [amount, setAmount] = useState('')
@@ -100,6 +103,25 @@ export function CashbackSheet({
           />
           <span className="text-[12.5px] text-muted">%</span>
         </label>
+
+        {perExpense.count > 0 && (
+          <>
+            <div className="text-[10.5px] tracking-widest uppercase text-muted mt-1">{t('cashback.perExpenseHeading')}</div>
+            <div className="flex items-center gap-2 bg-card border border-line rounded-xl px-3 py-2">
+              <Coins className="w-4 h-4 text-positive flex-shrink-0" strokeWidth={1.8} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-semibold text-positive tabular">{formatMoney(perExpense.total)}</div>
+                <div className="text-[11px] text-muted truncate">
+                  {t('cashback.perExpenseLine', { count: perExpense.count, names: perExpense.payerIds.map(nameOf).join('、') })}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-1.5 rounded-xl bg-positive/[.07] px-3 py-2 text-[12px] text-soft leading-relaxed">
+              <Info className="w-3.5 h-3.5 text-positive flex-shrink-0 mt-[3px]" strokeWidth={2} />
+              <span>{t('cashback.perExpenseWarning')}</span>
+            </div>
+          </>
+        )}
 
         {estimate != null && (
           <div className="flex items-center gap-2 rounded-xl bg-positive/[.07] pl-3 pr-2 py-2">

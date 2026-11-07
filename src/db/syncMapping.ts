@@ -311,6 +311,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       payment_card_id: e.paymentCardId ?? null,
       card_charge_pending: e.cardChargePending ?? false,
       discount_amount: e.discountAmount ?? null,
+      cashback_amount: e.cashbackAmount ?? null,
       itinerary_day_id: e.itineraryDayId,
       itinerary_item_id: e.itineraryItemId,
       // 本地字段叫 description，远端表这一列叫 notes——纯粹是命名不统一，不是语义差异
@@ -339,6 +340,7 @@ export const SYNC_CONFIG: Record<string, TableSyncConfig> = {
       paymentCardId: r.payment_card_id ?? null,
       cardChargePending: r.card_charge_pending ?? false,
       discountAmount: r.discount_amount == null ? null : num(r.discount_amount),
+      cashbackAmount: r.cashback_amount == null ? null : num(r.cashback_amount),
       itineraryDayId: r.itinerary_day_id,
       itineraryItemId: r.itinerary_item_id,
       description: r.notes,

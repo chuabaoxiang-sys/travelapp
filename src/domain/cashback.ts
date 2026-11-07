@@ -38,11 +38,29 @@ export function defaultCashbackOwner(expenses: Expense[], cardId: string, fallba
   return best
 }
 
-export function cashbackSummary(cashbacks: CardCashback[]): { total: number; byMember: Map<string, number> } {
-  const live = cashbacks.filter((c) => !c.deletedAt)
+// 这趟的返现合计：按卡记的（card_cashback）+ 每笔账上记的（expense.cashback_amount，
+// 2026-11-07 0049，归这笔的付款人）。两种来源口径一样：只扣归属人的"我的花费"
+// 和黑卡的"实际花费"，不影响结算
+export function cashbackSummary(cashbacks: CardCashback[], expenses: Expense[] = []): { total: number; byMember: Map<string, number> } {
   const byMember = new Map<string, number>()
-  for (const c of live) byMember.set(c.memberId, round2((byMember.get(c.memberId) ?? 0) + c.amount))
-  return { total: round2(live.reduce((s, c) => s + c.amount, 0)), byMember }
+  let total = 0
+  const add = (memberId: string, amount: number) => {
+    byMember.set(memberId, round2((byMember.get(memberId) ?? 0) + amount))
+    total += amount
+  }
+  for (const c of cashbacks) if (!c.deletedAt) add(c.memberId, c.amount)
+  for (const e of expenses) if (!e.deletedAt && (e.cashbackAmount ?? 0) > 0) add(e.paidBy, e.cashbackAmount!)
+  return { total: round2(total), byMember }
+}
+
+// 某张卡这趟"按每笔记"的返现：合计、笔数、归谁（汇率簿卡的返现页上只读显示）
+export function expenseCashbackForCard(expenses: Expense[], cardId: string): { total: number; count: number; payerIds: string[] } {
+  const rows = expenses.filter((e) => !e.deletedAt && e.paymentCardId === cardId && (e.cashbackAmount ?? 0) > 0)
+  return {
+    total: round2(rows.reduce((s, e) => s + (e.cashbackAmount ?? 0), 0)),
+    count: rows.length,
+    payerIds: [...new Set(rows.map((e) => e.paidBy))],
+  }
 }
 
 // 实际花费（2026-11-07 口径统一）：这趟已花 − 代购（朋友会还） − 全部返现。
