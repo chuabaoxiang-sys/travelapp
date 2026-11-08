@@ -25,6 +25,7 @@ import { formatMoney, round2 } from '../../lib/money'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
+import { initialSplitMemberIds, splitMemberIdsForSave, splitTypeForSave } from './splitForm'
 import type { Trip, ExpensePhase, Expense, SplitType, ExpenseSplit, DaySpreadMode, ExpenseDayAllocation, ExpenseRateAllocation } from '../../types'
 
 // 全屏页面而不是底部弹层——这个表单从"住宿/交通跨天分摊"上线后，塞进88%高度的
@@ -275,13 +276,19 @@ export function AddExpensePage({
   useEffect(() => {
     if (splitInitialized.current) return
     if (initial) {
+      // 个人开销从空名单开始，不用等分摊行查出来（原因见 splitForm.ts）
+      if (initial.splitType === 'none') {
+        setSplitMemberIds([])
+        splitInitialized.current = true
+        return
+      }
       if (!existingSplits.length) return
       // 去重——正常情况下一笔费用同一个人只会有一条分摊记录（数据库也有唯一性
       // 约束保证），但本地这张表本身没有这道约束，同步时序不巧的话可能留下
       // 同一个人的重复行；这里直接映射不去重的话，编辑页会照单全收显示成好几行，
       // 保存时又把重复原样写回去，越编越错。用Set保证进这个表单的名单一定是
       // 去重过的，从这个入口先把口子堵上
-      setSplitMemberIds([...new Set(existingSplits.map((s) => s.memberId))])
+      setSplitMemberIds(initialSplitMemberIds(initial.splitType, existingSplits.map((s) => s.memberId)))
       splitInitialized.current = true
     } else {
       if (!members.length) return
@@ -643,9 +650,8 @@ export function AddExpensePage({
     // 干脆没勾任何人（"个人开销"模式）才是真正的不分摊。之前用">= 2"判断会把
     // "只勾1个非付款人"也归到"不分摊"，导致这笔钱被错记成付款人自己的开销，
     // 分摊对象欠的钱凭空消失——也让编辑时这笔账会被误判回"个人开销"页签
-    const splitType: SplitType = usingItemized
-      ? 'itemized'
-      : splitMemberIds.length === 0 ? 'none' : usingExactSplit ? 'exact' : 'equal'
+    // 以当前页签为准：选的是「个人开销」就一律存成个人开销（见 splitForm.ts）
+    const splitType: SplitType = splitTypeForSave(mode, splitMemberIds, usingExactSplit)
     const customAmountsForSave = usingExactSplit
       ? Object.fromEntries(splitMemberIds.map((id) => [id, parseFloat(customAmounts[id] ?? '0') || 0]))
       : undefined
@@ -727,7 +733,7 @@ export function AddExpensePage({
     } else {
       // 从"逐项拆账"改成别的分摊方式时，把旧的子项明细清掉，不留占地方的残留数据
       if (initial?.splitType === 'itemized') await deleteLineItems(expenseId)
-      await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIds, payer, customAmountsForSave, {
+      await saveExpenseSplits(expenseId, homeAmount, splitType, splitMemberIdsForSave(mode, splitMemberIds), payer, customAmountsForSave, {
         listPrice: numListPrice,
         lines: activeProxyLines,
       })
