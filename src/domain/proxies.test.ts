@@ -201,6 +201,21 @@ describe('代购结算选项（0052，真实走 Dexie）', () => {
     expect((await db.expenseSplits.get(mama.id))!.proxyRepaidAmount).toBeNull()
   })
 
+  it('照应还金额标已还，之后补填刷卡实际扣款：已收不跟着变（朋友还的钱早就定了）', async () => {
+    await db.expenses.add(expense({ paymentCardId: 'c1', cardChargePending: true }))
+    await db.expenseSplits.bulkAdd(rows('e1', buildSplitShares(350.55, 'equal', ['bx', 'kn'], 'bx', undefined, { listPrice: 13298, lines: LINES })))
+    const [mama] = (await db.expenseSplits.toArray()).filter((s) => s.proxyName === '妈妈')
+    const owed = toProxyItems(await db.expenses.toArray(), await db.expenseSplits.toArray()).find((i) => i.name === '妈妈')!.shareAmount
+    // 结算页一律把确认时的金额传进来，哪怕刚好等于应还
+    await setProxyRepaid([mama.id], 1, owed)
+    await fillCardCharge('e1', 344.2)
+    const items = toProxyItems(await db.expenses.toArray(), await db.expenseSplits.toArray())
+    const after = items.find((i) => i.name === '妈妈')!
+    expect(after.received).toBe(owed)
+    // 成本跟着实际扣款变了，差额算付款人多收/少收，这是对的
+    expect(after.costAmount).not.toBe(owed)
+  })
+
   it('一个人好几行一起标已还：实际总额按该还比例摊，合计刚好', async () => {
     await seed()
     const ids = await proxyIds()

@@ -267,7 +267,9 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
                 const g = repayFor
                 const actual = round2(repayActual)
                 setRepayFor(null)
-                run(() => setProxyRepaid(g.items.map((it) => it.splitId), Date.now(), Math.abs(actual - groupOwed(g)) < 0.005 ? null : actual))
+                // 一律记下这个数——就算等于应还也要记：不记的话「已收」会跟着这笔账以后的
+                // 金额改动（补填实际扣款、编辑金额）浮动，朋友实际还的钱却早就定了
+                run(() => setProxyRepaid(g.items.map((it) => it.splitId), Date.now(), actual))
               }}
               className="flex-[2] min-h-[44px] rounded-full bg-plan text-card text-[13px] font-semibold disabled:opacity-60"
             >
