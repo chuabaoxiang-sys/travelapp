@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { Gift, Check, ChevronDown, ChevronUp, Undo2 } from 'lucide-react'
+import { Gift, Check, ChevronDown, ChevronUp, Undo2, Copy } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { formatMoney, round2 } from '../../lib/money'
 import { toLocalDateString } from '../../lib/dates'
 import { BottomSheet } from '../../components/BottomSheet'
 import { Avatar } from '../../components/Avatar'
+import { SuccessToast } from '../../components/SuccessToast'
+import { buildProxyCopyText, formatForeignTotals, proxyGroupTotals, proxyItemHome, type ProxyGroupKind } from '../../domain/proxyText'
 import { groupOwed, groupProxyItems, setProxyGift, setProxyRepaid, toProxyItems, type ProxyGroup } from '../../domain/proxies'
 import { giftShares, isProxySplit } from '../../domain/splits'
 import type { ExpenseSplit, Member, Trip } from '../../types'
@@ -45,6 +47,7 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
   const [repayInput, setRepayInput] = useState('')
   const [giftFor, setGiftFor] = useState<ProxyGroup | null>(null)
   const [giftMembers, setGiftMembers] = useState<string[]>([])
+  const [toast, setToast] = useState<string | null>(null)
 
   const items = toProxyItems(expenses, splits)
   if (!items.length) return null
@@ -65,6 +68,84 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
     } finally {
       setBusy(false)
     }
+  }
+
+  // 一键复制这个人的代购明细（2026-11-08）：能直接发给对方
+  async function copyGroup(g: ProxyGroup, kind: ProxyGroupKind) {
+    const text = buildProxyCopyText({
+      group: g,
+      kind,
+      tripName: trip.name,
+      homeCurrency: trip.homeCurrency,
+      payerName: nameOf(g.creditorId),
+      giftNames: (g.items[0].giftMemberIds ?? []).map(nameOf).join('、'),
+    }, t)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // 剪贴板被浏览器拒绝（权限关了之类）：不假装成功，提示带勾的那种卡片不合适
+      window.alert(t('split.proxy.copyFailed'))
+      return
+    }
+    setToast(t('split.proxy.copied', { name: g.name }))
+    setTimeout(() => setToast(null), 1400)
+  }
+
+  // 展开后的每一笔 + 最下面一行合计（外币合计 · 平均汇率，右边本位币合计）
+  function detail(g: ProxyGroup, kind: ProxyGroupKind, indent: string) {
+    const totals = proxyGroupTotals(g.items, kind, trip.homeCurrency)
+    const foreign = formatForeignTotals(totals)
+    return (
+      <div className={`mt-2 ${indent} flex flex-col gap-1.5 text-[11.5px] tabular`}>
+        {g.items.map((it) => (
+          <div key={it.splitId} className="flex justify-between gap-2">
+            <span className="text-soft truncate">
+              {md(it.expenseDate)} {it.description || t('split.untitledExpense')} · {it.currency} {it.amount.toLocaleString()}
+            </span>
+            <span className="flex-shrink-0">{formatMoney(proxyItemHome(it, kind))}</span>
+          </div>
+        ))}
+        <div className="flex justify-between gap-2 border-t border-dashed border-line pt-1.5 font-semibold">
+          <span className="truncate">
+            {foreign
+              ? (totals.avgRate != null
+                  ? <>{t('split.proxy.totalRow', { foreign })} <span className="font-normal text-muted">· {t('split.proxy.avgRate', { rate: totals.avgRate })}</span></>
+                  : t('split.proxy.totalRow', { foreign }))
+              : t('split.proxy.totalRow', { foreign: formatMoney(totals.home) })}
+          </span>
+          <span className="flex-shrink-0">{formatMoney(totals.home)}</span>
+        </div>
+      </div>
+    )
+  }
+
+  function copyButton(g: ProxyGroup, kind: ProxyGroupKind) {
+    return (
+      <button
+        type="button"
+        onClick={() => copyGroup(g, kind)}
+        className="w-8 h-8 flex items-center justify-center text-muted flex-shrink-0"
+        title={t('split.proxy.copy', { name: g.name })}
+        aria-label={t('split.proxy.copy', { name: g.name })}
+      >
+        <Copy className="w-[15px] h-[15px]" strokeWidth={1.8} />
+      </button>
+    )
+  }
+
+  function expandButton(key: string) {
+    const open = expanded.has(key)
+    return (
+      <button
+        type="button"
+        onClick={() => toggle(key)}
+        className="w-7 h-8 flex items-center justify-center text-muted flex-shrink-0"
+        title={open ? t('split.proxy.collapse') : t('split.proxy.expand')}
+        aria-label={open ? t('split.proxy.collapse') : t('split.proxy.expand')}
+      >
+        {open ? <ChevronUp className="w-4 h-4" strokeWidth={2} /> : <ChevronDown className="w-4 h-4" strokeWidth={2} />}
+      </button>
+    )
   }
 
   function toggle(key: string) {
@@ -119,28 +200,10 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
                     </div>
                   </div>
                   <span className="font-serif-sc text-[16px] tabular">{formatMoney(g.total)}</span>
-                  <button
-                    type="button"
-                    onClick={() => toggle(g.key)}
-                    className="w-8 h-8 flex items-center justify-center text-muted"
-                    title={open ? t('split.proxy.collapse') : t('split.proxy.expand')}
-                    aria-label={open ? t('split.proxy.collapse') : t('split.proxy.expand')}
-                  >
-                    {open ? <ChevronUp className="w-4 h-4" strokeWidth={2} /> : <ChevronDown className="w-4 h-4" strokeWidth={2} />}
-                  </button>
+                  {copyButton(g, 'unpaid')}
+                  {expandButton(g.key)}
                 </div>
-                {open && (
-                  <div className="mt-2 ml-9 flex flex-col gap-1.5 text-[11.5px] tabular">
-                    {g.items.map((it) => (
-                      <div key={it.splitId} className="flex justify-between gap-2">
-                        <span className="text-soft truncate">
-                          {md(it.expenseDate)} {it.description || t('split.untitledExpense')} · {it.currency} {it.amount.toLocaleString()}
-                        </span>
-                        <span className="flex-shrink-0">{formatMoney(it.shareAmount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {open && detail(g, 'unpaid', 'ml-9')}
                 <div className="flex gap-2 mt-2.5">
                   <button
                     type="button"
@@ -174,7 +237,8 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
             {repaid.map((g) => {
               const diff = round2(g.total - groupOwed(g))
               return (
-                <div key={g.key} className="flex items-center gap-2.5">
+                <div key={g.key}>
+                <div className="flex items-center gap-2.5">
                   <Initial name={g.name} size={22} />
                   <span className="flex-1 min-w-0">
                     <span className="block truncate text-[12.5px] text-soft">
@@ -187,6 +251,8 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
                     )}
                   </span>
                   <span className="text-[12.5px] text-positive tabular">{formatMoney(g.total)}</span>
+                  {copyButton(g, 'repaid')}
+                  {expandButton(g.key)}
                   <button
                     type="button"
                     disabled={busy}
@@ -197,6 +263,8 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
                   >
                     <Undo2 className="w-4 h-4" strokeWidth={1.8} />
                   </button>
+                </div>
+                {expanded.has(g.key) && detail(g, 'repaid', 'ml-8')}
                 </div>
               )
             })}
@@ -209,7 +277,8 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
           <div className="text-[10.5px] tracking-widest uppercase text-muted mt-3.5">{t('split.proxy.giftedHeading')}</div>
           <div className="flex flex-col gap-1.5 mt-1.5">
             {gifted.map((g) => (
-              <div key={g.key} className="flex items-center gap-2.5">
+              <div key={g.key}>
+              <div className="flex items-center gap-2.5">
                 <Gift className="w-[18px] h-[18px] text-plan flex-shrink-0" strokeWidth={1.8} />
                 <span className="flex-1 min-w-0">
                   <span className="block truncate text-[12.5px] text-soft">{g.name}</span>
@@ -218,6 +287,8 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
                   </span>
                 </span>
                 <span className="text-[12.5px] tabular">{formatMoney(g.total)}</span>
+                {copyButton(g, 'gifted')}
+                {expandButton(g.key)}
                 <button
                   type="button"
                   disabled={busy}
@@ -228,6 +299,8 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
                 >
                   <Undo2 className="w-4 h-4" strokeWidth={1.8} />
                 </button>
+              </div>
+              {expanded.has(g.key) && detail(g, 'gifted', 'ml-8')}
               </div>
             ))}
           </div>
@@ -328,6 +401,11 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
             </button>
           </div>
         </BottomSheet>
+      )}
+      {toast && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <SuccessToast label={toast} />
+        </div>
       )}
     </div>
   )
