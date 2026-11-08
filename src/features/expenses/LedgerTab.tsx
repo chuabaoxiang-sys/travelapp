@@ -7,7 +7,7 @@ import { listTripRefunds, refundSummary } from '../../domain/taxRefunds'
 import { LedgerFilterSheet } from './LedgerFilterSheet'
 import { EMPTY_LEDGER_FILTER, PAY_CASH, PAY_PENDING, filterCount, isFilterActive, matchesLedgerFilter, type LedgerFilter } from '../../domain/ledgerFilter'
 import { db } from '../../db/dexie'
-import type { Trip, ExpenseSplit } from '../../types'
+import type { Trip, Expense, ExpenseSplit } from '../../types'
 import { formatMoney, round2 } from '../../lib/money'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { formatDateChipDow, formatDateChipDate } from '../../lib/dateChip'
@@ -207,7 +207,10 @@ export function LedgerTab({
       ledgerFilter.payments.includes(PAY_PENDING) ? t('ledger.filter.pending') : null,
     ].filter(Boolean).join('、'),
   ].filter(Boolean).join(' · ')
-  const filteredTotal = filteredExpenses.reduce((a, e) => a + e.homeAmount, 0)
+  // 「我的」里每天的合计、筛选合计只算我的份额（2026-11-08，含送礼、部分送礼分到我头上的）；
+  // 「全部」照旧是整笔金额
+  const amountForView = (e: Expense) => (view === 'mine' ? myShareOf(e.id, splits, currentMemberId, e) ?? 0 : e.homeAmount)
+  const filteredTotal = round2(filteredExpenses.reduce((a, e) => a + amountForView(e), 0))
 
   // 按行程日期分组——之前拍平按记账先后排，多天行程账目一多，"回看第3天花了
   // 什么"得整段划过去肉眼找。组内保留原来"最近记的排前面"的顺序
@@ -500,7 +503,7 @@ export function LedgerTab({
           <div className="flex-1 min-w-0">
             <div className="text-[12px] text-soft truncate">{filterSummaryLabel}</div>
             <div className="text-[13.5px] font-semibold mt-0.5 tabular">
-              {t('ledger.filter.summary', { count: filteredExpenses.length, total: formatMoney(filteredTotal, currencyLabel) })}
+              {t(view === 'mine' ? 'ledger.filter.summaryMine' : 'ledger.filter.summary', { count: filteredExpenses.length, total: formatMoney(filteredTotal, currencyLabel) })}
             </div>
           </div>
           <button
@@ -520,7 +523,7 @@ export function LedgerTab({
 
       <div className="flex flex-col gap-2">
         {expensesByDay.map(({ date, items }) => {
-          const daySubtotal = items.reduce((a, e) => a + e.homeAmount, 0)
+          const daySubtotal = round2(items.reduce((a, e) => a + amountForView(e), 0))
           return (
             <div
               key={date}
@@ -532,7 +535,13 @@ export function LedgerTab({
             >
               <div className="flex items-baseline justify-between">
                 <span className="font-serif-sc text-[13px]">{date}</span>
-                <span className="text-[11px] text-muted tabular">{t('ledger.dayTotalLabel')} {formatMoney(daySubtotal, currencyLabel)}</span>
+                {view === 'mine' ? (
+                  <span className="text-[11px] text-muted tabular">
+                    {t('ledger.dayTotalMineLabel')} <span className="text-ink font-semibold">{formatMoney(daySubtotal, currencyLabel)}</span>
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-muted tabular">{t('ledger.dayTotalLabel')} {formatMoney(daySubtotal, currencyLabel)}</span>
+                )}
               </div>
               {items.map((e) => {
                 const cat = categoryOf(e.categoryId)
