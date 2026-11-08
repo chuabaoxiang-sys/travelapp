@@ -22,6 +22,7 @@ export function CardPaymentPanel({
   cashback,
   onCashbackChange,
   cashbackOwnerName,
+  cardLevelCashback,
 }: {
   cards: PaymentCard[]
   selectedId: string | null
@@ -41,6 +42,9 @@ export function CardPaymentPanel({
   cashback?: string
   onCashbackChange?: (v: string) => void
   cashbackOwnerName?: string
+  // 这张卡这趟已经在「卡 › 这趟返现」记过的整张卡返现（已格式化的金额）；有的话在「这笔返现」
+  // 下面提醒别再填一次，免得同一笔返现算两次（2026-11-08，跟返现页那条反方向的提醒配对）
+  cardLevelCashback?: string
 }) {
   const { t } = useTranslation()
   const [creating, setCreating] = useState(false)
@@ -140,6 +144,12 @@ export function CardPaymentPanel({
                   className="flex-1 min-w-0 bg-transparent text-right text-[15px] font-semibold text-positive tabular outline-none placeholder:text-faint placeholder:font-normal placeholder:text-[13px]"
                 />
               </label>
+              {cardLevelCashback && (
+                <div className="mt-1.5 flex items-start gap-1.5 rounded-xl bg-positive/[.07] px-3 py-2 text-[12px] text-soft leading-relaxed">
+                  <Info className="w-3.5 h-3.5 text-positive flex-shrink-0 mt-[3px]" strokeWidth={2} />
+                  <span>{t('card.cashbackDoubleWarning', { amount: cardLevelCashback })}</span>
+                </div>
+              )}
               {(parseFloat(cashback ?? '') || 0) > 0 && (
                 <div className="text-[11px] text-muted mt-1 leading-relaxed">{t('card.cashbackFieldHint', { name: cashbackOwnerName ?? '' })}</div>
               )}

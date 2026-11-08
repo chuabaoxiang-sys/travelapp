@@ -22,6 +22,7 @@ import { saveItemizedExpense, deleteLineItems, getLineItemsForExpense, resolveIt
 import { isExpenseSettled } from '../../domain/settlements'
 import { categoryColor } from '../../lib/categoryColors'
 import { formatMoney, round2 } from '../../lib/money'
+import { listTripCashbacks } from '../../domain/cashback'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -131,6 +132,9 @@ export function AddExpensePage({
   const allCards = useLiveQuery(() => getPaymentCards()) ?? []
   // 停用的卡不出现在选择列表里——但编辑一笔当初用了这张卡的开销时，它还得显示着
   const pickableCards = allCards.filter((c) => !c.archivedAt || c.id === cardId)
+  // 这张卡这趟在「卡 › 这趟返现」记过的整张卡返现合计——有的话「这笔返现」下面提醒别重复填
+  const tripCardCashbacks = useLiveQuery(() => listTripCashbacks(trip.id), [trip.id]) ?? []
+  const cardLevelCashback = round2(tripCardCashbacks.filter((c) => c.paymentCardId === cardId).reduce((s, c) => s + c.amount, 0))
   const cardEstimate = useLiveQuery(
     () => (cardId ? estimateCardRate(cardId, currency, trip.id, initial?.id) : Promise.resolve(null)),
     [cardId, currency, trip.id, initial?.id],
@@ -978,6 +982,7 @@ export function AddExpensePage({
                   cashback={cardCashback}
                   onCashbackChange={setCardCashback}
                   cashbackOwnerName={payerName}
+                  cardLevelCashback={cardLevelCashback > 0 ? formatMoney(cardLevelCashback, homeLabel) : undefined}
                   paidHint={numDiscount > 0 && numAmount > 0 ? `${t('addExpense.paidLabel')} ${currency} ${numAmount.toLocaleString()}` : undefined}
                 />
                 {showProblems && !cardId && <ProblemLine text={t('card.needCard')} />}
