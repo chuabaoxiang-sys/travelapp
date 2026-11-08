@@ -19,6 +19,8 @@ import {
 import { fetchReferenceRate } from '../../api/fx'
 import { ExchangeAmountFields } from './ExchangeAmountFields'
 import { CardSection } from './CardSection'
+import { listTripRefunds } from '../../domain/taxRefunds'
+import { formatMoney } from '../../lib/money'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
@@ -229,6 +231,13 @@ export function RateBookScreen({
   const archived = entries.filter((e) => e.archived)
   const usageMap = useLiveQuery(() => usageByEntry(trip.id), [trip.id]) ?? new Map<string, RateEntryUsage>()
   const blended = useLiveQuery(() => tripBlendedRates(trip.id), [trip.id]) ?? []
+  // 外币现金退税（0053）自动建的汇率条目：带「退税」标签，不在这里改/删（去结算页改那条退税，两边一起变）
+  const refundByRate = new Map(
+    (useLiveQuery(() => listTripRefunds(trip.id), [trip.id]) ?? [])
+      .filter((r) => r.rateBookEntryId)
+      .map((r) => [r.rateBookEntryId as string, r]),
+  )
+  const homePrefix = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
 
   // 市场参考价是网络请求，跟useLiveQuery那套Dexie响应式机制不是一回事——按币种缓存，
   // 币种集合没变就不重新查，避免每次Dexie数据变动（哪怕跟汇率无关）都重新打一次API
@@ -435,15 +444,24 @@ export function RateBookScreen({
                             className="w-full rounded-lg border border-plan bg-paper px-2 py-1 text-[14px] font-serif-sc font-semibold outline-none"
                           />
                         ) : (
-                          <div className="font-serif-sc text-[14px] font-semibold truncate">{e.label}</div>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-serif-sc text-[14px] font-semibold truncate">{e.label}</span>
+                            {refundByRate.has(e.id) && (
+                              <span className="text-[10.5px] px-[7px] py-px rounded-full bg-positive/10 text-positive flex-shrink-0">{t('rateBook.refundTag')}</span>
+                            )}
+                          </div>
                         )}
                         {/* 日期格式跟着当前语言走——之前写死了'zh-CN'，英文界面下
                             也会显示成中式的 2026/9/1 */}
                         <div className="text-[11px] text-muted mt-0.5">
-                          {t(`rateBook.source.${e.source}`)} ·{' '}
-                          {t('rateBook.lastUsed', {
-                            date: new Date(e.lastUsedAt).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'zh-CN'),
-                          })}
+                          {refundByRate.has(e.id)
+                            ? t('rateBook.refundSource', { date: refundByRate.get(e.id)!.refundDate.replace(/-/g, '/') })
+                            : <>
+                                {t(`rateBook.source.${e.source}`)} ·{' '}
+                                {t('rateBook.lastUsed', {
+                                  date: new Date(e.lastUsedAt).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'zh-CN'),
+                                })}
+                              </>}
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
@@ -482,12 +500,18 @@ export function RateBookScreen({
                         <>
                           <div className="text-[11px] text-positive mt-2 pt-2 border-t border-dashed border-line flex items-center gap-1.5">
                             <Check className="w-3 h-3 flex-shrink-0" strokeWidth={2.5} />
-                            {t('rateBook.exchanged', {
-                              homeAmount: e.exchangedHomeAmount,
-                              homeCurrency: trip.homeCurrency,
-                              foreignAmount: e.exchangedForeignAmount.toLocaleString(),
-                              foreignCurrency: e.foreignCurrency,
-                            })}
+                            {refundByRate.has(e.id)
+                              ? t('rateBook.refundReceived', {
+                                  foreignAmount: e.exchangedForeignAmount.toLocaleString(),
+                                  currency: e.foreignCurrency,
+                                  home: formatMoney(e.exchangedHomeAmount ?? 0, homePrefix),
+                                })
+                              : t('rateBook.exchanged', {
+                                  homeAmount: e.exchangedHomeAmount,
+                                  homeCurrency: trip.homeCurrency,
+                                  foreignAmount: e.exchangedForeignAmount.toLocaleString(),
+                                  foreignCurrency: e.foreignCurrency,
+                                })}
                           </div>
                           <div className={`flex items-baseline justify-between text-[10.5px] mt-1.5 ${over ? 'text-negative' : 'text-muted'}`}>
                             {/* 用Trans而不是t()：这句里"已用多少"那个数字本来是加粗的
@@ -521,6 +545,9 @@ export function RateBookScreen({
                         </>
                       )
                     })()}
+                    {refundByRate.has(e.id) ? (
+                      <div className="text-[11.5px] text-plan mt-2.5">{t('rateBook.refundEditHint')}</div>
+                    ) : (
                     <div className="flex gap-2 mt-2.5">
                       {editingId === e.id ? (
                         <>
@@ -549,6 +576,7 @@ export function RateBookScreen({
                         </>
                       )}
                     </div>
+                    )}
                   </div>
                   )
                 })}

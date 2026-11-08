@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins } from 'lucide-react'
 import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
+import { listTripRefunds, refundSummary } from '../../domain/taxRefunds'
 import { LedgerFilterSheet } from './LedgerFilterSheet'
 import { EMPTY_LEDGER_FILTER, PAY_CASH, PAY_PENDING, filterCount, isFilterActive, matchesLedgerFilter, type LedgerFilter } from '../../domain/ledgerFilter'
 import { db } from '../../db/dexie'
@@ -159,6 +160,10 @@ export function LedgerTab({
   // 代购遇到优惠（0050）：优惠不分给代购的人时，付款人多收的那部分只扣他自己的"我的花费"
   const tripProxyItems = toProxyItems(expenses, splits)
   const myProxyGain = proxyGainByMember(tripProxyItems).get(currentMemberId) ?? 0
+  // 退税（2026-11-08）：分到我头上的那份退税扣"我的花费"
+  const tripRefunds = refundSummary(useLiveQuery(() => listTripRefunds(trip.id), [trip.id]) ?? [])
+  const myRefund = tripRefunds.shareByMember.get(currentMemberId) ?? 0
+  const myHeroValue = round2(myOwed - myCashback - myProxyGain - myRefund)
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
 
   // 用 spentOnDate（按 expenseDate 归日）而不是行程页那个 spendByDate（按
@@ -180,7 +185,7 @@ export function LedgerTab({
   // "全部/我的"切两张卡时，用户要看到数字本身也连续滚过去（哪怕两边含义不同），
   // 不只是卡片淡入——所以两张卡的大数字接到同一个useAnimatedNumber上，只是
   // "目标值"跟着view切换，起点永远是当前视觉上正显示的那个数
-  const activeHeroValue = view === 'mine' ? round2(myOwed - myCashback - myProxyGain) : heroRawValue(allowance)
+  const activeHeroValue = view === 'mine' ? myHeroValue : heroRawValue(allowance)
   const animatedActiveHeroValue = useAnimatedNumber(activeHeroValue)
   const myExpenseIds = myRelatedExpenseIds(expenses, splits, currentMemberId)
   const visibleExpenses = view === 'mine' ? expenses.filter((e) => myExpenseIds.has(e.id)) : expenses
@@ -333,7 +338,7 @@ export function LedgerTab({
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
         <div key="team" className="card-swap flex flex-col gap-3.5">
-          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} cashbackTotal={cashback.total} />
+          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} cashbackTotal={cashback.total} refund={{ total: tripRefunds.total, pending: tripRefunds.pendingTotal }} />
           {hasEnoughForBreakdown && (
             <SpendBreakdownCard
               expenses={expenses}
@@ -377,7 +382,7 @@ export function LedgerTab({
         <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
           <div className="text-[11px] tracking-wider text-on-dark/55">{t('ledger.mineHero.label')}</div>
           <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
-          {myCashback > 0 || myProxyGain !== 0 ? (
+          {myCashback > 0 || myProxyGain !== 0 || myRefund > 0 ? (
             // 有归我的返现 / 代购多收时，这一行直接写成算式：应分摊 − Cashback − 代购多收（2026-11-07 口径统一）
             <div className="mt-2 text-[11px] text-on-dark/75 tabular">
               {t('ledger.mineHero.owedLabel')} <span className="font-semibold text-on-dark">{formatMoney(myOwed, currencyLabel)}</span>
@@ -395,6 +400,7 @@ export function LedgerTab({
                   </button>
                 </>
               )}
+              {myRefund > 0 && <span className="text-plan-on-dark"> {t('ledger.mineHero.minusRefund', { amount: formatMoney(myRefund, currencyLabel) })}</span>}
             </div>
           ) : (
             <div className="mt-2 text-[11px] text-on-dark/50">{t('ledger.mineHero.sublabel')}</div>
@@ -409,12 +415,13 @@ export function LedgerTab({
             todayISO={todayISO}
             currency={currencyLabel}
             title={t('ledger.breakdown.mineTitle')}
-            footer={myCashback > 0 || myProxyGain !== 0 ? (
+            footer={myCashback > 0 || myProxyGain !== 0 || myRefund > 0 ? (
               <div className="border-t border-line mt-2.5 pt-2 text-[11px] text-soft tabular leading-relaxed">
                 {t('ledger.breakdown.mineReconcile', { owed: formatMoney(myOwed, currencyLabel) })}
                 {myCashback > 0 && <span className="text-positive"> {t('ledger.mineHero.minusCashback', { amount: formatMoney(myCashback, currencyLabel) })}</span>}
                 {myProxyGain !== 0 && <span className="text-positive"> {t(myProxyGain > 0 ? 'ledger.mineHero.minusProxyGain' : 'ledger.mineHero.plusProxyLoss', { amount: formatMoney(Math.abs(myProxyGain), currencyLabel) })}</span>}
-                {' = '}{t('ledger.mineHero.label')} <b className="text-ink">{formatMoney(round2(myOwed - myCashback - myProxyGain), currencyLabel)}</b>
+                {myRefund > 0 && <span className="text-positive"> {t('ledger.mineHero.minusRefund', { amount: formatMoney(myRefund, currencyLabel) })}</span>}
+                {' = '}{t('ledger.mineHero.label')} <b className="text-ink">{formatMoney(myHeroValue, currencyLabel)}</b>
               </div>
             ) : undefined}
           />

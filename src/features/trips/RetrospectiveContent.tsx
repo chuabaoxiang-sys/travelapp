@@ -74,7 +74,7 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
       {/* 主卡：整趟总花费 */}
       <div className={`bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark ${enterClass()}`} style={delayStyle(nextDelayMs())}>
         <div className="text-[11px] tracking-wider text-on-dark/55">
-          {data.proxyTotal > 0 || data.cashbackTotal > 0 ? t('retrospective.heroLabelActual', { name: trip.name }) : trip.name}
+          {data.proxyTotal > 0 || data.cashbackTotal > 0 || data.refundTotal > 0 ? t('retrospective.heroLabelActual', { name: trip.name }) : trip.name}
         </div>
         <div className="font-bold tracking-tight tabular text-[32px] leading-none mt-1.5">{money(animatedTotal)}</div>
         <div className="mt-2.5 text-[11px] text-on-dark/50 leading-relaxed">
@@ -85,7 +85,7 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
           ].filter(Boolean).join(' · ')}
         </div>
         {/* 实际花费的算式一直摊开（2026-11-07）：跟黑卡点开后同一套算法；没有代购和返现就不出现 */}
-        {(data.proxyTotal > 0 || data.cashbackTotal > 0) && (
+        {(data.proxyTotal > 0 || data.cashbackTotal > 0 || data.refundTotal > 0) && (
           <div className="mt-3 border-t border-on-dark/12 pt-2.5 flex flex-col gap-[5px] text-[11.5px] tabular">
             <div className="flex justify-between text-on-dark/75">
               <span>{t('spendHero.formula.spent')}</span>
@@ -103,6 +103,12 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
                 <span>{money(data.cashbackTotal)}</span>
               </div>
             )}
+            {data.refundTotal > 0 && (
+              <div className="flex justify-between gap-2 text-plan-on-dark">
+                <span>− {t('spendHero.formula.refund')}{data.refundPending > 0 && <span className="text-on-dark/50">{t('spendHero.formula.refundPending', { amount: money(data.refundPending) })}</span>}</span>
+                <span>{money(data.refundTotal)}</span>
+              </div>
+            )}
             <div className="flex justify-between border-t border-on-dark/12 pt-1.5 mt-px font-bold text-on-dark text-[13px]">
               <span>= {t('spendHero.formula.actual')}</span>
               <span>{money(data.actual)}</span>
@@ -112,7 +118,7 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
         {data.discount.count > 0 && (
           <div className="mt-2.5 text-[11px] text-plan-on-dark flex items-center gap-1.5">
             <Tag className="w-3 h-3 flex-shrink-0" strokeWidth={1.8} />
-            {t(data.proxyTotal > 0 || data.cashbackTotal > 0 ? 'retrospective.discountLineAlso' : 'retrospective.discountLine', { amount: money(data.discount.total), count: data.discount.count })}
+            {t(data.proxyTotal > 0 || data.cashbackTotal > 0 || data.refundTotal > 0 ? 'retrospective.discountLineAlso' : 'retrospective.discountLine', { amount: money(data.discount.total), count: data.discount.count })}
           </div>
         )}
       </div>

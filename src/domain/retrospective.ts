@@ -4,6 +4,7 @@ import { assembleExportBundle, type PersonSummary } from './export'
 import { computeBalances, simplifyDebts } from './splits'
 import { discountSummary } from './discounts'
 import { actualSpend, cashbackSummary } from './cashback'
+import { listTripRefunds, refundSummary } from './taxRefunds'
 import { proxySummary, toProxyItems } from './proxies'
 import { CATEGORY_COLORS } from '../lib/categoryColors'
 import { categoryLabel } from '../lib/categoryLabel'
@@ -58,7 +59,10 @@ export interface TripRetrospective {
   cashbackTotal: number
   // 代购的人要还的合计（本位币，0050 口径）
   proxyTotal: number
-  // 实际花费 = total − 代购 − 返现（跟黑卡算式同一个函数）；主卡大数字和人均都用它
+  // 退税（2026-11-08）：合计（本位币，含还没到账的估算）和其中估算的部分
+  refundTotal: number
+  refundPending: number
+  // 实际花费 = total − 代购 − 返现 − 退税（跟黑卡算式同一个函数）；主卡大数字和人均都用它
   actual: number
 }
 
@@ -70,11 +74,12 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
   const bundle = await assembleExportBundle(tripId, t)
   const { trip, daySummary, categorySummary, personSummary } = bundle
 
-  const [itemsRaw, allCategories, tripExpensesRaw, tripCashbacks] = await Promise.all([
+  const [itemsRaw, allCategories, tripExpensesRaw, tripCashbacks, tripRefunds] = await Promise.all([
     db.itineraryItems.where('tripId').equals(tripId).toArray(),
     db.expenseCategories.toArray(),
     db.expenses.where('tripId').equals(tripId).toArray(),
     db.cardCashbacks.where('tripId').equals(tripId).toArray(),
+    listTripRefunds(tripId),
   ])
   const items = itemsRaw.filter((i) => !i.deletedAt)
   const tripExpenses = tripExpensesRaw.filter((e) => !e.deletedAt)
@@ -124,7 +129,8 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
   // 2026-11-07 口径统一：主卡大数字和人均都用「实际花费」（扣掉代购的人要还的、扣掉返现）
   const proxyTotal = proxySummary(toProxyItems(tripExpenses, tripSplits)).total
   const cashbackTotal = cashbackSummary(tripCashbacks, tripExpenses).total
-  const actual = actualSpend(total, proxyTotal, cashbackTotal)
+  const refunds = refundSummary(tripRefunds)
+  const actual = actualSpend(total, proxyTotal, cashbackTotal, refunds.total)
 
   return {
     finished: !!trip.endDate && todayISO > trip.endDate,
@@ -143,6 +149,8 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
     discount: discountSummary(tripExpenses, tripSplits),
     cashbackTotal,
     proxyTotal,
+    refundTotal: refunds.total,
+    refundPending: refunds.pendingTotal,
     actual,
   }
 }

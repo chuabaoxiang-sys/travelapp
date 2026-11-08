@@ -304,6 +304,32 @@ export interface CardCashback {
   deletedAt: number | null
 }
 
+// 退税（2026-11-08，0053）：单独记一条，不挂在哪一笔购物上。外币现金退税同时在
+// 汇率簿有一条（rateBookEntryId），算进那种外币现金的"还剩"；退到卡还没到账的先按
+// 外币金额 × 汇率估（pending），到账后改成实际本位币。memberIds 平分、进结算；
+// 钱在 receivedBy（记这条的人）手上
+export type TaxRefundMethod = 'cash' | 'card'
+export interface TaxRefund {
+  id: string
+  householdId: string
+  tripId: string
+  method: TaxRefundMethod
+  currency: string
+  foreignAmount: number // 退税单上的金额（currency 币种）
+  rate: number // 折本位币的汇率；本位币本身 = 1
+  homeAmount: number // 算进账的本位币金额；pending 时是估算
+  pending: boolean // 退到卡还没到账
+  memberIds: string[] // 算谁的，平分
+  receivedBy: string | null // 钱在谁手上 / 退到谁的卡
+  rateBookEntryId: string | null // 外币现金退税自动建的汇率簿那条
+  refundDate: string // YYYY-MM-DD
+  note: string | null
+  createdBy: string | null
+  createdAt: number
+  updatedAt: number
+  deletedAt: number | null
+}
+
 export interface ExpenseSplit {
   id: string
   householdId: string

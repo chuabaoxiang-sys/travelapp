@@ -1,5 +1,6 @@
 import { db, enqueueOutbox } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
+import { refundSummary } from './taxRefunds'
 import type { ExpenseSplit, SplitType } from '../types'
 
 export function round2(n: number) {
@@ -222,8 +223,12 @@ export interface PersonBalance {
   owed: number
   settledOut: number // 这个人已经付出去结的账（减少他欠别人的）
   settledIn: number // 这个人已经收到的结账（减少别人欠他的）
-  net: number // 正数=该收钱，负数=该付钱；已经把结算记录抵扣进去了
+  net: number // 正数=该收钱，负数=该付钱；已经把结算记录、退税抵扣进去了
   expenseCount: number
+  // 退税（0053）：分到这个人头上的退税（他少花了这么多），和他手上替大家收着的退税
+  // （他要把别人那份还回去）。paid/owed 保持账面口径不变，退税单独两项进 net
+  refundShare?: number
+  refundHeld?: number
 }
 
 export async function computeBalances(tripId: string): Promise<PersonBalance[]> {
@@ -234,6 +239,8 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
   const expenseIds = expenses.map((e) => e.id)
   const splits = expenseIds.length ? await db.expenseSplits.where('expenseId').anyOf(expenseIds).toArray() : []
   const settlements = (await db.settlements.where('tripId').equals(tripId).toArray()).filter((s) => !s.deletedAt)
+
+  const refunds = refundSummary((await db.taxRefunds.where('tripId').equals(tripId).toArray()).filter((r) => !r.deletedAt))
 
   // 代购那部分是付款人跟没来旅行的人之间的事，不进同行者之间的账：付款人的"垫付"
   // 扣掉代购，代购行也不算任何同行者"该分摊"的
@@ -263,14 +270,20 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
     settledInMap.set(s.toMemberId, round2((settledInMap.get(s.toMemberId) ?? 0) + s.amount))
   }
 
-  const memberIds = new Set([...paidMap.keys(), ...owedMap.keys(), ...settledOutMap.keys(), ...settledInMap.keys()])
+  const memberIds = new Set([
+    ...paidMap.keys(), ...owedMap.keys(), ...settledOutMap.keys(), ...settledInMap.keys(),
+    ...refunds.shareByMember.keys(), ...refunds.heldByMember.keys(),
+  ])
   return [...memberIds].map((memberId) => {
     const paid = paidMap.get(memberId)?.amount ?? 0
     const owed = owedMap.get(memberId) ?? 0
     const settledOut = settledOutMap.get(memberId) ?? 0
     const settledIn = settledInMap.get(memberId) ?? 0
-    const net = round2(paid - owed + settledOut - settledIn)
-    return { memberId, paid, owed, settledOut, settledIn, net, expenseCount: paidMap.get(memberId)?.count ?? 0 }
+    const refundShare = refunds.shareByMember.get(memberId) ?? 0
+    const refundHeld = refunds.heldByMember.get(memberId) ?? 0
+    // 退税：手上收着的要还出去（−held），分到自己的那份算回给自己（+share）
+    const net = round2(paid - owed + settledOut - settledIn - refundHeld + refundShare)
+    return { memberId, paid, owed, settledOut, settledIn, net, expenseCount: paidMap.get(memberId)?.count ?? 0, refundShare, refundHeld }
   })
 }
 

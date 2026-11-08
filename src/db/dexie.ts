@@ -11,6 +11,7 @@ import type {
   RateBookEntry,
   PaymentCard,
   CardCashback,
+  TaxRefund,
   Expense,
   ExpenseSplit,
   ExpenseDayAllocation,
@@ -55,6 +56,7 @@ const SYNCED_TABLES = [
   'paymentCards',
   'expenses',
   'cardCashbacks',
+  'taxRefunds',
   'expenseDayAllocations',
   'expenseRateAllocations',
   'budgets',
@@ -81,6 +83,7 @@ export class TripJournalDB extends Dexie {
   rateBookEntries!: EntityTable<RateBookEntry, 'id'>
   paymentCards!: EntityTable<PaymentCard, 'id'>
   cardCashbacks!: EntityTable<CardCashback, 'id'>
+  taxRefunds!: EntityTable<TaxRefund, 'id'>
   expenses!: EntityTable<Expense, 'id'>
   expenseSplits!: EntityTable<ExpenseSplit, 'id'>
   expenseDayAllocations!: EntityTable<ExpenseDayAllocation, 'id'>
@@ -183,6 +186,11 @@ export class TripJournalDB extends Dexie {
     // （deleteTripCascade 会一起软删），不影响已有数据
     this.version(13).stores({
       cardCashbacks: 'id, tripId, paymentCardId, householdId',
+    })
+    // 退税——2026-11-08新增，见types/index.ts的TaxRefund。全新的表，按行程挂
+    // （deleteTripCascade 会一起软删），不影响已有数据
+    this.version(14).stores({
+      taxRefunds: 'id, tripId, householdId',
     })
     registerOutboxHooks(this)
   }
@@ -390,7 +398,7 @@ export async function deleteTripCascade(tripId: string) {
       db.trips, db.tripMembers, db.itineraryDays, db.itineraryItems, db.expenses, db.expenseSplits,
       db.expenseDayAllocations, db.expenseRateAllocations, db.budgets, db.settlements,
       db.daySatisfactions, db.expenseSatisfactions, db.expenseLineItems, db.expenseLineItemMembers,
-      db.cardCashbacks,
+      db.cardCashbacks, db.taxRefunds,
     ],
     async () => {
       const expenseIds = await db.expenses.where('tripId').equals(tripId).primaryKeys()
@@ -409,6 +417,7 @@ export async function deleteTripCascade(tripId: string) {
       await db.budgets.where('tripId').equals(tripId).modify({ deletedAt: now })
       await db.settlements.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
       await db.cardCashbacks.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
+      await db.taxRefunds.where('tripId').equals(tripId).modify({ deletedAt: now, updatedAt: now })
       await db.tripMembers.where('tripId').equals(tripId).modify({ deletedAt: now })
       await db.trips.where('id').equals(tripId).modify({ deletedAt: now, updatedAt: now })
     },

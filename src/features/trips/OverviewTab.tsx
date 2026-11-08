@@ -19,6 +19,7 @@ import { Avatar } from '../../components/Avatar'
 import { SpendHero } from '../expenses/SpendHero'
 import { proxySummary, toProxyItems } from '../../domain/proxies'
 import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
+import { listTripRefunds, refundSummary } from '../../domain/taxRefunds'
 import { RetrospectiveContent } from './RetrospectiveContent'
 import { useActivityEntries, activityKindLabel, ACTIVITY_KIND_CLASS } from '../activity/useActivityEntries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
@@ -311,6 +312,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
   ) ?? []
   const tripProxy = proxySummary(toProxyItems(expenses, splits))
   const tripCashbackTotal = cashbackSummary(useLiveQuery(() => listTripCashbacks(trip.id), [trip.id]) ?? [], expenses).total
+  const tripRefunds = refundSummary(useLiveQuery(() => listTripRefunds(trip.id), [trip.id]) ?? [])
 
   const itineraryDays = (useLiveQuery(() => db.itineraryDays.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((d) => !d.deletedAt)
   const todayDay = itineraryDays.find((d) => d.date === todayISO)
@@ -350,7 +352,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
         {dayIndex != null && (
           <div className="text-[11px] text-muted mb-1.5">{t('overview.dayIndex', { day: dayIndex, date: todayISO.slice(5) })}</div>
         )}
-        <SpendHero state={allowance} currency={currencyLabel} entered={entered} proxy={tripProxy} cashbackTotal={tripCashbackTotal} />
+        <SpendHero state={allowance} currency={currencyLabel} entered={entered} proxy={tripProxy} cashbackTotal={tripCashbackTotal} refund={{ total: tripRefunds.total, pending: tripRefunds.pendingTotal }} />
       </div>
 
       <SatisfactionEntryCard trip={trip} currentMemberId={currentMemberId} onOpen={onOpenFlipDeck} />

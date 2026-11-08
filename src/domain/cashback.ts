@@ -67,8 +67,9 @@ export function expenseCashbackForCard(expenses: Expense[], cardId: string): { t
 // 黑卡「实际花费」那一行和展开的算式都用这一个数，不再各算各的。
 // proxyTotal 是代购的人「要还的数」（0050：优惠不分给他时按原价还，可能比成本多），
 // 所以结果可以是负数——这趟代购多收的钱比自己花的还多，照实显示
-export function actualSpend(total: number, proxyTotal: number, cashbackTotal: number): number {
-  return round2(total - proxyTotal - cashbackTotal)
+// 退税（2026-11-08）：再扣一项，含还没到账的估算
+export function actualSpend(total: number, proxyTotal: number, cashbackTotal: number, refundTotal = 0): number {
+  return round2(total - proxyTotal - cashbackTotal - refundTotal)
 }
 
 export async function listTripCashbacks(tripId: string): Promise<CardCashback[]> {

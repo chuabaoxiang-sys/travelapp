@@ -40,6 +40,7 @@ export function SpendHero({
   entered = true,
   proxy,
   cashbackTotal = 0,
+  refund,
 }: {
   state: AllowanceState
   currency: string
@@ -54,13 +55,16 @@ export function SpendHero({
   // 「实际花费」= 已花 − 代购 − 返现，点开看算式（两样都没有时这一行不出现）
   proxy?: { total: number; unpaid: number }
   cashbackTotal?: number
+  // 退税（2026-11-08）：合计（含还没到账的估算）和其中估算的部分
+  refund?: { total: number; pending: number }
 }) {
   const { t } = useTranslation()
   const money = (n: number) => formatMoney(n, currency)
   const [formulaOpen, setFormulaOpen] = useState(false)
   const proxyTotal = proxy?.total ?? 0
-  const showFormula = proxyTotal > 0 || cashbackTotal > 0
-  const actual = actualSpend(state.total, proxyTotal, cashbackTotal)
+  const refundTotal = refund?.total ?? 0
+  const showFormula = proxyTotal > 0 || cashbackTotal > 0 || refundTotal > 0
+  const actual = actualSpend(state.total, proxyTotal, cashbackTotal, refundTotal)
 
   let label: string
   let sub: string
@@ -180,6 +184,15 @@ export function SpendHero({
                 <div className="flex justify-between text-plan-on-dark">
                   <span>− {t('spendHero.formula.cashback')}</span>
                   <span>{money(cashbackTotal)}</span>
+                </div>
+              )}
+              {refundTotal > 0 && (
+                <div className="flex justify-between items-baseline gap-2 text-plan-on-dark">
+                  <span>
+                    − {t('spendHero.formula.refund')}
+                    {(refund?.pending ?? 0) > 0 && <span className="text-on-dark/50">{t('spendHero.formula.refundPending', { amount: money(refund!.pending) })}</span>}
+                  </span>
+                  <span>{money(refundTotal)}</span>
                 </div>
               )}
               <div className="flex justify-between border-t border-on-dark/12 pt-1.5 mt-px font-bold text-on-dark text-[13px]">

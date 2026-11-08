@@ -26,7 +26,7 @@ const { SYNC_CONFIG } = await import('./syncMapping')
 // 测试里没特别配置的表一律当成"远端没有变化"处理
 const ALL_TABLES = [
   'trips', 'members', 'tripMembers', 'itineraryDays', 'itineraryItems', 'daySatisfactions',
-  'rateBookEntries', 'paymentCards', 'expenses', 'cardCashbacks', 'expenseSplits', 'expenseSatisfactions', 'expenseLineItems',
+  'rateBookEntries', 'paymentCards', 'expenses', 'cardCashbacks', 'taxRefunds', 'expenseSplits', 'expenseSatisfactions', 'expenseLineItems',
   'expenseLineItemMembers', 'expenseDayAllocations', 'expenseRateAllocations', 'budgets',
   'settlements', 'feedback', 'wishlistPlaces', 'wishlistPlaceLinks',
 ] as const

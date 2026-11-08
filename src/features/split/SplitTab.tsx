@@ -15,6 +15,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { CenteredModal } from '../../components/CenteredModal'
 import { SuccessToast } from '../../components/SuccessToast'
 import { ProxyCard } from './ProxyCard'
+import { RefundCard } from './RefundCard'
 import type { Trip, Settlement, Member } from '../../types'
 
 function debtKey(d: OpenExpenseDebt) {
@@ -532,6 +533,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
       </div>
 
       <ProxyCard trip={trip} members={members} />
+      <RefundCard trip={trip} members={members} currentMemberId={currentMemberId} />
 
       {(openDebts.length > 0 || prepayBalances.length > 0 || closedDebts.length > 0) && (
         <div className="bg-card border border-line rounded-2xl p-4 mb-4">
@@ -786,6 +788,8 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                     t('split.balances.share', { amount: formatMoney(b.owed) }),
                     b.settledOut > 0 ? t('split.balances.repaid', { amount: formatMoney(b.settledOut) }) : null,
                     b.settledIn > 0 ? t('split.balances.received', { amount: formatMoney(b.settledIn) }) : null,
+                    (b.refundShare ?? 0) > 0 ? t('split.balances.refund', { amount: formatMoney(b.refundShare!) }) : null,
+                    (b.refundHeld ?? 0) > 0 ? t('split.balances.refundHeld', { amount: formatMoney(b.refundHeld!) }) : null,
                   ].filter(Boolean).join(' · ')}
                 </div>
               </div>
