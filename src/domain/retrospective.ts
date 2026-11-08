@@ -8,7 +8,9 @@ import { listTripRefunds, refundSummary } from './taxRefunds'
 import { proxySummary, toProxyItems } from './proxies'
 import { CATEGORY_COLORS } from '../lib/categoryColors'
 import { categoryLabel } from '../lib/categoryLabel'
-import { daysInclusive } from '../lib/dates'
+import { daysInclusive, toLocalDateString } from '../lib/dates'
+import { spentOnDate } from './dayAllocations'
+import type { Expense, ExpenseDayAllocation } from '../types'
 import { dayMoodCurve, expenseSatisfactionStat, type DayMoodPoint, type ExpenseSatisfactionStat } from './satisfaction'
 
 // 旅程回顾——把这趟行程收尾时值得看一眼的东西凑成一页。
@@ -70,17 +72,41 @@ function round2(n: number) {
   return Math.round(n * 100) / 100
 }
 
+export function topSpendDay(
+  expenses: Expense[],
+  allocations: ExpenseDayAllocation[],
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+  fallback: { date: string; total: number }[],
+): { date: string; total: number } | null {
+  if (!startDate || !endDate || endDate < startDate) {
+    return fallback.length ? fallback.reduce((best, d) => (d.total > best.total ? d : best)) : null
+  }
+  let best: { date: string; total: number } | null = null
+  const cur = new Date(`${startDate}T00:00:00`)
+  const end = new Date(`${endDate}T00:00:00`)
+  while (cur <= end) {
+    const date = toLocalDateString(cur)
+    const total = spentOnDate(expenses, allocations, date)
+    if (total > 0 && (!best || total > best.total)) best = { date, total }
+    cur.setDate(cur.getDate() + 1)
+  }
+  return best
+}
+
 export async function buildRetrospective(tripId: string, todayISO: string, t: TFunction, currentMemberId: string): Promise<TripRetrospective> {
   const bundle = await assembleExportBundle(tripId, t)
   const { trip, daySummary, categorySummary, personSummary } = bundle
 
-  const [itemsRaw, allCategories, tripExpensesRaw, tripCashbacks, tripRefunds] = await Promise.all([
+  const [itemsRaw, allCategories, tripExpensesRaw, tripCashbacks, tripRefunds, allocationsRaw] = await Promise.all([
     db.itineraryItems.where('tripId').equals(tripId).toArray(),
     db.expenseCategories.toArray(),
     db.expenses.where('tripId').equals(tripId).toArray(),
     db.cardCashbacks.where('tripId').equals(tripId).toArray(),
     listTripRefunds(tripId),
+    db.expenseDayAllocations.where('tripId').equals(tripId).toArray(),
   ])
+  const tripAllocations = allocationsRaw.filter((a) => !a.deletedAt)
   const items = itemsRaw.filter((i) => !i.deletedAt)
   const tripExpenses = tripExpensesRaw.filter((e) => !e.deletedAt)
   const tripSplits = tripExpenses.length
@@ -112,9 +138,10 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
   // 只算真正参与了这趟行程账目的人，不是团队里所有成员——家里可能有人这次没去
   const memberCount = personSummary.filter((p) => p.paid > 0 || p.owed > 0).length
 
-  const topDay = daySummary.length
-    ? daySummary.reduce((best, d) => (d.total > best.total ? d : best))
-    : null
+  // 最贵的一天（2026-11-08）：跨天的账按天分摊（跟账目列表的「当日」同一套），
+  // 而且只在行程日期内选——出发前订机票、订酒店的那天不算"旅途中花得最多的一天"。
+  // 行程没设日期时退回旧算法（按记账日期整笔算）
+  const topDay = topSpendDay(tripExpenses, tripAllocations, trip.startDate, trip.endDate, daySummary)
 
   // 还有几笔没结：跟分账页用的是同一套算法，不另起一套，免得两处数字对不上
   const transfers = simplifyDebts(await computeBalances(tripId))

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins } from 'lucide-react'
+import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins, CalendarRange } from 'lucide-react'
 import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { listTripRefunds, refundSummary } from '../../domain/taxRefunds'
 import { LedgerFilterSheet } from './LedgerFilterSheet'
@@ -224,6 +224,37 @@ export function LedgerTab({
     if (lastGroup && lastGroup.date === e.expenseDate) lastGroup.items.push(e)
     else expensesByDay.push({ date: e.expenseDate, items: [e] })
   }
+
+  // 跨天的账（2026-11-08）：每天的「当日」只算它分到这天的那份，跟黑卡「今天花了」同一套；
+  // 账目本身还是放在记账那天、显示整笔。别天记的账分到这天的，在日期下面写「含跨天」
+  // （那天没记别的账也照样列出日期）。「我的」里每份再按我的份额比例缩
+  const allocsByExpense = new Map<string, typeof dayAllocations>()
+  for (const a of dayAllocations) {
+    const arr = allocsByExpense.get(a.expenseId) ?? []
+    arr.push(a)
+    allocsByExpense.set(a.expenseId, arr)
+  }
+  const isSpread = (e: Expense) => !!e.daySpreadMode && (allocsByExpense.get(e.id)?.length ?? 0) > 0
+  const allocOn = (e: Expense, date: string) => allocsByExpense.get(e.id)?.find((a) => a.date === date)?.amount ?? 0
+  const viewRatio = (e: Expense) => (view === 'mine' ? (e.homeAmount > 0 ? (myShareOf(e.id, splits, currentMemberId, e) ?? 0) / e.homeAmount : 0) : 1)
+  const crossByDate = new Map<string, { expense: Expense; amount: number }[]>()
+  for (const e of filteredExpenses) {
+    if (!isSpread(e)) continue
+    const ratio = viewRatio(e)
+    if (ratio <= 0) continue
+    for (const a of allocsByExpense.get(e.id) ?? []) {
+      if (a.date === e.expenseDate) continue
+      const arr = crossByDate.get(a.date) ?? []
+      arr.push({ expense: e, amount: round2(a.amount * ratio) })
+      crossByDate.set(a.date, arr)
+    }
+  }
+  for (const date of crossByDate.keys()) {
+    if (!expensesByDay.some((g) => g.date === date)) expensesByDay.push({ date, items: [] })
+  }
+  expensesByDay.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  // 这一笔在某天算多少：跨天的只算分到这天的那份
+  const amountOnDay = (e: Expense, date: string) => (isSpread(e) ? round2(allocOn(e, date) * viewRatio(e)) : amountForView(e))
 
   function categoryOf(id: string) {
     return categories.find((c) => c.id === id)
@@ -523,7 +554,8 @@ export function LedgerTab({
 
       <div className="flex flex-col gap-2">
         {expensesByDay.map(({ date, items }) => {
-          const daySubtotal = round2(items.reduce((a, e) => a + amountForView(e), 0))
+          const cross = crossByDate.get(date) ?? []
+          const daySubtotal = round2(items.reduce((a, e) => a + amountOnDay(e, date), 0) + cross.reduce((a, c) => a + c.amount, 0))
           return (
             <div
               key={date}
@@ -543,6 +575,24 @@ export function LedgerTab({
                   <span className="text-[11px] text-muted tabular">{t('ledger.dayTotalLabel')} {formatMoney(daySubtotal, currencyLabel)}</span>
                 )}
               </div>
+              {cross.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] -mt-1">
+                  <CalendarRange className="w-3 h-3 text-muted flex-shrink-0" strokeWidth={2} />
+                  <span className="text-muted">{t('ledger.crossDayLabel')}</span>
+                  {cross.map((c, i) => (
+                    <span key={c.expense.id} className="inline-flex items-center gap-1.5">
+                      {i > 0 && <span className="text-muted">·</span>}
+                      <button
+                        type="button"
+                        onClick={() => scrollToDate(c.expense.expenseDate)}
+                        className="text-plan underline decoration-dotted underline-offset-[3px] tabular text-left"
+                      >
+                        {(c.expense.description || categoryLabel(categoryOf(c.expense.categoryId), t))} {formatMoney(c.amount, currencyLabel)}
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               {items.map((e) => {
                 const cat = categoryOf(e.categoryId)
                 const payer = memberOf(e.paidBy)
@@ -583,6 +633,14 @@ export function LedgerTab({
                           <span className="inline-flex items-center gap-[3px] text-[10.5px] px-[7px] py-px rounded-full bg-positive/10 text-positive flex-shrink-0 tabular">
                             <Tag className="w-[11px] h-[11px]" strokeWidth={2} />
                             {t('ledger.discountTag', { amount: discountLabel(e.expenseCurrency, e.discountAmount ?? 0) })}
+                          </span>
+                        )}
+                        {isSpread(e) && (
+                          <span className="inline-flex items-center gap-[3px] text-[10.5px] px-[7px] py-px rounded-full bg-plan/[.08] text-plan flex-shrink-0 tabular">
+                            <CalendarRange className="w-[11px] h-[11px]" strokeWidth={2} />
+                            {allocOn(e, e.expenseDate) > 0
+                              ? t('ledger.spreadTag', { days: allocsByExpense.get(e.id)!.length, amount: formatMoney(allocOn(e, e.expenseDate), currencyLabel) })
+                              : t('ledger.spreadTagNoToday', { days: allocsByExpense.get(e.id)!.length })}
                           </span>
                         )}
                         {(e.cashbackAmount ?? 0) > 0 && (
