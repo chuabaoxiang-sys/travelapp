@@ -5,6 +5,7 @@ import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { heroRawValue, type AllowanceState } from '../../domain/dailyAllowance'
 import { actualSpend } from '../../domain/cashback'
+import { EstimatePill } from '../../components/EstimatePill'
 
 // 记账页顶部那张深色大卡（--color-surface-strong，不管App本身是浅色还是深色
 // 模式都保持深色，是专门配出来的"深色装饰面"，不是跟随模式变化的背景）——
@@ -41,6 +42,7 @@ export function SpendHero({
   proxy,
   cashbackTotal = 0,
   refund,
+  estimated = false,
 }: {
   state: AllowanceState
   currency: string
@@ -57,6 +59,8 @@ export function SpendHero({
   cashbackTotal?: number
   // 退税（2026-11-08）：合计（含还没到账的估算）和其中估算的部分
   refund?: { total: number; pending: number }
+  // 含估算（2026-11-08）：这趟还有刷卡没补实际扣款
+  estimated?: boolean
 }) {
   const { t } = useTranslation()
   const money = (n: number) => formatMoney(n, currency)
@@ -125,8 +129,11 @@ export function SpendHero({
   return (
     <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
       <div className="text-[11px] tracking-wider text-on-dark/55">{label}</div>
-      <div className={`font-bold tracking-tight tabular leading-none mt-1.5 ${big ? 'text-[32px] text-spend' : 'text-[27px]'}`}>
-        {value}
+      <div className="flex items-baseline gap-2 mt-1.5">
+        <div className={`font-bold tracking-tight tabular leading-none ${big ? 'text-[32px] text-spend' : 'text-[27px]'}`}>
+          {value}
+        </div>
+        {estimated && <EstimatePill tone="dark" />}
       </div>
       <div className="mt-2 text-[11px] text-on-dark/50">{sub}</div>
       {tripRemaining !== null && (
@@ -158,6 +165,7 @@ export function SpendHero({
               <>
                 <span>{t('spendHero.formula.actual')}</span>
                 <span className="font-semibold text-on-dark tabular">{money(actual)}</span>
+                {estimated && <span className="text-[10px] text-on-dark/50">{t('estimate.pill')}</span>}
               </>
             )}
             <span className="flex-1" />

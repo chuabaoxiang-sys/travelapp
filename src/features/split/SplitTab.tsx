@@ -16,6 +16,8 @@ import { CenteredModal } from '../../components/CenteredModal'
 import { SuccessToast } from '../../components/SuccessToast'
 import { ProxyCard } from './ProxyCard'
 import { RefundCard } from './RefundCard'
+import { isPendingCardExpense } from '../../domain/cardCharges'
+import { EstimatePill } from '../../components/EstimatePill'
 import type { Trip, Settlement, Member } from '../../types'
 
 function debtKey(d: OpenExpenseDebt) {
@@ -320,6 +322,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         settledCount: settlements.length,
         nameOf,
         appHost: window.location.host,
+        pendingEstimateCount: expenses.filter(isPendingCardExpense).length,
       },
       t,
     )
@@ -451,7 +454,13 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
           {transfers.length > 0
             ? t('split.suggestion.headingWithCount', { count: transfers.length })
             : t('split.suggestion.heading')}
+          {transfers.length > 0 && expenses.some(isPendingCardExpense) && <> <EstimatePill tone="light" /></>}
         </div>
+        {transfers.length > 0 && expenses.some(isPendingCardExpense) && (
+          <div className="text-[11px] text-spend-text leading-relaxed mb-3 -mt-1.5 text-center">
+            {t('split.suggestion.estimateNote', { count: expenses.filter(isPendingCardExpense).length })}
+          </div>
+        )}
         {transfers.length > 0 ? (
           <div className="flex flex-col gap-3">
             {/* 循环变量刻意叫transfer不叫t——这个组件里t是翻译函数，用t当map参数

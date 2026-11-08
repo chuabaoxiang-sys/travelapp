@@ -7,6 +7,7 @@ import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { useStaggerEntrance } from '../../hooks/useStaggerEntrance'
 import { MoodCurveCard } from '../satisfaction/MoodCurveCard'
+import { EstimatePill } from '../../components/EstimatePill'
 
 // 旅程回顾的内容本体，不含任何"这是一个可关闭弹层"的外壳——这一段现在是
 // 「概览」tab"回家后"形态的正文，跟别的tab内容一样常驻显示，不是弹出来再关掉的东西。
@@ -76,7 +77,10 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
         <div className="text-[11px] tracking-wider text-on-dark/55">
           {data.proxyTotal > 0 || data.cashbackTotal > 0 || data.refundTotal > 0 ? t('retrospective.heroLabelActual', { name: trip.name }) : trip.name}
         </div>
-        <div className="font-bold tracking-tight tabular text-[32px] leading-none mt-1.5">{money(animatedTotal)}</div>
+        <div className="flex items-baseline gap-2 mt-1.5">
+          <div className="font-bold tracking-tight tabular text-[32px] leading-none">{money(animatedTotal)}</div>
+          {data.estimateCount > 0 && <EstimatePill tone="dark" />}
+        </div>
         <div className="mt-2.5 text-[11px] text-on-dark/50 leading-relaxed">
           {[
             data.dayCount > 0 ? t('retrospective.summaryDays', { count: data.dayCount }) : null,

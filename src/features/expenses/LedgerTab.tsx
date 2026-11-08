@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins, CalendarRange } from 'lucide-react'
 import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { listTripRefunds, refundSummary } from '../../domain/taxRefunds'
+import { EstimatePill } from '../../components/EstimatePill'
 import { LedgerFilterSheet } from './LedgerFilterSheet'
 import { EMPTY_LEDGER_FILTER, PAY_CASH, PAY_PENDING, filterCount, isFilterActive, matchesLedgerFilter, type LedgerFilter } from '../../domain/ledgerFilter'
 import { db } from '../../db/dexie'
@@ -164,6 +165,9 @@ export function LedgerTab({
   const tripRefunds = refundSummary(useLiveQuery(() => listTripRefunds(trip.id), [trip.id]) ?? [])
   const myRefund = tripRefunds.shareByMember.get(currentMemberId) ?? 0
   const myHeroValue = round2(myOwed - myCashback - myProxyGain - myRefund)
+  // 含估算（2026-11-08）：还有刷卡没补实际扣款；「我的」只看跟我有关的那几笔
+  const tripHasEstimate = expenses.some(isPendingCardExpense)
+  const myHasEstimate = expenses.some((e) => isPendingCardExpense(e) && (e.paidBy === currentMemberId || (myShareOf(e.id, splits, currentMemberId, e) ?? 0) > 0))
   const currencyLabel = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
 
   // 用 spentOnDate（按 expenseDate 归日）而不是行程页那个 spendByDate（按
@@ -373,7 +377,7 @@ export function LedgerTab({
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
         <div key="team" className="card-swap flex flex-col gap-3.5">
-          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} cashbackTotal={cashback.total} refund={{ total: tripRefunds.total, pending: tripRefunds.pendingTotal }} />
+          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} cashbackTotal={cashback.total} refund={{ total: tripRefunds.total, pending: tripRefunds.pendingTotal }} estimated={tripHasEstimate} />
           {hasEnoughForBreakdown && (
             <SpendBreakdownCard
               expenses={expenses}
@@ -416,7 +420,10 @@ export function LedgerTab({
         <div key="mine" className="card-swap flex flex-col gap-3.5">
         <div className="bg-surface-strong rounded-[20px] px-[18px] pt-[18px] pb-4 text-on-dark">
           <div className="text-[11px] tracking-wider text-on-dark/55">{t('ledger.mineHero.label')}</div>
-          <div className="font-bold tracking-tight tabular text-[27px] leading-none mt-1.5">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
+          <div className="flex items-baseline gap-2 mt-1.5">
+            <div className="font-bold tracking-tight tabular text-[27px] leading-none">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
+            {myHasEstimate && <EstimatePill tone="dark" />}
+          </div>
           {myCashback > 0 || myProxyGain !== 0 || myRefund > 0 ? (
             // 有归我的返现 / 代购多收时，这一行直接写成算式：应分摊 − Cashback − 代购多收（2026-11-07 口径统一）
             <div className="mt-2 text-[11px] text-on-dark/75 tabular">
@@ -556,6 +563,7 @@ export function LedgerTab({
         {expensesByDay.map(({ date, items }) => {
           const cross = crossByDate.get(date) ?? []
           const daySubtotal = round2(items.reduce((a, e) => a + amountOnDay(e, date), 0) + cross.reduce((a, c) => a + c.amount, 0))
+          const dayEstimated = items.some(isPendingCardExpense) || cross.some((c) => isPendingCardExpense(c.expense))
           return (
             <div
               key={date}
@@ -570,9 +578,13 @@ export function LedgerTab({
                 {view === 'mine' ? (
                   <span className="text-[11px] text-muted tabular">
                     {t('ledger.dayTotalMineLabel')} <span className="text-ink font-semibold">{formatMoney(daySubtotal, currencyLabel)}</span>
+                    {dayEstimated && <> <EstimatePill tone="light" /></>}
                   </span>
                 ) : (
-                  <span className="text-[11px] text-muted tabular">{t('ledger.dayTotalLabel')} {formatMoney(daySubtotal, currencyLabel)}</span>
+                  <span className="text-[11px] text-muted tabular">
+                    {t('ledger.dayTotalLabel')} {formatMoney(daySubtotal, currencyLabel)}
+                    {dayEstimated && <> <EstimatePill tone="light" /></>}
+                  </span>
                 )}
               </div>
               {cross.length > 0 && (

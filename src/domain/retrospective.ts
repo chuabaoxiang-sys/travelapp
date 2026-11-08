@@ -10,6 +10,7 @@ import { CATEGORY_COLORS } from '../lib/categoryColors'
 import { categoryLabel } from '../lib/categoryLabel'
 import { daysInclusive, toLocalDateString } from '../lib/dates'
 import { spentOnDate } from './dayAllocations'
+import { isPendingCardExpense } from './cardCharges'
 import type { Expense, ExpenseDayAllocation } from '../types'
 import { dayMoodCurve, expenseSatisfactionStat, type DayMoodPoint, type ExpenseSatisfactionStat } from './satisfaction'
 
@@ -64,6 +65,8 @@ export interface TripRetrospective {
   // 退税（2026-11-08）：合计（本位币，含还没到账的估算）和其中估算的部分
   refundTotal: number
   refundPending: number
+  // 含估算（2026-11-08）：还有几笔刷卡没补实际扣款
+  estimateCount: number
   // 实际花费 = total − 代购 − 返现 − 退税（跟黑卡算式同一个函数）；主卡大数字和人均都用它
   actual: number
 }
@@ -177,6 +180,7 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
     cashbackTotal,
     proxyTotal,
     refundTotal: refunds.total,
+    estimateCount: tripExpenses.filter(isPendingCardExpense).length,
     refundPending: refunds.pendingTotal,
     actual,
   }

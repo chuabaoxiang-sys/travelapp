@@ -127,4 +127,10 @@ describe('buildSettlementText', () => {
     }), i18n.t)
     expect(text).toContain('ghost 应分摊 RM0\n  垫付 RM0 · 分到退税 RM10 → 应收回 RM10')
   })
+  it('还有刷卡没补实际扣款：转账列表下面注明金额是估算', async () => {
+    await i18n.changeLanguage('zh')
+    const text = buildSettlementText(input({ pendingEstimateCount: 1 }), i18n.t)
+    expect(text).toContain('共 2 笔，已是最少转账次数。\n（其中有 1 笔刷卡还没补实际扣款，金额是估算，补完后可能会变）')
+    expect(buildSettlementText(input(), i18n.t)).not.toContain('估算')
+  })
 })

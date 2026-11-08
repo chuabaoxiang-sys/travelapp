@@ -14,6 +14,7 @@ export interface SettlementTextInput {
   settledCount: number
   nameOf: (memberId: string) => string
   appHost: string
+  pendingEstimateCount?: number // 还有几笔刷卡没补实际扣款（2026-11-08 含估算）
 }
 
 // 一键复制到群里的结算文案。"旅伴花费"=大家应分摊的合计（已花 − 代购），每人一行
@@ -41,6 +42,7 @@ export function buildSettlementText(input: SettlementTextInput, t: TFunction): s
       lines.push(t('split.copyText.transferLine', { from: nameOf(tr.from), to: nameOf(tr.to), amount: money(tr.amount) }))
     }
     lines.push(t('split.copyText.transfersFooter', { count: transfers.length }))
+    if ((input.pendingEstimateCount ?? 0) > 0) lines.push(t('split.copyText.estimateNote', { count: input.pendingEstimateCount }))
     if (settledCount > 0) lines.push(t('split.copyText.alreadySettled', { count: settledCount }))
   } else {
     lines.push(t('split.copyText.allSettled'))
