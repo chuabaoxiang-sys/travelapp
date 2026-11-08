@@ -118,13 +118,17 @@ export interface CardTripUsage {
 // 汇率簿里每张卡下面那行"这趟刷了 N 笔 · 平均 x"
 export async function cardUsageForTrip(tripId: string): Promise<Map<string, CardTripUsage>> {
   const expenses = (await db.expenses.where('tripId').equals(tripId).toArray()).filter((e) => !e.deletedAt && isCardExpense(e))
+  const homeCurrency = (await db.trips.get(tripId))?.homeCurrency
   const acc = new Map<string, { count: number; home: number; foreign: number; currencies: Set<string> }>()
   for (const e of expenses) {
     const a = acc.get(e.paymentCardId!) ?? { count: 0, home: 0, foreign: 0, currencies: new Set<string>() }
     a.count += 1
-    a.home += e.homeAmount
-    a.foreign += e.expenseAmount
-    a.currencies.add(e.expenseCurrency)
+    // 平均汇率只看外币那几笔——马币刷卡（2026-11-08）不算进去
+    if (e.expenseCurrency !== homeCurrency) {
+      a.home += e.homeAmount
+      a.foreign += e.expenseAmount
+      a.currencies.add(e.expenseCurrency)
+    }
     acc.set(e.paymentCardId!, a)
   }
   const out = new Map<string, CardTripUsage>()

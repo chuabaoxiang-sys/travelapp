@@ -23,6 +23,7 @@ export function CardPaymentPanel({
   onCashbackChange,
   cashbackOwnerName,
   cardLevelCashback,
+  homeCurrencyOnly = false,
 }: {
   cards: PaymentCard[]
   selectedId: string | null
@@ -45,6 +46,8 @@ export function CardPaymentPanel({
   // 这张卡这趟已经在「卡 › 这趟返现」记过的整张卡返现（已格式化的金额）；有的话在「这笔返现」
   // 下面提醒别再填一次，免得同一笔返现算两次（2026-11-08，跟返现页那条反方向的提醒配对）
   cardLevelCashback?: string
+  // 本位币（马币）账刷卡（2026-11-08）：没有「实际扣了多少」和汇率，只挑卡、填这笔返现
+  homeCurrencyOnly?: boolean
 }) {
   const { t } = useTranslation()
   const [creating, setCreating] = useState(false)
@@ -107,6 +110,7 @@ export function CardPaymentPanel({
 
       {selectedId && (
         <>
+          {!homeCurrencyOnly && (<>
           <label className="mt-2.5 flex items-center gap-2 rounded-lg border border-line bg-paper px-2.5 py-1.5 focus-within:border-plan">
             <span className="text-[12px] text-soft whitespace-nowrap">{t('card.chargedLabel', { prefix: homePrefix })}{paidHint ? <span className="text-muted"> · {paidHint}</span> : null}</span>
             <input
@@ -128,6 +132,7 @@ export function CardPaymentPanel({
               <span>{t('card.estimateHint', { rate: formatCardRate(estimateRate), prefix: homePrefix, amount: estimateHome.toFixed(2) })}</span>
             </div>
           ) : null}
+          </>)}
           {onCashbackChange && (
             <>
               <label className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-card px-2.5 py-1.5 focus-within:border-positive">

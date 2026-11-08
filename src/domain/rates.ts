@@ -154,10 +154,11 @@ export interface TripBlendedRate {
 // 本位币 / 外币），按它自己的 homeAmount 算进来。还没补真实扣款的那几笔先按估算的
 // homeAmount 算，estimatedCount 让界面能说一声"其中几笔是估的"
 export async function tripBlendedRates(tripId: string): Promise<TripBlendedRate[]> {
-  const [entries, usage, expensesRaw] = await Promise.all([
+  const [entries, usage, expensesRaw, trip] = await Promise.all([
     getAllRateBookEntries(tripId),
     usageByEntry(tripId),
     db.expenses.where('tripId').equals(tripId).toArray(),
+    db.trips.get(tripId),
   ])
   const cashBy = new Map<string, { weightedSum: number; totalForeign: number }>()
   for (const e of entries) {
@@ -171,6 +172,8 @@ export async function tripBlendedRates(tripId: string): Promise<TripBlendedRate[
   const cardBy = new Map<string, { home: number; foreign: number; count: number; estimated: number }>()
   for (const e of expensesRaw) {
     if (e.deletedAt || !isCardExpense(e) || !(e.expenseAmount > 0)) continue
+    // 马币刷卡（2026-11-08）没有换汇这回事，不进「换汇划不划算」
+    if (trip && e.expenseCurrency === trip.homeCurrency) continue
     const acc = cardBy.get(e.expenseCurrency) ?? { home: 0, foreign: 0, count: 0, estimated: 0 }
     acc.home += e.homeAmount
     acc.foreign += e.expenseAmount

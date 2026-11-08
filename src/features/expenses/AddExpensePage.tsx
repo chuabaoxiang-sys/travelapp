@@ -336,12 +336,14 @@ export function AddExpensePage({
   // 编辑已有账目、且还没碰过汇率选择时，先用当初快照的 rateUsed 顶着，不强行要求重新选一次；
   // 一旦用户点了别的chip或改了新汇率，rateSelection 就会有值，改用那个
   // 刷卡：填了实际扣款就用它（汇率=扣款/外币金额）；没填就按估算汇率先记
-  const payingByCard = isForeign && payMethod === 'card'
-  const numCharged = parseFloat(cardCharged) || 0
+  // 马币（本位币）账也能选刷卡（2026-11-08）：只为了记是哪张卡、填「这笔返现」，
+  // 不用填实际扣款（本位币金额就是扣款），也就没有估算/待补
+  const payingByCard = payMethod === 'card'
+  const numCharged = isForeign ? parseFloat(cardCharged) || 0 : 0
   // 估算汇率找不到时（这张卡和这趟都还没有可参考的汇率），编辑一笔原本就是
   // 待补的刷卡开销，至少还能沿用它当初记下的估算
   const cardEstimateRate = cardEstimate ?? (initialIsCard && initial!.cardChargePending && initial!.paymentCardId === cardId ? initial!.rateUsed : null)
-  const cardPending = payingByCard && !(numCharged > 0)
+  const cardPending = payingByCard && isForeign && !(numCharged > 0)
   // 编辑一笔刷卡开销、切回「现金」时，不能拿刷卡那一笔的汇率冒充现金汇率，要重新选
   const numRate = !isForeign
     ? 1
@@ -353,7 +355,7 @@ export function AddExpensePage({
   const homeAmount = payingByCard
     ? numCharged > 0 ? round2(numCharged) : round2(numAmount * numRate)
     : rateSelection.mode === 'split' ? splitHomeTotal : round2(numAmount * numRate)
-  const rateReady = !isForeign || (payingByCard ? !!cardId && numRate > 0 : numRate > 0)
+  const rateReady = !isForeign ? !payingByCard || !!cardId : (payingByCard ? !!cardId && numRate > 0 : numRate > 0)
   // 拆分模式下，各批填的外币总额必须刚好等于这笔开销的外币总额才能保存——
   // 跟"怎么分"/"花在几天"那两处的实时校验是同一套规矩
   const rateSplitValid = payingByCard || rateSelection.mode !== 'split' || Math.abs(numAmount - splitTotalForeign) < 0.01
@@ -943,10 +945,11 @@ export function AddExpensePage({
         </div>
         {showProblems && !numAmount && <ProblemLine text={t(discountTooBig ? 'addExpense.discountTooBig' : 'addExpense.needAmount')} />}
 
-        {isForeign && (
+        {/* 马币账也有「现金 / 刷卡」（2026-11-08）：刷卡只挑卡 + 填这笔返现 */}
+        {(
           <div ref={rateRef} className={`mt-2 ${settled ? 'pointer-events-none opacity-60' : ''}`}>
             <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1">
-              {t('addExpense.chooseRate', { from: currency, to: trip.homeCurrency })}
+              {isForeign ? t('addExpense.chooseRate', { from: currency, to: trip.homeCurrency }) : t('addExpense.payWith')}
             </div>
             <div className="flex bg-segment rounded-full p-[3px] gap-0.5 mb-2">
               {(['cash', 'card'] as const).map((m) => {
@@ -983,12 +986,14 @@ export function AddExpensePage({
                   onCashbackChange={setCardCashback}
                   cashbackOwnerName={payerName}
                   cardLevelCashback={cardLevelCashback > 0 ? formatMoney(cardLevelCashback, homeLabel) : undefined}
+                  homeCurrencyOnly={!isForeign}
                   paidHint={numDiscount > 0 && numAmount > 0 ? `${t('addExpense.paidLabel')} ${currency} ${numAmount.toLocaleString()}` : undefined}
                 />
                 {showProblems && !cardId && <ProblemLine text={t('card.needCard')} />}
                 {showProblems && !!cardId && numRate <= 0 && <ProblemLine text={t('card.needCharged')} />}
               </>
             ) : (
+              isForeign ? (
               <>
                 <RateChipRow
                   tripId={trip.id}
@@ -1008,6 +1013,7 @@ export function AddExpensePage({
                   )
                 )}
               </>
+              ) : null
             )}
           </div>
         )}
