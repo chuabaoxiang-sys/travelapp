@@ -159,7 +159,7 @@ describe('代购遇到优惠（0050）', () => {
 describe('proxyGainBreakdown', () => {
   const mk = (id: string, expenseId: string, date: string, name: string, receivable: number, cost: number, creditorId = 'bx') => ({
     splitId: id, name, expenseId, expenseDate: date, description: expenseId, currency: 'JPY', amount: 1000,
-    shareAmount: receivable, costAmount: cost, creditorId, repaidAt: null, repaidAmount: null, giftMemberIds: null, received: receivable,
+    shareAmount: receivable, costAmount: cost, creditorId, repaidAt: null, repaidAmount: null, giftMemberIds: null, received: receivable, partialGiftAmount: 0, partialGiftMemberIds: null,
   })
   it('按账目分组、按日期排，只列多收 > 0、只列这个付款人的', () => {
     const groups = proxyGainBreakdown([
@@ -242,5 +242,55 @@ describe('代购结算选项（0052，真实走 Dexie）', () => {
     expect(debts.find((d) => d.debtorId === 'kn')!.totalShare).toBe(round2(75.1 + mama.shareAmount / 2))
     await setProxyGift([mama.id], null)
     expect((await computeBalances('t1')).find((b) => b.memberId === 'kn')!.owed).toBe(kn0.owed)
+  })
+  it('部分送礼（2026-11-08）：妈妈只还了 RM100，差额选「送的」由 BX、KN 平分，进结算；照样算已还', async () => {
+    await seed()
+    const [mama] = (await db.expenseSplits.toArray()).filter((s) => s.proxyName === '妈妈')
+    const owed = mama.shareAmount // 没优惠，该还 = 成本
+    const before = await computeBalances('t1')
+    await setProxyRepaid([mama.id], 1, 100, ['bx', 'kn'])
+    const row = (await db.expenseSplits.get(mama.id))!
+    expect(row).toMatchObject({ proxyRepaidAmount: 100, proxyGiftMemberIds: ['bx', 'kn'] })
+
+    const gift = round2(owed - 100)
+    const after = await computeBalances('t1')
+    const kn0 = before.find((b) => b.memberId === 'kn')!
+    const kn1 = after.find((b) => b.memberId === 'kn')!
+    const bx0 = before.find((b) => b.memberId === 'bx')!
+    const bx1 = after.find((b) => b.memberId === 'bx')!
+    expect(round2(kn1.owed - kn0.owed)).toBe(round2(gift / 2))
+    expect(round2(bx1.paid - bx0.paid)).toBe(gift)
+    expect(round2(after.reduce((a, b) => a + b.net, 0))).toBe(0)
+
+    const items = toProxyItems(await db.expenses.toArray(), await db.expenseSplits.toArray())
+    const it = items.find((i) => i.name === '妈妈')!
+    expect(it).toMatchObject({ received: 100, partialGiftAmount: gift, partialGiftMemberIds: ['bx', 'kn'], giftMemberIds: null })
+    const groups = groupProxyItems(items)
+    expect(groups.repaid.map((g) => g.name)).toEqual(['妈妈'])
+    expect(groups.gifted).toEqual([])
+    // 付款人这边按"收回 + 送掉"算，跟全额收回一样：没有多收也没有少收
+    expect(proxyGainByMember(items).get('bx') ?? 0).toBe(0)
+    // 黑卡「− 代购」只扣实际收回的
+    expect(proxySummary(items).total).toBe(round2(100 + items.find((i) => i.name === '小王')!.shareAmount))
+
+    const debts = await openExpenseDebts('t1')
+    expect(debts.find((d) => d.debtorId === 'kn')!.totalShare).toBe(round2(75.1 + gift / 2))
+
+    // 撤销已还：送的部分一起撤销
+    await setProxyRepaid([mama.id], null)
+    expect((await db.expenseSplits.get(mama.id))!).toMatchObject({ proxyRepaidAmount: null, proxyGiftMemberIds: null })
+    expect((await computeBalances('t1')).find((b) => b.memberId === 'kn')!.owed).toBe(kn0.owed)
+  })
+
+  it('少收但选「少还」（不传一起送的人）：跟以前一样只算付款人的', async () => {
+    await seed()
+    const [mama] = (await db.expenseSplits.toArray()).filter((s) => s.proxyName === '妈妈')
+    const before = await computeBalances('t1')
+    await setProxyRepaid([mama.id], 1, 100)
+    expect((await db.expenseSplits.get(mama.id))!.proxyGiftMemberIds).toBeNull()
+    const after = await computeBalances('t1')
+    expect(after.find((b) => b.memberId === 'kn')!.owed).toBe(before.find((b) => b.memberId === 'kn')!.owed)
+    const items = toProxyItems(await db.expenses.toArray(), await db.expenseSplits.toArray())
+    expect(proxyGainByMember(items).get('bx')).toBe(round2(100 - mama.shareAmount))
   })
 })

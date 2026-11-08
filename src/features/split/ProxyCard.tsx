@@ -45,6 +45,9 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
   const [busy, setBusy] = useState(false)
   const [repayFor, setRepayFor] = useState<ProxyGroup | null>(null)
   const [repayInput, setRepayInput] = useState('')
+  // 部分送礼（2026-11-08）：少收时差额是「少还」（收钱的人自己承担）还是「送的」（选人一起出）
+  const [repayShortMode, setRepayShortMode] = useState<'short' | 'gift'>('short')
+  const [repayGiftMembers, setRepayGiftMembers] = useState<string[]>([])
   const [giftFor, setGiftFor] = useState<ProxyGroup | null>(null)
   const [giftMembers, setGiftMembers] = useState<string[]>([])
   const [toast, setToast] = useState<string | null>(null)
@@ -79,6 +82,7 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
       homeCurrency: trip.homeCurrency,
       payerName: nameOf(g.creditorId),
       giftNames: (g.items[0].giftMemberIds ?? []).map(nameOf).join('、'),
+      giftNamesOf: (ids) => ids.map(nameOf).join('、'),
     }, t)
     try {
       await navigator.clipboard.writeText(text)
@@ -158,6 +162,8 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
   }
 
   function openRepay(g: ProxyGroup) {
+    setRepayShortMode('short')
+    setRepayGiftMembers(travelerIds)
     setRepayFor(g)
     setRepayInput(groupOwed(g).toFixed(2))
   }
@@ -236,6 +242,7 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
           <div className="flex flex-col gap-1.5 mt-1.5">
             {repaid.map((g) => {
               const diff = round2(g.total - groupOwed(g))
+              const partialGift = round2(g.items.reduce((s, it) => s + it.partialGiftAmount, 0))
               return (
                 <div key={g.key}>
                 <div className="flex items-center gap-2.5">
@@ -244,7 +251,11 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
                     <span className="block truncate text-[12.5px] text-soft">
                       {t('split.proxy.repaidLine', { name: g.name, date: md(toLocalDateString(new Date(g.repaidAt ?? 0))) })}
                     </span>
-                    {Math.abs(diff) >= 0.005 && (
+                    {partialGift > 0.005 ? (
+                      <span className="block text-[11px] tabular text-plan">
+                        {t('split.proxy.partialGifted', { owed: formatMoney(groupOwed(g)), amount: formatMoney(partialGift), names: (g.items[0].partialGiftMemberIds ?? []).map(nameOf).join('、') })}
+                      </span>
+                    ) : Math.abs(diff) >= 0.005 && (
                       <span className={`block text-[11px] tabular ${diff > 0 ? 'text-positive' : 'text-negative'}`}>
                         {t(diff > 0 ? 'split.proxy.overpaid' : 'split.proxy.underpaid', { owed: formatMoney(groupOwed(g)), amount: formatMoney(Math.abs(diff)) })}
                       </span>
@@ -322,11 +333,60 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
               className="flex-1 min-w-0 bg-transparent text-[20px] font-bold tabular outline-none"
             />
           </label>
+          {Number.isFinite(repayActual) && repayDiff <= -0.005 && (
+            <div>
+              <div className="text-[12px] text-soft mb-1.5">{t('split.proxy.shortHow', { amount: formatMoney(-repayDiff) })}</div>
+              <div className="flex bg-segment rounded-xl p-[3px]">
+                {(['short', 'gift'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setRepayShortMode(m)}
+                    className={`flex-1 py-[7px] px-1 rounded-[10px] text-[12.5px] leading-snug ${repayShortMode === m ? 'bg-surface-strong text-on-dark font-semibold' : 'text-soft'}`}
+                  >
+                    {t(m === 'short' ? 'split.proxy.shortModeShort' : 'split.proxy.shortModeGift')}
+                    <span className={`block text-[10.5px] font-normal ${repayShortMode === m ? 'text-on-dark/70' : 'text-muted'}`}>
+                      {m === 'short' ? t('split.proxy.shortModeShortSub', { name: nameOf(repayFor.creditorId) }) : t('split.proxy.shortModeGiftSub')}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {Number.isFinite(repayActual) && repayDiff <= -0.005 && repayShortMode === 'gift' && (
+            <div>
+              <div className="text-[10.5px] tracking-widest uppercase text-muted mb-1.5">{t('split.proxy.giftWho')}</div>
+              <div className="flex flex-wrap gap-2">
+                {travelerIds.map((id) => {
+                  const m = members.find((x) => x.id === id)!
+                  const on = repayGiftMembers.includes(id)
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setRepayGiftMembers((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}
+                      className={`flex items-center gap-1.5 rounded-full pl-1.5 pr-3.5 py-1.5 text-[13px] border ${on ? 'bg-plan/10 border-plan text-plan font-medium' : 'bg-card border-line text-soft'}`}
+                    >
+                      <Avatar member={m} size={20} />
+                      {m.displayName}
+                    </button>
+                  )
+                })}
+              </div>
+              {repayGiftMembers.length > 0 && (
+                <div className="text-[12.5px] text-soft tabular mt-2">
+                  {t('split.proxy.giftEach', { list: giftShares({ shareAmount: -repayDiff, proxyGiftMemberIds: repayGiftMembers }).map((g) => `${nameOf(g.memberId)} ${formatMoney(g.shareAmount)}`).join(' · ') })}
+                </div>
+              )}
+            </div>
+          )}
           {Number.isFinite(repayActual) && Math.abs(repayDiff) >= 0.005 && (
-            <div className={`rounded-xl px-3 py-2 text-[12px] leading-relaxed ${repayDiff > 0 ? 'bg-positive/[.07] text-soft' : 'bg-spend/10 text-spend-text'}`}>
+            <div className={`rounded-xl px-3 py-2 text-[12px] leading-relaxed ${repayDiff > 0 || repayShortMode === 'gift' ? 'bg-positive/[.07] text-soft' : 'bg-spend/10 text-spend-text'}`}>
               {repayDiff > 0
                 ? t('split.proxy.repayOverHint', { amount: formatMoney(repayDiff), name: nameOf(repayFor.creditorId) })
-                : t('split.proxy.repayUnderHint', { amount: formatMoney(-repayDiff), name: nameOf(repayFor.creditorId) })}
+                : repayShortMode === 'gift'
+                  ? t('split.proxy.repayGiftHint', { received: formatMoney(repayActual), amount: formatMoney(-repayDiff), names: repayGiftMembers.map(nameOf).join('、'), name: repayFor.name })
+                  : t('split.proxy.repayUnderHint', { amount: formatMoney(-repayDiff), name: nameOf(repayFor.creditorId) })}
             </div>
           )}
           <div className="flex gap-2">
@@ -335,14 +395,15 @@ export function ProxyCard({ trip, members }: { trip: Trip; members: Member[] }) 
             </button>
             <button
               type="button"
-              disabled={busy || !Number.isFinite(repayActual) || repayActual < 0}
+              disabled={busy || !Number.isFinite(repayActual) || repayActual < 0 || (repayDiff <= -0.005 && repayShortMode === 'gift' && !repayGiftMembers.length)}
               onClick={() => {
                 const g = repayFor
                 const actual = round2(repayActual)
+                const giftIds = repayDiff <= -0.005 && repayShortMode === 'gift' ? repayGiftMembers : null
                 setRepayFor(null)
                 // 一律记下这个数——就算等于应还也要记：不记的话「已收」会跟着这笔账以后的
                 // 金额改动（补填实际扣款、编辑金额）浮动，朋友实际还的钱却早就定了
-                run(() => setProxyRepaid(g.items.map((it) => it.splitId), Date.now(), actual))
+                run(() => setProxyRepaid(g.items.map((it) => it.splitId), Date.now(), actual, giftIds))
               }}
               className="flex-[2] min-h-[44px] rounded-full bg-plan text-card text-[13px] font-semibold disabled:opacity-60"
             >

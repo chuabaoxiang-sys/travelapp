@@ -261,8 +261,9 @@ export function LedgerTab({
       arr.push(sp)
       splitsByExpense.set(sp.expenseId, arr)
     }
+    const expenseById = new Map(expenses.map((e) => [e.id, e]))
     for (const [id, rows] of splitsByExpense) {
-      const mine = memberSharesOfExpense(rows).get(currentMemberId) ?? 0
+      const mine = memberSharesOfExpense(rows, expenseById.get(id)).get(currentMemberId) ?? 0
       if (mine > 0) shareByExpense.set(id, mine)
     }
     const mineExpenses = expenses.filter((e) => shareByExpense.has(e.id)).map((e) => ({ ...e, homeAmount: shareByExpense.get(e.id)! }))
@@ -540,7 +541,7 @@ export function LedgerTab({
                 const editor = e.lastEditedBy ? memberOf(e.lastEditedBy) : undefined
                 const linkedItem = e.itineraryItemId ? itineraryItemOf(e.itineraryItemId) : undefined
                 const isPersonal = e.splitType === 'none'
-                const myShare = myShareOf(e.id, splits, currentMemberId)
+                const myShare = myShareOf(e.id, splits, currentMemberId, e)
                 const isNew = !!highlightSince && e.createdAt > highlightSince && e.recordedBy !== currentMemberId
                 const card = isCardExpense(e) ? paymentCards.find((c) => c.id === e.paymentCardId) : undefined
                 const pendingCharge = isPendingCardExpense(e)

@@ -1,5 +1,5 @@
 import { db, enqueueOutbox } from '../db/dexie'
-import { isGiftProxy, isProxySplit, proxyReceivable, round2 } from './splits'
+import { isGiftProxy, isPartialGiftProxy, isProxySplit, partialGiftAmount, proxyReceivable, round2 } from './splits'
 import type { Expense, ExpenseSplit } from '../types'
 
 // 代购清单（2026-11-07）：帮没来旅行的人买的东西，按人汇总、结束后一次标已还。
@@ -24,6 +24,9 @@ export interface ProxyItem {
   giftMemberIds: string[] | null
   // 付款人最后实际收回多少：送礼 = 0；已还且填了实际金额 = 那个数；其余 = 该还的
   received: number
+  // 部分送礼（2026-11-08）：差额多少、谁一起送（giftMemberIds 只给整笔送礼用）
+  partialGiftAmount: number
+  partialGiftMemberIds: string[] | null
 }
 
 export interface ProxyGroup {
@@ -54,8 +57,10 @@ export function toProxyItems(expenses: Expense[], splits: ExpenseSplit[]): Proxy
       creditorId: e.paidBy,
       repaidAt: s.proxyRepaidAt ?? null,
       repaidAmount: s.proxyRepaidAmount ?? null,
-      giftMemberIds: s.proxyGiftMemberIds?.length ? s.proxyGiftMemberIds : null,
+      giftMemberIds: isGiftProxy(s) ? s.proxyGiftMemberIds ?? null : null,
       received: isGiftProxy(s) ? 0 : s.proxyRepaidAt && s.proxyRepaidAmount != null ? s.proxyRepaidAmount : proxyReceivable(s, e),
+      partialGiftAmount: partialGiftAmount(s, e),
+      partialGiftMemberIds: isPartialGiftProxy(s) ? s.proxyGiftMemberIds ?? null : null,
     })
   }
   return items
@@ -97,7 +102,8 @@ export function proxyGainByMember(items: ProxyItem[]): Map<string, number> {
   const m = new Map<string, number>()
   for (const it of items) {
     if (it.giftMemberIds?.length) continue
-    const gain = round2(it.received - it.costAmount)
+    // 部分送礼：送掉的那部分由大家分摊，付款人这边按"收回 + 送掉"算，跟全额收回一样
+    const gain = round2(it.received + it.partialGiftAmount - it.costAmount)
     if (gain !== 0) m.set(it.creditorId, round2((m.get(it.creditorId) ?? 0) + gain))
   }
   return m
@@ -117,7 +123,9 @@ export function proxySummary(items: ProxyItem[]): { total: number; unpaid: numbe
 // 分摊的原子推送——跟改分摊走同一条同步路径
 // actualTotal（0052）：实际一共还了多少；不传 = 照该还的。按每行"该还"的比例摊到各行，
 // 零头补给最后一行，合计刚好等于 actualTotal。撤销（repaidAt = null）时连实际金额一起清掉
-export async function setProxyRepaid(splitIds: string[], repaidAt: number | null, actualTotal?: number | null) {
+// giftMemberIds（2026-11-08 部分送礼）：实际收得比该还的少、差额选了「送的」时传入，
+// 这几行同时记下实际金额和一起送的人；不传 / 撤销时清掉
+export async function setProxyRepaid(splitIds: string[], repaidAt: number | null, actualTotal?: number | null, giftMemberIds?: string[] | null) {
   await db.transaction('rw', db.expenseSplits, db.expenses, db.outbox, async () => {
     const rows = (await db.expenseSplits.bulkGet(splitIds)).filter((r): r is ExpenseSplit => !!r && isProxySplit(r))
     let amounts: (number | null)[] = rows.map(() => null)
@@ -130,7 +138,8 @@ export async function setProxyRepaid(splitIds: string[], repaidAt: number | null
       if (amounts.length) amounts[amounts.length - 1] = round2((amounts[amounts.length - 1] ?? 0) + diff)
     }
     for (const [i, r] of rows.entries()) {
-      await db.expenseSplits.update(r.id, { proxyRepaidAt: repaidAt, proxyRepaidAmount: repaidAt ? amounts[i] : null, proxyGiftMemberIds: null })
+      const partialGift = repaidAt && amounts[i] != null && giftMemberIds?.length ? giftMemberIds : null
+      await db.expenseSplits.update(r.id, { proxyRepaidAt: repaidAt, proxyRepaidAmount: repaidAt ? amounts[i] : null, proxyGiftMemberIds: partialGift })
     }
     for (const expenseId of new Set(rows.map((r) => r.expenseId))) {
       await enqueueOutbox('expenseSplits', expenseId, 'upsert', { expenseId })
@@ -185,12 +194,12 @@ export function proxyGainBreakdown(items: ProxyItem[], creditorId: string): Prox
   const groups = new Map<string, ProxyGainGroup>()
   for (const it of items) {
     if (it.creditorId !== creditorId || it.giftMemberIds?.length) continue
-    const gain = round2(it.received - it.costAmount)
+    const gain = round2(it.received + it.partialGiftAmount - it.costAmount)
     if (gain === 0) continue
     const g = groups.get(it.expenseId) ?? {
       expenseId: it.expenseId, expenseDate: it.expenseDate, description: it.description, currency: it.currency, rows: [], total: 0,
     }
-    g.rows.push({ name: it.name, amount: it.amount, receivable: it.received, cost: it.costAmount, gain })
+    g.rows.push({ name: it.name, amount: it.amount, receivable: round2(it.received + it.partialGiftAmount), cost: it.costAmount, gain })
     g.total = round2(g.total + gain)
     groups.set(it.expenseId, g)
   }

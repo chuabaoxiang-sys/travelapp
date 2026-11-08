@@ -64,10 +64,11 @@ export interface ProxyCopyInput {
   homeCurrency: string
   payerName: string // 钱还给谁
   giftNames: string // 送的那组：谁一起送的
+  giftNamesOf?: (memberIds: string[]) => string // 部分送礼：把一起送的人的 id 变成名字
 }
 
 export function buildProxyCopyText(input: ProxyCopyInput, t: TFunction): string {
-  const { group, kind, tripName, homeCurrency, payerName, giftNames } = input
+  const { group, kind, tripName, homeCurrency, payerName, giftNames, giftNamesOf } = input
   const homePrefix = homeCurrency === 'MYR' ? 'RM' : homeCurrency
   const money = (n: number) => formatMoney(n, homePrefix)
   const lines = [t('split.proxy.copyText.title', { name: group.name, nameSpaced: spaced(group.name), trip: tripName })]
@@ -95,7 +96,11 @@ export function buildProxyCopyText(input: ProxyCopyInput, t: TFunction): string 
       lines.push(t('split.proxy.copyText.statusUnpaid', { name: payerName }))
     } else {
       const date = group.repaidAt ? md(new Date(group.repaidAt).toLocaleDateString('sv-SE')) : ''
-      lines.push(t('split.proxy.copyText.statusRepaid', { date, amount: money(round2(group.total)) }))
+      const gift = round2(group.items.reduce((s, it) => s + it.partialGiftAmount, 0))
+      const names = (giftNamesOf ?? (() => ''))(group.items[0].partialGiftMemberIds ?? [])
+      lines.push(gift > 0.005
+        ? t('split.proxy.copyText.statusRepaidGift', { date, amount: money(round2(group.total)), gift: money(gift), names })
+        : t('split.proxy.copyText.statusRepaid', { date, amount: money(round2(group.total)) }))
     }
   }
   return lines.join('\n')

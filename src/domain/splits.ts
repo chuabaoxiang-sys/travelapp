@@ -124,8 +124,24 @@ export function isProxySplit(s: { proxyName?: string | null }): boolean {
 
 // 送礼（0052）：代购行标了"送给他/她"——不用还了，这部分成本由一起送的同行者平分，
 // 算进同行者之间的结算（"垫付"也不再扣掉它）
-export function isGiftProxy(s: { proxyName?: string | null; proxyGiftMemberIds?: string[] | null }): boolean {
-  return !!s.proxyName && !!s.proxyGiftMemberIds?.length
+// 整笔送：标了送礼、没有"实际收了多少"
+export function isGiftProxy(s: { proxyName?: string | null; proxyGiftMemberIds?: string[] | null; proxyRepaidAmount?: number | null }): boolean {
+  return !!s.proxyName && !!s.proxyGiftMemberIds?.length && s.proxyRepaidAmount == null
+}
+
+// 部分送礼（2026-11-08）：标已还时实际收得比该还的少，差额选了「送的」——这一行同时
+// 记着实际收了多少（proxyRepaidAmount）和一起送的人（proxyGiftMemberIds）。
+// 差额 = 该还 − 实际收，由一起送的人平分，进同行者之间的结算；不需要新的数据库栏位
+export function isPartialGiftProxy(s: { proxyName?: string | null; proxyGiftMemberIds?: string[] | null; proxyRepaidAmount?: number | null }): boolean {
+  return !!s.proxyName && !!s.proxyGiftMemberIds?.length && s.proxyRepaidAmount != null
+}
+
+export function partialGiftAmount(
+  s: { shareAmount: number; proxyAmount?: number | null; proxyName?: string | null; proxyGiftMemberIds?: string[] | null; proxyRepaidAmount?: number | null },
+  e: { homeAmount: number; expenseAmount: number; discountAmount?: number | null; proxyDiscountShared?: boolean },
+): number {
+  if (!isPartialGiftProxy(s)) return 0
+  return Math.max(0, round2(proxyReceivable(s, e) - (s.proxyRepaidAmount ?? 0)))
 }
 
 // 一行送礼的代购，按一起送的人平分成每人多少（零头给第一个人）
@@ -137,13 +153,21 @@ export function giftShares(s: { shareAmount: number; proxyGiftMemberIds?: string
   return ids.map((id, i) => ({ memberId: id, shareAmount: i === 0 ? round2(base + remainder) : base }))
 }
 
-// 这笔账里每个同行者的份额：普通分摊行 + 送礼代购分到他头上的（0052）。
+// 这笔账里每个同行者的份额：普通分摊行 + 送礼代购分到他头上的（0052）+ 部分送礼的
+// 差额分到他头上的（需要传 expense 才算得出该还多少）。
 // 结算、按笔结算、"你的份额"都用这一个，口径不会跑偏
-export function memberSharesOfExpense(splits: { memberId: string; shareAmount: number; proxyName?: string | null; proxyGiftMemberIds?: string[] | null }[]): Map<string, number> {
+export function memberSharesOfExpense(
+  splits: { memberId: string; shareAmount: number; proxyName?: string | null; proxyAmount?: number | null; proxyGiftMemberIds?: string[] | null; proxyRepaidAmount?: number | null }[],
+  expense?: { homeAmount: number; expenseAmount: number; discountAmount?: number | null; proxyDiscountShared?: boolean },
+): Map<string, number> {
   const m = new Map<string, number>()
+  const add = (id: string, n: number) => m.set(id, round2((m.get(id) ?? 0) + n))
   for (const s of splits) {
-    if (!isProxySplit(s)) m.set(s.memberId, round2((m.get(s.memberId) ?? 0) + s.shareAmount))
-    else if (isGiftProxy(s)) for (const g of giftShares(s)) m.set(g.memberId, round2((m.get(g.memberId) ?? 0) + g.shareAmount))
+    if (!isProxySplit(s)) add(s.memberId, s.shareAmount)
+    else if (isGiftProxy(s)) for (const g of giftShares(s)) add(g.memberId, g.shareAmount)
+    else if (expense && isPartialGiftProxy(s)) {
+      for (const g of giftShares({ shareAmount: partialGiftAmount(s, expense), proxyGiftMemberIds: s.proxyGiftMemberIds })) add(g.memberId, g.shareAmount)
+    }
   }
   return m
 }
@@ -264,9 +288,22 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
   }
 
   const owedMap = new Map<string, number>()
+  const expenseById = new Map(expenses.map((e) => [e.id, e]))
   for (const s of splits) {
     if (!isProxySplit(s)) owedMap.set(s.memberId, round2((owedMap.get(s.memberId) ?? 0) + s.shareAmount))
     else if (isGiftProxy(s)) for (const g of giftShares(s)) owedMap.set(g.memberId, round2((owedMap.get(g.memberId) ?? 0) + g.shareAmount))
+    else if (isPartialGiftProxy(s)) {
+      // 部分送礼：差额算付款人替一起送的人垫的（垫付 +G），一起送的人平分（应分摊 +各自那份）
+      const e = expenseById.get(s.expenseId)
+      const gift = e ? partialGiftAmount(s, e) : 0
+      if (gift > 0 && e) {
+        const cur = paidMap.get(e.paidBy) ?? { amount: 0, count: 0 }
+        paidMap.set(e.paidBy, { ...cur, amount: round2(cur.amount + gift) })
+        for (const g of giftShares({ shareAmount: gift, proxyGiftMemberIds: s.proxyGiftMemberIds })) {
+          owedMap.set(g.memberId, round2((owedMap.get(g.memberId) ?? 0) + g.shareAmount))
+        }
+      }
+    }
   }
 
   const settledOutMap = new Map<string, number>()
@@ -352,7 +389,7 @@ async function computeOpenDebtsAndPools(tripId: string) {
   for (const [expenseId, rows] of splitsByExpense) {
     const expense = expenseById.get(expenseId)
     if (!expense) continue
-    for (const [memberId, share] of memberSharesOfExpense(rows)) {
+    for (const [memberId, share] of memberSharesOfExpense(rows, expense)) {
       // 自己分摊给自己（付款人本人的那一份，或者splitType='none'时的整笔自留）不算欠款
       if (memberId === expense.paidBy) continue
       const settledAmount = settledMap.get(`${expenseId}:${memberId}`) ?? 0

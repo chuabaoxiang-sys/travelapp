@@ -15,6 +15,9 @@ export function myRelatedExpenseIds(expenses: Expense[], splits: ExpenseSplit[],
 // 调用方要用这个区分显示"—（你垫付，不分摊给自己）"这种情况
 // 代购行（proxyName 非空）的 memberId 也是付款人，但那是帮别人买的，不算"我分摊到的"
 // 送礼的代购（0052）分到我头上的也算我的份额
-export function myShareOf(expenseId: string, splits: ExpenseSplit[], memberId: string): number | undefined {
-  return memberSharesOfExpense(splits.filter((s) => s.expenseId === expenseId)).get(memberId)
+export function myShareOf(
+  expenseId: string, splits: ExpenseSplit[], memberId: string,
+  expense?: { homeAmount: number; expenseAmount: number; discountAmount?: number | null; proxyDiscountShared?: boolean },
+): number | undefined {
+  return memberSharesOfExpense(splits.filter((s) => s.expenseId === expenseId), expense).get(memberId)
 }

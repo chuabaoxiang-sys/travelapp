@@ -8,7 +8,7 @@ function item(over: Partial<ProxyItem>): ProxyItem {
   return {
     splitId: crypto.randomUUID(), name: 'Chi Hui', expenseId: 'e', expenseDate: '2026-10-31', description: 'Mega Donki',
     currency: 'JPY', amount: 1000, shareAmount: 26.33, costAmount: 22, creditorId: 'bx', repaidAt: null,
-    repaidAmount: null, giftMemberIds: null, received: 26.33, ...over,
+    repaidAmount: null, giftMemberIds: null, received: 26.33, partialGiftAmount: 0, partialGiftMemberIds: null, ...over,
   }
 }
 
@@ -97,5 +97,14 @@ describe('一键复制的文字', () => {
     expect(text.split('\n')[0]).toBe('[Bought for Chi Hui · 东京北海道 2026]')
     expect(text).toContain('Total JPY 26,800 → RM705.74 (average rate 0.02633)')
     expect(text.split('\n').at(-1)).toBe('Please pay back BX')
+  })
+  it('已还且部分送礼：最后一行写另外多少是谁送的', async () => {
+    await i18n.changeLanguage('zh')
+    const repaidAt = new Date(2026, 10, 8, 12).getTime()
+    const g = group([
+      item({ amount: 26800, shareAmount: 705.74, received: 650, repaidAt, partialGiftAmount: 55.74, partialGiftMemberIds: ['bx', 'kn'] }),
+    ], { repaidAt })
+    const text = buildProxyCopyText({ ...base, group: g, kind: 'repaid', giftNamesOf: (ids) => ids.map((i) => i.toUpperCase()).join('、') }, i18n.t)
+    expect(text.split('\n').at(-1)).toBe('11/08 已还 RM650（另外 RM55.74 是 BX、KN 送的）')
   })
 })
