@@ -31,10 +31,17 @@ export interface CategorySummary {
   total: number
 }
 
+// 2026-11-08：跟复制的结算文字同一套数字，每一行加减得通：
+// paid − owed + settledOut − settledIn − refundHeld + refundShare = net
 export interface PersonSummary {
   memberName: string
   paid: number
+  proxyFronted: number // 另垫了代购（不在 paid 里）
   owed: number
+  settledOut: number // 已付（结算记录）
+  settledIn: number // 已收（结算记录）
+  refundHeld: number // 代收退税
+  refundShare: number // 分到退税
   net: number
 }
 
@@ -117,7 +124,12 @@ export async function assembleExportBundle(tripId: string, t: TFunction): Promis
   const personSummary: PersonSummary[] = balances.map((b) => ({
     memberName: memberName(b.memberId),
     paid: b.paid,
+    proxyFronted: b.proxyFronted ?? 0,
     owed: b.owed,
+    settledOut: b.settledOut,
+    settledIn: b.settledIn,
+    refundHeld: b.refundHeld ?? 0,
+    refundShare: b.refundShare ?? 0,
     net: b.net,
   }))
 

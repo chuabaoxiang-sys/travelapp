@@ -229,6 +229,9 @@ export interface PersonBalance {
   // （他要把别人那份还回去）。paid/owed 保持账面口径不变，退税单独两项进 net
   refundShare?: number
   refundHeld?: number
+  // 这个人付款的账里，另外替没来的人垫的代购（不含送礼的）——不进 paid，结算文字/Excel
+  // 里写成「另垫了代购」，让看的人知道这部分钱去哪了（2026-11-08）
+  proxyFronted?: number
 }
 
 export async function computeBalances(tripId: string): Promise<PersonBalance[]> {
@@ -251,10 +254,13 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
   }
 
   const paidMap = new Map<string, { amount: number; count: number }>()
+  const proxyFrontedMap = new Map<string, number>()
   for (const e of expenses) {
     const cur = paidMap.get(e.paidBy) ?? { amount: 0, count: 0 }
-    const paid = round2(e.homeAmount - (proxyByExpense.get(e.id) ?? 0))
+    const proxy = proxyByExpense.get(e.id) ?? 0
+    const paid = round2(e.homeAmount - proxy)
     paidMap.set(e.paidBy, { amount: round2(cur.amount + paid), count: cur.count + 1 })
+    if (proxy > 0) proxyFrontedMap.set(e.paidBy, round2((proxyFrontedMap.get(e.paidBy) ?? 0) + proxy))
   }
 
   const owedMap = new Map<string, number>()
@@ -283,7 +289,10 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
     const refundHeld = refunds.heldByMember.get(memberId) ?? 0
     // 退税：手上收着的要还出去（−held），分到自己的那份算回给自己（+share）
     const net = round2(paid - owed + settledOut - settledIn - refundHeld + refundShare)
-    return { memberId, paid, owed, settledOut, settledIn, net, expenseCount: paidMap.get(memberId)?.count ?? 0, refundShare, refundHeld }
+    return {
+      memberId, paid, owed, settledOut, settledIn, net, expenseCount: paidMap.get(memberId)?.count ?? 0,
+      refundShare, refundHeld, proxyFronted: proxyFrontedMap.get(memberId) ?? 0,
+    }
   })
 }
 

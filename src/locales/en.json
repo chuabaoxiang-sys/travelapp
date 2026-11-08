@@ -381,7 +381,7 @@
     "copyFailed": "Couldn't copy — try again",
     "copyText": {
       "title": "[{{trip}} · Settle up]",
-      "summary": "Total spent {{total}} · {{count}} people",
+      "summary": "Shared spending {{total}} · {{count}} people",
       "transfersHeading": "Still to pay:",
       "transferLine": "{{from}} → {{to}} {{amount}}",
       "transfersFooter_one": "{{count}} payment — that's the fewest possible.",
@@ -390,7 +390,14 @@
       "alreadySettled_other": "({{count}} payments already settled)",
       "allSettled": "Everyone's square 🎉",
       "detailsHeading": "[Breakdown per person]",
-      "personLine": "{{name}}: share {{owed}} (paid {{paid}} · {{status}})",
+      "personLine": "{{name}}: share {{owed}}",
+      "personDetail": "  {{parts}} → {{status}}",
+      "partPaid": "paid {{amount}}",
+      "partProxy": " (plus {{amount}} for purchases for others)",
+      "partSettledOut": "paid back {{amount}}",
+      "partSettledIn": "received {{amount}}",
+      "partRefundHeld": "holding tax refunds {{amount}}",
+      "partRefundShare": "tax refund share {{amount}}",
       "statusReceive": "gets back {{amount}}",
       "statusPay": "owes {{amount}}",
       "statusEven": "all square",
@@ -1485,6 +1492,11 @@
     "colName": "Name",
     "colPaid": "Paid",
     "colShare": "Share",
+    "colProxyFronted": "Fronted for others",
+    "colSettledOut": "Paid back",
+    "colSettledIn": "Received",
+    "colRefundHeld": "Holding tax refunds",
+    "colRefundShare": "Tax refund share",
     "colNet": "Net (+ = owed to them, − = they owe)"
   },
   "tutorials": {
@@ -1526,7 +1538,7 @@
         { "title": "Expand \"Other settings\"", "desc": "Tap \"Edit\" — date, who paid, and how to split are tucked in here, usually already right. Bought something for someone who isn't on the trip? Add who it's for and how much under \"Bought for others\" — that part isn't split among the travelers. If the purchase had a discount, enter their items at the original price and choose whether to share the discount with them (by default you keep it: they pay back the original price and the extra goes to whoever paid — tap it on your \"Mine\" card to see the breakdown; if you share it, their part isn't counted in \"Saved with discounts\" on the trip recap). With Split set to Itemized, enter each item in the receipt's currency (at the original price if there's a discount) — the app converts it and spreads the discount for you. Each item can also include people you bought for (the dashed names, or tap \"+ For someone else\"), and everyone ticked splits that item equally." },
         { "title": "Link it to a plan", "desc": "Tie an expense to a specific itinerary item, so you can see the cost when you look back at that day." },
         { "title": "Edit or delete an expense", "desc": "Tap an existing entry to expand it — expenses already settled can't have their amount changed anymore. With lots of entries, tap the filter button at the left of the date strip to show only certain categories or payment methods; a bar above the list shows how many match and their total." },
-        { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back. Below it, the \"Bought for others\" card totals up what each person owes; tap \"Mark as paid back\" when they've paid and enter what they actually paid (more or less both count as settled, and the difference goes to whoever was paid back), or tap \"Gift\" to give it to them and pick who shares the cost. Under that, the \"Tax refunds\" card is for airport cash refunds and refunds paid back to a card: choose cash or card, the amount, and who it belongs to (split evenly, counted in settle-up). A cash refund in a foreign currency is added to the rate book so you can pick it when logging cash spending; a card refund that hasn't arrived yet counts as an estimate until you tap \"It's in\" and enter the actual amount." },
+        { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back. Below it, the \"Bought for others\" card totals up what each person owes; tap \"Mark as paid back\" when they've paid and enter what they actually paid (more or less both count as settled, and the difference goes to whoever was paid back), or tap \"Gift\" to give it to them and pick who shares the cost. Under that, the \"Tax refunds\" card is for airport cash refunds and refunds paid back to a card: choose cash or card, the amount, and who it belongs to (split evenly, counted in settle-up). A cash refund in a foreign currency is added to the rate book so you can pick it when logging cash spending; a card refund that hasn't arrived yet counts as an estimate until you tap \"It's in\" and enter the actual amount. The copy button next to the heading copies a settle-up message for your group chat: who still pays whom, then each person's share with a line that adds up (paid, paid back or received, tax refunds → gets back or owes)." },
         { "title": "Settle specific expenses", "desc": "Pick one or a few expenses and settle just those, instead of the running total." },
         { "title": "Log a prepayment", "desc": "If someone handed over a lump sum upfront, \"Add\" next to \"Settlement records\" logs it directly — no expense needed first." },
         { "title": "Who paid what", "desc": "See at a glance what each person covered and what they owe. On \"Mine\", the \"Where my money went\" card under the dark card counts only your share, so you can see which categories your own money went to." }
@@ -1569,7 +1581,7 @@
       "steps": [
         { "title": "Switch dark mode", "desc": "Light, dark, or follow system — your choice is remembered." },
         { "title": "Switch language", "desc": "Follow system, 中文, or English — this follows you, not the device, even after switching phones." },
-        { "title": "Export your trip", "desc": "Excel, JSON, or CSV — each includes both the detail and the summary." },
+        { "title": "Export your trip", "desc": "Excel, JSON, or CSV — each includes both the detail and the summary. The summary has one row per person: paid, fronted for others, share, paid back, received, holding tax refunds, tax refund share, then the net — and each row adds up." },
         { "title": "Turn on a read-only share link", "desc": "Send it to friends or family who haven't installed the app — they can view everything, no sign-up needed." },
         { "title": "Check sync status", "desc": "See which records haven't synced yet, and manually give up on ones that are stuck." }
       ]

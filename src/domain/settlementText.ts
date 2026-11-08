@@ -16,12 +16,17 @@ export interface SettlementTextInput {
   appHost: string
 }
 
-// 一键复制到群里的结算文案。"实际花费"=应分摊（owed），"垫付"=实际付出（paid），
-// "还需付/应收回"用的是扣掉已结清之后的 net——跟结算页"结算建议"是同一份数字
+// 一键复制到群里的结算文案。"旅伴花费"=大家应分摊的合计（已花 − 代购），每人一行
+// "应分摊"（owed），下面一行写成加减得通的式子（2026-11-08 用户定的）：
+//   垫付（另垫了代购）· 已付/已收（结算记录）· 代收退税 · 分到退税 → 应收回/还需付
+// 即 paid − owed + 已付 − 已收 − 代收退税 + 分到退税 = net，没有的项不写。
+// 不写各人自己的 Cashback / 代购多收（那是各人的事，不发到群里）
 export function buildSettlementText(input: SettlementTextInput, t: TFunction): string {
   const { tripName, currencySymbol, balances, transfers, settledCount, nameOf, appHost } = input
   const money = (n: number) => formatMoney(n, currencySymbol)
-  const people = balances.filter((b) => b.paid > 0 || b.owed > 0).sort((a, b) => b.owed - a.owed)
+  const people = balances
+    .filter((b) => b.paid > 0 || b.owed > 0 || (b.refundShare ?? 0) > 0 || (b.refundHeld ?? 0) > 0)
+    .sort((a, b) => b.owed - a.owed)
   const total = people.reduce((sum, b) => sum + b.owed, 0)
 
   const lines: string[] = [
@@ -49,7 +54,16 @@ export function buildSettlementText(input: SettlementTextInput, t: TFunction): s
         : b.net < -EVEN_THRESHOLD
           ? t('split.copyText.statusPay', { amount: money(-b.net) })
           : t('split.copyText.statusEven')
-    lines.push(t('split.copyText.personLine', { name: nameOf(b.memberId), owed: money(b.owed), paid: money(b.paid), status }))
+    const parts = [
+      t('split.copyText.partPaid', { amount: money(b.paid) }) +
+        ((b.proxyFronted ?? 0) > 0 ? t('split.copyText.partProxy', { amount: money(b.proxyFronted!) }) : ''),
+      b.settledOut > 0 ? t('split.copyText.partSettledOut', { amount: money(b.settledOut) }) : null,
+      b.settledIn > 0 ? t('split.copyText.partSettledIn', { amount: money(b.settledIn) }) : null,
+      (b.refundHeld ?? 0) > 0 ? t('split.copyText.partRefundHeld', { amount: money(b.refundHeld!) }) : null,
+      (b.refundShare ?? 0) > 0 ? t('split.copyText.partRefundShare', { amount: money(b.refundShare!) }) : null,
+    ].filter(Boolean)
+    lines.push(t('split.copyText.personLine', { name: nameOf(b.memberId), owed: money(b.owed) }))
+    lines.push(t('split.copyText.personDetail', { parts: parts.join(' · '), status }))
   }
 
   lines.push('', t('split.copyText.footer', { host: appHost }))

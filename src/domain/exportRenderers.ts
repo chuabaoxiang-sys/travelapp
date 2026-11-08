@@ -38,8 +38,13 @@ export function buildExcelFile(bundle: ExportBundle, t: TFunction): File {
     ...bundle.categorySummary.map((c) => [c.categoryName, c.total]),
     [],
     [t('export.byPerson')],
-    [t('export.colName'), t('export.colPaid'), t('export.colShare'), t('export.colNet')],
-    ...bundle.personSummary.map((p) => [p.memberName, p.paid, p.owed, p.net]),
+    [
+      t('export.colName'), t('export.colPaid'), t('export.colProxyFronted'), t('export.colShare'),
+      t('export.colSettledOut'), t('export.colSettledIn'), t('export.colRefundHeld'), t('export.colRefundShare'), t('export.colNet'),
+    ],
+    ...bundle.personSummary.map((p) => [
+      p.memberName, p.paid, p.proxyFronted, p.owed, p.settledOut, p.settledIn, p.refundHeld, p.refundShare, p.net,
+    ]),
   ]
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows)
   XLSX.utils.book_append_sheet(wb, summarySheet, t('export.sheetSummary'))

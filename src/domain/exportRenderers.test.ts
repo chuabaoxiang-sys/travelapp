@@ -30,7 +30,7 @@ function makeBundle(overrides: Partial<ExportBundle> = {}): ExportBundle {
     ],
     daySummary: [{ date: '2026-09-02', total: 300 }],
     categorySummary: [{ categoryName: '餐饮', total: 300 }],
-    personSummary: [{ memberName: '爸爸', paid: 300, owed: 100, net: 200 }],
+    personSummary: [{ memberName: '爸爸', paid: 300, proxyFronted: 0, owed: 100, settledOut: 0, settledIn: 0, refundHeld: 0, refundShare: 0, net: 200 }],
     ...overrides,
   }
 }
