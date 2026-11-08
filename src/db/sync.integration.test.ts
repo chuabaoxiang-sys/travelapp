@@ -416,4 +416,44 @@ describe('pushOutbox / pullAll / runSync（真实mock网络层）', () => {
     expect(mock.upsertCalls).toHaveLength(1)
     expect(mock.upsertCalls[0].row).toMatchObject({ id: 'exp-banana', notes: '新' })
   })
+  it('11-08事故回归：每日分摊"删旧写新"，删除还没推上去时拉了一次——不能把旧的放回本地，' +
+    '推送时要真的删掉旧的、推新的', async () => {
+    const alloc = (id: string, date: string, amount: number) =>
+      ({ id, householdId: 'h1', expenseId: 'exp-hotel', tripId: 't1', date, amount, deletedAt: null })
+    // 本地：旧的已删（删除排队中），新的已写（新增排队中）
+    await seedLocal(() => db.expenseDayAllocations.add(alloc('new-1103', '2026-11-03', 242.18)))
+    await db.outbox.bulkAdd([
+      outboxEntry({ id: 'ob-del', tableName: 'expenseDayAllocations', recordId: 'old-1103', operation: 'delete', createdAt: 100 }),
+      outboxEntry({ id: 'ob-new', tableName: 'expenseDayAllocations', recordId: 'new-1103', payload: alloc('new-1103', '2026-11-03', 242.18), createdAt: 101 }),
+    ])
+    // 云端还是改金额之前的那条
+    mock.setSelect('expense_day_allocation', {
+      data: [{ id: 'old-1103', household_id: 'h1', expense_id: 'exp-hotel', trip_id: 't1', day_date: '2026-11-03', amount: '226.41', deleted_at: null }],
+      error: null,
+    })
+
+    await pullAll()
+
+    const local = await db.expenseDayAllocations.where('expenseId').equals('exp-hotel').toArray()
+    expect(local.map((r) => r.id)).toEqual(['new-1103'])
+
+    await pushOutbox()
+
+    expect(mock.deleteCalls).toEqual([{ table: 'expense_day_allocation', id: 'old-1103' }])
+    expect(mock.upsertCalls.filter((c) => c.table === 'expense_day_allocation').map((c) => (c.row as { id: string }).id)).toEqual(['new-1103'])
+  })
+
+  it('没有 updatedAt 的表：本地改动还在排队时，拉取不拿云端旧内容覆盖本地', async () => {
+    const alloc = { id: 'a1', householdId: 'h1', expenseId: 'exp-hotel', tripId: 't1', date: '2026-11-04', amount: 242.16, deletedAt: null }
+    await seedLocal(() => db.expenseDayAllocations.add(alloc))
+    await db.outbox.add(outboxEntry({ id: 'ob-a1', tableName: 'expenseDayAllocations', recordId: 'a1', payload: alloc }))
+    mock.setSelect('expense_day_allocation', {
+      data: [{ id: 'a1', household_id: 'h1', expense_id: 'exp-hotel', trip_id: 't1', day_date: '2026-11-04', amount: '226.40', deleted_at: null }],
+      error: null,
+    })
+
+    await pullAll()
+
+    expect((await db.expenseDayAllocations.get('a1'))?.amount).toBe(242.16)
+  })
 })

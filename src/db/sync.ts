@@ -303,6 +303,14 @@ async function mergeRemoteTable(tableName: string, data: any[], dayToTrip: Map<s
     if (tableName === 'expenseSplits' && pendingIds.has(localRow.expenseId)) continue
 
     const existing = localById.get(localRow.id)
+    // 这一行本地还有改动没推上去，这一轮先不拿云端的版本覆盖，等推完下一轮再对齐：
+    //   - 本地已经删掉（existing 不存在）——放回来的话，推送时看到"本地还有这一行"，
+    //     删除就变成把旧内容原样推回去，云端那条永远删不掉
+    //   - 没有 updatedAt 的表，判断不了谁新，排着队的那份本地改动优先
+    // 真实事故（2026-11-08）：酒店预付改金额，每日分摊"删旧3条、写新3条"，删除还没
+    // 推上去时刚好拉了一次，旧的3条被放回本地，删除失效；新的3条撞上云端
+    // "同一笔同一天只能一条"，重试了287次
+    if (pendingIds.has(localRow.id) && (!existing || !config.hasUpdatedAt)) continue
     if (config.hasUpdatedAt) {
       // 本地有还没推上去的更新改动，这一轮先不覆盖——等那条推成功后下一轮自然就一致了。
       // 本地比云端新、却没有任何待推送记录，说明这次改动当初没进队列（2026-11-03 那种
