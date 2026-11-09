@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { formatMoney } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { heroRawValue, type AllowanceState } from '../../domain/dailyAllowance'
@@ -43,6 +43,7 @@ export function SpendHero({
   cashbackTotal = 0,
   refund,
   estimated = false,
+  onCashbackClick,
 }: {
   state: AllowanceState
   currency: string
@@ -61,6 +62,8 @@ export function SpendHero({
   refund?: { total: number; pending: number }
   // 含估算（2026-11-08）：这趟还有刷卡没补实际扣款
   estimated?: boolean
+  // 返现入口（2026-11-09）：传了就让算式里「− Cashback」那一行可以点，打开「这趟返现」
+  onCashbackClick?: () => void
 }) {
   const { t } = useTranslation()
   const money = (n: number) => formatMoney(n, currency)
@@ -188,12 +191,24 @@ export function SpendHero({
                   <span>{money(proxyTotal)}</span>
                 </div>
               )}
-              {cashbackTotal > 0 && (
+              {cashbackTotal > 0 && (onCashbackClick ? (
+                <button
+                  type="button"
+                  onClick={onCashbackClick}
+                  className="flex justify-between items-center text-plan-on-dark bg-plan-on-dark/10 rounded-lg -mx-1.5 px-1.5 py-0.5 text-left"
+                >
+                  <span className="underline decoration-plan-on-dark/50 underline-offset-[3px]">− {t('spendHero.formula.cashback')}</span>
+                  <span className="flex items-center gap-0.5">
+                    {money(cashbackTotal)}
+                    <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
+                  </span>
+                </button>
+              ) : (
                 <div className="flex justify-between text-plan-on-dark">
                   <span>− {t('spendHero.formula.cashback')}</span>
                   <span>{money(cashbackTotal)}</span>
                 </div>
-              )}
+              ))}
               {refundTotal > 0 && (
                 <div className="flex justify-between items-baseline gap-2 text-plan-on-dark">
                   <span>

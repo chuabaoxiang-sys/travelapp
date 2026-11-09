@@ -23,6 +23,7 @@ import { getOverallBudget, getCategoryBudgets, overBudgetCategories } from '../.
 import { computeBalances, isProxySplit, memberSharesOfExpense } from '../../domain/splits'
 import { proxyGainBreakdown, proxyGainByMember, proxySummary, toProxyItems } from '../../domain/proxies'
 import { ProxyGainSheet } from './ProxyGainSheet'
+import { TripCashbackSheet } from '../rates/TripCashbackSheet'
 import { myRelatedExpenseIds, myShareOf } from '../../domain/expenses'
 import { CategoryBadge } from '../../components/CategoryBadge'
 import { Avatar } from '../../components/Avatar'
@@ -115,6 +116,7 @@ export function LedgerTab({
   const [editingId, setEditingId] = useState<string | null>(null)
   // 「代购多收」明细弹层（2026-11-08）
   const [proxyGainOpen, setProxyGainOpen] = useState(false)
+  const [tripCashbackOpen, setTripCashbackOpen] = useState(false)
   const [rateBookOpen, setRateBookOpen] = useState(false)
   const [budgetOpen, setBudgetOpen] = useState(false)
   // 刷卡待补扣款（2026-10-20）：刷卡当下没填实际扣了多少、按估算先记的那几笔
@@ -147,6 +149,7 @@ export function LedgerTab({
   // 个明显的关闭按钮兜底，全屏页上不接会比之前更糟
   useBackDismiss(!!editingId, () => setEditingId(null))
   useBackDismiss(proxyGainOpen, () => setProxyGainOpen(false))
+  useBackDismiss(tripCashbackOpen, () => setTripCashbackOpen(false))
   // 汇率簿同理——之前完全没接返回键，安卓上打开汇率簿按返回键会直接退出整个APP
   useBackDismiss(rateBookOpen, () => setRateBookOpen(false))
   useBackDismiss(budgetOpen, () => setBudgetOpen(false))
@@ -377,7 +380,7 @@ export function LedgerTab({
           个人的每日额度，硬凑一个只会让人误解 */}
       {view === 'team' ? (
         <div key="team" className="card-swap flex flex-col gap-3.5">
-          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} cashbackTotal={cashback.total} refund={{ total: tripRefunds.total, pending: tripRefunds.pendingTotal }} estimated={tripHasEstimate} />
+          <SpendHero state={allowance} currency={currencyLabel} animatedValueOverride={animatedActiveHeroValue} proxy={tripProxy} cashbackTotal={cashback.total} refund={{ total: tripRefunds.total, pending: tripRefunds.pendingTotal }} estimated={tripHasEstimate} onCashbackClick={() => setTripCashbackOpen(true)} />
           {hasEnoughForBreakdown && (
             <SpendBreakdownCard
               expenses={expenses}
@@ -745,6 +748,9 @@ export function LedgerTab({
 
       {budgetOpen && <BudgetSheet trip={trip} onClose={() => setBudgetOpen(false)} />}
 
+      {tripCashbackOpen && (
+        <TripCashbackSheet tripId={trip.id} currentMemberId={currentMemberId} onClose={() => setTripCashbackOpen(false)} />
+      )}
       {proxyGainOpen && (
         <ProxyGainSheet
           groups={proxyGainBreakdown(tripProxyItems, currentMemberId)}

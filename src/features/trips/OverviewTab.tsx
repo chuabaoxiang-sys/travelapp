@@ -17,6 +17,7 @@ import { useBackDismiss } from '../../hooks/useBackDismiss'
 import { useStaggerEntrance } from '../../hooks/useStaggerEntrance'
 import { Avatar } from '../../components/Avatar'
 import { SpendHero } from '../expenses/SpendHero'
+import { TripCashbackSheet } from '../rates/TripCashbackSheet'
 import { proxySummary, toProxyItems } from '../../domain/proxies'
 import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { listTripRefunds, refundSummary } from '../../domain/taxRefunds'
@@ -292,9 +293,11 @@ function BeforeTrip({ trip, todayISO, currentMemberId }: { trip: Trip; todayISO:
 function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip: Trip; todayISO: string; currentMemberId: string; onOpenFlipDeck: () => void }) {
   const { t } = useTranslation()
   const [activityOpen, setActivityOpen] = useState(false)
+  const [tripCashbackOpen, setTripCashbackOpen] = useState(false)
   // 同样漏掉的返回键拦截——"家里刚才"的"查看全部"这个全屏页也没接过，
   // 按返回键会直接退出APP，跟上面BeforeTrip里想去的地点是同一类问题
   useBackDismiss(activityOpen, () => setActivityOpen(false))
+  useBackDismiss(tripCashbackOpen, () => setTripCashbackOpen(false))
 
   const expenses = (useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((e) => !e.deletedAt)
   const dayAllocations = (useLiveQuery(() => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((a) => !a.deletedAt)
@@ -353,7 +356,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
         {dayIndex != null && (
           <div className="text-[11px] text-muted mb-1.5">{t('overview.dayIndex', { day: dayIndex, date: todayISO.slice(5) })}</div>
         )}
-        <SpendHero state={allowance} currency={currencyLabel} entered={entered} proxy={tripProxy} cashbackTotal={tripCashbackTotal} refund={{ total: tripRefunds.total, pending: tripRefunds.pendingTotal }} estimated={expenses.some(isPendingCardExpense)} />
+        <SpendHero state={allowance} currency={currencyLabel} entered={entered} proxy={tripProxy} cashbackTotal={tripCashbackTotal} refund={{ total: tripRefunds.total, pending: tripRefunds.pendingTotal }} estimated={expenses.some(isPendingCardExpense)} onCashbackClick={() => setTripCashbackOpen(true)} />
       </div>
 
       <SatisfactionEntryCard trip={trip} currentMemberId={currentMemberId} onOpen={onOpenFlipDeck} />
@@ -427,6 +430,7 @@ function DuringTrip({ trip, todayISO, currentMemberId, onOpenFlipDeck }: { trip:
       </div>
 
       {activityOpen && <ActivityFeed trip={trip} onClose={() => setActivityOpen(false)} />}
+      {tripCashbackOpen && <TripCashbackSheet tripId={trip.id} currentMemberId={currentMemberId} onClose={() => setTripCashbackOpen(false)} />}
     </div>
   )
 }
