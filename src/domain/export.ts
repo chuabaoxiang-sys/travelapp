@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
 import { db } from '../db/dexie'
-import { computeBalances } from './splits'
+import { computeBalances, owedAfterWaive } from './splits'
 import { categoryLabel } from '../lib/categoryLabel'
 import type { Trip } from '../types'
 
@@ -125,7 +125,8 @@ export async function assembleExportBundle(tripId: string, t: TFunction): Promis
     memberName: memberName(b.memberId),
     paid: b.paid,
     proxyFronted: b.proxyFronted ?? 0,
-    owed: b.owed,
+    // 免了（0054）算进应分摊：表里这一行照样加得通（paid − owed + 已付 − 已收 − 代收退税 + 分到退税 = net）
+    owed: owedAfterWaive(b),
     settledOut: b.settledOut,
     settledIn: b.settledIn,
     refundHeld: b.refundHeld ?? 0,

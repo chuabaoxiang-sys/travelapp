@@ -65,7 +65,7 @@ export function useActivityEntries(trip: Trip): { entries: ActivityEntry[]; memb
       kind: 'settlement' as const,
       at: s.createdAt,
       authorId: s.createdBy,
-      text: t('activity.settlementText', {
+      text: t(s.waived ? 'activity.waivedText' : 'activity.settlementText', {
         from: memberName(s.fromMemberId) ?? t('activity.someone'),
         to: memberName(s.toMemberId) ?? t('activity.someone'),
         amount: formatMoney(s.amount, currency),

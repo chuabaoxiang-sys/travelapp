@@ -256,6 +256,18 @@ export interface PersonBalance {
   // 这个人付款的账里，另外替没来的人垫的代购（不含送礼的）——不进 paid，结算文字/Excel
   // 里写成「另垫了代购」，让看的人知道这部分钱去哪了（2026-11-08）
   proxyFronted?: number
+  // 结算「免了」（0054，2026-11-10）：别人免了我多少（waivedIn，我少承担）、我免了别人多少
+  // （waivedOut，我多承担），以及对方是谁。owed 保持账面口径（= 各笔账分到我的合计），
+  // 免了单独进 net，跟退税同一个做法；要"免了之后实际承担多少"用 owedAfterWaive
+  waivedIn?: number
+  waivedInFrom?: string[]
+  waivedOut?: number
+  waivedOutTo?: string[]
+}
+
+// 免了之后这个人实际承担的分摊：账面应分摊 − 别人免了我的 + 我免了别人的
+export function owedAfterWaive(b: Pick<PersonBalance, 'owed' | 'waivedIn' | 'waivedOut'>): number {
+  return round2(b.owed - (b.waivedIn ?? 0) + (b.waivedOut ?? 0))
 }
 
 export async function computeBalances(tripId: string): Promise<PersonBalance[]> {
@@ -308,7 +320,17 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
 
   const settledOutMap = new Map<string, number>()
   const settledInMap = new Map<string, number>()
+  const waivedInMap = new Map<string, { amount: number; from: string[] }>()
+  const waivedOutMap = new Map<string, { amount: number; to: string[] }>()
   for (const s of settlements) {
+    if (s.waived) {
+      // 免了：from 本来要还 to 的钱不用还了——不是转账，是 from 少承担、to 多承担
+      const inCur = waivedInMap.get(s.fromMemberId) ?? { amount: 0, from: [] }
+      waivedInMap.set(s.fromMemberId, { amount: round2(inCur.amount + s.amount), from: inCur.from.includes(s.toMemberId) ? inCur.from : [...inCur.from, s.toMemberId] })
+      const outCur = waivedOutMap.get(s.toMemberId) ?? { amount: 0, to: [] }
+      waivedOutMap.set(s.toMemberId, { amount: round2(outCur.amount + s.amount), to: outCur.to.includes(s.fromMemberId) ? outCur.to : [...outCur.to, s.fromMemberId] })
+      continue
+    }
     settledOutMap.set(s.fromMemberId, round2((settledOutMap.get(s.fromMemberId) ?? 0) + s.amount))
     settledInMap.set(s.toMemberId, round2((settledInMap.get(s.toMemberId) ?? 0) + s.amount))
   }
@@ -316,6 +338,7 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
   const memberIds = new Set([
     ...paidMap.keys(), ...owedMap.keys(), ...settledOutMap.keys(), ...settledInMap.keys(),
     ...refunds.shareByMember.keys(), ...refunds.heldByMember.keys(),
+    ...waivedInMap.keys(), ...waivedOutMap.keys(),
   ])
   return [...memberIds].map((memberId) => {
     const paid = paidMap.get(memberId)?.amount ?? 0
@@ -324,11 +347,16 @@ export async function computeBalances(tripId: string): Promise<PersonBalance[]> 
     const settledIn = settledInMap.get(memberId) ?? 0
     const refundShare = refunds.shareByMember.get(memberId) ?? 0
     const refundHeld = refunds.heldByMember.get(memberId) ?? 0
+    const waivedIn = waivedInMap.get(memberId)?.amount ?? 0
+    const waivedOut = waivedOutMap.get(memberId)?.amount ?? 0
     // 退税：手上收着的要还出去（−held），分到自己的那份算回给自己（+share）
-    const net = round2(paid - owed + settledOut - settledIn - refundHeld + refundShare)
+    // 免了：别人免了我的算回给我（+waivedIn），我免了别人的我自己吃下（−waivedOut）
+    const net = round2(paid - owed + settledOut - settledIn - refundHeld + refundShare + waivedIn - waivedOut)
     return {
       memberId, paid, owed, settledOut, settledIn, net, expenseCount: paidMap.get(memberId)?.count ?? 0,
       refundShare, refundHeld, proxyFronted: proxyFrontedMap.get(memberId) ?? 0,
+      waivedIn, waivedInFrom: waivedInMap.get(memberId)?.from ?? [],
+      waivedOut, waivedOutTo: waivedOutMap.get(memberId)?.to ?? [],
     }
   })
 }

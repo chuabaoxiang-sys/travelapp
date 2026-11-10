@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { X, CircleCheck, Pencil, Trash2, Check, Plus, ChevronDown, ArrowLeftRight, Copy } from 'lucide-react'
+import { X, CircleCheck, Pencil, Trash2, Check, Plus, ChevronDown, ArrowLeftRight, Copy, Gift } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { computeBalances, simplifyDebts, openExpenseDebts, closedExpenseDebts, prepaymentBalances, round2, type Transfer, type OpenExpenseDebt } from '../../domain/splits'
@@ -166,6 +166,8 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   const [showClosed, setShowClosed] = useState(false)
 
   const [openKey, setOpenKey] = useState<string | null>(null)
+  // 展开的是「去结算」还是「免了」（2026-11-10，0054）
+  const [openMode, setOpenMode] = useState<'settle' | 'waive'>('settle')
   const [settleAmount, setSettleAmount] = useState('')
   const [settleDate, setSettleDate] = useState('')
   const [settleNote, setSettleNote] = useState('')
@@ -337,16 +339,17 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
   // 有结算记录（哪怕是一笔还没对应任何账目的预付款）也算"有money活动"——
   // 不然KN提前打了一笔预付款，账目还一笔没记，这个页面会一直显示"还没有
   // 可以结算的账目"，看不到这笔预付款，也没地方能再管理它
-  const hasAnyMoney = balances.some((b) => b.paid > 0 || b.owed > 0 || b.settledOut > 0 || b.settledIn > 0)
+  const hasAnyMoney = balances.some((b) => b.paid > 0 || b.owed > 0 || b.settledOut > 0 || b.settledIn > 0 || (b.waivedOut ?? 0) > 0)
 
   // 参数名用transfer不用t：t是这个组件里的翻译函数，取名t会在函数体内把它遮掉
-  function openSettle(transfer: Transfer) {
+  function openSettle(transfer: Transfer, mode: 'settle' | 'waive' = 'settle') {
     const key = `${transfer.from}-${transfer.to}`
-    if (openKey === key) {
+    if (openKey === key && openMode === mode) {
       setOpenKey(null)
       return
     }
     setOpenKey(key)
+    setOpenMode(mode)
     setSettleAmount(String(transfer.amount))
     setSettleDate(toLocalDateString(new Date()))
     setSettleNote('')
@@ -361,11 +364,12 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
       toMemberId: transfer.to,
       amount,
       settledDate: settleDate,
-      note: settleNote.trim() || null,
+      note: openMode === 'waive' ? null : settleNote.trim() || null,
       createdBy: currentMemberId,
+      waived: openMode === 'waive',
     })
     setOpenKey(null)
-    flashSuccess(t('split.settledToast'))
+    flashSuccess(t(openMode === 'waive' ? 'split.waive.toast' : 'split.settledToast'))
   }
 
   function startEdit(s: Settlement) {
@@ -478,17 +482,75 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                     <span className="text-[13px] font-medium">{nameOf(transfer.to)}</span>
                     <span className="font-serif-sc text-[16px] tabular ml-auto">{formatMoney(transfer.amount)}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => openSettle(transfer)}
-                    className={`w-full mt-2 rounded-full py-1.5 text-[12px] font-medium ${
-                      isOpen ? 'bg-line text-muted' : 'bg-plan text-card'
-                    }`}
-                  >
-                    {isOpen ? t('split.suggestion.collapse') : t('split.suggestion.goSettle')}
-                  </button>
+                  {isOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setOpenKey(null)}
+                      className="w-full mt-2 rounded-full py-1.5 text-[12px] font-medium bg-line text-muted"
+                    >
+                      {t('split.suggestion.collapse')}
+                    </button>
+                  ) : (
+                    // 「免了」（2026-11-10）：收钱的人不要对方还，跟代购的「送礼」同一个样子
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => openSettle(transfer)}
+                        className="flex-1 rounded-full py-1.5 text-[12px] font-medium bg-plan text-card"
+                      >
+                        {t('split.suggestion.goSettle')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openSettle(transfer, 'waive')}
+                        className="rounded-full px-3.5 py-1.5 text-[12px] border border-plan text-plan bg-plan/5 flex items-center gap-1.5"
+                      >
+                        <Gift className="w-3.5 h-3.5" strokeWidth={1.8} />
+                        {t('split.waive.button')}
+                      </button>
+                    </div>
+                  )}
 
-                  {isOpen && (
+                  {isOpen && openMode === 'waive' && (
+                    <div className="mt-2.5 p-3 rounded-xl bg-plan/5 border border-dashed border-plan/30 flex flex-col gap-2.5">
+                      <div className="text-[12px] leading-relaxed">{t('split.waive.lead', { from: nameOf(transfer.from), to: nameOf(transfer.to) })}</div>
+                      <div className="flex gap-2">
+                        <label className="flex-1 text-[11px] text-muted">
+                          {t('split.waive.amountLabel')}
+                          <input
+                            value={settleAmount}
+                            onChange={(e) => setSettleAmount(e.target.value)}
+                            inputMode="decimal"
+                            className="block w-full mt-1 rounded-lg border border-line bg-card px-2.5 py-1.5 text-[13px] tabular outline-none focus:border-plan"
+                          />
+                        </label>
+                        <label className="flex-1 text-[11px] text-muted">
+                          {t('split.form.dateLabel')}
+                          <div className="mt-1">
+                            <DatePicker value={settleDate} onChange={setSettleDate} />
+                          </div>
+                        </label>
+                      </div>
+                      <div className="text-[11px] text-muted leading-relaxed">
+                        {t('split.waive.effect', { from: nameOf(transfer.from), to: nameOf(transfer.to), amount: formatMoney(parseFloat(settleAmount) || 0) })}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setOpenKey(null)} className="flex-1 rounded-lg border border-line py-2 text-muted flex items-center justify-center" title={t('split.form.cancel')}>
+                          <X className="w-4 h-4" strokeWidth={1.8} />
+                        </button>
+                        <button
+                          onClick={() => confirmSettle(transfer)}
+                          disabled={!(parseFloat(settleAmount) > 0) || parseFloat(settleAmount) > transfer.amount + 0.005}
+                          className="flex-1 rounded-lg bg-plan text-card py-2 disabled:opacity-40 flex items-center justify-center gap-1.5"
+                        >
+                          <Gift className="w-4 h-4" strokeWidth={1.8} />
+                          <span className="text-[12.5px] font-medium">{t('split.waive.confirm')}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {isOpen && openMode === 'settle' && (
                     <div className="mt-2.5 p-3 rounded-xl bg-plan/5 border border-dashed border-plan/30 flex flex-col gap-2.5">
                       <div className="flex gap-2">
                         <label className="flex-1 text-[11px] text-muted">
@@ -709,7 +771,14 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                 <span className="text-[12.5px]">{nameOf(s.toMemberId)}</span>
                 <div className="ml-auto text-right">
                   <div className="font-serif-sc text-[14px] tabular">{formatMoney(s.amount)}</div>
-                  <div className="text-[10.5px] text-muted">{s.settledDate.slice(5).replace('-', '/')}{s.note ? ` · ${s.note}` : ''}</div>
+                  {s.waived ? (
+                    <div className="text-[10.5px] text-plan flex items-center gap-[3px] justify-end">
+                      <Gift className="w-[11px] h-[11px]" strokeWidth={1.8} />
+                      {s.settledDate.slice(5).replace('-', '/')} · {t('split.waive.recordTag', { name: nameOf(s.toMemberId) })}{s.note ? ` · ${s.note}` : ''}
+                    </div>
+                  ) : (
+                    <div className="text-[10.5px] text-muted">{s.settledDate.slice(5).replace('-', '/')}{s.note ? ` · ${s.note}` : ''}</div>
+                  )}
                 </div>
                 <button onClick={() => startEdit(s)} className="w-6 h-6 rounded-lg border border-line bg-paper flex items-center justify-center text-muted flex-shrink-0" title={t('split.records.edit')}>
                   <Pencil className="w-3 h-3" strokeWidth={1.8} />
@@ -759,7 +828,7 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
         {balances
           .sort((a, b) => b.net - a.net)
           .map((b) => {
-            const settled = Math.abs(b.net) < 0.5 && (b.settledOut > 0 || b.settledIn > 0)
+            const settled = Math.abs(b.net) < 0.5 && (b.settledOut > 0 || b.settledIn > 0 || (b.waivedIn ?? 0) > 0 || (b.waivedOut ?? 0) > 0)
             return (
               <div key={b.memberId} className="bg-card border border-line rounded-2xl p-3">
                 <div className="flex justify-between items-baseline">
@@ -797,6 +866,8 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                     t('split.balances.share', { amount: formatMoney(b.owed) }),
                     b.settledOut > 0 ? t('split.balances.repaid', { amount: formatMoney(b.settledOut) }) : null,
                     b.settledIn > 0 ? t('split.balances.received', { amount: formatMoney(b.settledIn) }) : null,
+                    (b.waivedIn ?? 0) > 0 ? t('split.balances.waivedIn', { names: (b.waivedInFrom ?? []).map(nameOf).join('、'), amount: formatMoney(b.waivedIn!) }) : null,
+                    (b.waivedOut ?? 0) > 0 ? t('split.balances.waivedOut', { names: (b.waivedOutTo ?? []).map(nameOf).join('、'), amount: formatMoney(b.waivedOut!) }) : null,
                     (b.refundShare ?? 0) > 0 ? t('split.balances.refund', { amount: formatMoney(b.refundShare!) }) : null,
                     (b.refundHeld ?? 0) > 0 ? t('split.balances.refundHeld', { amount: formatMoney(b.refundHeld!) }) : null,
                   ].filter(Boolean).join(' · ')}

@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { PersonBalance, Transfer } from './splits'
+import { owedAfterWaive, type PersonBalance, type Transfer } from './splits'
 import { formatMoney } from '../lib/money'
 
 // 跟 simplifyDebts 用同一个阈值：差额不到0.5的算两清，不然文案里会出现"还需付 RM0.20"
@@ -27,8 +27,9 @@ export function buildSettlementText(input: SettlementTextInput, t: TFunction): s
   const money = (n: number) => formatMoney(n, currencySymbol)
   const people = balances
     .filter((b) => b.paid > 0 || b.owed > 0 || (b.refundShare ?? 0) > 0 || (b.refundHeld ?? 0) > 0)
-    .sort((a, b) => b.owed - a.owed)
-  const total = people.reduce((sum, b) => sum + b.owed, 0)
+    .sort((a, b) => owedAfterWaive(b) - owedAfterWaive(a))
+  // 「免了」（2026-11-10）：每人的应分摊写免了之后实际承担的，括号里写清楚谁免了谁；合计不变
+  const total = people.reduce((sum, b) => sum + owedAfterWaive(b), 0)
 
   const lines: string[] = [
     t('split.copyText.title', { trip: tripName }),
@@ -64,7 +65,11 @@ export function buildSettlementText(input: SettlementTextInput, t: TFunction): s
       (b.refundHeld ?? 0) > 0 ? t('split.copyText.partRefundHeld', { amount: money(b.refundHeld!) }) : null,
       (b.refundShare ?? 0) > 0 ? t('split.copyText.partRefundShare', { amount: money(b.refundShare!) }) : null,
     ].filter(Boolean)
-    lines.push(t('split.copyText.personLine', { name: nameOf(b.memberId), owed: money(b.owed) }))
+    const waiveNotes = [
+      (b.waivedIn ?? 0) > 0 ? t('split.copyText.waivedIn', { names: (b.waivedInFrom ?? []).map(nameOf).join('、'), amount: money(b.waivedIn!) }) : null,
+      (b.waivedOut ?? 0) > 0 ? t('split.copyText.waivedOut', { names: (b.waivedOutTo ?? []).map(nameOf).join('、'), amount: money(b.waivedOut!) }) : null,
+    ].filter(Boolean).join('')
+    lines.push(t('split.copyText.personLine', { name: nameOf(b.memberId), owed: money(owedAfterWaive(b)) }) + waiveNotes)
     lines.push(t('split.copyText.personDetail', { parts: parts.join(' · '), status }))
   }
 

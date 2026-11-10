@@ -466,6 +466,9 @@ export interface Settlement {
   // 会被"按笔结算"自动拿去抵扣这两人之间后续的具体账目；false（含"结算建议"接受时
   // 生成的）不参与自动抵扣——避免把不对应真实账目的简化转账错误核销到具体账目上
   isPrepayment: boolean
+  // 结算「免了」（0054，2026-11-10）：true = 收钱的人（to）免掉了这笔，钱没有真的转。
+  // 算余额时不算已付/已收，而是 from 少分摊、to 多分摊这么多（见 computeBalances）
+  waived?: boolean
   deletedAt: number | null
   createdAt: number
   updatedAt: number

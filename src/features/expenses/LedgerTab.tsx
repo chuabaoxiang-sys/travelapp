@@ -113,6 +113,9 @@ export function LedgerTab({
   // 正好就是"我的花费"这个数字，不用另外算一遍
   const balances = useLiveQuery(() => computeBalances(trip.id), [trip.id]) ?? []
   const myOwed = balances.find((b) => b.memberId === currentMemberId)?.owed ?? 0
+  // 结算「免了」（0054）：别人免了我的（我少承担）、我免了别人的（我多承担）——跟退税一样单独一项
+  const myWaivedIn = balances.find((b) => b.memberId === currentMemberId)?.waivedIn ?? 0
+  const myWaivedOut = balances.find((b) => b.memberId === currentMemberId)?.waivedOut ?? 0
   const [editingId, setEditingId] = useState<string | null>(null)
   // 「代购多收」明细弹层（2026-11-08）
   const [proxyGainOpen, setProxyGainOpen] = useState(false)
@@ -167,7 +170,8 @@ export function LedgerTab({
   // 退税（2026-11-08）：分到我头上的那份退税扣"我的花费"
   const tripRefunds = refundSummary(useLiveQuery(() => listTripRefunds(trip.id), [trip.id]) ?? [])
   const myRefund = tripRefunds.shareByMember.get(currentMemberId) ?? 0
-  const myHeroValue = round2(myOwed - myCashback - myProxyGain - myRefund)
+  const myHeroValue = round2(myOwed - myCashback - myProxyGain - myRefund - myWaivedIn + myWaivedOut)
+  const myHasTerms = myCashback > 0 || myProxyGain !== 0 || myRefund > 0 || myWaivedIn > 0 || myWaivedOut > 0
   // 含估算（2026-11-08）：还有刷卡没补实际扣款；「我的」只看跟我有关的那几笔
   const tripHasEstimate = expenses.some(isPendingCardExpense)
   const myHasEstimate = expenses.some((e) => isPendingCardExpense(e) && (e.paidBy === currentMemberId || (myShareOf(e.id, splits, currentMemberId, e) ?? 0) > 0))
@@ -427,7 +431,7 @@ export function LedgerTab({
             <div className="font-bold tracking-tight tabular text-[27px] leading-none">{formatMoney(animatedActiveHeroValue, currencyLabel)}</div>
             {myHasEstimate && <EstimatePill tone="dark" />}
           </div>
-          {myCashback > 0 || myProxyGain !== 0 || myRefund > 0 ? (
+          {myHasTerms ? (
             // 有归我的返现 / 代购多收时，这一行直接写成算式：应分摊 − Cashback − 代购多收（2026-11-07 口径统一）
             <div className="mt-2 text-[11px] text-on-dark/75 tabular">
               {t('ledger.mineHero.owedLabel')} <span className="font-semibold text-on-dark">{formatMoney(myOwed, currencyLabel)}</span>
@@ -446,6 +450,8 @@ export function LedgerTab({
                 </>
               )}
               {myRefund > 0 && <span className="text-plan-on-dark"> {t('ledger.mineHero.minusRefund', { amount: formatMoney(myRefund, currencyLabel) })}</span>}
+              {myWaivedIn > 0 && <span className="text-plan-on-dark"> {t('ledger.mineHero.minusWaived', { amount: formatMoney(myWaivedIn, currencyLabel) })}</span>}
+              {myWaivedOut > 0 && <span className="text-plan-on-dark"> {t('ledger.mineHero.plusWaived', { amount: formatMoney(myWaivedOut, currencyLabel) })}</span>}
             </div>
           ) : (
             <div className="mt-2 text-[11px] text-on-dark/50">{t('ledger.mineHero.sublabel')}</div>
@@ -460,12 +466,14 @@ export function LedgerTab({
             todayISO={todayISO}
             currency={currencyLabel}
             title={t('ledger.breakdown.mineTitle')}
-            footer={myCashback > 0 || myProxyGain !== 0 || myRefund > 0 ? (
+            footer={myHasTerms ? (
               <div className="border-t border-line mt-2.5 pt-2 text-[11px] text-soft tabular leading-relaxed">
                 {t('ledger.breakdown.mineReconcile', { owed: formatMoney(myOwed, currencyLabel) })}
                 {myCashback > 0 && <span className="text-positive"> {t('ledger.mineHero.minusCashback', { amount: formatMoney(myCashback, currencyLabel) })}</span>}
                 {myProxyGain !== 0 && <span className="text-positive"> {t(myProxyGain > 0 ? 'ledger.mineHero.minusProxyGain' : 'ledger.mineHero.plusProxyLoss', { amount: formatMoney(Math.abs(myProxyGain), currencyLabel) })}</span>}
                 {myRefund > 0 && <span className="text-positive"> {t('ledger.mineHero.minusRefund', { amount: formatMoney(myRefund, currencyLabel) })}</span>}
+                {myWaivedIn > 0 && <span className="text-positive"> {t('ledger.mineHero.minusWaived', { amount: formatMoney(myWaivedIn, currencyLabel) })}</span>}
+                {myWaivedOut > 0 && <span className="text-spend-text"> {t('ledger.mineHero.plusWaived', { amount: formatMoney(myWaivedOut, currencyLabel) })}</span>}
                 {' = '}{t('ledger.mineHero.label')} <b className="text-ink">{formatMoney(myHeroValue, currencyLabel)}</b>
               </div>
             ) : undefined}

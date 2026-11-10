@@ -428,6 +428,8 @@
       "allSettled": "Everyone's square 🎉",
       "detailsHeading": "[Breakdown per person]",
       "personLine": "{{name}}: share {{owed}}",
+      "waivedIn": " ({{names}} let go {{amount}})",
+      "waivedOut": " (let {{names}} off {{amount}})",
       "personDetail": "  {{parts}} → {{status}}",
       "partPaid": "paid {{amount}}",
       "partProxy": " (plus {{amount}} for purchases for others)",
@@ -449,6 +451,15 @@
       "balanced": "Everything balances out — no transfers needed",
       "goSettle": "Settle up",
       "collapse": "Close"
+    },
+    "waive": {
+      "button": "Let it go",
+      "lead": "{{to}} doesn't need {{from}} to pay this back and covers it instead.",
+      "amountLabel": "Amount to let go",
+      "effect": "{{from}}'s \"My spending\" goes down {{amount}} and {{to}}'s goes up {{amount}}. The trip total doesn't change.",
+      "confirm": "Let it go",
+      "toast": "Saved: let go",
+      "recordTag": "{{name}} let it go"
     },
     "byItem": {
       "heading": "Settle item by item",
@@ -491,7 +502,9 @@
       "repaid": "repaid {{amount}}",
       "received": "received {{amount}}",
       "refund": "tax refund share {{amount}}",
-      "refundHeld": "holding tax refunds {{amount}}"
+      "refundHeld": "holding tax refunds {{amount}}",
+      "waivedIn": "{{names}} let go {{amount}}",
+      "waivedOut": "let {{names}} off {{amount}}"
     },
     "form": {
       "amountLabel": "Amount",
@@ -716,6 +729,8 @@
       "owedLabel": "Your share",
       "minusCashback": "− {{amount}} cashback",
       "minusRefund": "− {{amount}} tax refund",
+      "minusWaived": "− {{amount}} let go",
+      "plusWaived": "+ {{amount}} covered for others",
       "minusProxyGain": "− {{amount}} extra from purchases for others",
       "plusProxyLoss": "+ {{amount}} short from purchases for others"
     },
@@ -1357,6 +1372,7 @@
     "someone": "Someone",
     "unnamedExpense": "an expense",
     "settlementText": "{{from}} paid {{to}} back {{amount}}",
+    "waivedText": "{{to}} let {{from}} off {{amount}}",
     "title": "Activity",
     "close": "Close",
     "empty": "Nothing logged for this trip yet. Log an expense or add something to the itinerary, and it'll show up here."
@@ -1587,7 +1603,7 @@
         { "title": "Expand \"Other settings\"", "desc": "Tap \"Edit\" — date, who paid, and how to split are tucked in here, usually already right. Bought something for someone who isn't on the trip? Add who it's for and how much under \"Bought for others\" — that part isn't split among the travelers. If the purchase had a discount, enter their items at the original price and choose whether to share the discount with them (by default you keep it: they pay back the original price and the extra goes to whoever paid — tap it on your \"Mine\" card to see the breakdown; if you share it, their part isn't counted in \"Saved with discounts\" on the trip recap). With Split set to Itemized, enter each item in the receipt's currency (at the original price if there's a discount) — the app converts it and spreads the discount for you. Each item can also include people you bought for (the dashed names, or tap \"+ For someone else\"), and everyone ticked splits that item equally. For a hotel stay or a car rental, use \"Spread across days\" to pick the days it covers: each day's total in the list then counts only that day's part (the expense gets an \"Over N days\" tag), and days that include part of an expense logged on another day show an \"Includes multi-day\" line under the date — tap the name to jump back to it." },
         { "title": "Link it to a plan", "desc": "Tie an expense to a specific itinerary item, so you can see the cost when you look back at that day." },
         { "title": "Edit or delete an expense", "desc": "Tap an existing entry to expand it — expenses already settled can't have their amount changed anymore. With lots of entries, tap the filter button at the left of the date strip to show only certain categories or payment methods; a bar above the list shows how many match and their total." },
-        { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back. Below it, the \"Bought for others\" card totals up what each person owes; tap \"Mark as paid back\" when they've paid and enter what they actually paid (more or less both count as settled; if it's less, choose whether the difference is \"Short\" — covered by whoever was paid back — or \"A gift\", split between the people you pick and counted in settle-up), or tap \"Gift\" to give it to them and pick who shares the cost. Every person — not paid back yet, paid back or gifted — can be expanded to see each item and the total (in the foreign currency, with the average rate), and the copy button next to them copies their list so you can send it straight to them. Under that, the \"Tax refunds\" card is for airport cash refunds and refunds paid back to a card: choose cash or card, the amount, and who it belongs to (split evenly, counted in settle-up). A cash refund in a foreign currency is added to the rate book so you can pick it when logging cash spending; a card refund that hasn't arrived yet counts as an estimate until you tap \"It's in\" and enter the actual amount. The copy button next to the heading copies a settle-up message for your group chat: who still pays whom, then each person's share with a line that adds up (paid, paid back or received, tax refunds → gets back or owes)." },
+        { "title": "See the settle-up suggestion", "desc": "Switch to \"Settle\" — it works out the fewest transfers needed, not everyone paying everyone back. If the person being paid back doesn't want the money, tap \"Let it go\" on that transfer: let go of all or part of it, it isn't counted as a payment, and both people's \"My spending\" updates. Delete it under settlement records to undo. Below it, the \"Bought for others\" card totals up what each person owes; tap \"Mark as paid back\" when they've paid and enter what they actually paid (more or less both count as settled; if it's less, choose whether the difference is \"Short\" — covered by whoever was paid back — or \"A gift\", split between the people you pick and counted in settle-up), or tap \"Gift\" to give it to them and pick who shares the cost. Every person — not paid back yet, paid back or gifted — can be expanded to see each item and the total (in the foreign currency, with the average rate), and the copy button next to them copies their list so you can send it straight to them. Under that, the \"Tax refunds\" card is for airport cash refunds and refunds paid back to a card: choose cash or card, the amount, and who it belongs to (split evenly, counted in settle-up). A cash refund in a foreign currency is added to the rate book so you can pick it when logging cash spending; a card refund that hasn't arrived yet counts as an estimate until you tap \"It's in\" and enter the actual amount. The copy button next to the heading copies a settle-up message for your group chat: who still pays whom, then each person's share with a line that adds up (paid, paid back or received, tax refunds → gets back or owes)." },
         { "title": "Settle specific expenses", "desc": "Pick one or a few expenses and settle just those, instead of the running total." },
         { "title": "Log a prepayment", "desc": "If someone handed over a lump sum upfront, \"Add\" next to \"Settlement records\" logs it directly — no expense needed first." },
         { "title": "Who paid what", "desc": "See at a glance what each person covered and what they owe. On \"Mine\", the \"Where my money went\" card under the dark card counts only your share, so you can see which categories your own money went to. Both spending cards lead with your biggest category, and categories under 3% are grouped into \"Other\" with each amount listed underneath. Each day's \"Day total · mine\" and the filtered total in the list count only your share too. If you chipped in on a gift for someone you shopped for, that purchase shows up in \"Mine\" too, even if you weren't part of the split." }
