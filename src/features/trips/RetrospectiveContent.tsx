@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import { Tag } from 'lucide-react'
 import type { Trip } from '../../types'
 import { buildRetrospective, type TripRetrospective } from '../../domain/retrospective'
-import { formatMoney, formatMoneyFixed } from '../../lib/money'
+import { formatMoney } from '../../lib/money'
+import { db } from '../../db/dexie'
+import { SpendBreakdownCard } from '../expenses/SpendBreakdownCard'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { useStaggerEntrance } from '../../hooks/useStaggerEntrance'
 import { MoodCurveCard } from '../satisfaction/MoodCurveCard'
@@ -19,22 +22,6 @@ import { EstimatePill } from '../../components/EstimatePill'
 // 现在补上跟"出发前"/记账页大数字同一套动效：总花费数字滚入、分类占比条从0
 // 滚到目标宽度、各张卡片错开时间淡入+上移——手法都是抄现成的，不是新发明
 
-function Bar({ pct, color, entered, delayMs }: { pct: number; color: string; entered: boolean; delayMs: number }) {
-  return (
-    <div className="h-1.5 rounded-full bg-line overflow-hidden">
-      {/* 下限 2% 是为了让金额很小的分类也留下一道可见的痕迹，而不是一条看不见的线 */}
-      <div
-        className="bar-fill h-full rounded-full"
-        style={{
-          width: entered ? `${Math.min(100, Math.max(2, pct))}%` : '0%',
-          background: color,
-          transitionDelay: `${delayMs}ms`,
-        }}
-      />
-    </div>
-  )
-}
-
 export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { trip: Trip; currentMemberId: string; refreshKey?: number }) {
   const { t } = useTranslation()
   const [data, setData] = useState<TripRetrospective | null>(null)
@@ -47,7 +34,7 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
   // 这个tab是条件渲染，每次切回"概览"都是重新mount——挂载后下一帧触发一次
   // 进场动效就够，跟BeforeTrip那套双重RAF一致：等首帧真的画完（数字/占比条
   // 都还在"隐藏"状态），下一帧再翻转，CSS transition才有起点
-  const { entered, enterClass, nextDelayMs, delayStyle } = useStaggerEntrance()
+  const { enterClass, nextDelayMs, delayStyle } = useStaggerEntrance()
 
   // Hook不能在下面两个提前return之后才调用，所以放在这里、用data?.total ?? 0
   // 兜底——data还没查完时hook收到的是0，真实总额一到，会自然从0滚上去，
@@ -56,7 +43,10 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
 
   const currency = trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency
   const money = (n: number) => formatMoney(n, currency)
-  const maxCat = data?.categories[0]?.total ?? 0
+  // 「这趟花在哪」（2026-11-10）跟账目页用同一张卡，数据直接从库里读（跟账目页同一套口径）
+  const tripExpenses = (useLiveQuery(() => db.expenses.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((e) => !e.deletedAt)
+  const expenseCategories = useLiveQuery(() => db.expenseCategories.toArray()) ?? []
+  const dayAllocations = (useLiveQuery(() => db.expenseDayAllocations.where('tripId').equals(trip.id).toArray(), [trip.id]) ?? []).filter((a) => !a.deletedAt)
 
   if (!data) {
     return <div className="text-[13px] text-muted py-10 text-center">{t('retrospective.loading')}</div>
@@ -143,31 +133,18 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
         <MoodCurveCard satisfaction={data.satisfaction} tripId={trip.id} currentMemberId={currentMemberId} />
       </div>
 
-      {data.categories.length > 0 && (() => {
-        const sectionDelay = nextDelayMs()
-        return (
-          <div className={enterClass()} style={delayStyle(sectionDelay)}>
-            <div className="text-[11px] text-muted mb-2">{t('retrospective.whereItWent')}</div>
-            <div className="flex flex-col gap-2.5">
-              {data.categories.map((c, i) => (
-                <div key={c.name}>
-                  <div className="flex items-baseline text-[12px] mb-1">
-                    <span>{c.name}</span>
-                    {/* 2026-11-10 跟「这趟花在哪」卡片同一套：金额是主角（深色加粗）、固定两位小数上下对齐 */}
-                    <span className="ml-auto tabular font-semibold">{formatMoneyFixed(c.total, currency)}</span>
-                  </div>
-                  <Bar
-                    pct={maxCat > 0 ? (c.total / maxCat) * 100 : 0}
-                    color={c.color}
-                    entered={entered}
-                    delayMs={sectionDelay + i * 60}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
+      {data.categories.length > 0 && (
+        <div className={enterClass()} style={delayStyle(nextDelayMs())}>
+          <SpendBreakdownCard
+            expenses={tripExpenses}
+            categories={expenseCategories}
+            dayAllocations={dayAllocations}
+            todayISO={new Date().toLocaleDateString('sv-SE')}
+            currency={currency}
+            hideModeToggle
+          />
+        </div>
+      )}
 
       {data.topDay && (
         <div className={`rounded-2xl border border-line bg-card px-3.5 py-2.5 flex items-center ${enterClass()}`} style={delayStyle(nextDelayMs())}>

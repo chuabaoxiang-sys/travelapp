@@ -129,6 +129,7 @@ export function SpendBreakdownCard({
   currency,
   title,
   footer,
+  hideModeToggle = false,
 }: {
   expenses: Expense[]
   categories: ExpenseCategory[]
@@ -138,6 +139,8 @@ export function SpendBreakdownCard({
   // 「我的」视角（2026-11-08）复用这张卡：换标题、底下多一行对账
   title?: string
   footer?: ReactNode
+  // 旅程回顾（2026-11-10）复用这张卡：行程已经结束，没有「今天」，不显示「全程 / 今天」切换
+  hideModeToggle?: boolean
 }) {
   const { t, i18n } = useTranslation()
   const [mode, setMode] = useState<'trip' | 'today'>('trip')
@@ -199,7 +202,7 @@ export function SpendBreakdownCard({
           <PieChart className="w-3.5 h-3.5 text-muted" strokeWidth={2} />
           {title ?? t('ledger.breakdown.title')}
         </div>
-        <div className="flex bg-segment rounded-lg p-0.5">
+        {!hideModeToggle && <div className="flex bg-segment rounded-lg p-0.5">
           {(['trip', 'today'] as const).map((m) => (
             <button
               key={m}
@@ -209,7 +212,7 @@ export function SpendBreakdownCard({
               {t(`ledger.breakdown.${m}`)}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
 
       {!rows.length ? (

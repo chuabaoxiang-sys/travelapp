@@ -1559,7 +1559,7 @@
         { "title": "Meet the four tabs", "desc": "Overview, Itinerary, Ledger, More — the purple circle button in the middle is \"Add expense,\" reachable from Itinerary or Ledger any time." },
         { "title": "Before you leave", "desc": "A countdown card, your still-unbooked plans, and a checklist of what's ready." },
         { "title": "While you're traveling", "desc": "What's left to spend today, what's coming up, and what everyone else just did." },
-        { "title": "After you're home", "desc": "What the trip actually cost (after purchases for others and cashback, with the breakdown shown), per-person average, where the money went — this is the old \"trip recap,\" now shown automatically once you're back." },
+        { "title": "After you're home", "desc": "What the trip actually cost (after purchases for others and cashback, with the breakdown shown), per-person average, where the money went (the same spending card as on Ledger) — this is the old \"trip recap,\" now shown automatically once you're back." },
         { "title": "Start a new trip", "desc": "\"+ New trip\" at the bottom of \"My trips\" — name it, pick a home currency, and go." }
       ]
     },
