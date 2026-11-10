@@ -45,6 +45,26 @@ describe('myRelatedExpenseIds', () => {
     const splits = [split('e1', 'mama', 50), split('e2', 'aming', 90)]
     expect(myRelatedExpenseIds(expenses, splits, 'aming')).toEqual(new Set(['e2', 'e3']))
   })
+
+  // 2026-11-10：KN 只是代购送礼的一起出钱人（Bic Camera 免税那种），自己没分摊那笔
+  it('代购全部送礼分到他头上的账，也算相关', () => {
+    const expenses = [expense('e1', 'bx')]
+    const splits = [
+      split('e1', 'bx', 70),
+      { ...split('e1', 'bx', 30), id: 'e1-gift', proxyName: '妈妈', proxyAmount: 30, proxyGiftMemberIds: ['bx', 'kn'] },
+    ]
+    expect(myRelatedExpenseIds(expenses, splits, 'kn')).toEqual(new Set(['e1']))
+  })
+
+  it('部分送礼（标已还时少收的差额选「送的」）分到他头上的账，也算相关', () => {
+    const expenses = [expense('e1', 'bx')]
+    const splits = [
+      split('e1', 'bx', 70),
+      { ...split('e1', 'bx', 30), id: 'e1-gift', proxyName: '妈妈', proxyAmount: 30, proxyRepaidAt: 1, proxyRepaidAmount: 20, proxyGiftMemberIds: ['kn'] },
+    ]
+    expect(myRelatedExpenseIds(expenses, splits, 'kn')).toEqual(new Set(['e1']))
+    expect(myRelatedExpenseIds(expenses, splits, 'mama')).toEqual(new Set())
+  })
 })
 
 describe('myShareOf', () => {

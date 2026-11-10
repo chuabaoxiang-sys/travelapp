@@ -695,7 +695,8 @@ export function LedgerTab({
                           {t('ledger.lastEditedBy', { name: editor.displayName, time: relativeTime(e.updatedAt, now, t) })}
                         </div>
                       )}
-                      {view === 'mine' && !isPersonal && (
+                      {/* 别人的个人开销出现在「我的」里，只可能是代购送礼分到我头上（2026-11-10），也要写出我那份 */}
+                      {view === 'mine' && (!isPersonal || e.paidBy !== currentMemberId) && (
                         <div className="text-[11px] text-plan mt-0.5">
                           {t('ledger.yourShareLabel')} {myShare != null ? formatMoney(myShare, trip.homeCurrency === 'MYR' ? 'RM' : trip.homeCurrency) : t('ledger.yourShareNotApplicable')}
                         </div>

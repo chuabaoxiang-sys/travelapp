@@ -3,11 +3,14 @@ import { memberSharesOfExpense } from './splits'
 
 // "跟我相关"的账目：我是付款人，或者分摊名单里有我——个人开销也算在内，因为
 // resolveSplitShares 对个人开销同样会给付款人自己记一条全额的expense_split，
-// 不是只有"大家分摊"才会出现在这个集合里
+// 不是只有"大家分摊"才会出现在这个集合里。代购送礼分到我头上的也算
 export function myRelatedExpenseIds(expenses: Expense[], splits: ExpenseSplit[], memberId: string): Set<string> {
   return new Set([
     ...expenses.filter((e) => e.paidBy === memberId).map((e) => e.id),
     ...splits.filter((s) => s.memberId === memberId).map((s) => s.expenseId),
+    // 代购送礼（全部送 / 部分送）分到我头上的（2026-11-10）：我没分摊那笔、只是一起出钱送礼，
+    // 也算跟我相关——不然「我的」黑卡算了这份，列表和当日合计却漏掉，对不上
+    ...splits.filter((s) => s.proxyGiftMemberIds?.includes(memberId)).map((s) => s.expenseId),
   ])
 }
 
