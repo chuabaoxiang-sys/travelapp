@@ -19,3 +19,10 @@ export function formatMoney(amount: number, currency = 'RM') {
 export function formatAmountPlain(amount: number) {
   return amount.toLocaleString('en-US', { maximumFractionDigits: 2 })
 }
+
+// 固定两位小数（整数也写 .00）——用在一列金额要上下对齐的地方（2026-11-10「这趟花在哪」），
+// 不然 RM4,302 和 RM5,613.31 混在一列里参差不齐
+export function formatMoneyFixed(amount: number, currency = 'RM') {
+  const value = Math.round(amount * 100) / 100
+  return `${currency}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}

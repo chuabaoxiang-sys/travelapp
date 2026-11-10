@@ -43,3 +43,20 @@ export function categoryBreakdown(
     .filter((r) => r.total > 0)
     .sort((a, b) => b.total - a.total)
 }
+
+// 「这趟花在哪」收拾干净（2026-11-10）：占比不到 threshold% 的分类，两类以上时合成一行
+// 「其他 N 类」（只剩一类就照常单独列，合了没意义）。合进去的每一类原样留在 items 里，
+// 卡片下面一行小字照样写出各自金额
+export function groupSmallCategories(
+  rows: CategorySpend[],
+  thresholdPct = 3,
+): { kept: CategorySpend[]; other: { total: number; items: CategorySpend[] } | null } {
+  const total = rows.reduce((a, r) => a + r.total, 0)
+  if (!(total > 0)) return { kept: rows, other: null }
+  const small = rows.filter((r) => (r.total / total) * 100 < thresholdPct)
+  if (small.length < 2) return { kept: rows, other: null }
+  return {
+    kept: rows.filter((r) => !small.includes(r)),
+    other: { total: round2(small.reduce((a, r) => a + r.total, 0)), items: small },
+  }
+}

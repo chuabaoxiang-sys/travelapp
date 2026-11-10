@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { categoryBreakdown } from './spendBreakdown'
+import { categoryBreakdown, groupSmallCategories } from './spendBreakdown'
 import type { Expense, ExpenseDayAllocation } from '../types'
 
 function expense(id: string, categoryId: string, homeAmount: number, expenseDate: string, daySpreadMode: Expense['daySpreadMode'] = null): Expense {
@@ -67,5 +67,32 @@ describe('categoryBreakdown', () => {
   it('today模式没有任何今天的账目时返回空数组', () => {
     const expenses = [expense('e1', 'cat-food', 100, '2026-09-01')]
     expect(categoryBreakdown(expenses, [], 'today', '2026-09-02')).toEqual([])
+  })
+})
+
+// 2026-11-10：用户真实行程的分类合计（东京北海道 2026）
+describe('groupSmallCategories', () => {
+  const rows = [
+    { categoryId: 'cat-stay', total: 5613.31 },
+    { categoryId: 'cat-flight', total: 4302 },
+    { categoryId: 'cat-shop', total: 4234.94 },
+    { categoryId: 'cat-food', total: 3434.95 },
+    { categoryId: 'cat-transport', total: 3377.24 },
+    { categoryId: 'cat-ticket', total: 525.65 },
+    { categoryId: 'cat-insurance', total: 133.12 },
+    { categoryId: 'cat-misc', total: 105.64 },
+  ]
+
+  it('不到 3% 的几类合成「其他」，金额加起来不少一分', () => {
+    const { kept, other } = groupSmallCategories(rows)
+    expect(kept.map((r) => r.categoryId)).toEqual(['cat-stay', 'cat-flight', 'cat-shop', 'cat-food', 'cat-transport'])
+    expect(other?.items.map((r) => r.categoryId)).toEqual(['cat-ticket', 'cat-insurance', 'cat-misc'])
+    expect(other?.total).toBe(764.41)
+  })
+
+  it('只有一类不到 3% 时不合并，照常单独列', () => {
+    const { kept, other } = groupSmallCategories([{ categoryId: 'a', total: 980 }, { categoryId: 'b', total: 20 }])
+    expect(other).toBeNull()
+    expect(kept).toHaveLength(2)
   })
 })

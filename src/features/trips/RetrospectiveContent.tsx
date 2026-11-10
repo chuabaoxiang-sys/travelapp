@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Tag } from 'lucide-react'
 import type { Trip } from '../../types'
 import { buildRetrospective, type TripRetrospective } from '../../domain/retrospective'
-import { formatMoney } from '../../lib/money'
+import { formatMoney, formatMoneyFixed } from '../../lib/money'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { useStaggerEntrance } from '../../hooks/useStaggerEntrance'
 import { MoodCurveCard } from '../satisfaction/MoodCurveCard'
@@ -153,7 +153,8 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
                 <div key={c.name}>
                   <div className="flex items-baseline text-[12px] mb-1">
                     <span>{c.name}</span>
-                    <span className="ml-auto tabular text-muted">{money(c.total)}</span>
+                    {/* 2026-11-10 跟「这趟花在哪」卡片同一套：金额是主角（深色加粗）、固定两位小数上下对齐 */}
+                    <span className="ml-auto tabular font-semibold">{formatMoneyFixed(c.total, currency)}</span>
                   </div>
                   <Bar
                     pct={maxCat > 0 ? (c.total / maxCat) * 100 : 0}

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PieChart, ChevronDown } from 'lucide-react'
+import { PieChart, ChevronDown, Ellipsis } from 'lucide-react'
 import type { Expense, ExpenseCategory, ExpenseDayAllocation } from '../../types'
-import { categoryBreakdown } from '../../domain/spendBreakdown'
+import { categoryBreakdown, groupSmallCategories } from '../../domain/spendBreakdown'
 import { categoryColor } from '../../lib/categoryColors'
 import { categoryLabel } from '../../lib/categoryLabel'
 import { CategoryIcon } from '../../components/CategoryBadge'
-import { formatMoney } from '../../lib/money'
+import { formatMoneyFixed } from '../../lib/money'
 
 const RING_SIZE = 80
 const RING_STROKE = 10
@@ -139,7 +139,7 @@ export function SpendBreakdownCard({
   title?: string
   footer?: ReactNode
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [mode, setMode] = useState<'trip' | 'today'>('trip')
   const [expanded, setExpanded] = useState(false)
 
@@ -159,7 +159,38 @@ export function SpendBreakdownCard({
     category: categories.find((c) => c.id === r.categoryId),
     pct: total > 0 ? (r.total / total) * 100 : 0,
   }))
-  const topRows = withMeta.slice(0, 3)
+  // 收拾干净（2026-11-10）：圆环旁边只写一句重点，列表从第一类开始只列一次（收起时前三行，
+  // 展开接着往下）；不到 3% 的几类合成「其他 N 类」；长条按花最多那一类画满；
+  // 金额深色加粗、固定两位小数，百分比退成小灰字单独一列
+  const top = withMeta[0]
+  const topThreePct = withMeta.length >= 3 ? Math.round(withMeta.slice(0, 3).reduce((a, r) => a + r.pct, 0)) : null
+  const { kept, other } = groupSmallCategories(rows)
+  const maxTotal = rows[0]?.total ?? 0
+  const listRows: { key: string; label: string; color: string; icon: ReactNode; total: number; pct: number; detail?: string }[] = [
+    ...kept.map((r) => {
+      const category = categories.find((c) => c.id === r.categoryId)
+      return {
+        key: r.categoryId,
+        label: categoryLabel(category, t),
+        color: categoryColor(category),
+        icon: <CategoryIcon category={category} size={13} />,
+        total: r.total,
+        pct: total > 0 ? (r.total / total) * 100 : 0,
+      }
+    }),
+    ...(other
+      ? [{
+          key: 'other',
+          label: t('ledger.breakdown.other', { count: other.items.length }),
+          color: categoryColor(null),
+          icon: <Ellipsis className="w-[13px] h-[13px]" strokeWidth={1.8} />,
+          total: other.total,
+          pct: total > 0 ? (other.total / total) * 100 : 0,
+          detail: other.items.map((r) => `${categoryLabel(categories.find((c) => c.id === r.categoryId), t)} ${formatMoneyFixed(r.total, currency)}`).join(' · '),
+        }]
+      : []),
+  ]
+  const shownRows = expanded ? listRows : listRows.slice(0, 3)
 
   return (
     <div className="rounded-2xl border border-line bg-card px-3.5 py-3">
@@ -184,63 +215,64 @@ export function SpendBreakdownCard({
       {!rows.length ? (
         <div className="text-[12px] text-muted py-4 text-center">{t('ledger.breakdown.emptyToday')}</div>
       ) : (
-        <div className="flex items-center gap-4">
-          <div className="relative flex-shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
-            <CategoryRing slices={slices} />
-            <div
-              className="absolute rounded-full bg-card flex flex-col items-center justify-center"
-              style={{ inset: RING_STROKE }}
-            >
-              <div className="text-[8px] text-faint">{currency}</div>
-              <div className="font-bold tabular mt-0.5" style={{ fontSize: ringFontSize(formatRingTotal(total)) }}>
-                {formatRingTotal(total)}
+        <>
+          <div className="flex items-center gap-4">
+            <div className="relative flex-shrink-0" style={{ width: RING_SIZE, height: RING_SIZE }}>
+              <CategoryRing slices={slices} />
+              <div
+                className="absolute rounded-full bg-card flex flex-col items-center justify-center"
+                style={{ inset: RING_STROKE }}
+              >
+                <div className="text-[8px] text-faint">{currency}</div>
+                <div className="font-bold tabular mt-0.5" style={{ fontSize: ringFontSize(formatRingTotal(total)) }}>
+                  {formatRingTotal(total)}
+                </div>
               </div>
             </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] text-muted">{t('ledger.breakdown.topLabel')}</div>
+              <div className="flex items-baseline gap-1.5 mt-0.5 text-[17px] font-semibold">
+                <span className="truncate" style={{ color: categoryColor(top.category) }}>{categoryLabel(top.category, t)}</span>
+                <span className="tabular">{top.pct.toFixed(1)}%</span>
+              </div>
+              {topThreePct != null && (
+                <div className="text-[11px] text-muted mt-1">
+                  {t('ledger.breakdown.topThree', { names: withMeta.slice(0, 3).map((r) => categoryLabel(r.category, t)).join(i18n.language.startsWith('zh') ? '、' : ', '), pct: topThreePct })}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-            {topRows.map((r) => (
-              <div key={r.categoryId} className="flex items-center gap-1.5 text-[11.5px]">
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: categoryColor(r.category) }} />
-                <span className="flex-1 min-w-0 truncate text-ink">{categoryLabel(r.category, t)}</span>
-                <span className="text-muted tabular flex-shrink-0">{formatMoney(r.total, currency)}</span>
+
+          <div className="flex flex-col gap-2.5 mt-3.5">
+            {shownRows.map((r) => (
+              <div key={r.key}>
+                <div className="flex items-center gap-1.5 mb-[5px]">
+                  <span className="flex-shrink-0 flex" style={{ color: r.color }}>{r.icon}</span>
+                  <span className="flex-1 min-w-0 truncate text-[12.5px]">{r.label}</span>
+                  <span className="text-[12.5px] font-semibold tabular flex-shrink-0">{formatMoneyFixed(r.total, currency)}</span>
+                  <span className="w-[38px] text-right text-[10.5px] text-muted tabular flex-shrink-0">{r.pct.toFixed(1)}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-line overflow-hidden">
+                  <div
+                    className="bar-fill h-full rounded-full"
+                    style={{ width: `${Math.max(2, maxTotal > 0 ? (r.total / maxTotal) * 100 : 0)}%`, background: r.color }}
+                  />
+                </div>
+                {r.detail && <div className="text-[11px] text-muted tabular mt-[5px]">{r.detail}</div>}
               </div>
             ))}
           </div>
-        </div>
+        </>
       )}
 
-      {rows.length > 3 && (
+      {listRows.length > 3 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-center gap-1 text-[11px] text-muted mt-2.5 pt-2 border-t border-line"
+          className="w-full flex items-center justify-center gap-1 text-[11px] text-muted mt-3 pt-2 border-t border-line"
         >
           {expanded ? t('ledger.breakdown.collapse') : t('ledger.breakdown.viewAll', { count: withMeta.length })}
           <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} strokeWidth={2} />
         </button>
-      )}
-
-      {expanded && rows.length > 0 && (
-        <div className="flex flex-col gap-2 mt-2.5">
-          {withMeta.map((r) => (
-            <div key={r.categoryId}>
-              <div className="flex items-center justify-between text-[11.5px] mb-1">
-                <span className="flex items-center gap-1.5" style={{ color: categoryColor(r.category) }}>
-                  <CategoryIcon category={r.category} size={12} />
-                  <span className="text-ink">{categoryLabel(r.category, t)}</span>
-                </span>
-                <span className="text-muted tabular">
-                  {formatMoney(r.total, currency)} · {r.pct.toFixed(1)}%
-                </span>
-              </div>
-              <div className="h-1 rounded-full bg-line overflow-hidden">
-                <div
-                  className="bar-fill h-full rounded-full"
-                  style={{ width: `${Math.max(2, r.pct)}%`, background: categoryColor(r.category) }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
       )}
       {footer}
     </div>
