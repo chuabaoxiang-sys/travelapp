@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins, CalendarRange } from 'lucide-react'
+import { ChevronRight, Wallet, CreditCard, Gift, Filter, X, Tag, Coins, CalendarRange, ArrowUp } from 'lucide-react'
 import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { listTripRefunds, refundSummary } from '../../domain/taxRefunds'
 import { EstimatePill } from '../../components/EstimatePill'
@@ -134,11 +134,20 @@ export function LedgerTab({
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const dayRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const [flashDate, setFlashDate] = useState<string | null>(null)
+  // 日期条吸顶（2026-11-10）：账目一多要滑很久、滑到中间不知道是哪天。原来那排日期滑出去之后，
+  // 顶部浮一条精简日期条（筛选 · 日期 · 回到顶部），正在看的那天黑底、跟着滑动换。
+  // 浮在列表上面（absolute），不插进列表里——插进去的话出现那一下列表会被往下推一截
+  const dateStripRef = useRef<HTMLDivElement>(null)
+  const stickyStripRef = useRef<HTMLDivElement>(null)
+  const [stripCollapsed, setStripCollapsed] = useState(false)
+  const [activeDate, setActiveDate] = useState<string | null>(null)
+  const STICKY_BAR_OFFSET = 56
   function scrollToDate(date: string) {
     const container = scrollAreaRef.current
     const target = dayRefs.current.get(date)
     if (!container || !target) return
-    container.scrollTo({ top: target.offsetTop - 8, behavior: 'smooth' })
+    // 跳过去之后吸顶条一定在，留出它的高度，不然那天的日期标题会被盖住
+    container.scrollTo({ top: target.offsetTop - STICKY_BAR_OFFSET, behavior: 'smooth' })
     setFlashDate(date)
     setTimeout(() => setFlashDate((d) => (d === date ? null : d)), 900)
   }
@@ -235,6 +244,44 @@ export function LedgerTab({
     if (lastGroup && lastGroup.date === e.expenseDate) lastGroup.items.push(e)
     else expensesByDay.push({ date: e.expenseDate, items: [e] })
   }
+  const dayKeys = expensesByDay.map((d) => d.date).join(',')
+
+  const hasDateStrip = view !== 'settle' && visibleExpenses.length > 0
+
+  // 滚动时一起算两件事：原来那排日期是不是已经滑到上面去了（→ 显示吸顶条），
+  // 和正在看的是哪天（最后一个"日期标题已经滑到吸顶条下沿以上"的那天）
+  function updateActiveDate() {
+    const container = scrollAreaRef.current
+    if (!container) return
+    const strip = dateStripRef.current
+    setStripCollapsed(!!strip && strip.offsetTop + strip.offsetHeight < container.scrollTop)
+    let current: string | null = null
+    for (const { date } of expensesByDay) {
+      const el = dayRefs.current.get(date)
+      if (!el) continue
+      if (el.offsetTop - container.scrollTop <= STICKY_BAR_OFFSET + 8) current = date
+      else break
+    }
+    setActiveDate(current ?? expensesByDay[0]?.date ?? null)
+  }
+  const scrollRaf = useRef(0)
+  function onListScroll() {
+    cancelAnimationFrame(scrollRaf.current)
+    scrollRaf.current = requestAnimationFrame(updateActiveDate)
+  }
+  useEffect(() => {
+    updateActiveDate()
+  }, [dayKeys, view, hasDateStrip]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 吸顶条里正在看的那天保持在可视范围内（只横向滚这一条，不碰列表本身）
+  useEffect(() => {
+    const strip = stickyStripRef.current
+    if (!strip || !activeDate) return
+    const chip = strip.querySelector<HTMLElement>(`[data-date="${activeDate}"]`)
+    if (!chip) return
+    const left = chip.offsetLeft - strip.clientWidth / 2 + chip.offsetWidth / 2
+    strip.scrollTo({ left: Math.max(0, left), behavior: 'smooth' })
+  }, [activeDate, stripCollapsed])
 
   // 跨天的账（2026-11-08）：每天的「当日」只算它分到这天的那份，跟黑卡「今天花了」同一套；
   // 账目本身还是放在记账那天、显示整笔。别天记的账分到这天的，在日期下面写「含跨天」
@@ -371,8 +418,57 @@ export function LedgerTab({
           <SplitTab trip={trip} currentMemberId={currentMemberId} />
         </div>
       ) : (
+      <div className="relative flex-1 min-h-0 flex flex-col">
+      {stripCollapsed && hasDateStrip && (
+        <div className="absolute top-0 inset-x-0 z-20 px-5 py-2 bg-paper border-b border-line shadow-sm flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setFilterOpen(true)}
+            className={`relative flex-shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${
+              filterOn ? 'border-spend bg-spend/10 text-spend' : 'border-line bg-card text-muted'
+            }`}
+            title={t('ledger.filter.button')}
+            aria-label={t('ledger.filter.button')}
+          >
+            <Filter className="w-3.5 h-3.5" strokeWidth={1.8} />
+            {filterOn && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 rounded-full bg-spend text-card text-[9px] font-bold flex items-center justify-center leading-none border-[1.5px] border-paper">
+                {filterCount(ledgerFilter)}
+              </span>
+            )}
+          </button>
+          <div ref={stickyStripRef} className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto no-scrollbar">
+            {expensesByDay.map(({ date }) => {
+              const isActive = date === activeDate
+              const outsideTrip = !!trip.startDate && !!trip.endDate && (date < trip.startDate || date > trip.endDate)
+              return (
+                <button
+                  key={date}
+                  data-date={date}
+                  onClick={() => scrollToDate(date)}
+                  className={`flex-shrink-0 h-8 px-2 rounded-lg border font-serif-sc text-[12.5px] tabular flex items-center ${
+                    isActive ? 'bg-ink text-paper border-ink font-semibold' : outsideTrip ? 'bg-card border-dashed border-line text-muted' : 'bg-card border-line text-soft'
+                  }`}
+                >
+                  {formatDateChipDate(date, locale)}
+                </button>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => scrollAreaRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex-shrink-0 w-8 h-8 rounded-lg border border-line bg-card text-plan flex items-center justify-center"
+            title={t('ledger.backToTop')}
+            aria-label={t('ledger.backToTop')}
+          >
+            <ArrowUp className="w-4 h-4" strokeWidth={1.8} />
+          </button>
+        </div>
+      )}
       <div
         ref={scrollAreaRef}
+        onScroll={onListScroll}
         className="relative px-5 pb-safe-fab-clearance overflow-y-auto no-scrollbar flex-1 min-h-0 flex flex-col gap-3.5"
       >
       {/* min-h-0：这个滚动容器自己也是flex-col，套了"按天分组"那层嵌套之后，
@@ -502,7 +598,7 @@ export function LedgerTab({
       {/* 筛选按钮固定在日期条最左边、不跟着日期滑走（样式跟"行程"页的筛选按钮一样）；
           只有一天的账、没有日期条时，这一行就只剩按钮 */}
       {visibleExpenses.length > 0 && (
-      <div className="flex gap-1.5 items-stretch min-h-min">
+      <div ref={dateStripRef} className="flex gap-1.5 items-stretch min-h-min">
         <button
           type="button"
           onClick={() => setFilterOpen(true)}
@@ -738,6 +834,7 @@ export function LedgerTab({
             {view === 'mine' ? t('ledger.emptyMine') : t('ledger.emptyAll')}
           </div>
         )}
+      </div>
       </div>
       </div>
       )}
