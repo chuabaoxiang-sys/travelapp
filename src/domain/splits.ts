@@ -1,6 +1,6 @@
 import { db, enqueueOutbox } from '../db/dexie'
 import { getCurrentHouseholdId } from './household'
-import { refundSummary } from './taxRefunds'
+import { refundShares, refundSummary } from './taxRefunds'
 import type { ExpenseSplit, SplitType } from '../types'
 
 export function round2(n: number) {
@@ -371,7 +371,10 @@ export interface OpenExpenseDebt {
   totalShare: number // 这个人在这笔账里本来该分摊多少
   settledAmount: number // 已经用"按笔结算"还了多少
   prepaidAmount: number // 已经被预付款自动抵扣了多少
-  remaining: number // 还欠多少——totalShare减掉settledAmount、prepaidAmount
+  // 2026-11-10：总账里能抵掉这笔的另外两样——对方替我收着的退税（我那份）、对方「免了」的
+  refundAmount: number
+  waivedAmount: number
+  remaining: number // 还欠多少——totalShare减掉settledAmount、prepaidAmount、refundAmount、waivedAmount
 }
 
 export interface PrepaymentBalance {
@@ -406,6 +409,34 @@ async function computeOpenDebtsAndPools(tripId: string) {
     pools.set(key, round2((pools.get(key) ?? 0) + s.amount))
   }
 
+  // 2026-11-10：按笔结算以前只认按笔结算和预付款，总账里另外两样它不认，两边对不上
+  // （真实情况：KN 的现金退税 RM53.26 在 BX 手上、BX 又「免了」RM53.58，结算建议已经两清，
+  // 按笔结算还挂着 RM106.84）。跟预付款同一个做法，按日期从早到晚抵：
+  // - 退税：收钱的人替谁收着多少，就当那个人已经还了收钱的人多少
+  // - 免了：收钱的人免掉多少，就抵掉多少
+  // 顺序：预付款 → 退税 → 免了（真的付过的钱先用，免掉的最后）
+  const refundPools = new Map<string, number>()
+  for (const r of (await db.taxRefunds.where('tripId').equals(tripId).toArray()).filter((x) => !x.deletedAt)) {
+    if (!r.receivedBy) continue
+    for (const sh of refundShares(r)) {
+      if (sh.memberId === r.receivedBy || !(sh.amount > 0)) continue
+      const key = `${sh.memberId}:${r.receivedBy}`
+      refundPools.set(key, round2((refundPools.get(key) ?? 0) + sh.amount))
+    }
+  }
+  const waivePools = new Map<string, number>()
+  for (const s of settlements) {
+    if (s.expenseId || !s.waived) continue
+    const key = `${s.fromMemberId}:${s.toMemberId}`
+    waivePools.set(key, round2((waivePools.get(key) ?? 0) + s.amount))
+  }
+  const takeFrom = (poolMap: Map<string, number>, key: string, need: number) => {
+    const pool = poolMap.get(key) ?? 0
+    const used = round2(Math.min(pool, need))
+    if (used > 0) poolMap.set(key, round2(pool - used))
+    return Math.max(0, used)
+  }
+
   // 每笔账每个同行者的份额：普通分摊 + 送礼代购分到他头上的（0052），合成一条
   const splitsByExpense = new Map<string, typeof splits>()
   for (const s of splits) {
@@ -413,7 +444,7 @@ async function computeOpenDebtsAndPools(tripId: string) {
     arr.push(s)
     splitsByExpense.set(s.expenseId, arr)
   }
-  const afterTagged: Omit<OpenExpenseDebt, 'prepaidAmount' | 'remaining'>[] = []
+  const afterTagged: Omit<OpenExpenseDebt, 'prepaidAmount' | 'refundAmount' | 'waivedAmount' | 'remaining'>[] = []
   for (const [expenseId, rows] of splitsByExpense) {
     const expense = expenseById.get(expenseId)
     if (!expense) continue
@@ -441,11 +472,13 @@ async function computeOpenDebtsAndPools(tripId: string) {
   for (const debt of afterTagged) {
     const remainingAfterTagged = Math.max(0, round2(debt.totalShare - debt.settledAmount))
     const poolKey = `${debt.debtorId}:${debt.creditorId}`
-    const pool = pools.get(poolKey) ?? 0
-    const prepaidAmount = round2(Math.min(pool, remainingAfterTagged))
-    if (prepaidAmount > 0) pools.set(poolKey, round2(pool - prepaidAmount))
-    const remaining = round2(remainingAfterTagged - prepaidAmount)
-    allDebts.push({ ...debt, prepaidAmount, remaining })
+    const prepaidAmount = takeFrom(pools, poolKey, remainingAfterTagged)
+    const afterPrepay = round2(remainingAfterTagged - prepaidAmount)
+    const refundAmount = takeFrom(refundPools, poolKey, afterPrepay)
+    const afterRefund = round2(afterPrepay - refundAmount)
+    const waivedAmount = takeFrom(waivePools, poolKey, afterRefund)
+    const remaining = round2(afterRefund - waivedAmount)
+    allDebts.push({ ...debt, prepaidAmount, refundAmount, waivedAmount, remaining })
   }
 
   return { allDebts, pools }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import i18n from '../lib/i18n'
 import { db } from '../db/dexie'
-import { computeBalances, owedAfterWaive, simplifyDebts } from './splits'
+import { computeBalances, owedAfterWaive, simplifyDebts, openExpenseDebts, closedExpenseDebts } from './splits'
 import { createSettlement } from './settlements'
 import { buildSettlementText } from './settlementText'
 import type { Expense, ExpenseSplit } from '../types'
@@ -49,6 +49,30 @@ describe('结算「免了」', () => {
     const b = await computeBalances('t1')
     expect(b.find((x) => x.memberId === 'kn')!.net).toBe(-50)
     expect(simplifyDebts(b)).toEqual([{ from: 'kn', to: 'bx', amount: 50 }])
+  })
+
+  // 真实情况（东京北海道 2026）：KN 的现金退税在 BX 手上，BX 又免了剩下的，结算建议两清，
+  // 按笔结算也要跟着清——以前它只认按笔结算和预付款，三笔一直挂着
+  it('按笔结算：退税、免了按日期从早到晚抵掉，跟结算建议一致；删掉免了就变回没结清', async () => {
+    await db.expenses.add({ ...expense('e2', 40), expenseDate: '2026-11-01' })
+    await db.expenseSplits.bulkAdd([split('e2', 'bx', 20), split('e2', 'kn', 20)])
+    await db.taxRefunds.add({
+      id: 'r1', householdId: 'h1', tripId: 't1', method: 'cash', currency: 'JPY', foreignAmount: 2000, rate: 0.0266,
+      homeAmount: 53.26, pending: false, memberIds: ['kn'], receivedBy: 'bx', rateBookEntryId: null,
+      refundDate: '2026-11-06', note: null, createdBy: 'bx', createdAt: 0, updatedAt: 0, deletedAt: null,
+    })
+    // KN 一共欠 53.58 + 20 = 73.58；退税抵 53.26，剩 20.32 由 BX 免了
+    const waiveId = await createSettlement({ tripId: 't1', fromMemberId: 'kn', toMemberId: 'bx', amount: 20.32, settledDate: '2026-11-10', note: null, waived: true })
+    expect(simplifyDebts(await computeBalances('t1'))).toEqual([])
+    expect(await openExpenseDebts('t1')).toEqual([])
+    const closed = await closedExpenseDebts('t1')
+    expect(closed.map((d) => [d.expenseId, d.refundAmount, d.waivedAmount])).toEqual([
+      ['e1', 53.26, 0.32],
+      ['e2', 0, 20],
+    ])
+
+    await db.settlements.delete(waiveId)
+    expect((await openExpenseDebts('t1')).map((d) => [d.expenseId, d.remaining])).toEqual([['e1', 0.32], ['e2', 20]])
   })
 
   it('复制出去的文字：应分摊写免了之后的，括号写清楚，旅伴花费合计不变', async () => {

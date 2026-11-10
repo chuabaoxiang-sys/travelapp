@@ -681,6 +681,12 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                           {t('split.byItem.prepaidApplied', { amount: formatMoney(d.prepaidAmount) })}
                         </span>
                       )}
+                      {d.refundAmount > 0.01 && (
+                        <span className="text-positive">{t('split.byItem.refundApplied', { amount: formatMoney(d.refundAmount) })}</span>
+                      )}
+                      {d.waivedAmount > 0.01 && (
+                        <span className="text-plan">{t('split.byItem.waivedApplied', { name: nameOf(d.creditorId), amount: formatMoney(d.waivedAmount) })}</span>
+                      )}
                     </div>
                   </div>
                   <div className="text-[13px] font-semibold tabular flex-shrink-0">{formatMoney(d.remaining)}</div>
@@ -727,6 +733,16 @@ export function SplitTab({ trip, currentMemberId }: { trip: Trip; currentMemberI
                         <div className="text-[12.5px] font-medium truncate text-muted">{titleOf(d)}</div>
                         <div className="text-[10.5px] text-muted">
                           {t('split.byItem.owes', { debtor: nameOf(d.debtorId), creditor: nameOf(d.creditorId) })}
+                          {/* 退税抵、免了（2026-11-10）写出金额，看得出这笔是怎么清的 */}
+                          {d.refundAmount > 0.01 && d.prepaidAmount > 0.01 && (
+                            <span className="text-positive">{t('split.byItem.prepaidApplied', { amount: formatMoney(d.prepaidAmount) })}</span>
+                          )}
+                          {d.refundAmount > 0.01 && (
+                            <span className="text-positive">{t('split.byItem.refundApplied', { amount: formatMoney(d.refundAmount) })}</span>
+                          )}
+                          {d.waivedAmount > 0.01 && (
+                            <span className="text-plan">{t('split.byItem.waivedApplied', { name: nameOf(d.creditorId), amount: formatMoney(d.waivedAmount) })}</span>
+                          )}
                         </div>
                       </div>
                       {d.settledAmount > 0.01 && (
