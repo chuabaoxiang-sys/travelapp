@@ -138,8 +138,11 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
     ? daysInclusive(trip.startDate, trip.endDate)
     : daySummary.length
 
-  // 只算真正参与了这趟行程账目的人，不是团队里所有成员——家里可能有人这次没去
-  const memberCount = personSummary.filter((p) => p.paid > 0 || p.owed > 0).length
+  // 只算真正参与了这趟行程账目的人，不是团队里所有成员——家里可能有人这次没去。
+  // 用账面应分摊判断（2026-11-12）：personSummary 的应分摊已经扣掉「免了」，
+  // 被免掉全部份额的人会变成 0，被漏算成没去
+  const balances = await computeBalances(tripId)
+  const memberCount = balances.filter((b) => b.paid > 0 || b.owed > 0).length
 
   // 最贵的一天（2026-11-08）：跨天的账按天分摊（跟账目列表的「当日」同一套），
   // 而且只在行程日期内选——出发前订机票、订酒店的那天不算"旅途中花得最多的一天"。
@@ -147,7 +150,7 @@ export async function buildRetrospective(tripId: string, todayISO: string, t: TF
   const topDay = topSpendDay(tripExpenses, tripAllocations, trip.startDate, trip.endDate, daySummary)
 
   // 还有几笔没结：跟分账页用的是同一套算法，不另起一套，免得两处数字对不上
-  const transfers = simplifyDebts(await computeBalances(tripId))
+  const transfers = simplifyDebts(balances)
 
   const [moodCurveMe, moodCurveAll, expenseStatMe, expenseStatAll] = await Promise.all([
     dayMoodCurve(tripId, { kind: 'me', memberId: currentMemberId }),

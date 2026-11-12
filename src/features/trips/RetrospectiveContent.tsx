@@ -7,6 +7,7 @@ import { buildRetrospective, type TripRetrospective } from '../../domain/retrosp
 import { formatMoney } from '../../lib/money'
 import { db } from '../../db/dexie'
 import { SpendBreakdownCard } from '../expenses/SpendBreakdownCard'
+import { TripClearCard, type LedgerIntent } from './TripClearCard'
 import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 import { useStaggerEntrance } from '../../hooks/useStaggerEntrance'
 import { MoodCurveCard } from '../satisfaction/MoodCurveCard'
@@ -22,7 +23,7 @@ import { EstimatePill } from '../../components/EstimatePill'
 // 现在补上跟"出发前"/记账页大数字同一套动效：总花费数字滚入、分类占比条从0
 // 滚到目标宽度、各张卡片错开时间淡入+上移——手法都是抄现成的，不是新发明
 
-export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { trip: Trip; currentMemberId: string; refreshKey?: number }) {
+export function RetrospectiveContent({ trip, currentMemberId, refreshKey, onOpenLedger }: { trip: Trip; currentMemberId: string; refreshKey?: number; onOpenLedger?: (intent: LedgerIntent) => void }) {
   const { t } = useTranslation()
   const [data, setData] = useState<TripRetrospective | null>(null)
 
@@ -117,15 +118,11 @@ export function RetrospectiveContent({ trip, currentMemberId, refreshKey }: { tr
         )}
       </div>
 
-      {/* 还没结清——放在最前面，因为这是这个APP最不可替代的价值 */}
-      {data.unsettledCount > 0 && (
-        <div className={`rounded-2xl border border-spend/60 bg-spend/[.06] px-3.5 py-3 ${enterClass()}`} style={delayStyle(nextDelayMs())}>
-          <div className="text-[13px] font-medium text-ink">
-            {t('retrospective.unsettledCount', { count: data.unsettledCount })}
-          </div>
-          <div className="text-[11px] text-muted mt-0.5">
-            {t('retrospective.unsettledDetail', { amount: money(data.unsettledTotal) })}
-          </div>
+      {/* 收尾 / 旅程通关（2026-11-12）：替换原来只提醒结算的「还有 N 笔没结清」——四关
+          （补完刷卡扣款、退税到账、代购收齐、结算两清），全过盖章、出通关卡 */}
+      {onOpenLedger && (
+        <div className={enterClass()} style={delayStyle(nextDelayMs())}>
+          <TripClearCard trip={trip} onOpenLedger={onOpenLedger} />
         </div>
       )}
 

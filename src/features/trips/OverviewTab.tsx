@@ -23,6 +23,7 @@ import { cashbackSummary, listTripCashbacks } from '../../domain/cashback'
 import { listTripRefunds, refundSummary } from '../../domain/taxRefunds'
 import { isPendingCardExpense } from '../../domain/cardCharges'
 import { RetrospectiveContent } from './RetrospectiveContent'
+import type { LedgerIntent } from './TripClearCard'
 import { useActivityEntries, activityKindLabel, ACTIVITY_KIND_CLASS } from '../activity/useActivityEntries'
 import { WishlistScreen } from '../wishlist/WishlistScreen'
 import { ActivityFeed } from '../activity/ActivityFeed'
@@ -41,7 +42,7 @@ import { dayMoodCurve, expenseSatisfactionStat } from '../../domain/satisfaction
 //   旅途中 → 复用第一步做的 resolveAllowance + 第二步顺带抽出来的 useActivityEntries
 //   回家后 → 直接渲染 RetrospectiveContent（第二步"旅程回顾"的内容本体）
 
-export function OverviewTab({ trip, currentMemberId }: { trip: Trip; currentMemberId: string }) {
+export function OverviewTab({ trip, currentMemberId, onOpenLedger }: { trip: Trip; currentMemberId: string; onOpenLedger?: (intent: LedgerIntent) => void }) {
   const todayISO = new Date().toLocaleDateString('sv-SE')
   const phase = resolveTripPhase(todayISO, trip.startDate, trip.endDate)
   const [flipDeckOpen, setFlipDeckOpen] = useState(false)
@@ -62,7 +63,7 @@ export function OverviewTab({ trip, currentMemberId }: { trip: Trip; currentMemb
       <>
         <div className="px-5 pt-3 pb-safe-fab-clearance overflow-y-auto no-scrollbar h-full flex flex-col gap-3.5">
           <SatisfactionEntryCard trip={trip} currentMemberId={currentMemberId} onOpen={() => setFlipDeckOpen(true)} />
-          <RetrospectiveContent trip={trip} currentMemberId={currentMemberId} refreshKey={satisfactionVersion} />
+          <RetrospectiveContent trip={trip} currentMemberId={currentMemberId} refreshKey={satisfactionVersion} onOpenLedger={onOpenLedger} />
         </div>
         {flipDeckOpen && (
           <SatisfactionFlipDeck trip={trip} currentMemberId={currentMemberId} onClose={closeFlipDeck} />

@@ -69,12 +69,15 @@ export function LedgerTab({
   trip,
   currentMemberId,
   highlightSince = 0,
+  intent = null,
 }: {
   trip: Trip
   currentMemberId: string
   // 比这个时间点更新、且不是自己记的账目会带一圈高亮边——让"上次打开之后家里
   // 多出来的东西"一眼能认出来，而不是混在列表里跟三天前那条长得一样
   highlightSince?: number
+  // 从概览页「收尾」卡点进来（2026-11-12）：要打开的视角，和要不要先筛出待补的刷卡
+  intent?: { view: 'team' | 'settle'; pendingCards?: boolean; n: number } | null
 }) {
   const { t, i18n } = useTranslation()
   const locale: ResolvedLocale = i18n.language === 'en' ? 'en' : 'zh'
@@ -154,7 +157,12 @@ export function LedgerTab({
   // 三段视角：全部（团队）/我的花费/结算——预算和分账不再是各自独立的tab，
   // 并进了账目页当中的两个分段，"预算"进一步降级成"全部"视角里的一个次级入口
   // （见下面的"管理预算"），因为它本来就是"花了多少"的参照系，不该跟账目分开看
-  const [view, setView] = useState<'team' | 'mine' | 'settle'>('team')
+  const [view, setView] = useState<'team' | 'mine' | 'settle'>(intent?.view ?? 'team')
+  useEffect(() => {
+    if (!intent) return
+    setView(intent.view)
+    if (intent.pendingCards) setLedgerFilter({ ...EMPTY_LEDGER_FILTER, payments: [PAY_PENDING] })
+  }, [intent?.n]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 编辑账目现在是全屏页而不是带X的弹层，安卓硬件返回键是唯一预期的退出方式——
   // 之前这个入口完全没接返回键（只有TripShell里"＋"新增那条接了），弹层时代还有

@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react'
 import { db } from '../../db/dexie'
 import { BottomNav, type TabKey } from '../../components/BottomNav'
 import { OverviewTab } from './OverviewTab'
+import type { LedgerIntent } from './TripClearCard'
 import { ItineraryTab } from '../itinerary/ItineraryTab'
 import { LedgerTab } from '../expenses/LedgerTab'
 import { AddExpensePage } from '../expenses/AddExpensePage'
@@ -67,6 +68,12 @@ export function TripShell({
   // FAB在"行程"tab上被接成"添加行程项"而不是"记一笔"——它没法直接调用ItineraryTab
   // 内部的setFormState，靠这个自增计数器当信号，ItineraryTab自己的effect监听变化
   const [itineraryAddSignal, setItineraryAddSignal] = useState(0)
+  // 旅程通关卡（2026-11-12）点没过的那一关：切到账目页，并带上要打开哪个视角 / 筛选
+  const [ledgerIntent, setLedgerIntent] = useState<(LedgerIntent & { n: number }) | null>(null)
+  function openLedger(intent: LedgerIntent) {
+    setLedgerIntent((cur) => ({ ...intent, n: (cur?.n ?? 0) + 1 }))
+    setTab('ledger')
+  }
 
   useEffect(() => {
     if (tripResult === NOT_FOUND) onSwitchTrip()
@@ -98,6 +105,8 @@ export function TripShell({
   // 会渲染内容的tab，是一个开弹层的动作，跟"记一笔"是同一类东西）——不然
   // BottomNav 的 active 高亮会跳到一个没有对应内容区域的tab上
   function handleNavChange(key: TabKey) {
+    // 自己点底部导航进账目，就是普通进入，不带「收尾」卡的跳转意图
+    setLedgerIntent(null)
     if (key === 'more') {
       setMoreOpen(true)
       markHintSeen(currentMemberId, 'moreSheet')
@@ -193,7 +202,7 @@ export function TripShell({
         </div>
 
         <div className="flex-1 relative overflow-hidden">
-          {tab === 'overview' && <OverviewTab trip={trip} currentMemberId={currentMemberId} />}
+          {tab === 'overview' && <OverviewTab trip={trip} currentMemberId={currentMemberId} onOpenLedger={openLedger} />}
           {tab === 'itinerary' && (
             <ItineraryTab
               trip={trip}
@@ -203,7 +212,7 @@ export function TripShell({
             />
           )}
           {tab === 'ledger' && (
-            <LedgerTab trip={trip} currentMemberId={currentMemberId} highlightSince={ledgerHighlightSince} />
+            <LedgerTab trip={trip} currentMemberId={currentMemberId} highlightSince={ledgerHighlightSince} intent={ledgerIntent} />
           )}
         </div>
 

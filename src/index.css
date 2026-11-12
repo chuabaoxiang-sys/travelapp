@@ -377,6 +377,22 @@ html.sheet-open .nav-blur {
    SatisfactionStampBadge.tsx），这层只管位置和缩放，两层transform天然叠加，
    不用在这份keyframes里重复写rotate。跟账目盖章共用同一个Stamp视觉组件，
    这里补的是"选完之后真的看到它盖下去"这个反馈动作 */
+/* 旅程通关的大章（2026-11-12）：跟翻卡落章同一种手感，章本身是绝对定位在卡片右上角，
+   不需要 translate(-50%) 居中，旋转由 ClearStamp 自己的 inline transform 负责 */
+@keyframes trip-clear-slam {
+  0%   { transform: scale(2.4) translateY(-40px); opacity: 0; }
+  45%  { transform: scale(0.92) translateY(0); opacity: 1; }
+  62%  { transform: scale(1.08); }
+  80%  { transform: scale(0.97); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.trip-clear-slam {
+  animation: trip-clear-slam 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) 0.35s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .trip-clear-slam { animation: none; }
+}
+
 @keyframes stamp-slam {
   0%   { transform: translate(-50%, -50%) scale(2.4) translateY(-46px); opacity: 0; }
   45%  { transform: translate(-50%, -50%) scale(0.92) translateY(0); opacity: 1; }

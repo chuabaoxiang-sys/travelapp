@@ -1402,6 +1402,54 @@
     "viewAll": "View all ›",
     "emptyDuringTrip": "No one's logged an expense or added a plan yet."
   },
+  "tripClear": {
+    "title": "Wrap-up",
+    "progress": "{{done}} of {{total}} done",
+    "allDone": "All {{total}} done",
+    "check": {
+      "cards": "Card charges filled in",
+      "refunds": "Tax refunds received",
+      "proxies": "Purchases for others paid back",
+      "settle": "Everyone settled up"
+    },
+    "done": {
+      "cards": "All filled in",
+      "refunds": "All received",
+      "proxies": "All paid back",
+      "settle": "Settled"
+    },
+    "pending": {
+      "cards_one": "{{count}} card purchase still needs its charged amount",
+      "cards_other": "{{count}} card purchases still need their charged amount",
+      "refunds_one": "{{count}} refund not received yet (est. {{amount}})",
+      "refunds_other": "{{count}} refunds not received yet (est. {{amount}})",
+      "proxies_one": "{{count}} person hasn't paid back ({{amount}})",
+      "proxies_other": "{{count}} people haven't paid back ({{amount}})",
+      "settle_one": "{{count}} transfer left ({{amount}})",
+      "settle_other": "{{count}} transfers left ({{amount}})"
+    },
+    "stampTop": "TRIP CLEARED",
+    "stampWord": "Cleared",
+    "viewCard": "View trip card",
+    "saveImage": "Save image",
+    "card": {
+      "brand": "TRIPNOTES",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "people_one": "{{count}} person",
+      "people_other": "{{count}} people",
+      "recorded": "Logged",
+      "recordedValue_one": "{{count}} expense",
+      "recordedValue_other": "{{count}} expenses",
+      "went": "Visited",
+      "wentValue_one": "{{count}} place",
+      "wentValue_other": "{{count}} places",
+      "top": "Biggest share",
+      "worth": "Most worth it",
+      "bonus": "Rated every single day",
+      "tagline": "Travel together, settle up together"
+    }
+  },
   "retrospective": {
     "loading": "Crunching the numbers…",
     "empty": "Nothing logged for this trip yet. Add a few expenses or plans and there'll be something to see here.",
@@ -1578,7 +1626,7 @@
         { "title": "Meet the four tabs", "desc": "Overview, Itinerary, Ledger, More — the purple circle button in the middle is \"Add expense,\" reachable from Itinerary or Ledger any time." },
         { "title": "Before you leave", "desc": "A countdown card, your still-unbooked plans, and a checklist of what's ready." },
         { "title": "While you're traveling", "desc": "What's left to spend today, what's coming up, and what everyone else just did." },
-        { "title": "After you're home", "desc": "What the trip actually cost (after purchases for others and cashback, with the breakdown shown), per-person average, where the money went (the same spending card as on Ledger) — this is the old \"trip recap,\" now shown automatically once you're back." },
+        { "title": "After you're home", "desc": "What the trip actually cost (after purchases for others and cashback, with the breakdown shown), per-person average, where the money went (the same spending card as on Ledger) — this is the old \"trip recap,\" now shown automatically once you're back. The \"Wrap-up\" card at the top has four steps — card charges filled in, tax refunds received, purchases for others paid back, everyone settled up. The app checks them for you; tap an unfinished step to jump to where it's handled. When all four are done, the trip gets a \"Cleared\" stamp and a trip card you can save as an image to share (no amounts on it). If someone edits an expense later and you're no longer settled, the stamp comes off again." },
         { "title": "Start a new trip", "desc": "\"+ New trip\" at the bottom of \"My trips\" — name it, pick a home currency, and go." }
       ]
     },
