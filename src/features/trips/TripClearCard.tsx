@@ -19,6 +19,10 @@ export type LedgerIntent = { view: 'team' | 'settle'; pendingCards?: boolean }
 
 const SEEN_KEY = (tripId: string) => `tripClear:${tripId}`
 
+// 通关卡先隐藏（2026-11-12 用户看了真机效果觉得还很丑）：不弹出、也不显示「看通关卡」入口，
+// 大章和四关进度照常。代码留着，重新设计好之后把这里改回 true
+const CLEAR_CARD_ENABLED = false
+
 function readSeen(tripId: string): string | null {
   try {
     return localStorage.getItem(SEEN_KEY(tripId))
@@ -70,7 +74,7 @@ export function TripClearCard({ trip, onOpenLedger }: { trip: Trip; onOpenLedger
   // 落章播完再弹通关卡——单独一个 effect：放在上面那个里的话，setStampDate 触发
   // 重跑时会把这个计时器一起清掉，卡就弹不出来
   useEffect(() => {
-    if (!slam) return
+    if (!slam || !CLEAR_CARD_ENABLED) return
     const timer = setTimeout(() => setCardOpen(true), 1100)
     return () => clearTimeout(timer)
   }, [slam])
@@ -113,14 +117,14 @@ export function TripClearCard({ trip, onOpenLedger }: { trip: Trip; onOpenLedger
                 <ClearStamp size={104} date={stampDate} />
               </div>
             )}
-            <button
+            {CLEAR_CARD_ENABLED && <button
               type="button"
               onClick={() => setCardOpen(true)}
               className="w-full mt-3 pt-2.5 border-t border-line flex items-center justify-center gap-1.5 text-[12px] text-plan font-semibold"
             >
               <Share className="w-3.5 h-3.5" strokeWidth={1.8} />
               {t('tripClear.viewCard')}
-            </button>
+            </button>}
           </>
         ) : (
           <div className="flex flex-col mt-2.5">
