@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
 import { Check, ChevronRight, Share, Download, X, CircleCheckBig } from 'lucide-react'
@@ -189,8 +190,10 @@ function ClearCardModal({ trip, date, onClose }: { trip: Trip; date: string; onC
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-5" onClick={onClose}>
+  // 挂到 body 上（2026-11-12 真机发现）：收尾卡外面套着进场动画（带 transform），
+  // fixed 定位会变成相对那一层，弹窗被困在页面中间、遮罩盖不全、按钮被挤出去
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-5 overflow-y-auto" onClick={onClose}>
       <div className="absolute inset-0 bg-scrim/55" />
       <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-[340px] flex flex-col gap-3">
         <div className="bg-surface-strong text-on-dark rounded-[20px] px-5 pt-5 pb-4 relative overflow-hidden">
@@ -234,7 +237,8 @@ function ClearCardModal({ trip, date, onClose }: { trip: Trip; date: string; onC
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
